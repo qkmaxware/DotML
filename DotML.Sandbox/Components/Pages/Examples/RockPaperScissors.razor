@@ -1,0 +1,122 @@
+@page "/rock-paper-scissors"
+@using DotML
+@using DotML.Network
+@using DotML.Network.Training
+
+<NetworkExplorer TNetwork="ClassicalFeedforwardNetwork" Network=network TrainingData=training @ref=explorer>
+    <Input>
+    <div style="text-align: center;">
+        <button class="btn btn-primary" style="white-space: pre; text-align: left; font-family: monospace;" @onclick=@(() => rock(context))>Rock
+    _______
+---'   ____)
+      (_____)
+      (_____)
+      (____)
+---.__(___)
+        </button>
+        <button class="btn btn-primary" style="white-space: pre; text-align: left; font-family: monospace" @onclick=@(() => paper(context))>Paper
+    _______
+---'   ____)____
+          ______)
+          _______)
+         _______)
+---.__________)
+        </button>
+        <button class="btn btn-primary" style="white-space: pre; text-align: left; font-family: monospace"  @onclick=@(() => scissors(context))>Scissors
+    _______
+---'   ____)____
+          ______)
+       __________)
+      (____)
+---.__(___)
+        </button>
+        </div>
+    </Input>
+    <Output>
+        <div style="margin-top: 25px; display: flex; align-items: center;">
+        @switch(context.IndexOfMaxValue()) {
+            case ROCK:
+<div style="display: inline-block; margin-left: auto; margin-right: auto">
+<label>The network plays...Rock</label>
+<pre style="font-family: monospace">
+    _______
+---'   ____)
+      (_____)
+      (_____)
+      (____)
+---.__(___)
+</pre></div> break;
+            case PAPER:
+<div style="display: inline-block; margin-left: auto; margin-right: auto">
+<label>The network plays...Paper</label>
+<pre style="font-family: monospace">
+    _______
+---'   ____)____
+          ______)
+          _______)
+         _______)
+---.__________) 
+</pre></div> break;
+            case SCISSORS:
+<div style="display: inline-block; margin-left: auto; margin-right: auto">
+<label>The network plays...Scissors</label>
+<pre style="font-family: monospace">
+    _______
+---'   ____)____
+          ______)
+       __________)
+      (____)
+---.__(___)
+</pre></div> break;
+        }
+        </div>
+    </Output>
+</NetworkExplorer>
+
+@code {
+    private NetworkExplorer<ClassicalFeedforwardNetwork>? explorer;
+
+    const int       ROCK    = 0;
+    const int       PAPER   = 1;
+    const int       SCISSORS= 2;     
+    Vec<double>[]   vectors = [new double[]{1, -1, -1}, new double[]{-1, 1, -1}, new double[]{-1, -1, 1}];
+
+    private ClassicalFeedforwardNetwork network = ClassicalFeedforwardNetwork.FromJson(ResourceLoader.LoadContents("data/Rock Paper Scissors/Pretrained.json")); //new ClassicalFeedforwardNetwork(3,3,3);
+    private TrainingSet training = new TrainingSet(
+        // Paper beats Rock
+        new TrainingPair{ Input = new double[]{1, -1, -1}, Output = new double[]{-1, 1, -1}},
+        // Scissors beats Paper
+        new TrainingPair{ Input = new double[]{-1, 1, -1}, Output = new double[]{-1, -1, 1}},
+        // Rock beats Scissors
+        new TrainingPair{ Input = new double[]{-1, -1, 1}, Output = new double[]{1, -1, -1}}
+    );
+
+    private void rock(Box<Vec<double>> box) {
+        box.Value = vectors[ROCK];
+        explorer?.RefreshState();
+    }
+
+    private void paper(Box<Vec<double>> box) {
+        box.Value = vectors[PAPER];
+        explorer?.RefreshState();
+    }
+
+    private void scissors(Box<Vec<double>> box) {
+        box.Value = vectors[SCISSORS];
+        explorer?.RefreshState();
+    }
+
+    private void set(Box<Vec<double>> vector, int dim, double value) {
+        var vec = vector.Value;
+        if (vec.Dimensionality != network.GetFirstLayer().InputCount) {
+            vec = new Vec<double>(network.GetFirstLayer().InputCount);
+            vector.Value = vec;
+        }
+
+        if (vec.Dimensionality == 0 ||  dim < 0 || dim >= vec.Dimensionality)
+            return;
+
+        ((double[])vec)[dim] = value;
+        explorer?.RefreshState();
+    }
+} 

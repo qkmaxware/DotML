@@ -1,0 +1,145 @@
+using System.Collections;
+using System.Runtime.CompilerServices;
+using DotML.Network.Initialization;
+
+namespace DotML.Network.Training;
+
+/// <summary>
+/// Simple Neural Network trainer based on backpropagation
+/// </summary>
+/// <typeparam name="TNetwork">type of network to train</typeparam>
+public class BackpropagationTrainer<TNetwork>
+where TNetwork : ILayeredNeuralNetwork
+{
+    /// <summary>
+    /// Create a new Neural Network trainer
+    /// </summary>
+    public BackpropagationTrainer() {}
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private double getInputWeightOrDefault(INeuron neuron, int weight)  {
+        var weights = neuron.Weights;
+        if (weight < 0 || weight >= weights.Length)
+            return default(double);
+        return weights[weight];
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void backpropagate(ILayer layer, double[] layerDeltas, Vec<double> targets) {
+        var neuron_count = layer.NeuronCount;
+        var outputs = layer.GetLastOutputs();
+
+        for (var neuronIndex = 0; neuronIndex < neuron_count; neuronIndex++) {
+            INeuron neuron = layer.GetNeuron(neuronIndex);
+            var output = outputs[neuronIndex];
+            var target = targets[neuronIndex];
+
+            var error = target - output;
+            var activation = neuron.ActivationFunction ?? Identity.Instance;
+            var slope = activation.InvokeDerivative(output);
+
+            layerDeltas[neuronIndex] = slope * error;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void backpropagate(ILayer layer, double[] layerDeltas, ILayer next_layer, double[] next_layerDeltas) {
+        var neuron_count = layer.NeuronCount;
+        var nextlayer_neuron_count = next_layer.NeuronCount;
+        var outputs = layer.GetLastOutputs();
+        
+        for (var neuronIndex = 0; neuronIndex < neuron_count; neuronIndex++) {
+            INeuron neuron = layer.GetNeuron(neuronIndex);
+            var output = outputs[neuronIndex];
+
+            var error = 0.0;
+            for (var nextLayerNeuronIndex = 0; nextLayerNeuronIndex < nextlayer_neuron_count; nextLayerNeuronIndex++) {
+                INeuron nextLayerNeuron = next_layer.GetNeuron(nextLayerNeuronIndex);
+                error += next_layerDeltas[nextLayerNeuronIndex] * getInputWeightOrDefault(nextLayerNeuron, neuronIndex);
+            }
+            var activation = neuron.ActivationFunction ?? Identity.Instance;
+            var slope = activation.InvokeDerivative(output);
+
+            layerDeltas[neuronIndex] = slope * error;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void updateWeightsAndBias(Vec<double> inputs, double learningRate, ILayer layer, double[] deltas) {
+        var neuron_count = layer.NeuronCount;
+
+        for (int i = 0; i < neuron_count; i++) {
+            INeuron neuron = layer.GetNeuron(i);
+            var weights = neuron.Weights;
+
+            var weight_count = weights.Length;
+            var rateTimeDelta = learningRate * deltas[i];
+            for (int j = 0; j < weight_count; j++) {
+                weights[j] += rateTimeDelta * inputs[j];
+            }
+            neuron.Bias += rateTimeDelta;
+        }
+    }
+
+    /// <summary>
+    /// Network initialization strategy (defaults to NormalXavierInitialization)
+    /// </summary>
+    public IInitializer<TNetwork> NetworkInitializer {get; set;} = new NormalXavierInitialization<TNetwork>();
+
+    /// <summary>
+    /// Train the Neural Network by sampling the training data using the provided sequencer
+    /// </summary>
+    /// <param name="enumerator">training data sequence</param>
+    /// <param name="network">neural network to trail</param>
+    /// <param name="epochs">number of epochs to train for</param>
+    /// <param name="learningRate">learning rate for backpropagation</param>
+    public void Train(TNetwork network, IEnumerator<TrainingPair> enumerator, int epochs, double learningRate = 0.01) {
+        var layer_count = network.LayerCount;
+        
+        // Safety check(s)
+        if (layer_count < 1)
+            return;
+        
+        epochs = epochs == int.MaxValue ? int.MaxValue - 1 : epochs;
+        learningRate = learningRate == 0.0 ? double.Epsilon : learningRate;
+
+        // Randomize network
+        NetworkInitializer.InitializeWeights(network);
+        NetworkInitializer.InitializeBiases(network);
+
+        // Create storage for neuron deltas
+        var deltas = new double[layer_count][];
+        for (var layerIndex = 0; layerIndex < layer_count; layerIndex++) {
+            deltas[layerIndex] = new double[network.GetLayer(layerIndex).NeuronCount];
+        }
+
+        // Perform training
+        for (var epoch = 0; epoch < epochs; epoch++) {
+            enumerator.Reset();
+
+            while (enumerator.MoveNext()) {
+                var data                = enumerator.Current;
+                
+                // Feed-forward step
+                var input               = data.Input;
+                var expected            = data.Output;
+                var actual              = network.PredictSync(input);
+
+                // Errors on output layer
+                backpropagate(network.GetOutputLayer(), deltas[^1], expected);
+
+                // Backpropagation through hidden layers
+                for (var layerIndex = layer_count - 2; layerIndex >= 0; layerIndex--) {
+                    backpropagate(network.GetLayer(layerIndex), deltas[layerIndex], network.GetLayer(layerIndex + 1), deltas[layerIndex + 1]);
+                }
+
+                // Update weights and biases
+                for (int layerIndex = layer_count - 1; layerIndex >= 0; layerIndex--) {
+                    Vec<double> inputs = (layerIndex == 0) ? input : network.GetLayer(layerIndex - 1).GetLastOutputs();
+                    updateWeightsAndBias(inputs, learningRate, network.GetLayer(layerIndex), deltas[layerIndex]);
+                }
+            }
+        }
+    }
+
+}

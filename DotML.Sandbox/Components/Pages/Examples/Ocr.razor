@@ -1,0 +1,225 @@
+@page "/ocr"
+@using DotML
+@using DotML.Network
+@using DotML.Network.Initialization
+@using DotML.Network.Training
+@using Qkmaxware.Media.Image
+@using System.Text.Json
+
+<NetworkExplorer TNetwork="ClassicalFeedforwardNetwork" Network=network TrainingData=training MAX_EPOCHS=500 ACCURACY_TOLERANCE=0.12 LearningRate=0.001 @ref=explorer>
+    <TrainingDataView>
+        <ImageCarousel Images=@all_images></ImageCarousel>
+        <NetworkGenerator InputSize=@($"[{INPUT_SIZE}]") HiddenSize=@($"[{HIDDEN_SIZE}]") OutputSize=@($"[{OUTPUT_SIZE}]") Training=training Validation=training></NetworkGenerator>
+    </TrainingDataView>
+    <Input>
+    
+        <PaintApp OnChange=@((pixels) => vectorize(context, pixels)) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
+    </Input>
+    <Output>
+        <table class="table">
+            <thead> 
+                <tr>
+                    <th></th>
+                    <th>Letter</th>
+                    <th>Probability</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var max = context.IndexOfMaxValue();
+                    var sum = 0.0; // Sum of all weights
+                    for (var i = 0; i < OUTPUT_CLASSES.Length; i++) {
+                        sum += ((context[i] + 1) / 2);
+                    }
+                    for (var i = 0; i < OUTPUT_CLASSES.Length; i++) {
+                        var raw = ((context[i] + 1) / 2); // 0 -> 1 weight scale
+                        var percent = (raw / sum) * 100; // 0 -> 1 weight / sum = 0 -> 1 probability * 100 = 1 -> 100 probability
+                        <tr>
+                            <td>@if(max == i){<text>&checkmark;</text>}</td>
+                            <td>@OUTPUT_CLASSES[i]</td>
+                            <td>@(percent.ToString("F3"))%</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </Output>
+</NetworkExplorer>
+
+@code {
+    private NetworkExplorer<ClassicalFeedforwardNetwork>? explorer;
+    private ClassicalFeedforwardNetwork network = new ClassicalFeedforwardNetwork(INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE); //ClassicalFeedforwardNetwork.FromJson(ResourceLoader.LoadContents("data/Letter Recognition/Ocr.Pretrained.json"));
+    private TrainingSet training;
+    private static readonly IFeatureExtractor<Pixel[]> vectorizor = new GreyscaleImgVectorizor();
+    
+    public static readonly int IMG_WIDTH = 16;
+    public static readonly int IMG_HEIGHT = 16;
+    public static readonly int INPUT_SIZE = IMG_WIDTH * IMG_HEIGHT;
+    const int HIDDEN_SIZE = 30; // A guess? Maybe 27 like with the ASCII one will be enough who knows.
+    const int OUTPUT_SIZE = 26;  
+    public static readonly int OUTPUT_VECTOR_SIZE = 26;  
+    private static char[] OUTPUT_CLASSES = new char[OUTPUT_SIZE] {                              // Labels for the output vector (names of the categories/classes)
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 
+        'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 
+        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' 
+    };
+    public static IEnumerable<char> OUTPUT_CLASSLIST => Array.AsReadOnly(OUTPUT_CLASSES);
+
+    protected override void OnInitialized() {
+        training = preload_training(this.all_images);
+    }
+
+    private string? best_params;
+    private void clear_best() => best_params = null;
+    private void find_best() {
+        Console.Write("Begining Search...");
+        TrainingSet training    = this.training;
+        TrainingSet validation  = this.training;
+        var generator = new TrainedParameterizedNetworkGenerator<ClassicalFeedforwardNetwork>(
+            new ParameterMatrix (
+                ("hidden_size",     Enumerable.Range(OUTPUT_SIZE, INPUT_SIZE).Cast<object>().ToArray()),
+                ("epoch",           [500, 1000]),
+                ("learning_rate",   [0.001, 0.01, 0.1]),
+                ("momentum",        [0.0])
+            ),
+            training,
+            validation,
+            (param) => new ClassicalFeedforwardNetwork(INPUT_SIZE, param.Get<int>("hidden_size"), OUTPUT_SIZE),
+            (param) => new EnumerableBackpropagationTrainer<ClassicalFeedforwardNetwork> {
+                // Hard-coded parameters
+                EarlyStop = true,
+                // Parameters fetched from the matrix
+                Epochs = param.Get<int>("epoch"),
+                LearningRate = param.Get<double>("learning_rate"),
+                MomentumFactor = param.Get<double>("momentum"),
+            }
+        );
+        
+        // Train the networks and return them all
+        var networks = generator.GenerateAndTrain().ToArray();
+        Console.WriteLine("done");
+        
+        // Evaluate these networks to get the best one...
+        // Hmm this doesn't let us get the parameter set of the best one
+        // I mean maybe if I can get the index of the best one then I can use the parameter matrix to get it's params
+        Console.Write("Evaluating Networks...");
+        var loss = networks.Select(net => NetworkEvaluationFunctions.MaxMeanSquaredError(net, validation)).ToList();
+        var bestFitness = loss.Min();                                       // Get the network with the least loss
+        var bestIndex = loss.IndexOf(bestFitness);                          // Get the index of the network 
+        var best_params = generator.ParameterMatrix.ElementAt(bestIndex);   // Get the param set for the best network
+        this.best_params = JsonSerializer.Serialize(best_params);       
+        Console.WriteLine("done");
+    }
+
+    private static Vec<double> VectorFromLabel<T>(int index, T[] classes, double off = -1, double on = 1) {
+        double[] values = new double[classes.Length];
+        Array.Fill(values, off);
+        if (index >= 0 && index < classes.Length)
+            values[index] = on;
+        return new Vec<double>(values);
+    }
+
+    private static MemoryImage[,] load_font(string path, int hcells, int vcells) {
+        var content = ResourceLoader.LoadContents(path);
+        using var reader = new StringReader(content);
+        var format = new PortablePixelMapFormat();
+        var img = (MemoryImage)format.LoadFrom(reader);
+
+        return img.Slice(hcells, vcells);
+    }
+    private static MemoryImage[,] modify(MemoryImage[,] letters, Func<MemoryImage, MemoryImage> transform) {
+        var next = new MemoryImage[letters.GetLength(0), letters.GetLength(1)];
+        for (var row = 0; row < letters.GetLength(0); row++) {
+            for (var col = 0; col < letters.GetLength(1); col++) {
+                next[row, col] = transform(letters[row, col]);
+            }
+        }
+        return next;
+    }
+    private List<IImage> all_images = new List<IImage>();
+    public static TrainingSet preload_training(List<IImage> all_images) {
+        // Load "perfect" fonts
+        var letter_sets = new List<MemoryImage[,]>();
+        var font_1 = load_font("data/Letter Recognition/letters/font.01.ppm", 8, 5);
+        letter_sets.Add(font_1);
+
+        var font_2 = load_font("data/Letter Recognition/letters/font.02.ppm", 16, 2);
+        letter_sets.Add(font_2);
+
+        var font_3 = load_font("data/Letter Recognition/letters/font.03.ppm", 18, 2);
+        letter_sets.Add(font_3); 
+
+        var font_4 = load_font("data/Letter Recognition/letters/font.artos_sans.ppm", 26, 1);
+        letter_sets.Add(font_4); 
+
+        var font_5 = load_font("data/Letter Recognition/letters/font.chroma48.ppm", 26, 1);
+        letter_sets.Add(font_5); 
+
+        var font_6 = load_font("data/Letter Recognition/letters/font.saikyo_sans.ppm", 26, 1);
+        letter_sets.Add(font_6); 
+
+        var font_7 = load_font("data/Letter Recognition/letters/font.victoria.ppm", 26, 1);
+        letter_sets.Add(font_7);
+
+        // Load "imperfect/real world" fonts
+        var font_8 = load_font("data/Letter Recognition/letters/font.imperfect01.ppm", 6, 5);
+        letter_sets.Add(font_8);
+
+        var font_9 = load_font("data/Letter Recognition/letters/font.imperfect02.ppm", 6, 5);
+        letter_sets.Add(font_9);
+
+        var font_10 = load_font("data/Letter Recognition/letters/font.imperfect03.ppm", 6, 5);
+        letter_sets.Add(font_10);
+
+        var font_11 = load_font("data/Letter Recognition/letters/font.imperfect04.ppm", 6, 5);
+        letter_sets.Add(font_11);
+
+        var font_12 = load_font("data/Letter Recognition/letters/font.imperfect05.ppm", 6, 5);
+        letter_sets.Add(font_12);
+
+        // Create variations of font for "better" training
+        // Create variations where we "shift" the character so the exact location of the character isn't as important as the shape.
+        const int OFFSET = 2;
+        for (var xoffset = -OFFSET; xoffset <= OFFSET; xoffset++) {
+            for (var yoffset = -OFFSET; yoffset <= OFFSET; yoffset++) {
+                if (xoffset == 0 && yoffset == 0)
+                    continue;
+
+                /*letter_sets.Add(
+                    modify(letters_original, (img) => {
+                        return img.ShiftBy(xoffset, yoffset);
+                    })
+                );*/
+            }
+        }
+
+        List<TrainingPair> pairs = new List<TrainingPair>();
+        
+        foreach (var letters in letter_sets) {
+            var output_class_index = 0;
+            for (var row = 0; row < letters.GetLength(0); row++) {
+                for (var col = 0; col < letters.GetLength(1); col++) {
+                    if (output_class_index < 0 || output_class_index >= OUTPUT_CLASSES.Length)
+                        continue; // Skip extra
+
+                    var image = letters[row, col];
+                    var in_vector = vectorizor.ToVector(image.FlattenPixels().ToArray());
+                    var out_vector = VectorFromLabel(output_class_index, OUTPUT_CLASSES);
+                    pairs.Add(new TrainingPair { 
+                        Input = in_vector, 
+                        Output = out_vector 
+                    });
+                    all_images.Add(image);
+                    output_class_index++;
+                }
+            }
+        }
+
+        return new TrainingSet(pairs);
+    }
+
+    private void vectorize(Box<Vec<double>> vecref, Pixel[] pixels) {
+        vecref.Value = vectorizor.ToVector(pixels);
+        explorer?.RefreshState();
+    }
+}

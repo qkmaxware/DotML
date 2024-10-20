@@ -1,0 +1,524 @@
+@typeparam TNetwork where TNetwork:ILayeredNeuralNetwork
+@using DotML
+@using DotML.Network
+@using DotML.Network.Initialization
+@using DotML.Network.Training
+@using System.Timers
+@using System.Diagnostics
+@using System.Text.Json
+@inject IJSRuntime js;
+@implements IDisposable
+
+<nav class="bg-dark text-light">
+    <div class="tab @(state == State.Playground ? "bg-info" : string.Empty)" @onclick=@(() => state = State.Playground)>Test</div>
+    <div class="tab @(state == State.Training ? "bg-info" : string.Empty)" @onclick=@(() => state = State.Training)>Train</div>
+</nav>
+@if(state == State.Training) {
+<nav class="p-4 navbar navbar-inverse text-light bg-secondary">
+    <div class="row">
+        <div class="col-sm-2" style="text-align: center;">
+            <button title="Reset Training" type="button" class="btn btn-light circle-small" @onclick=reset_training>&#8635;</button>
+            <button title="Play/Pause Training" type="button" class="btn btn-primary circle-large" @onclick=play_training>@if(step_timer is null || !step_timer.Enabled){<text>&#9658;</text>}else{<text>||</text>}</button>
+            <button title="Next Epoch" type="button" class="btn btn-light circle-small" @onclick=step_training>&#x21B7;</button>
+            <br>
+            <button type="button" class="btn btn-primary" style="width: 100%; margin-top: 6px;" @onclick=complete_training>Complete Training</button>
+        </div>
+        <div class="col-sm-1 form-group">
+            <label>Epoch:</label><br>
+            @if (training_session is not null) {
+                <span>@training_session.CurrentEpoch / @MAX_EPOCHS</span>
+            } else {
+                <span>? / @MAX_EPOCHS</span>
+            }<br>
+            <small>@last_step_time</small>
+        </div>
+        <div class="col-sm-2 form-group">
+            <label for="inital">Initialization:</label>
+            <select id="inital" class="form-control" @bind=init_index>
+                @for (var i = 0; i < initializers.Length; i++) {
+                    <option value="@i">@initializers[i].GetType().Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-sm-2 form-group">
+            <label for="learning-rate">Learning Rate:</label>
+            <input type="number" id="learning-rate" list="learning-rates" class="form-control" @bind="LearningRate">
+            <datalist id="learning-rates">
+                <option>0.00001</option>
+                <option>0.0001</option>
+                <option>0.001</option>
+                <option>0.01</option>
+                <option>0.01</option>
+                <option>0.1</option>
+                <option>0.3</option>
+                <option>1</option>
+                <option>3</option>
+                <option>10</option>
+            </datalist>
+            <label for="momentum-factor">Momentum Factor:</label>
+            <input type="number" id="momentum-factor" list="momentum-rates" class="form-control" @bind="Momentum">
+            <datalist id="momentum-rates">
+                <option>0.0</option>
+                <option>0.1</option>
+                <option>0.2</option>
+                <option>0.3</option>
+                <option>0.4</option>
+                <option>0.5</option>
+                <option>0.6</option>
+                <option>0.7</option>
+                <option>0.8</option>
+                <option>0.9</option>
+                <option>0.99</option>
+            </datalist>
+        </div>
+        <div class="col-sm-2 form-group">
+            <label for="activation">Activation:</label>
+            <select id="activation" class="form-control" @bind=activation_index>
+                @for (var i = 0; i < activations.Length; i++) {
+                    <option value="@i">@activations[i].GetType().Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-sm-2 form-group">
+            <label for="inital">Regularization:</label>
+            <select class="form-control">
+                @foreach (var method in regularization_functions) {
+                    <option>@method.Key</option>
+                }
+            </select>
+            <input type="number" placeholder="rate" class="form-control" @bind=regularization_hyperparam>
+        </div>
+    </div>
+</nav>
+
+<div class="p-4">
+<div>
+    @TrainingHeader
+</div>
+
+<div class="row">
+    
+    <div class="col-sm" style="overflow-x: auto;">
+        <label class="header">Data</label>
+        <label>Training Data</label>
+        <button type="button" class="btn" style="float: right; text-decoration: underline;" @onclick=@(() => download(TrainingData))>get</button>
+        <details open="@((TrainingData?.Size ?? 0) < VECTOR_COLLAPSE_SIZE)">
+            <summary>Vectors</summary>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Input</th>
+                        <th>Output</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (TrainingData is not null) {
+                        foreach (var pair in TrainingData) {
+                            <tr>
+                                <td title="@pair.Input" class="titled">@pair.Input</td>
+                                <td title="@pair.Output" class="titled">@pair.Output</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </details>
+        @TrainingDataView
+        <div style="margin-top: 6px; margin-bottom: 6px;">&nbsp;</div>
+        <label>Validation Data</label>
+        <button type="button" class="btn" style="float: right; text-decoration: underline;" @onclick=@(() => download(ValidationData ?? TrainingData))>get</button>
+        <details open="@(((ValidationData ?? TrainingData)?.Size ?? 0) < VECTOR_COLLAPSE_SIZE)">
+            <summary>Vectors</summary>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Input</th>
+                        <th>Output</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (TrainingData is not null || ValidationData is not null) {
+                        var data = (ValidationData ?? TrainingData);
+                        if (data is not null) {
+                        foreach (var pair in data) {
+                            <tr>
+                                <td title="@pair.Input" class="titled">@pair.Input</td>
+                                <td title="@pair.Output" class="titled">@pair.Output</td>
+                            </tr>
+                        }
+                        }
+                    }
+                </tbody>
+            </table>
+        </details>
+    </div>
+    <div class="col-sm" style="overflow-x: auto;">
+        <label class="header">Network</label>
+        <figure>
+            <figcaption>Network Digram</figcaption>
+        @if (Network is not null && Network is IDiagrammable diagrammableNetwork && Network.InputCount < 128) {
+            @((MarkupString)diagrammableNetwork.ToSvg())
+        } else {
+            <div class="alert alert-danger" role="alert">
+                Cannot create a diagram for network. It may be of an incompatible format, or may just be too large.
+            </div>
+        }
+        </figure>
+        <label>JSON</label>
+        <button type="button" class="btn" style="float: right; text-decoration: underline;" @onclick=@(() => download(Network, "network.json"))>get</button>
+        <textarea readonly class="form-control" style="width: 100%; min-height: 12em;">
+            @if (Network is IJsonizable jsonable) {
+                @jsonable.ToJsonOrDefault("null")
+            }
+        </textarea>
+    </div>
+    <div class="col-sm" style="overflow-x: auto;">
+        <label class="header">Output</label>
+        <label>Validation</label>
+        <div style="text-align: center; overflow: auto;">
+            <Plot Data=loss_graph YAxisLabel="Loss" XAxisLabel="Epoch"></Plot>
+        </div>
+        @{
+        var tests_passed = 0;
+        var tests_failed = 0;
+        var test_count = 0;
+        var min_loss = double.MaxValue;
+        var max_loss = double.MinValue;
+        var sum_loss = 0.0;
+        <details open="@(((ValidationData ?? TrainingData)?.Size ?? 0) < VECTOR_COLLAPSE_SIZE)">
+            <summary>Test Cases</summary>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 2em;"></th>
+                        <th>Input</th>
+                        <th>Predicted</th>
+                        <th>True</th>
+                        <th>Loss</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Network is not null && (TrainingData is not null || ValidationData is not null)) {
+                        var data = (ValidationData ?? TrainingData);
+                        if (data is not null) {
+                        foreach (var pair in data) {
+                            var output = Network.PredictSync(pair.Input);
+                            var loss = LossFunctions.MeanSquaredError(output, pair.Output);
+                            var passed = loss < ACCURACY_TOLERANCE;
+                            if (passed) {
+                                tests_passed ++;
+                            } else {
+                                tests_failed ++;
+                            }
+                            test_count++;
+                            min_loss = Math.Min(min_loss, loss);
+                            max_loss = Math.Max(max_loss, loss);
+                            sum_loss += loss;
+                            <tr>
+                                <td>@if(passed) {<span class="green">&checkmark;</span>} else {<span class="red">&times;</span>}</td>
+                                <td title="@pair.Input" class="titled">@pair.Input</td>
+                                <td title="@output" class="titled">@output</td>
+                                <td title="@pair.Output" class="titled">@pair.Output</td>
+                                <td>@loss.ToString("F3")</td>
+                            </tr>
+                        }
+                        }
+                    }
+                </tbody>
+            </table>
+        </details>
+        <details open="">
+            <summary>Test Summary</summary>
+            Passed: @tests_passed/@test_count, Failed: @tests_failed/@test_count<br>
+            Max Loss: @max_loss, Min Loss: @min_loss, Average Loss: @(sum_loss/test_count)
+        </details>
+        }
+        <div style="margin-top: 6px; margin-bottom: 6px;">&nbsp;</div>
+        <label>Decision Boundary</label>
+        <DecisionBoundaryVizualizer Network="@Network" TrainingData="@TrainingData"></DecisionBoundaryVizualizer>
+    </div>
+</div>
+</div>
+}
+else if (state == State.Playground) {
+<div class="row p-4"> 
+    <div class=col-sm>
+        <label class="header">Input</label>
+        <p>
+            Enter your input vector below. You may enter the vector's values directly by typing a double[] into the JSON field below. Additionally, some helpful controls may also be provided below to manipulate the input vector.
+        </p>
+        <label>JSON:</label>
+        <textarea bind="input_json" class="form-control" @bind=input_json></textarea>
+        @if (Network is not null && input.Value.Dimensionality < Network.InputCount) {
+            <div class="alert alert-danger" role="alert" style="margin-top: 12px; margin-bottom: 12px;">
+                System.FormatException: Input vector has wrong dimensionality for network
+            </div>
+        }
+        <label style="margin-top: 6px;">Controls:</label>
+        @if (Input is not null) {
+            @Input(this.input)
+        }
+    </div>
+    <div class=col-sm>
+        <label class="header">Output</label>
+        <p>
+            After you have entered your input vector on the left, press the button below to have the network process the input and show you the results.
+        </p>
+        <button type="button" class="btn btn-primary" style="width: 100%" @onclick=process>Process Input</button>
+        @if (process_error is not null) {
+            <div class="alert alert-danger" role="alert" style="margin-top: 12px; margin-bottom: 12px;">
+                @process_error
+            </div>
+        }
+        @if (Network is not null && Output is not null) {
+            @Output(Network.GetOutputLayer().GetLastOutputs())
+        }
+    </div>
+</div>
+}
+
+@code {
+
+    const int VECTOR_COLLAPSE_SIZE = 128;
+
+    [Parameter] public int MAX_EPOCHS {get; set;} = 500;
+
+    [Parameter] public double ACCURACY_TOLERANCE {get; set;} = 0.1;
+
+    enum State {
+        Playground, Training
+    }
+    private State state = State.Training;
+
+    private Box<Vec<double>> input = new Box<Vec<double>>(new Vec<double>());
+    private string input_json {
+        get => System.Text.Json.JsonSerializer.Serialize((double[])input.Value);
+        set {
+            try {
+                input.Value = System.Text.Json.JsonSerializer.Deserialize<double[]>(value) ?? new double[0];
+            } catch {
+                // Do nothing? maybe record the error somewhere in case someone put bad data in.
+            }
+        }
+    }
+    [Parameter] public TNetwork? Network {get; set;} = default(TNetwork);
+
+    [Parameter] public RenderFragment<Box<Vec<double>>>? Input {get; set;}
+    [Parameter] public RenderFragment<Vec<double>>? Output {get; set;}
+    [Parameter] public RenderFragment? TrainingHeader {get; set;}
+    [Parameter] public RenderFragment? TrainingDataView {get; set;}
+    //[Parameter] public RenderFragment? TrainingHeader {get; set;}
+
+    [Parameter] public TrainingSet? TrainingData {get; set;}
+    [Parameter] public TrainingSet? ValidationData {get; set;}
+
+    // Public method allowing us to refresh the view when we change something externally
+    public void RefreshState() {
+        this.StateHasChanged();
+    }
+
+    #region Training Params 
+    // -------------------------------------------------------
+    private int init_index = 1;
+    private IInitializer<TNetwork> initializer => init_index >= 0 && init_index < initializers.Length ? initializers[init_index] : NoInitialization<TNetwork>.Instance;
+    private IInitializer<TNetwork>[] initializers = [
+        new RandomInitialization<TNetwork>(-0.05, 0.05),
+        new NormalXavierInitialization<TNetwork>(),
+        new UniformXavierInitialization<TNetwork>(),
+    ];
+    // -------------------------------------------------------
+    [Parameter] public double LearningRate {get; set;} = 0.1;
+    [Parameter] public double Momentum {get; set;} = 0.0;
+    // -------------------------------------------------------
+    private int activation_index = 4;
+    private ActivationFunction activation => activation_index >= 0 && activation_index < activations.Length ? activations[activation_index] : Identity.Instance;
+    private ActivationFunction[] activations = [
+        Identity.Instance,
+        ReLU.Instance,
+        BinaryStep.Instance,
+        Sigmoid.Instance,
+        HyperbolicTangent.Instance
+    ];
+
+    private string? regularization_index = "None";
+    private double regularization_hyperparam = 0.01;
+    private Dictionary<string, Func<double, RegularizationFunction?>> regularization_functions = new Dictionary<string, Func<double, RegularizationFunction?>>{
+        {"None", (param) => null},
+        {"L1", (param) => new L1Regularization(param)},
+        {"L2", (param) => new L2Regularization(param)},
+    };
+    // -------------------------------------------------------
+    #endregion
+
+
+    #region Training Result
+    private IEpochEnumerator<TNetwork>? training_session;
+    private Timer? step_timer;
+    private TimeSpan last_step_time;
+    private Stopwatch stopwatch = new Stopwatch();
+    private List<(double X, double Y)> loss_graph = new List<(double X, double Y)>(500);
+
+    private void reset_training() {
+        step_timer?.Stop(); 
+
+        loss_graph.Clear();
+        var trainer = new EnumerableBackpropagationTrainer<TNetwork>();
+        trainer.Epochs = MAX_EPOCHS; // Set some LARGE max epoch value (doesn't matter) 
+        trainer.EarlyStop = true;
+        trainer.LossFunction = LossFunctions.MeanSquaredError;
+        trainer.EarlyStopAccuracy = ACCURACY_TOLERANCE;
+
+        // TODO Adaptive Learning Rate
+        trainer.LearningRate = LearningRate;
+        trainer.LearningRateOptimizer = new RMSPropOptimizer(); //new ConstantRate();
+        trainer.EnableGradientClipping = true;
+        trainer.GradientClipThreshold = 5.0;
+        
+        trainer.NetworkInitializer = initializer;
+        if (!string.IsNullOrEmpty(regularization_index) && regularization_functions.ContainsKey(regularization_index)) {
+            trainer.Regularization = regularization_functions[regularization_index].Invoke(regularization_hyperparam);
+        }
+        // TODO Momentum
+        trainer.MomentumFactor = Momentum;
+        
+
+        if (Network is null || TrainingData is null)
+            return;
+        
+        Network.ForeachNeuron((layer, neuron) => neuron.ActivationFunction = activation); 
+        training_session = trainer.EnumerateTraining(Network, TrainingData.SampleRandomly(), (ValidationData ?? TrainingData).SampleSequentially());
+    }
+
+    private double evaluate_loss() {
+        var data = (ValidationData ?? TrainingData);
+        if (Network is not null && data is not null) {
+            var loss_sum = 0.0;
+            var loss_count = 0;
+            foreach (var pair in data) {
+                var output = Network.PredictSync(pair.Input);
+                var loss = LossFunctions.MeanSquaredError(output, pair.Output);
+                loss_sum += loss;
+                loss_count ++;
+            }
+            return loss_sum / loss_count;
+        } else {
+            return 0;
+        }
+    }
+
+    private void play_training() {
+        if (training_session is null) {
+            reset_training();
+        }
+        
+        // If timer is off, start timer
+        if (step_timer is null || !step_timer.Enabled) {
+            if (step_timer is null) {
+                step_timer = new Timer(500);
+                step_timer.Elapsed += onTrainingStepElapsed;
+            }
+            step_timer.Start();
+        } 
+        // If timer is on, pause timer
+        else {
+            step_timer?.Stop();
+        }
+    }
+
+    private void onTrainingStepElapsed(object? sender, ElapsedEventArgs e) {
+        step_timer?.Stop();
+        if (training_session is null) {
+            return;
+        }
+
+        stopwatch.Start();
+        bool has_next = training_session.MoveNext();
+        stopwatch.Stop();
+        last_step_time = stopwatch.Elapsed;
+
+        if (!has_next) {
+            // No next step
+        } else {
+            // Next step
+            loss_graph.Add((training_session.CurrentEpoch, evaluate_loss()));
+            step_timer?.Start();
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void step_training() {
+        step_timer?.Stop();
+        if (training_session is null) {
+            return;
+        }
+        
+        stopwatch.Start();
+        bool has_next = training_session.MoveNext();
+        stopwatch.Stop();
+        last_step_time = stopwatch.Elapsed;
+
+        if (!has_next) {
+            // No next step
+        } else {
+            // Next step
+            loss_graph.Add((training_session.CurrentEpoch, evaluate_loss()));
+        }
+    }
+
+    private void complete_training() {
+        step_timer?.Stop();
+
+        if (training_session is null) {
+            reset_training();
+        }
+        if (Network is null || TrainingData is null)
+            return;
+
+        stopwatch.Start();
+        training_session?.MoveToEnd();
+        stopwatch.Stop();
+        last_step_time = stopwatch.Elapsed;
+
+        /*var trainer = new BackpropagationTrainer<TNetwork>();
+        trainer.NetworkInitializer = initializer;
+        trainer.Train(Network, TrainingData.SampleRandomly(), MAX_EPOCHS, learning_rate);*/
+    }
+    #endregion
+
+    #region Evaluation
+
+    private Exception? process_error;
+    private void process() {
+        process_error = null;
+
+        if (Network is null) {
+            process_error = new NullReferenceException(nameof(Network));
+            return;
+        }
+
+        var i = input.Value;
+        var l1 = Network.GetFirstLayer();
+
+        if (i.Dimensionality != l1.InputCount) {
+            process_error = new FormatException("Input vector has wrong dimensionality for network");
+            return;
+        }
+
+        Network.PredictSync(input.Value);
+    }
+
+    #endregion
+
+    public void Dispose() {
+        step_timer?.Stop();
+        step_timer?.Dispose();
+    }
+
+    public async void download<T>(T data, string name = "data.json") {
+        if (data is null)
+            return;
+        var json = JsonSerializer.Serialize(data);
+        await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "text/json", System.Text.Encoding.UTF8.GetBytes(json));
+    }
+} 

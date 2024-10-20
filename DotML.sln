@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML", "DotML\DotML.csproj", "{B0225E68-EF51-4BDF-A012-603354CBFC5C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.Test", "DotML.Test\DotML.Test.csproj", "{6AB280A6-8F5B-462C-9F38-283546424ACC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "DotML.Sandbox\DotML.Sandbox.csproj", "{EA405DCF-04A2-4D8E-A2ED-6993B99CE338}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B0225E68-EF51-4BDF-A012-603354CBFC5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B0225E68-EF51-4BDF-A012-603354CBFC5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0225E68-EF51-4BDF-A012-603354CBFC5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B0225E68-EF51-4BDF-A012-603354CBFC5C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6AB280A6-8F5B-462C-9F38-283546424ACC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6AB280A6-8F5B-462C-9F38-283546424ACC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6AB280A6-8F5B-462C-9F38-283546424ACC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6AB280A6-8F5B-462C-9F38-283546424ACC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA405DCF-04A2-4D8E-A2ED-6993B99CE338}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA405DCF-04A2-4D8E-A2ED-6993B99CE338}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA405DCF-04A2-4D8E-A2ED-6993B99CE338}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA405DCF-04A2-4D8E-A2ED-6993B99CE338}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

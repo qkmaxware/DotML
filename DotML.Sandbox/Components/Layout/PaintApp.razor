@@ -1,0 +1,53 @@
+@using Qkmaxware.Media.Image
+
+@inject IJSRuntime js
+
+<div class="canvas-container">
+    <canvas @ref="canvas" width="@ImgWidth" height="@ImgHeight" @onmouseup=canvas_changed></canvas>
+    <button class="btn delete" @onclick=Clear>&times; Clear</button>
+</div>
+
+@code {
+    [Parameter] public int ImgWidth {get; set;} = 32;
+    [Parameter] public int ImgHeight {get; set;} = 32;
+    [Parameter] public Action<Pixel[]>? OnChange {get; set;}
+    private ElementReference? canvas;
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        js.InvokeVoidAsync("BlazorComponents.PaintApp.init", canvas, ImgWidth, ImgHeight);
+    }
+
+    public void Clear() {
+        js.InvokeVoidAsync("BlazorComponents.PaintApp.clear", canvas);
+        canvas_changed();
+        StateHasChanged();
+    }
+
+    public async Task<IImage> GetImage() {
+        var pixels = await getPixels();
+        var image = new MemoryImage(ImgWidth, ImgHeight);
+        if (image.Pixels is null)
+            return image;
+        
+        var index = 0;
+        for (var i = 0; i < ImgHeight; i++) {
+            for (var j = 0; j < ImgWidth; j++) {
+                image.Pixels[i, j] = pixels[index++];
+            }
+        }
+        return image;
+    }
+
+    private async Task<Pixel[]> getPixels() {
+        return await js.InvokeAsync<Pixel[]>("BlazorComponents.PaintApp.get_pixels", canvas,  ImgWidth, ImgHeight);
+    }
+
+    private async void canvas_changed() {
+        if (OnChange is not null) {
+            OnChange.Invoke(await getPixels());
+        }
+    }
+}

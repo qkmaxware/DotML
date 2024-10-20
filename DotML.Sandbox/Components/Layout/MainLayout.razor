@@ -1,0 +1,15 @@
+﻿@inherits LayoutComponentBase
+
+<nav class="navbar bg-dark" style="padding-left: 8px; padding-right: 8px; border-bottom: 2px solid rgb(88, 88, 88);">
+  <a class="navbar-brand" href="">@System.Reflection.Assembly.GetExecutingAssembly().GetName().Name</a>
+</nav>
+
+<main>
+    @Body
+</main>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

@@ -1,0 +1,56 @@
+.header {
+    font-weight: bolder;
+    font-size: 150%;
+    display: block;
+} 
+ 
+table {
+    table-layout: fixed;
+}
+
+.tab {
+    display: inline-block;
+    cursor: pointer;
+    font-size: 160%;
+    text-align:  center;
+    user-select: none;
+    width: 240px;
+}
+
+th, td {
+    text-align: left;
+    vertical-align: top;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
+}
+
+td.titled {
+    cursor: help;
+}
+
+.red {
+    color: red;
+}
+
+.green {
+    color: green;
+}
+
+.circle-small {
+    border-radius: 50%;
+    height: 40px;
+    width: 40px;
+    text-align: center;
+    font-size: 100%;
+    line-height: 100%;
+}
+
+.circle-large {
+    border-radius: 50%;
+    height: 60px;
+    width: 60px;
+    text-align: center;
+    font-size: 200%;
+    line-height: 100%;
+}

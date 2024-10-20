@@ -1,0 +1,77 @@
+.decision-boundry {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 16px;
+    aspect-ratio: 1/1;
+    display: grid;
+    border: 1px solid black;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.decision-boundry .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cell.blue {
+    background-color: #7bb0ff;
+    color: #7bb0ff;
+}
+
+.cell.red {
+    background-color: #fb8989;
+    color: #fb8989;
+}
+
+.decision-boundry .data-point {
+    position: absolute;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    transform: translate(-50%, 50%);
+    cursor: pointer;
+}
+
+.data-point.blue {
+    background-color: #0066ff;
+}
+
+.data-point.red {
+    background-color: #ff0000;
+}
+
+.legend {
+    text-align: center; padding: 6px;
+}
+
+.axis-maxy {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.axis-minx {
+    position: absolute;
+    left: 1em;
+    bottom: 0;
+}
+
+.axis-miny {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    transform: translate(0, -100%);
+}
+
+.axis-maxx {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    transform: translate(-100%, 0);
+}

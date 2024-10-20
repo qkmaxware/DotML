@@ -1,0 +1,116 @@
+@using DotML
+@using DotML.Network
+@using DotML.Network.Training
+
+@if(Network is not null) {
+    <details>
+        <summary>About</summary>
+        <p>
+        The below diagram is meant to visualize the decision boundary for a given neuron. Input values are mapped actross both X and Y axis between -1 and 1 inclusive. The result of applying the network to those inputs is displayed in 2 classes: red and blue. Training data is shown using points whereas the decision boundary is approximated by grid cells.
+        <br>
+        If properly trained, all blue training points should be contained within a blue cell and all red training points within a red cell. This indicates that the network is successfully grouping the training data into the right categories.
+    </p>
+    </details>
+    <label>X-Axis</label>
+    <select @bind="InputXIndex" class="form-control" >
+        @for (var i = 0; i < inputs; i++) {
+            <option value="@i">IN @(i + 1)</option>
+        }
+    </select>
+
+    <label>Y-Axis</label>
+    <select @bind="InputYIndex" class="form-control" >
+        @for (var i = 0; i < inputs; i++) {
+            <option value="@i">IN @(i + 1)</option>
+        }
+    </select>
+
+    <label>Displayed Result</label>
+    <select @bind="OutputNeuronIndex" class="form-control" >
+        @for (var i = 0; i < outputs; i++) {
+            <option value="@i">Neuron @(i + 1)'s Output</option>
+        }
+    </select>
+
+    <label>Result Class Division</label>
+    <input type="range" @bind="ClassDivisionValue" min="-1" max="1" step="0.1" class="form-control" >
+
+    <div class="decision-boundry" style="grid-template-columns: repeat(@(RES_X), 1fr); grid-template-rows: repeat(@(RES_Y), 1fr);">
+        @* Draw a decision boundry based on sampling x,y coordinates on the grid *@
+        @{
+            if (vec_data is null || vec_data.Length != inputs) {
+                vec_data = new double[inputs];
+            }
+            Array.Fill(vec_data, 0);
+        }
+        @for (var y = 0; y < RES_Y; y++) {
+            for (var x = 0; x < RES_X; x++) {
+                var xVal = ((x + 0.5f) / (RES_X)) * 2.0 - 1.0;    // map to -1, 1
+                var yVal = -1* (((y + 0.5f) / (RES_Y)) * 2.0 - 1.0);    // map to -1, 1
+
+                if (InputXIndex < vec_data.Length) {
+                    vec_data[InputXIndex] = xVal;
+                }
+
+                if (InputYIndex < vec_data.Length) {
+                    vec_data[InputYIndex] = yVal;
+                }
+
+                var output = Network.PredictSync(vec_data);
+                var value = output[OutputNeuronIndex];
+                var colour = value > ClassDivisionValue ? "blue" : "red";
+                <div title="[@xVal, @yVal]" class="cell @colour"></div>
+            }
+        }
+
+        @* Show all the training data outputs as x,y points on the grid, colored by output class *@
+        @if (TrainingData is not null) {
+            foreach (var pair in TrainingData) {
+                var x = pair.Input[InputXIndex];
+                var y = pair.Input[InputYIndex];
+                var value = pair.Output[OutputNeuronIndex];
+                var colour = value > ClassDivisionValue ? "blue" : "red";
+                if (x >= -1 && x <= 1 && y >= -1 && y <= 1) {
+                    // Convert -1..1 to 0%..100%
+                    var left = (x + 1) * 0.5 * 100;
+                    var bottom = (y + 1) * 0.5 * 100;
+                    <span class="data-point @colour" title="@pair.Input → @pair.Output" style="left: @(left)%; bottom: @(bottom)%;"></span>
+                }
+            }
+        }
+
+        @* Show some numbers for the axises *@
+        <span class="axis-maxy">1</span>
+        <span class="axis-miny">-1</span>
+        <span class="axis-minx">-1</span>
+        <span class="axis-maxx">1</span>
+    </div>
+    <div class="legend">
+      <span class="cell blue">[ ]</span> Result &gt; @ClassDivisionValue
+      <span class="cell red">[ ]</span> Result &lt; @ClassDivisionValue
+    </div>
+} else {
+    <div>
+
+    </div>
+}
+
+@code {
+    const int RES_X = 20;
+    const int RES_Y = 20;
+
+    // Optional Params
+    [Parameter] public int InputXIndex {get; set;} = 0;
+    [Parameter] public int InputYIndex {get; set;} = 1;
+    [Parameter] public int OutputNeuronIndex {get; set;} = 0;
+    [Parameter] public double ClassDivisionValue {get; set;} = 0.0;
+
+    // Required Params
+    [Parameter] public INeuralNetwork? Network {get; set;}
+    [Parameter] public TrainingSet? TrainingData {get; set;}        // Kinda optional, but you def SHOULD provide it to see if training worked
+
+    private double[]? vec_data;
+
+    private int inputs => Network?.InputCount ?? 0;
+    private int outputs => Network?.OutputCount ?? 0;
+}

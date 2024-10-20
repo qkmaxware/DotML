@@ -1,0 +1,89 @@
+You're right! I misunderstood your request regarding the integration of RMSProp with momentum. Let's clarify how to keep both momentum and RMSProp together in your weight update logic.
+
+### Updated Implementation
+
+We'll maintain the momentum logic and integrate it with the RMSProp optimizer correctly. Here’s how to modify the `updateWeightsAndBias` method while ensuring that both momentum and RMSProp are utilized appropriately.
+
+### Revised `RMSPropOptimizer`
+
+Make sure the `RMSPropOptimizer` retains its responsibility for managing the squared gradients without losing its purpose:
+
+```csharp
+public class RMSPropOptimizer : ILearningRateOptimizer
+{
+    private readonly double decayRate;
+    private readonly double epsilon;
+    private double[] cache;
+
+    public RMSPropOptimizer(double decayRate = 0.9, double epsilon = 1e-8)
+    {
+        this.decayRate = decayRate;
+        this.epsilon = epsilon;
+    }
+
+    public void Initialize(int parameterCount)
+    {
+        cache = new double[parameterCount];
+    }
+
+    public double UpdateLearningRate(double learningRate, double gradient, int index)
+    {
+        // Update cache with the squared gradient
+        cache[index] = decayRate * cache[index] + (1 - decayRate) * gradient * gradient;
+
+        // Compute the adjusted learning rate
+        return learningRate / (Math.Sqrt(cache[index]) + epsilon);
+    }
+}
+```
+
+### Revised `updateWeightsAndBias` Method
+
+Now let's rewrite the `updateWeightsAndBias` method to incorporate both the RMSProp and momentum logic:
+
+```csharp
+private void updateWeightsAndBias(Vec<double> inputs, double learningRate, ILayer layer, double[] deltas, double[][][] weightMomentum, double[] biasMomentum) {
+    var neuron_count = layer.NeuronCount;
+
+    for (int i = 0; i < neuron_count; i++) {
+        INeuron neuron = layer.GetNeuron(i);
+        var weights = neuron.Weights;
+
+        var weight_count = weights.Length;
+
+        // Calculate the gradient
+        var gradient = deltas[i];
+
+        // Update weights using RMSProp and momentum
+        for (int j = 0; j < weight_count; j++) {
+            var input = inputs[j];
+            var combinedGradient = gradient * input; // Gradient for the weight
+            
+            // Update learning rate for this parameter using RMSProp
+            double adjustedLearningRate = rmsPropOptimizer.UpdateLearningRate(learningRate, combinedGradient, j);
+
+            // Apply momentum
+            weightMomentum[layerIndex][i][j] = WeightMomentumFactor * weightMomentum[layerIndex][i][j] + adjustedLearningRate * combinedGradient;
+            weights[j] += weightMomentum[layerIndex][i][j]; // Update weight
+        }
+
+        // Update bias
+        var biasGradient = gradient; // The gradient for the bias is just the delta
+        double adjustedBiasLearningRate = rmsPropOptimizer.UpdateLearningRate(learningRate, biasGradient, i);
+        
+        // Apply bias momentum
+        biasMomentum[i] = BiasMomentumFactor * biasMomentum[i] + adjustedBiasLearningRate * biasGradient;
+        neuron.Bias += biasMomentum[i]; // Update bias
+    }
+}
+```
+
+### Key Adjustments Made
+
+1. **Momentum Calculation**: The weight updates now properly incorporate momentum, applying it alongside the adjusted learning rate from RMSProp. Each weight is updated based on its previous momentum and the new computed value.
+
+2. **Bias Updates**: Biases also utilize momentum, allowing for smoother convergence.
+
+3. **Combined Gradients**: The combined gradient (`combinedGradient`) is calculated before applying the learning rate adjustments, ensuring clarity in how the gradients are used.
+
+This implementation keeps both the momentum and the RMSProp learning rate adjustment, allowing for effective training with both optimization techniques. Thank you for your patience while clarifying this integration!

@@ -1,0 +1,298 @@
+@using DotML
+@using DotML.Network
+@using DotML.Network.Initialization
+@using DotML.Network.Training
+@using System.Text.Json
+@using System.Text.RegularExpressions;
+
+<button class="btn btn-primary" @onclick=show>Network Shape Generator</button>
+<div class="modal" tabindex="-1" role="dialog" style="display: @(isShown ? "block" : "none"); background-color: rgba(36,36,36,0.5);">
+    <div class="modal-dialog" role="document" style="max-width: 80% !important;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Network Shape Generator</h5>
+                <button type="button" class="btn-close" @onclick=hide></button>
+            </div>
+            <div class="modal-body">
+                @if (can_search()) {
+                <div>
+                    <h6><b>Parameters</b></h6>
+                    <p>Enter JSON arrays below. Respect the type constraints. You may use integers separated by .. to indicate a range (ie 1..4 expands to 1,2,3,4). </p>
+                    <p>
+                        <label>Input Layer</label>
+                        <textarea class="form-control" @bind=InputSize></textarea>
+                        <label>Hidden Layer</label>
+                        <textarea class="form-control" @bind=HiddenSize></textarea>
+                        <label>Output Layer</label>
+                        <textarea class="form-control" @bind=OutputSize></textarea>
+                    </p>
+                    <p>
+                        <label>Epochs</label>
+                        <textarea class="form-control" @bind=epoch_values></textarea>
+                        <label>Learning Rates</label>
+                        <textarea class="form-control" @bind=learning_rate_values></textarea>
+                        <label>Momentum Factors</label>
+                        <textarea class="form-control" @bind=momentum_values></textarea>
+                    </p>
+                </div>
+                } else {
+                <div>
+                    <h6><b>Training</b></h6>
+                    <table class="table" style="table-layout: fixed;">
+                        <thead>
+                            <tr>
+                                <th style="width: 6em;">Loss</th><th style="width: 8em;">Test Cases</th><th>Params</th><th>Network</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < results.Count; i++) {
+                                var result = results[i];
+                                <tr>
+                                    <td>@result.Loss.ToString("F6")</td>
+                                    <td>@result.PassedTests/@result.AllTests</td>
+                                    <td>
+                                        <textarea class="form-control">@JsonSerializer.Serialize(result.Parameters)</textarea>
+                                    </td>
+                                    <td>
+                                        @if (result.Done) {
+                                            var network_str = result.Network is IJsonizable jsonizable ? jsonizable.ToJsonOrDefault("null") : string.Empty;
+                                            <textarea class="form-control">@network_str</textarea>
+                                        } else {
+                                            
+                                            <label>@result.Epoch/@result.MaxEpoch</label><br>
+                                            <progress class="progress-bar w-100" role="progressbar" value="@result.Epoch" max="@result.MaxEpoch"></progress>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                }
+            </div>
+            <div class="modal-footer">
+                @if(can_search()) {
+                    <button class="btn btn-primary" @onclick=begin_search>Begin</button>
+                } else if (searchTask is not null) {
+                    <button class="btn btn-secondary" @onclick=cancel_search>Cancel</button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+private string? epoch_values = "[500, 1000]";
+[Parameter] public string? HiddenSize {get; set;} = "[0]";
+[Parameter] public string? InputSize {get; set;}  = "[0]";
+[Parameter] public string? OutputSize {get; set;}  = "[0]";
+private string? learning_rate_values = "[0.0001, 0.001, 0.005, 0.01, 0.1]";
+private string? momentum_values = "[0.0]";
+
+[Parameter] public TrainingSet? Training {get; set;}
+[Parameter] public TrainingSet? Validation {get; set;}
+
+private bool isShown = false;
+
+private Task? searchTask;
+private CancellationTokenSource? cancel;
+private Exception? error;
+
+private List<ResultsRow> results = new List<ResultsRow>();
+
+private void show() {
+    isShown = true;
+}
+
+private void hide() {
+    if (!is_searching()) {
+        isShown = false;
+    }
+}
+
+private bool can_search() => searchTask is null;
+private bool is_searching() => searchTask is not null;
+
+private void cancel_search() {
+    cancel?.Cancel();
+    searchTask = null;
+    cancel = null;
+    results.Clear();
+}
+private void begin_search() {
+    cancel = null;
+    searchTask = null;
+    results.Clear();
+
+    var epochs = JsonSerializer.Deserialize<int[]>(expand(epoch_values ?? string.Empty))?.Cast<object>().ToArray();
+
+    var inputs = JsonSerializer.Deserialize<int[]>(expand(InputSize ?? string.Empty))?.Cast<object>().ToArray();
+    var hiddens = JsonSerializer.Deserialize<int[]>(expand(HiddenSize ?? string.Empty))?.Cast<object>().ToArray();
+    var outputs = JsonSerializer.Deserialize<int[]>(expand(OutputSize ?? string.Empty))?.Cast<object>().ToArray();
+
+    var learning = JsonSerializer.Deserialize<double[]>(expand(learning_rate_values ?? string.Empty))?.Cast<object>().ToArray();
+    var momentum = JsonSerializer.Deserialize<double[]>(expand(momentum_values ?? string.Empty))?.Cast<object>().ToArray(); 
+        
+    if (epochs is null || inputs is null || hiddens is null || outputs is null || learning is null || momentum is null) {
+        error = new ArgumentException("One or more inputs are null");
+        return;
+    }
+
+    if (Training is null) {
+        error = new ArgumentException("Missing training data");
+        return;
+    }
+
+    if (Validation is null) {
+        error = new ArgumentException("Missing validation data");
+        return;
+    }
+
+
+    var generator = new TrainedParameterizedNetworkGenerator<ClassicalFeedforwardNetwork>(
+        new ParameterMatrix (
+            ("input_size",      inputs),
+            ("hidden_size",     hiddens),
+            ("output_size",     outputs),
+            ("epoch",           epochs),
+            ("learning_rate",   learning),
+            ("momentum",        momentum)
+        ),
+        Training,
+        Validation,
+        (param) => new ClassicalFeedforwardNetwork(
+            param.Get<int>("input_size"), 
+            param.Get<int>("hidden_size"), 
+            param.Get<int>("output_size")
+        ),
+        (param) => new EnumerableBackpropagationTrainer<ClassicalFeedforwardNetwork> {
+            // Hard-coded parameters
+            EarlyStop = true,
+
+            // Parameters fetched from the matrix
+            Epochs = param.Get<int>("epoch"),
+            LearningRate = param.Get<double>("learning_rate"),
+            MomentumFactor = param.Get<double>("momentum"),
+            LearningRateOptimizer = new RMSPropOptimizer(),
+
+            EnableGradientClipping = true,
+        }
+    );
+    var networks = generator.GenerateWithTrainers().ToArray();
+    var pars = generator.ParameterMatrix.ToArray();
+
+    this.cancel = new CancellationTokenSource();
+    var token = this.cancel.Token;
+    this.searchTask = Task.Run(() => search(pars, networks, Training, Validation, token), token);
+}
+
+struct ResultsRow {
+    public bool Done;
+    public int Epoch;
+    public int MaxEpoch;
+
+    public double Loss;
+    public int PassedTests;
+    public int FailedTests;
+    public int AllTests;
+    public ParameterSet Parameters;
+    public ClassicalFeedforwardNetwork Network;
+    public EnumerableBackpropagationTrainer<ClassicalFeedforwardNetwork> Trainer;
+}
+
+private static Regex rangePattern = new Regex(@"(?<start>\d+)\s*\.\.\s*(?<end>\d+)", RegexOptions.Compiled);
+private static string expand(string content) {
+    return rangePattern.Replace(content, (match) => {
+        var start = int.Parse(match.Groups["start"].Value);
+        var end = int.Parse(match.Groups["end"].Value);
+
+        if (end < start) {
+            var temp = end;
+            end = start;
+            start = temp;
+        }
+        return string.Join(',', Enumerable.Range(start, end - start + 1));
+    });
+}
+
+private void search(ParameterSet[] @params, (ClassicalFeedforwardNetwork, ITrainer<ClassicalFeedforwardNetwork>)[] networks, TrainingSet train, TrainingSet test, CancellationToken cancelation) {
+    results.Clear();
+    results.EnsureCapacity(networks.Length);
+    for (var i = 0; i < networks.Length; i++) {
+        var pair = networks[i];
+        var network = pair.Item1;
+        var trainer = (EnumerableBackpropagationTrainer<ClassicalFeedforwardNetwork>)pair.Item2;
+        ResultsRow row = new ResultsRow {
+            Done = false,
+            Loss = 0,
+            MaxEpoch = trainer.Epochs,
+            PassedTests = 0,
+            FailedTests = 0,
+            AllTests = test.Size,
+            Parameters = @params[i],
+            Network = network,
+            Trainer = trainer
+        };
+        results.Add(row);
+    }
+
+    // Okay, train networks
+    Parallel.For(0, results.Count, index => {
+        var row = results[index];
+        var enumerator = row.Trainer.EnumerateTraining(row.Network, train.SampleRandomly(), test.SampleSequentially());
+        while (enumerator.MoveNext()) {
+            if (cancelation.IsCancellationRequested)
+                return;
+            row.Epoch++;
+            results[index] = row;
+            InvokeAsync(StateHasChanged);
+        }
+
+        // Now determine "best" network/trainer pair
+        var loss = MaxMeanSquaredError(row.Network, test, 0.1, out var failed, out var passed);
+        row.Done = true;
+        row.Loss = loss;
+        row.PassedTests = passed;
+        row.FailedTests = failed;
+        results[index] = row;
+        InvokeAsync(StateHasChanged);
+    });
+
+    // All done
+    // Sort by losses, best network on the left(0)
+    results.Sort((y, x) => {
+        int comparison = x.PassedTests.CompareTo(y.PassedTests);
+        if (comparison != 0)
+            return comparison;
+        else
+            return y.Loss.CompareTo(x.Loss);
+    });
+    
+    //searchTask = null;
+    InvokeAsync(StateHasChanged);
+}
+
+private static double MaxMeanSquaredError(INeuralNetwork network, TrainingSet validation, double loss_threshold, out int above_loss, out int below_loss) {
+    var data = validation;
+    var maxloss = 0.0;
+
+    above_loss = 0;
+    below_loss = 0;
+
+    var set = data.SampleSequentially();
+    while (set.MoveNext()) {
+        var predicted = network.PredictSync(set.Current.Input);
+        var loss = LossFunctions.MeanSquaredError(predicted, set.Current.Output);
+        if (loss < loss_threshold) {
+            below_loss++;
+        } else {
+            above_loss++;
+        }
+        maxloss = Math.Max(maxloss, loss);
+    }
+
+    return maxloss;
+}
+
+} 

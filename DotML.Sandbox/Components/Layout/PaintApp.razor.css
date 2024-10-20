@@ -1,0 +1,30 @@
+canvas {
+    width: 100%;
+    border: 1px solid black;
+    
+    image-rendering: optimizeSpeed;             /* Older versions of FF          */
+    image-rendering: -moz-crisp-edges;          /* FF 6.0+                       */
+    image-rendering: -webkit-optimize-contrast; /* Safari                        */
+    image-rendering: -o-crisp-edges;            /* OS X & Windows Opera (12.02+) */
+    image-rendering: pixelated;                 /* Awesome future-browsers       */
+    -ms-interpolation-mode: nearest-neighbor;   /* IE                            */
+}
+
+.canvas-container {
+    position: relative;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.canvas-container .delete {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+.canvas-container .delete {
+    display: none;
+}
+.canvas-container:hover .delete {
+    display: block;
+}

@@ -1,0 +1,22 @@
+@using Qkmaxware.Media.Image
+
+<div class="image" style="grid-template-columns: repeat(@(Width), 1fr); grid-template-rows: repeat(@(Height), 1fr);">
+    @{
+        var pixels = Data?.Pixels;
+        if (pixels != null) {
+            for (var row = 0; row < pixels.GetLength(0); row++) {
+                for (var col = 0; col < pixels.GetLength(1); col++) {
+                    var pixel = pixels[row, col];
+
+                    <div class="pixel" style="background-color: rgb(@pixel.R, @pixel.G, @pixel.B);"></div>
+                }
+            }
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public IImage? Data {get; set;} = null;
+    public int Width => Data?.Width ?? 0;
+    public int Height => Data?.Height ?? 0;
+}

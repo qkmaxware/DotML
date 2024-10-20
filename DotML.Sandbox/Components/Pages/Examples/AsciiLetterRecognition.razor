@@ -1,0 +1,83 @@
+@page "/ascii-recognition"
+@using DotML
+@using DotML.Network
+@using DotML.Network.Training
+
+<NetworkExplorer TNetwork="ClassicalFeedforwardNetwork" Network=network TrainingData=training LearningRate=0.001 @ref=explorer>
+    <Input>
+        <select class="form-control" @onchange="@((e) => select_letter(context, e.Value?.ToString() ?? string.Empty))">
+            <option>  </option>
+            @for (var i = 'A'; i <= 'Z'; i++) {
+                <option>@i</option>
+            }
+        </select>
+        <pre style="text-align: center; margin: 0 auto;">@_selected_letter_ascii</pre> 
+    </Input>
+    <Output>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Letter</th>
+                    <th>Probability</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var max = context.IndexOfMaxValue();
+                    for (var i = 0; i < OUTPUT_CLASSES.Length; i++) {
+                        <tr>
+                            <td>@if(max == i){<text>&checkmark;</text>}</td>
+                            <td>@OUTPUT_CLASSES[i]</td>
+                            <td>@((((context[i] + 1) / 2) * 100).ToString("F3"))%</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </Output>
+</NetworkExplorer>
+
+@code {
+    private NetworkExplorer<ClassicalFeedforwardNetwork>? explorer;
+    private ClassicalFeedforwardNetwork network = ClassicalFeedforwardNetwork.FromJson(ResourceLoader.LoadContents("data/Letter Recognition/Ascii.Pretrained.json"));//new ClassicalFeedforwardNetwork(INPUT_SIZE, 27, OUTPUT_SIZE);
+    private static IFeatureExtractor<string> vectorizor = new AsciiImgVectorizor(IMG_WIDTH);
+    private TrainingSet training = ResourceLoader.LoadTrainingVectors(
+        vectorizor,                                                                             // map ascii image to double vector
+        (fname, _) => VectorFromLabel(Array.IndexOf(OUTPUT_CLASSES, fname[0]), OUTPUT_CLASSES), // map from the filename to the output class by filename index
+        OUTPUT_CLASSES.Select(x => "data/Letter Recognition/letters/" + x.ToString() + ".ascii")                   // eg. all files like data/letters/A.ascii 
+    );
+
+    const int IMG_WIDTH = 9;                                                                    // Width of the images to load
+    const int IMG_HEIGHT = 8;                                                                   // Height of the images to load
+
+    const int INPUT_SIZE = IMG_WIDTH * IMG_HEIGHT;                                              // Size of the input vector (1 value per "pixel")
+    const int OUTPUT_SIZE = 26;                                                                 // Size of the output vector (number of categories/classes)
+    private static char[] OUTPUT_CLASSES = new char[OUTPUT_SIZE] {                              // Labels for the output vector (names of the categories/classes)
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 
+        'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 
+        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' 
+    };
+
+    private static Vec<double> VectorFromLabel<T>(int index, T[] classes, double off = -1, double on = 1) {
+        double[] values = new double[classes.Length];
+        Array.Fill(values, off);
+        if (index >= 0 && index < classes.Length)
+            values[index] = on;
+        return new Vec<double>(values);
+    }
+
+    private char _select_letter;
+    private string? _selected_letter_ascii;
+    private void select_letter(Box<Vec<double>> vecref, string value) {
+        _select_letter = value[0];
+        var index = Array.IndexOf(OUTPUT_CLASSES, _select_letter);
+        if (index >= 0 && index < training.Size) {
+            vecref.Value = training[index].Input;
+            _selected_letter_ascii = ResourceLoader.LoadContents("data/Letter Recognition/letters/" + _select_letter.ToString() + ".ascii");
+        } else {
+            vecref.Value = new Vec<double>(network.InputCount);
+        }
+        explorer?.RefreshState();
+    } 
+}

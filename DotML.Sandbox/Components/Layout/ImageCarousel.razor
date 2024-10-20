@@ -1,0 +1,30 @@
+@using Qkmaxware.Media.Image
+
+<div>
+    <Image Data="@current_image"></Image>
+    <div style="text-align:  center;">
+        <button type="button" class="btn btn-primary" @onclick=prev>Prev.</button>
+        <button type="button" class="btn btn-primary" @onclick=next>Next</button>
+    </div>
+</div>
+
+@code {
+    private int current_index = 0;
+    private IImage? current_image => Images is not null && current_index >= 0 && current_index < Images.Count ? Images[current_index] : null;
+    [Parameter] public IList<IImage>? Images {get; set;} = null;
+
+    private void prev() {
+        if (Images is null)
+            return;
+        if (current_index > 0) {
+            current_index--;
+        }
+    }
+    private void next() {
+        if (Images is null)
+            return;
+        if (current_index < Images.Count - 1) {
+            current_index++;
+        }
+    }
+}

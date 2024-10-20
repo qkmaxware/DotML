@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 @(GraphWidth + 2 * XOffset) @(GraphHeight + 2 * YOffset + 30)">
+    <g id="axes" stroke="gray" fill="gray" text-anchor="end">
+        <g id="y-axis">
+            @if (Data is not null && Data.Any()) {
+            <g id="ticks">
+                <text x="40" y="@(YOffset + 15)">@getRangeMax()</text>
+                @*<text x="40" y="@(GraphMidpoint + YOffset)">@getRangeMid()</text>*@
+                <text x="40" y="@(GraphHeight + YOffset)">@getRangeMin()</text>
+            </g>
+            }
+            <text x="-@(GraphHeight/2)"  y="@YOffset" transform=" rotate(-90)" dominant-baseline="hanging" text-anchor="middle">@YAxisLabel</text>
+            <line id="y-axis" stroke="black" x1="@XOffset" x2="@XOffset" y1="@YOffset" y2="@(GraphHeight + YOffset)"/>
+        </g>
+        <g id="x-axis">
+            <text x="@(GraphWidth / 2)" y="@(GraphHeight + 20)" text-anchor="middle">@XAxisLabel</text>
+            <line stroke="gray" id="midpoint" x1="@XOffset" x2="@(GraphWidth + XOffset)" y1="@(GraphMidpoint + YOffset)" y2="@(GraphMidpoint + YOffset)"/>
+            <line id="x-axis" stroke="black" x1="@XOffset" x2="@(GraphWidth + XOffset)" y1="@(GraphHeight + YOffset)" y2="@(GraphHeight + YOffset)"/>
+        </g>
+    </g>
+
+    <g id="series">
+        @if (Data is not null && Data.Any()) {
+        <polyline stroke="@(StrokeColour)" fill="none" points="@PointList(Data)"/>
+        }
+    </g>
+</svg>
+
+@code {
+    [Parameter] public string StrokeColour {get; set;} = "black";
+    [Parameter] public IEnumerable<(double X, double Y)>? Data {get; set;}
+     
+
+    [Parameter] public double GraphHeight {get; set;} = 300.0;
+    [Parameter] public double GraphWidth {get; set;} = 500.0;
+    private const int YOffset = 0;
+    private const int XOffset = 50;
+
+    [Parameter] public Range? YAxis {get; set;} = null;
+    [Parameter] public string? YAxisLabel {get; set;} = null;
+    [Parameter] public Range? XAxis {get; set;} = null;
+    [Parameter] public string? XAxisLabel {get; set;} = null;
+
+    /// <summary>
+    /// Represents a range of values
+    /// </summary>
+    public struct Range {
+        /// <summary>
+        /// Minimum value range endpoint
+        /// </summary>
+        public double Min {get; private set;}
+        /// <summary>
+        /// Maximum value range endpoint
+        /// </summary>
+        public double Max {get; private set;}
+        /// <summary>
+        /// Range midpoint
+        /// </summary>
+        public double Midpoint => Min + ((Max - Min) / 2.0);
+        /// <summary>
+        /// Length of the range
+        /// </summary>
+        public double Length => Max - Min;
+
+        public Range(double a, double b) {
+            this.Min = Math.Min(a, b);
+            this.Max = Math.Max(a, b);
+        }
+    }
+
+    private double getRangeMax()  => YAxis.HasValue ? YAxis.Value.Max : (Data is null ? 0 : Data.Select((ser) => ser.Y).Max());
+    private double getRangeMin()  => YAxis.HasValue ? YAxis.Value.Min : (Data is null ? 0 : Data.Select((ser) => ser.Y).Min());
+    private double getRangeMid()  => YAxis.HasValue ? YAxis.Value.Midpoint : (getRangeMin() + (getRangeMax() - getRangeMin())/2);
+    private double getRangeLen()  => YAxis.HasValue ? YAxis.Value.Length : (getRangeMax() - getRangeMin());
+    private double getDomainMax() => XAxis.HasValue ? XAxis.Value.Max : (Data is null ? 0 : Data.Select((ser) => ser.X).Max());
+    private double getDomainMin() => XAxis.HasValue ? XAxis.Value.Min : (Data is null ? 0 : Data.Select((ser) => ser.X).Min());
+    private double getDomainLen() => getDomainMax() - getDomainMin();
+
+    private double GraphMidpoint => GraphHeight / 2;
+    private double XScale() => GraphWidth / getDomainLen();
+    private double YScale() => GraphHeight / getRangeLen();
+
+    private string PointList(IEnumerable<(double X, double Y)> series) {
+        return string.Join(" ",
+            series.Select((point) => $"{XPoint(point.X)},{YPoint(point.Y)}")
+        );
+    }
+    private double XPoint(double x) {
+        // Make the x-point relative to the left
+        x = x - getDomainMin();
+        // Scale to the size of the image
+        x = x * XScale();
+        // Offset by the axis width
+        return XOffset + x;
+    }
+    private double YPoint(double y) {
+        //Console.WriteLine($"y = {y} :: getRangeMax() = {getRangeMax()}; getRangeLen() = {getRangeLen()}; getRangeMax() = {getRangeMax()}, getRangeMin() = {getRangeMin()}; YScale() = {YScale()}");
+        // Make relative to top-left
+        y = getRangeMax() - y;
+        // Scale to the size of the image
+        y = y * YScale();
+        // Offset if required
+        return YOffset + y;
+    }
+}
