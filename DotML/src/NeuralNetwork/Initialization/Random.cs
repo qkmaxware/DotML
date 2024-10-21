@@ -2,7 +2,7 @@ namespace DotML.Network.Initialization;
 
 public class RandomInitialization<TNetwork> 
     : IInitializer<TNetwork> 
-where TNetwork:ILayeredNeuralNetwork {
+where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
 
     private double min;
     private double max;
@@ -14,25 +14,29 @@ where TNetwork:ILayeredNeuralNetwork {
     }
 
     public void InitializeBiases(TNetwork network) {
-        network.ForeachNeuron((layer, neuron) => {
-            var weights = neuron.Weights;
+        network.ForeachLayer(layer => {
+            layer.ForeachNeuron(neuron => {
+                var weights = neuron.Weights;
             
-            var weightc = weights.Length;
-            for (var i = 0; i < weightc; i++) {
-                var sample = rng.NextDouble();
-                var number = (max * sample) + (min * (1d - sample));
-                weights[i] = number;
-            }
+                var weightc = weights.Length;
+                for (var i = 0; i < weightc; i++) {
+                    var sample = rng.NextDouble();
+                    var number = (max * sample) + (min * (1d - sample));
+                    weights[i] = number;
+                }
+            });
         });
     }
 
     public void InitializeWeights(TNetwork network) {
-        network.ForeachNeuron((layer, neuron) => {
-            var weights = neuron.Weights;
-            
-            var sample = rng.NextDouble();
-            var number = (max * sample) + (min * (1d - sample));
-            neuron.Bias = number;
+        network.ForeachLayer(layer => {
+            layer.ForeachNeuron(neuron => {
+                var weights = neuron.Weights;
+                
+                var sample = rng.NextDouble();
+                var number = (max * sample) + (min * (1d - sample));
+                neuron.Bias = number;
+            });
         });
     }
 }

@@ -4,7 +4,7 @@ namespace DotML.Network.Initialization;
 
 public class NormalXavierInitialization<TNetwork> 
     : IInitializer<TNetwork> 
-where TNetwork:ILayeredNeuralNetwork {
+where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
     private static Random rng = new Random();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -16,29 +16,33 @@ where TNetwork:ILayeredNeuralNetwork {
     }
 
     public void InitializeWeights(TNetwork network) {
-        network.ForeachNeuron((layer, neuron) => {
-            double stddev = Math.Sqrt(2.0 / (layer.InputCount + layer.OutputCount));
-            var weights = neuron.Weights;
-            var weightc = weights.Length;
+        network.ForeachLayer(layer => {
+            layer.ForeachNeuron(neuron => {
+                double stddev = Math.Sqrt(2.0 / (layer.InputCount + layer.OutputCount));
+                var weights = neuron.Weights;
+                var weightc = weights.Length;
 
-            for (var w = 0; w < weightc; w++) {
-                weights[w] = NormalRandom(0, stddev);
-            }
+                for (var w = 0; w < weightc; w++) {
+                    weights[w] = NormalRandom(0, stddev);
+                }
+            });
         });
     }
 
     public void InitializeBiases(TNetwork network) {
-        network.ForeachNeuron((layer, neuron) => {
-            //double stddev = Math.Sqrt(2.0 / (layer.InputCount + layer.OutputCount));
-            //neuron.Bias = NormalRandom(0, stddev);
-            neuron.Bias = 0.01;
+        network.ForeachLayer(layer => {
+            layer.ForeachNeuron(neuron => {
+                //double stddev = Math.Sqrt(2.0 / (layer.InputCount + layer.OutputCount));
+                //neuron.Bias = NormalRandom(0, stddev);
+                neuron.Bias = 0.01;
+            });
         });
     }
 }
 
 public class UniformXavierInitialization<TNetwork> 
     : IInitializer<TNetwork> 
-where TNetwork:ILayeredNeuralNetwork {
+where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
     private static Random rng = new Random();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -47,22 +51,26 @@ where TNetwork:ILayeredNeuralNetwork {
     }
 
     public void InitializeWeights(TNetwork network) {
-        network.ForeachNeuron((layer, neuron) => {
-            double limit = Math.Sqrt(6.0 / (layer.InputCount + layer.OutputCount));
-            var weights = neuron.Weights;
-            var weightc = weights.Length;
+        network.ForeachLayer(layer => {
+            layer.ForeachNeuron(neuron => {
+                double limit = Math.Sqrt(6.0 / (layer.InputCount + layer.OutputCount));
+                var weights = neuron.Weights;
+                var weightc = weights.Length;
 
-            for (var w = 0; w < weightc; w++) {
-                weights[w] = UniformRandom(limit);
-            }
+                for (var w = 0; w < weightc; w++) {
+                    weights[w] = UniformRandom(limit);
+                }
+            });
         });
     }
 
     public void InitializeBiases(TNetwork network) {
-        network.ForeachNeuron((layer, neuron) => {
-            //double limit = Math.Sqrt(6.0 / (layer.InputCount + layer.OutputCount));
-            //neuron.Bias = UniformRandom(limit);
-            neuron.Bias = 0.01;
+        network.ForeachLayer(layer => {
+            layer.ForeachNeuron(neuron => {
+                //double limit = Math.Sqrt(6.0 / (layer.InputCount + layer.OutputCount));
+                //neuron.Bias = UniformRandom(limit);
+                neuron.Bias = 0.01;
+            });
         });
     }
 }

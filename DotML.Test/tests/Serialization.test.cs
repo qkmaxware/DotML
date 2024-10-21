@@ -8,12 +8,12 @@ public class SerializationFFTest {
     [TestMethod]
     public void JsonSerialization() {
         var before = new ClassicalFeedforwardNetwork(
-            new Layer(2, 2) {
+            new NeuronLayer(2, 2) {
                 Weights = [[20, 20], [-20, -20]],
                 Biases = [-10, 30],
                 ActivationFunctions = [Sigmoid.Instance, Sigmoid.Instance]
             },
-            new Layer(2, 1) {
+            new NeuronLayer(2, 1) {
                 Weights = [[20, 20]],
                 Biases = [-30],
                 ActivationFunctions = [Sigmoid.Instance]

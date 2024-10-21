@@ -5,14 +5,11 @@ using System.Text.Json.Serialization;
 
 namespace DotML.Network;
 
-public delegate void NeuronAction(ref Neuron neuron);
-public delegate void LayerAction(Layer layer);
-
 /// <summary>
 /// A simple, fully connected, Feed Forward Neural Network based on layers.
 /// </summary>
-public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, IDiagrammable {
-    private List<Layer> layers = new List<Layer>();
+public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>, IJsonizable, IDiagrammable {
+    private List<NeuronLayer> layers = new List<NeuronLayer>();
 
     /// <summary>
     /// The number of input values (size of input vector) allowed by this network.
@@ -44,7 +41,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// Create a Feed Forward Neural Network from the give layers
     /// </summary>
     /// <param name="layers">network layers</param>
-    public ClassicalFeedforwardNetwork(params Layer[] layers) {
+    public ClassicalFeedforwardNetwork(params NeuronLayer[] layers) {
         this.layers.AddRange(layers);
     }
     
@@ -52,7 +49,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// Create a Feed Forward Neural Network from the give layers
     /// </summary>
     /// <param name="layers">network layers</param>
-    public ClassicalFeedforwardNetwork(IEnumerable<Layer> layers) {
+    public ClassicalFeedforwardNetwork(IEnumerable<NeuronLayer> layers) {
         this.layers.AddRange(layers);
     }   
 
@@ -63,7 +60,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// <param name="layerSizes">size of each layer</param>
     public ClassicalFeedforwardNetwork(int inputSize, params int[] layerSizes) {
         for (var i = 0; i < layerSizes.Length; i++){
-            this.layers.Add(new Layer(i == 0 ? inputSize : layerSizes[i-1], layerSizes[i]));
+            this.layers.Add(new NeuronLayer(i == 0 ? inputSize : layerSizes[i-1], layerSizes[i]));
         }
     }
 
@@ -71,7 +68,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// Enumerate over all layers in this network
     /// </summary>
     /// <value>enumerable of layers</value>
-    public IEnumerable<Layer> Layers {
+    public IEnumerable<NeuronLayer> Layers {
         get {
             foreach (var layer in this.layers) {
                 yield return layer;
@@ -87,53 +84,27 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// Apply an action to every layer in the network
     /// </summary>
     /// <param name="action">action to apply to each layer</param>
-    public void ForeachLayer(LayerAction action) {
+    public void ForeachLayer(Action<NeuronLayer> action) {
         foreach (var layer in layers) {
             action(layer);
         }
     }
 
     /// <summary>
-    /// Apply an action to every neuron in the network
+    /// Perform an action on each neuron in the network
     /// </summary>
-    /// <param name="action">action to apply to each neuron</param>
-    public void ForeachNeuron(NeuronAction action) {
-        foreach (var layer in layers) {
-            layer.ForeachNeuron(action);
-        }
-    }
+    /// <param name="action">action to perform</param>
+    public void ForeachNeuron(Action<ILayerWithNeurons, INeuron> action) {
+        var layers = this.LayerCount;
+        for (var layer_index = 0; layer_index < layers; layer_index++) {
+            var layer = this.GetLayer(layer_index);
+            var neurons = layer.NeuronCount;
 
-    private static Random rng = new Random();
-    /// <summary>
-    /// Randomize all synapse weights with values between the given range
-    /// </summary>
-    /// <param name="min">minimum range value</param>
-    /// <param name="max">maximum range value</param>
-    public void RandomizeWeights(double min, double max) {
-        ForeachNeuron((ref Neuron neuron) => {
-            var weights = neuron.Weights;
-            if (neuron.Weights is null)
-                return;
-            var weightc = weights.Length;
-
-            for (var i = 0; i < weightc; i++) {
-                var sample = rng.NextDouble();
-                var number = (Math.Max(min, max) * sample) + (Math.Min(min, max) * (1d - sample));
-                neuron.Weights[i] = number;
+            for (var neuron_index = 0; neuron_index < neurons; neuron_index++) {
+                var neuron = layer.GetNeuron(neuron_index);
+                action(layer, neuron);
             }
-        });
-    }
-    /// <summary>
-    /// Randomize all neuron biases values with values between the given range
-    /// </summary>
-    /// <param name="min">minimum range value</param>
-    /// <param name="max">maximum range value</param>
-    public void RandomizeBiases(double min, double max) {
-        ForeachNeuron((ref Neuron neuron) => {
-            var sample = rng.NextDouble();
-            var number = (Math.Max(min, max) * sample) + (Math.Min(min, max) * (1d - sample));
-            neuron.Bias = number;
-        });
+        }
     }
 
     /// <summary>
@@ -141,7 +112,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// </summary>
     /// <param name="index">index to layer</param>
     /// <returns>layer</returns>
-    public ILayer GetLayer(int index) {
+    public ILayerWithNeurons GetLayer(int index) {
         return this.layers[index];
     }
 
@@ -149,7 +120,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// Gets the first hidden layer in the network 
     /// </summary>
     /// <returns>layer</returns>
-    public ILayer GetFirstLayer() {
+    public ILayerWithNeurons GetFirstLayer() {
         return this.layers[0];
     }
 
@@ -157,7 +128,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// Gets the last layer in the network where outputs are produced
     /// </summary>
     /// <returns>layer</returns>
-    public ILayer GetOutputLayer() {
+    public ILayerWithNeurons GetOutputLayer() {
         return this.layers[this.layers.Count - 1];
     }
 
@@ -165,7 +136,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// Add a single layer to this network
     /// </summary>
     /// <param name="layer">layer to add</param>
-    public void AddLayer(Layer layer) {
+    public void AddLayer(NeuronLayer layer) {
         layers.Add(layer);
     }
 
@@ -173,7 +144,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork, IJsonizable, I
     /// Add many layers to this network
     /// </summary>
     /// <param name="layers">layers to add</param>
-    public void AddLayers(params Layer[] layers) {
+    public void AddLayers(params NeuronLayer[] layers) {
         this.layers.AddRange(layers);
     }
 

@@ -1,4 +1,4 @@
-@typeparam TNetwork where TNetwork:ILayeredNeuralNetwork
+@typeparam TNetwork where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons>
 @using DotML
 @using DotML.Network
 @using DotML.Network.Initialization
@@ -385,7 +385,11 @@ else if (state == State.Playground) {
         if (Network is null || TrainingData is null)
             return;
         
-        Network.ForeachNeuron((layer, neuron) => neuron.ActivationFunction = activation); 
+        Network.ForeachLayer(layer => {
+            layer.ForeachNeuron(neuron => {
+                neuron.ActivationFunction = activation;
+            });
+        });
         training_session = trainer.EnumerateTraining(Network, TrainingData.SampleRandomly(), (ValidationData ?? TrainingData).SampleSequentially());
     }
 

@@ -5,7 +5,9 @@ namespace DotML.Network;
 /// <summary>
 /// Basic layer of neurons
 /// </summary>
-public class Layer : ILayer {
+public class NeuronLayer : ILayerWithNeurons {
+    public delegate void NeuronAction(ref Neuron neuron);
+    
     private Neuron[] neurons;
     private LayerNeuronReference[] neuron_refs;
     private double[] outputs; // Outputs will be cached
@@ -104,7 +106,7 @@ public class Layer : ILayer {
     /// <summary>
     /// Deserialization constructor
     /// </summary>
-    public Layer() {
+    public NeuronLayer() {
         neurons = new Neuron[0];
         outputs = new double[0];
         neuron_refs = new LayerNeuronReference[0];
@@ -114,7 +116,7 @@ public class Layer : ILayer {
     /// Create a new layer of the given size
     /// </summary>
     /// <param name="size">layer size, minimum 1</param>
-    public Layer(int inputs, int size) {
+    public NeuronLayer(int inputs, int size) {
         size = Math.Max(1, size);
         neurons = new Neuron[size];
         outputs = new double[size];

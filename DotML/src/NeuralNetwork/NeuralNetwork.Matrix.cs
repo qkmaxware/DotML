@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace DotML.Network;
 
-public class MatrixNeuralNetwork : ILayeredNeuralNetwork{
+public class MatrixNeuralNetwork : ILayeredNeuralNetwork<MatrixNeuralNetwork.LayerReference> {
 
     public int InputCount {get; private set;}
     public int LayerCount {get; private set;}
@@ -147,11 +147,11 @@ public class MatrixNeuralNetwork : ILayeredNeuralNetwork{
         }
     }
 
-    public ILayer GetLayer(int index) => layer_refs[index];
+    public LayerReference GetLayer(int index) => layer_refs[index];
 
-    public ILayer GetFirstLayer() => layer_refs[0];
+    public LayerReference GetFirstLayer() => layer_refs[0];
 
-    public ILayer GetOutputLayer() => layer_refs[^1];
+    public LayerReference GetOutputLayer() => layer_refs[^1];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static double lerp(double min, double max, double sample) {

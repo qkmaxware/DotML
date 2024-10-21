@@ -11,7 +11,7 @@ namespace DotML.Network.Training;
 /// <typeparam name="TNetwork">type of network to train</typeparam>
 public class EnumerableBackpropagationTrainer<TNetwork>
     : IEnumerableTrainer<TNetwork>
-where TNetwork : ILayeredNeuralNetwork
+where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>
 {
     /// <summary>
     /// Create a new Neural Network trainer
@@ -143,7 +143,7 @@ where TNetwork : ILayeredNeuralNetwork
 /// Simple enumerator for a backpropagation trainer
 /// </summary>
 /// <typeparam name="TNetwork">type of network being trained</typeparam>
-public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> where TNetwork : ILayeredNeuralNetwork {
+public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons> {
     /// <summary>
     /// Maximum number of epochs to perform
     /// </summary>
@@ -292,7 +292,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void backpropagate(ILayer layer, double[] layerDeltas, Vec<double> targets) {
+    private void backpropagate(ILayerWithNeurons layer, double[] layerDeltas, Vec<double> targets) {
         var neuron_count = layer.NeuronCount;
         var outputs = layer.GetLastOutputs();
 
@@ -310,7 +310,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void backpropagate(ILayer layer, double[] layerDeltas, ILayer next_layer, double[] next_layerDeltas) {
+    private void backpropagate(ILayerWithNeurons layer, double[] layerDeltas, ILayerWithNeurons next_layer, double[] next_layerDeltas) {
         var neuron_count = layer.NeuronCount;
         var nextlayer_neuron_count = next_layer.NeuronCount;
         var outputs = layer.GetLastOutputs();
@@ -341,7 +341,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void updateWeightsAndBias(Vec<double> inputs, double learningRate, int layerIndex, ILayer layer, double[] deltas, double[][] weight_momentum, double[] bias_momentum) {
+    private void updateWeightsAndBias(Vec<double> inputs, double learningRate, int layerIndex, ILayerWithNeurons layer, double[] deltas, double[][] weight_momentum, double[] bias_momentum) {
         var neuron_count = layer.NeuronCount;
 
         for (int neuronIndex = 0; neuronIndex < neuron_count; neuronIndex++) {

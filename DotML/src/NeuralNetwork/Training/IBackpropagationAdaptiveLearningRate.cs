@@ -10,7 +10,7 @@ public interface ILearningRateOptimizer {
     /// Initialize the optimizer to work for a give network/network shape
     /// </summary>
     /// <param name="network">network and network shape</param>
-    public void Initialize(ILayeredNeuralNetwork network);
+    public void Initialize(ILayeredNeuralNetwork<ILayerWithNeurons> network);
     /// <summary>
     /// Return an adjusted learning rate based on the gradient of the weight at the given layer, neuron, synapse index
     /// </summary>
@@ -36,7 +36,7 @@ public interface ILearningRateOptimizer {
 /// Static rate optimizer. Keeps the learning rate static across the entire training session.
 /// </summary>
 public class ConstantRate : ILearningRateOptimizer {
-    public void Initialize(ILayeredNeuralNetwork network) { /* No need to do anything */ }
+    public void Initialize(ILayeredNeuralNetwork<ILayerWithNeurons> network) { /* No need to do anything */ }
 
     public double UpdateLearningRate(double baseLearningRate, double gradient, int layer, int neuron, int weight) {
         return baseLearningRate;
@@ -68,7 +68,7 @@ public class RMSPropOptimizer : ILearningRateOptimizer {
         this.DecayRate = Math.Abs(decayRate); // Can't be -
     }
 
-    public void Initialize(ILayeredNeuralNetwork network) {
+    public void Initialize(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         weights_cache = new double[network.LayerCount][][];
         for (var layer = 0; layer < weights_cache.Length; layer++) {
             var layerObj = network.GetLayer(layer);
@@ -207,7 +207,7 @@ public class AdamOptimizer : ILearningRateOptimizer {
         this.Beta2 = Math.Abs(beta2);
     }
 
-    public void Initialize(ILayeredNeuralNetwork network) {
+    public void Initialize(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         timestep = 0;
         
         m_weights = new Moment[network.LayerCount][][];

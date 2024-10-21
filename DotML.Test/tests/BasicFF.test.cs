@@ -8,7 +8,7 @@ public class BasicFFTest {
     [TestMethod]
     public void TestNOT() {
         var network = new ClassicalFeedforwardNetwork(
-            new Layer(1, 1) { 
+            new NeuronLayer(1, 1) { 
                 Weights             = new double[][]{ new double[]{ -1 } },
                 Biases              = new double[] { 1 },
                 ActivationFunctions = new ActivationFunction[]{}
@@ -27,7 +27,7 @@ public class BasicFFTest {
     [TestMethod]
     public void TestAND() {
         var network = new ClassicalFeedforwardNetwork(
-            new Layer(2, 1) { 
+            new NeuronLayer(2, 1) { 
                 Weights             = new double[][]{ new double[]{ 0.4, 0.4 } },
                 ActivationFunctions = new ActivationFunction[]{}
             } // Output layer
@@ -57,7 +57,7 @@ public class BasicFFTest {
     [TestMethod]
     public void TestOR() {
         var network = new ClassicalFeedforwardNetwork(
-            new Layer(2, 1) { 
+            new NeuronLayer(2, 1) { 
                 Weights             = new double[][]{ new double[]{ 0.6, 0.6 } },
                 ActivationFunctions = new ActivationFunction[]{}
             } // Output layer
@@ -101,12 +101,12 @@ public class BasicFFTest {
 
         // Weights/Biases copied from video: https://www.youtube.com/watch?v=kNPGXgzxoHw
         var network = new ClassicalFeedforwardNetwork(
-            new Layer(2, 2) {
+            new NeuronLayer(2, 2) {
                 Weights = [[20, 20], [-20, -20]],
                 Biases = [-10, 30],
                 ActivationFunctions = [Sigmoid.Instance, Sigmoid.Instance]
             },
-            new Layer(2, 1) {
+            new NeuronLayer(2, 1) {
                 Weights = [[20, 20]],
                 Biases = [-30],
                 ActivationFunctions = [Sigmoid.Instance]
@@ -172,8 +172,8 @@ public class BasicFFTest {
         Assert.AreEqual(2, network.GetLayer(0).NeuronCount);
         Assert.AreEqual(1, network.GetLayer(1).NeuronCount);
 
-        network.ForeachNeuron((ref Neuron neuron) => neuron.ActivationFunction = HyperbolicTangent.Instance);
-        network.ForeachNeuron((ref Neuron neuron) => {
+        network.ForeachNeuron((ILayerWithNeurons layer, INeuron neuron) => neuron.ActivationFunction = HyperbolicTangent.Instance);
+        network.ForeachNeuron((ILayerWithNeurons layer, INeuron neuron) => {
             Assert.AreEqual(HyperbolicTangent.Instance, neuron.ActivationFunction);
         });
 
