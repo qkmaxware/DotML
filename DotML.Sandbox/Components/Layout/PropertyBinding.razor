@@ -1,0 +1,157 @@
+@using System.Reflection
+
+@if (Property is not null && Owner is not null) {
+<label>@(Property.Name):</label>
+<div>
+@if (Property.PropertyType == typeof(int)) {
+    <input type="number" class="form-control" @bind=integer>
+} else if (Property.PropertyType == typeof(long)) {
+    <input type="number" class="form-control" @bind=bigInteger>
+} else if (Property.PropertyType == typeof(float)) {
+    <input type="number" class="form-control" @bind=real>   
+} else if (Property.PropertyType == typeof(double)) {
+    <input type="number" class="form-control" @bind=bigReal>
+} else if (Property.PropertyType == typeof(bool)) {
+    <input type="checkbox" class="form-check-input" @bind=boolean>
+    @if (boolean == true) {
+        <label class="form-check-label">On</label>
+    } else {
+        <label class="form-check-label">Off</label>
+    }
+} else if (Property.PropertyType == typeof(string)) {
+    <input type="text" class="form-control" @bind=text>
+} else if (Property.PropertyType.IsEnum) {
+    <select class="form-control" @bind=enumeration>
+        @foreach (var value in Enum.GetValues(Property.PropertyType)) {
+            <option>@value</option>
+        }
+    </select>
+} else if (Property.PropertyType.IsAssignableTo(typeof(DotML.Network.LossFunction))) {
+    <select class="form-control" @bind=lossFunction>
+        @for (var i = 0; i < lossFunctions.Count; i++) {
+            <option value="@i">@lossFunctions[i].Method.Name</option>
+        }
+    </select>
+} else if (Property.PropertyType.IsAssignableTo(typeof(IInitializer))) {
+    <select class="form-control" @bind=initializer>
+        @for (var i = 0; i < initializers.Count; i++) {
+            <option value="@i">@initializers[i].GetType().Name</option>
+        }
+    </select>
+}
+ else if (Property.PropertyType.IsAssignableTo(typeof(ActivationFunction))) {
+    <select class="form-control" @bind=activation>
+        @for (var i = 0; i < activations.Count; i++) {
+            <option value="@i">@activations[i]</option>
+        }
+    </select>
+}
+</div>
+}
+
+@code {
+    #pragma warning disable CS8602
+    #pragma warning disable CS8605
+    #pragma warning disable CS8600
+    #pragma warning disable CS8603
+}
+
+@code {
+    [Parameter] public object? Owner {get; set;}
+    [Parameter] public PropertyInfo? Property {get; set;}
+
+    private bool boolean {
+        get => (bool)Property.GetValue(Owner);
+        set => Property.SetValue(Owner, value);
+    }
+    private string text {
+        get => (string)Property.GetValue(Owner);
+        set => Property.SetValue(Owner, value);
+    }
+    private int integer {
+        get => (int)Property.GetValue(Owner);
+        set => Property.SetValue(Owner, value);
+    }
+    private long bigInteger {
+        get => (long)Property.GetValue(Owner);
+        set => Property.SetValue(Owner, value);
+    }
+    private float real {
+        get => (float)Property.GetValue(Owner);
+        set => Property.SetValue(Owner, value);
+    }
+    private double bigReal {
+        get => (double)Property.GetValue(Owner);
+        set => Property.SetValue(Owner, value);
+    }
+    private int enumeration {
+        get => (int)Property.GetValue(Owner);
+        set => Property.SetValue(Owner, value);
+    }
+}
+
+
+@using DotML.Network
+@using DotML.Network.Initialization
+@code {
+    private static List<ActivationFunction> activations = [
+        Identity.Instance,
+        BinaryStep.Instance,
+        ReLU.Instance,
+        LeakyReLU.Instance,
+        new PReLU(0.01),
+        new PReLU(0.005),
+        new PReLU(0.1), 
+        new PReLU(0.3), 
+        new PReLU(0.5), 
+        Sigmoid.Instance,
+        HyperbolicTangent.Instance,
+    ];
+    private int activation {
+        get {
+            var loss = (ActivationFunction?)Property.GetValue(Owner);
+            return loss is null ? -1 : activations.IndexOf(loss);
+        }
+        set => Property.SetValue(Owner, value >= 0 && value < activations.Count ? activations[value] : null);
+    }
+
+    private static List<LossFunction> lossFunctions = [
+        LossFunctions.MeanSquaredError,
+        LossFunctions.MeanAbsoluteError,
+        LossFunctions.CrossEntropy
+    ];
+    private int lossFunction {
+        get {
+            var loss = (LossFunction?)Property.GetValue(Owner);
+            return loss is null ? -1 : lossFunctions.IndexOf(loss);
+        }
+        set => Property.SetValue(Owner, value >= 0 && value < lossFunctions.Count ? lossFunctions[value] : null);
+    }
+
+    private static List<IInitializer> initializers = [
+        new ZeroInitialization(),
+        new RandomInitialization(-1.0, 1.0),
+        new HeInitialization(),
+        new NormalXavierInitialization(),
+        new UniformXavierInitialization()
+    ];
+    private int initializer {
+        get {
+            var instance = (IInitializer?)Property.GetValue(Owner);
+            var instance_type = instance?.GetType();
+            return (instance is null || instance_type is null)
+                ? -1 
+                : initializers.FindIndex((init) => instance_type.IsAssignableTo(init.GetType()));
+        }
+        set {
+            Property.SetValue(Owner, value >= 0 && value < initializers.Count ? initializers[value] : null);
+        }
+    }
+}
+
+@code {
+    #pragma warning restore CS8603
+    #pragma warning restore CS8600
+    #pragma warning restore CS8605
+    #pragma warning restore CS8602
+}

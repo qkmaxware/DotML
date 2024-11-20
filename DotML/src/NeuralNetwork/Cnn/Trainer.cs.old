@@ -1,0 +1,442 @@
+using System.Runtime.CompilerServices;
+
+namespace DotML.Network.Training;
+
+public class SimpleConvNetTrainer : 
+    IConvolutionalLayerVisitor<SimpleConvNetTrainer.BackpropagationArgs, SimpleConvNetTrainer.BackpropagationReturns>, 
+    IConvolutionalLayerVisitor<SimpleConvNetTrainer.WeightUpdateArgs, SimpleConvNetTrainer.WeightUpdateReturns>
+{
+
+    private readonly int epochs = 500;
+    private readonly double learningRate;
+
+    public SimpleConvNetTrainer(double learningRate) {
+        this.learningRate = learningRate;
+    }
+
+    public void Train(ConvolutionalFeedforwardNetwork network, IEnumerator<TrainingPair> training, IEnumerator<TrainingPair> validation) {
+        Matrix<double>[][] inputs   = new Matrix<double>[network.LayerCount][]; // The inputs to each layer
+        Matrix<double>[][] outputs  = new Matrix<double>[network.LayerCount][]; // The outputs from each layer
+        // TODO gradients
+        Gradients?[] layer_gradients = new Gradients?[network.LayerCount];
+        // TODO errors
+        // TODO deltas
+
+        for (var epoch = 0; epoch < epochs; epoch++) {
+
+            training.Reset();
+            while(training.MoveNext()) {
+                var input = training.Current.Input.Shape(
+                    new Shape(network.InputImageHeight, network.InputImageWidth), 
+                    network.InputImageChannels
+                ).ToArray();
+                var expected = training.Current.Output.ToColumnMatrix();
+
+                // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)
+                Matrix<double>[] layer_input = input;
+                for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
+                    inputs[layerIndex] = layer_input;
+                    var layer = network.GetLayer(layerIndex);
+                    var layer_output = layer.EvaluateSync(layer_input);
+                    outputs[layerIndex] = layer_output;
+                    layer_input = layer_output;
+                }
+                var actual = layer_input;
+
+                // Backwards pass
+                var errors = expected - outputs[^1][0];
+                var backprop_args = new BackpropagationArgs();
+                backprop_args.Errors = [errors];
+                for (var layerIndex = network.LayerCount - 1; layerIndex >= 0; layerIndex--) {
+                    backprop_args.Inputs = inputs[layerIndex];
+                    backprop_args.Outputs = outputs[layerIndex];
+
+                    var layer = network.GetLayer(layerIndex);
+                    var returns = layer.Visit<BackpropagationArgs, BackpropagationReturns>(this, backprop_args); // Backpropagation is different for each layer kind, leverage polymorphism
+                    // TODO maybe store additional details like gradients here for us to apply updates in the next step
+                    layer_gradients[layerIndex] = returns.Gradient;
+                    backprop_args.Errors = returns.Errors;
+                }
+
+                // Update weights
+                var update_args = new WeightUpdateArgs();
+                for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
+                    update_args.Gradients = layer_gradients[layerIndex];
+
+                    var layer = network.GetLayer(layerIndex);
+                    layer.Visit<WeightUpdateArgs, WeightUpdateReturns>(this, update_args);
+                }
+            }
+
+            // TODO early STOP
+			/*validation.Reset();
+			var error = 0d; var count = 0;
+			while (validation.MoveNext()) {
+				var input = training.Current.Input;
+                var expected = training.Current.Output; 
+				var actual = network.PredictSync(input);
+				
+				error += LossFunctions.MeanSquaredError(expected, actual);
+				count++;
+			}
+			error /= count;
+			if (error < early_stop_threshold) {
+				break;
+			}
+			*/
+        }
+    }
+
+    #region Backpropagation
+    public struct BackpropagationArgs {
+        public Matrix<double>[] Inputs;
+        public Matrix<double>[] Outputs;
+        public Matrix<double>[] Errors;
+    }
+    public abstract class Gradients {}
+
+    public class FullyConnectedGradients : Gradients {
+        public Matrix<double>? WeightGradients;
+        public Vec<double>? BiasGradients;
+    }
+
+    public class ConvolutionGradients : Gradients {
+        public Matrix<double>[][]? FilterKernelGradients;
+		public double[]? BiasGradients;
+    }
+
+    public struct BackpropagationReturns {
+        public Matrix<double>[] Errors;
+        public Gradients? Gradient;
+    }
+
+    public BackpropagationReturns Visit(ConvolutionLayer layer, BackpropagationArgs args) {
+        var channels = args.Inputs.Length;
+
+        // Compute the Gradients
+        Matrix<double>[][] filterGradients = new Matrix<double>[layer.FilterCount][];
+		double[] biasGradients = new double[layer.FilterCount];
+
+        // Iterate over each filter
+        for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
+            var filter = layer.Filters[filterIndex];
+            var filterHeight = filter.Height;
+            var filterWidth = filter.Width;
+            var filterCenterX = (filterWidth - 1) >> 1; 
+            var filterCenterY = (filterHeight - 1) >> 1;
+            var ioffsetX = layer.Padding == Padding.Same ? 0 : filterCenterX;
+            var ioffsetY = layer.Padding == Padding.Same ? 0 : filterCenterY;
+            
+            // Create a gradient map for the filter
+            var kernel_gradients = new Matrix<double>[channels];
+			var bias_gradient = 0d;
+            
+            // Calculate gradient for each input channel / kernel combination
+            for (var channel = 0; channel < channels; channel++) {
+                var input = args.Inputs[channel];
+                var kernel = filter[channel];
+                var output = args.Outputs[filterIndex];
+                var error = args.Errors[filterIndex];
+
+                var gradient = new double[filterHeight, filterWidth];
+
+                // Iterate over output errors to compute gradient
+                for (int outY = 0; outY < error.Rows; outY++) {
+                    for (int outX = 0; outX < error.Columns; outX++) {
+						var pixel_error = error[outY, outX];
+                        var slope = layer.ActivationFunction.InvokeDerivative(output[outY, outX]);
+						bias_gradient += slope * pixel_error;
+
+                        // Loop over the kernel values and accumulate the gradient
+                        for (int ky = 0; ky < filterHeight; ky++) {
+                            for (int kx = 0; kx < filterWidth; kx++) {
+                                //var inX = outX * layer.StrideX + ioffsetX + kx - filterCenterX;
+                                //var inY = outY * layer.StrideY + ioffsetY + ky - filterCenterY;
+
+                                gradient[ky, kx] += slope * pixel_error * kernel[ky, kx];
+                            }
+                        }
+                    }
+                }
+
+                kernel_gradients[channel] = Matrix<double>.Wrap(gradient);
+            }
+			
+			// Gradient clipping
+			clip(kernel_gradients, gradient_clip_threshold_weight);				// Should be higher than the default clip threshold
+			clip(ref bias_gradient, gradient_clip_threshold_neuron);	// Use the default clip threshold for biases
+
+            // Sum gradients from all channels to update the filter??? Seems weird. Why would we do this?
+            filterGradients[filterIndex] = kernel_gradients;
+			biasGradients[filterIndex] = bias_gradient;
+        }
+
+        // Compute the input errors to propagate back
+        var inputErrors = new Matrix<double>[args.Inputs.Length];
+        for (var channel = 0; channel < args.Inputs.Length; channel++) {
+            var input = args.Inputs[channel];
+            var inputError = new double[input.Rows, input.Columns];
+
+            // Calculate the input errors for each filter
+            for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
+                var filter = layer.Filters[filterIndex];
+                var error = args.Outputs[filterIndex];
+                var kernel = filter[channel];
+                var filterHeight = filter.Height;
+                var filterWidth = filter.Width;
+                var filterCenterX = (filterWidth - 1) >> 1; 
+                var filterCenterY = (filterHeight - 1) >> 1;
+                var ioffsetX = layer.Padding == Padding.Same ? 0 : filterCenterX;
+                var ioffsetY = layer.Padding == Padding.Same ? 0 : filterCenterY;
+
+                // Iterate over output errors to compute gradient
+                for (int outY = 0; outY < error.Rows; outY++) {
+                    for (int outX = 0; outX < error.Columns; outX++) {
+                        for (int ky = 0; ky < filter[0].Rows; ky++) {
+                            for (int kx = 0; kx < filter[0].Columns; kx++) {
+                                var inX = outX * layer.StrideX + ioffsetX + kx - filterCenterX;
+                                var inY = outY * layer.StrideY + ioffsetY + ky - filterCenterY;
+
+                                inputError[inY, inX] += error[outY, outX] * kernel[ky, kx];
+                            }
+                        }
+                    }
+                }
+            }
+
+            inputErrors[channel] = Matrix<double>.Wrap(inputError);
+        }
+
+        // Pass errors along for next layer
+        return new BackpropagationReturns { 
+            Errors = inputErrors,
+            Gradient = new ConvolutionGradients { 
+				FilterKernelGradients = filterGradients,
+				BiasGradients = biasGradients
+			},
+         };
+    }
+
+    public BackpropagationReturns Visit(PoolingLayer layer, BackpropagationArgs args) {
+        // Extract inputs, outputs, and errors
+        var inputs = args.Inputs;
+        var outputs = args.Outputs;
+        var errors = args.Errors;
+
+        int batchSize = inputs.Length;
+        var inputErrors = new Matrix<double>[batchSize];
+
+        var filterWidth = layer.FilterWidth;
+        var filterHeight = layer.FilterHeight;
+        var filterElementCount = filterWidth * filterHeight;
+
+        for (int b = 0; b < batchSize; b++) {
+            // Get the input and output for this batch item
+            var input = inputs[b];
+            var output = outputs[b];
+            var error = errors[b];
+
+            // Initialize the error matrix for the input
+            var inputError = new double[input.Rows, input.Columns];
+
+            // Loop over output
+            for (int row = 0; row < output.Rows; row++) {
+                for (int col = 0; col < output.Columns; col++) {
+                    // Calculate the region of the input corresponding to this output
+                    (int StartX, int StartY, int EndX, int EndY) region = (
+                        col * layer.StrideX, 
+                        row * layer.StrideY,
+                        col * layer.StrideX + filterWidth,
+                        row * layer.StrideY + filterHeight
+                    );
+
+                    // Loop over input values where the filter is applied
+                    switch (layer) {
+                        case LocalMaxPoolingLayer maxPool:
+                            int maxRow = 0, maxCol = 0; double maxVal = double.MinValue; // Values for max pooling
+                            for (int kr = region.StartY; kr < region.EndY; kr++) {
+                                for (int kc = region.StartX; kc < region.EndX; kc++) {
+                                    var value = input[kr, kc];
+
+                                    // Compute; Assume max pooling (avg is different)
+                                    if (value > maxVal) {
+                                        maxVal = value;
+                                        maxRow = kr;
+                                        maxCol = kc;
+                                    }
+                                }
+                            }
+                            inputError[maxRow, maxCol] += error[row, col];              // Set error, assume max pooling assign error to the position of the max input value
+                            break;
+                        case LocalAvgPoolingLayer avgPool:
+                            double errorContribution = error[row, col] / filterElementCount; // Distribute the error
+                            for (int kr = region.StartY; kr < region.EndY; kr++) {
+                                for (int kc = region.StartX; kc < region.EndX; kc++) {
+                                    inputError[kr, kc] += errorContribution;            // Assign the error contribution to each element in the pooling region
+                                }   
+                            }
+                            break;
+                        default:
+                            throw new NotImplementedException($"This trainer doesn't support pooling layers of type {layer.GetType()}.");
+                    }
+                }
+            }
+
+            // Assign the errors for this input
+            inputErrors[b] = Matrix<double>.Wrap(inputError);
+        }
+
+        // Pass errors along for next layer
+        return new BackpropagationReturns { 
+            Errors = inputErrors,
+            Gradient = null,
+        };
+    }
+
+    public BackpropagationReturns Visit(FullyConnectedLayer layer, BackpropagationArgs args) {
+        // Current layer deltas
+        var flattened_inputs = args.Inputs.SelectMany(x => x.FlattenRows()).ToArray();
+        var output = args.Outputs[0];                                       // Output vector
+        var gradient = layer.ActivationFunction.InvokeDerivative(output);   // Gradient of vector elements
+        var delta = Vec<double>.Wrap((gradient * args.Errors[0]).FlattenRows().ToArray()); // Delta of vector elements
+		
+		// Do gradient clipping
+		clip(delta, gradient_clip_threshold_neuron);						// Clip using the default clip size
+
+        // Compute errors to get passed to the next layer
+        var error_vec = layer.Weights * delta;                              // Vector of errors for the next layer
+        var input_errors = error_vec.Shape(                                 // Reshape to un-flatten error vector to match the input dimensions
+            args.Inputs.Select(x => x.Shape).ToArray()) 
+        .ToArray();
+        
+        // Pass error along for next layer, and gradients for weight updates
+        var weights_per_neuron = layer.Weights.Columns;
+        double[,] weight_grads = new double[layer.Weights.Rows, weights_per_neuron];
+        for (var neuron = 0; neuron < delta.Dimensionality; neuron++) {
+            var neuron_delta = delta[neuron];
+            for (var weight = 0; weight < weights_per_neuron; weight++) {
+				var grad = neuron_delta * flattened_inputs[neuron * weights_per_neuron + weight];
+				clip(ref grad, gradient_clip_threshold_weight);						// Clip using the larger weight/kernel size
+                weight_grads[neuron, weight] = grad;
+            }
+        }
+        return new BackpropagationReturns { 
+            Errors = input_errors,
+            Gradient = new FullyConnectedGradients { 
+                WeightGradients = Matrix<double>.Wrap(weight_grads),
+                BiasGradients = delta,
+            }
+        };
+    }
+
+		#region Gradient Clipping
+		private bool use_gradient_clipping = true;
+		private double gradient_clip_threshold_weight = 10.0; // Or weight, weight might be a better term
+		private double gradient_clip_threshold_neuron = 5.0;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private void clip(ref double d, double clip_threshold) {
+			if (!use_gradient_clipping)
+				return;
+		
+			if (Math.Abs(d) > clip_threshold) {
+				d = Math.Sign(d) * clip_threshold;
+			}
+		}
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private void clip(Vec<double> vector, double clip_threshold) {
+			if (!use_gradient_clipping)
+				return;
+		
+			double[] mut = (double[])vector;
+			for (var i = 0; i < mut.Length; i++) {
+				var val = mut[i];
+				if (Math.Abs(val) > clip_threshold) {
+					mut[i] = Math.Sign(val) * clip_threshold;
+				}
+			}
+		}
+		
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private void clip(Matrix<double> mat, double clip_threshold) {
+			if (!use_gradient_clipping)
+				return;
+		
+			double[,] mut = (double[,])mat;
+			for (var r = 0; r < mut.GetLength(0); r++) {
+				for (var c = 0; c < mut.GetLength(1); c++) {
+					var val = mut[r, c];
+					if (Math.Abs(val) > clip_threshold) {
+						mut[r, c] = Math.Sign(val) * clip_threshold;
+					}
+				}
+			}
+		}
+		
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private void clip(Matrix<double>[] mats, double clip_threshold) {
+			if (!use_gradient_clipping)
+				return;
+			
+			foreach (var mat in mats)
+				clip(mat, clip_threshold);
+		}
+		#endregion
+
+    #endregion
+
+    #region Weight Updates
+    public struct WeightUpdateArgs {
+        public Gradients? Gradients;
+    }
+    public struct WeightUpdateReturns {
+        // Empty but left in case we need this in the future
+    }
+
+    public WeightUpdateReturns Visit(ConvolutionLayer layer, WeightUpdateArgs args) {
+        if (args.Gradients is null || args.Gradients is not ConvolutionGradients gradients)
+            throw new NullReferenceException(nameof(args.Gradients));
+
+        
+        if (gradients.FilterKernelGradients is not null) {
+            for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
+                var filter = layer.Filters[filterIndex];
+
+                for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
+                    var kernel = filter[kernelIndex];
+                    var next_kernel = kernel + learningRate * gradients.FilterKernelGradients[filterIndex][kernelIndex];
+                    filter[kernelIndex] = next_kernel;
+                }
+            }
+        }
+
+        if (gradients.BiasGradients is not null) {
+			for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
+				var filter = layer.Filters[filterIndex];
+				filter.Bias += learningRate * gradients.BiasGradients[filterIndex];
+			}
+		}
+
+        return new WeightUpdateReturns {};
+    }
+
+    public WeightUpdateReturns Visit(PoolingLayer layer, WeightUpdateArgs args) {
+        // Do nothing for gradient updates on the pooling layer
+        return new WeightUpdateReturns {};
+    }
+
+    public WeightUpdateReturns Visit(FullyConnectedLayer layer, WeightUpdateArgs args) {
+        if (args.Gradients is null || args.Gradients is not FullyConnectedGradients gradients)
+            throw new NullReferenceException(nameof(args.Gradients));
+        
+        if (gradients.WeightGradients.HasValue)
+            layer.Weights = layer.Weights + learningRate * gradients.WeightGradients.Value;
+        
+        if (gradients.BiasGradients.HasValue)
+            layer.Biases = layer.Biases + learningRate * gradients.BiasGradients.Value;
+        
+        return new WeightUpdateReturns {};
+    }
+    #endregion
+}

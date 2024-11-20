@@ -30,13 +30,78 @@ BlazorComponents.PaintApp = (function(){
         context.strokeStyle = colour;
     }
 
-    exports.init = function(canvas, width, height) {
+    exports.init = function(canvas, width, height, import_input) {
         const context = canvas.getContext('2d');
         context.strokeStyle = "red";
 
         const MAIN_MOUSE_BUTTON = 0;
 
         shouldDraw = false;
+
+        if (import_input) {
+            function setup_import(canvas, input, object_fit) {
+                function setup_contain(canvas, input) {
+                    var load_image = function(e) {
+                        var URL = window.URL;
+                        if (!e.target.files || e.target.files.length < 1)
+                            return;
+                        var url = URL.createObjectURL(e.target.files[0]);
+                        var image = new Image();
+                        image.src = url;
+                        image.onload = () => {
+                            var ctx = canvas.getContext("2d");
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            if (image.width > image.height) {
+                                var y_scale = canvas.width/image.width;
+                                var y_offset = (canvas.height - (image.height * y_scale)) / 2.0;
+                                ctx.drawImage(image, 0, y_offset, canvas.width, image.height * y_scale);
+                            } else {
+                                var x_scale = canvas.height/image.height;
+                                var x_offset = (canvas.width - (image.width * x_scale)) / 2.0;
+                                ctx.drawImage(image, x_offset, 0, image.width * x_scale, canvas.height);
+                            }
+                            canvas.dispatchEvent(new Event('mouseup', { bubbles: true, cancelable: true, view: window })); // Manually trigger mouse up as if the loaded image was "drawn"
+                        }
+                    }
+                    input.addEventListener('change', load_image);
+                }
+                function setup_cover(canvas, input) {
+                    var load_image = function(e) {
+                        var URL = window.URL;
+                        if (!e.target.files || e.target.files.length < 1)
+                            return;
+                        var url = URL.createObjectURL(e.target.files[0]);
+                        var image = new Image();
+                        image.src = url;
+                        image.onload = () => {
+                            var ctx = canvas.getContext("2d");
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            if (image.width > image.height) {
+                                var x_scale = canvas.height/image.height;
+                                var x_offset = (canvas.width - (image.width * x_scale)) / 2.0;
+                                ctx.drawImage(image, x_offset, 0, image.width * x_scale, canvas.height);
+                            } else {
+                                var y_scale = canvas.width/image.width;
+                                var y_offset = (canvas.height - (image.height * y_scale)) / 2.0;
+                                ctx.drawImage(image, 0, y_offset, canvas.width, image.height * y_scale);
+                            }
+                            canvas.dispatchEvent(new Event('mouseup', { bubbles: true, cancelable: true, view: window })); // Manually trigger mouse up as if the loaded image was "drawn"
+                        }
+                    }
+                    input.addEventListener('change', load_image);
+                }
+                
+                switch (object_fit) {
+                    case "contain":
+                        setup_contain(canvas, input);
+                        break;
+                    case "cover":
+                        setup_cover(canvas, input);
+                        break;
+                }
+            }
+            setup_import(canvas, import_input, 'cover');
+        }
 
         function mousedown(event) {
             if (event.button === MAIN_MOUSE_BUTTON) {

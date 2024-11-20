@@ -4,7 +4,29 @@ using DotML.Network.Training;
 namespace DotML.Test;
 
 [TestClass]
-public class SerializationFFTest {
+public class SerializationTest {
+    [TestMethod]
+    public void TestSafetensor() {
+        var filename = "SerializationTest.safetensors";
+        var key = "identity";
+        var matrix = Matrix<double>.Identity(5);
+
+        SafetensorBuilder sb = new SafetensorBuilder();
+        sb.Add(key, matrix);
+        sb.WriteToFile(filename);
+
+        sb = SafetensorBuilder.ReadFromFile(filename);
+        Assert.AreEqual(1, sb.Keys().Count());
+        Assert.AreEqual(true, sb.ContainsKey(key));
+
+        var tensor = sb.GetTensor<double>(key);
+        Assert.AreEqual(matrix.Rows, tensor.Rows);
+        Assert.AreEqual(matrix.Columns, tensor.Columns);
+        for (var i = 0; i < matrix.Size; i++) {
+            Assert.AreEqual(matrix[i], tensor[i], 0.001, "Loaded matrix differs from the source");
+        }
+    }
+
     [TestMethod]
     public void JsonSerialization() {
         var before = new ClassicalFeedforwardNetwork(

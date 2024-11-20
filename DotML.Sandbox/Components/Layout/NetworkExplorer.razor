@@ -320,11 +320,11 @@ else if (state == State.Playground) {
     #region Training Params 
     // -------------------------------------------------------
     private int init_index = 1;
-    private IInitializer<TNetwork> initializer => init_index >= 0 && init_index < initializers.Length ? initializers[init_index] : NoInitialization<TNetwork>.Instance;
-    private IInitializer<TNetwork>[] initializers = [
-        new RandomInitialization<TNetwork>(-0.05, 0.05),
-        new NormalXavierInitialization<TNetwork>(),
-        new UniformXavierInitialization<TNetwork>(),
+    private IInitializer initializer => init_index >= 0 && init_index < initializers.Length ? initializers[init_index] : new ZeroInitialization();
+    private IInitializer[] initializers = [
+        new RandomInitialization(-0.05, 0.05),
+        new NormalXavierInitialization(),
+        new UniformXavierInitialization(),
     ];
     // -------------------------------------------------------
     [Parameter] public double LearningRate {get; set;} = 0.1;
@@ -386,9 +386,17 @@ else if (state == State.Playground) {
             return;
         
         Network.ForeachLayer(layer => {
-            layer.ForeachNeuron(neuron => {
-                neuron.ActivationFunction = activation;
-            });
+            if (layer is NeuronLayer neuronLayer) {
+                neuronLayer.ForeachNeuron((ref Neuron neuron) => {
+                    neuron.ActivationFunction = activation;
+                });
+            } else {
+                layer.ForeachNeuron(neuron => {
+                    if (neuron is IIndividuallyActivatedNeuron n) { 
+                        n.ActivationFunction = activation;
+                    }
+                });
+            }
         });
         training_session = trainer.EnumerateTraining(Network, TrainingData.SampleRandomly(), (ValidationData ?? TrainingData).SampleSequentially());
     }

@@ -6,18 +6,23 @@
     <canvas @ref="canvas" width="@ImgWidth" height="@ImgHeight" @onmouseup=canvas_changed></canvas>
     <button class="btn delete" @onclick=Clear>&times; Clear</button>
 </div>
+<div class="controls-container">
+    <label>Import image </label>
+    <input @ref="import_input" type="file" accept="image/*" capture="environment">
+</div>
 
 @code {
     [Parameter] public int ImgWidth {get; set;} = 32;
     [Parameter] public int ImgHeight {get; set;} = 32;
     [Parameter] public Action<Pixel[]>? OnChange {get; set;}
     private ElementReference? canvas;
+    private ElementReference? import_input;
 
     protected override void OnAfterRender(bool firstRender) {
         if (!firstRender)
             return;
 
-        js.InvokeVoidAsync("BlazorComponents.PaintApp.init", canvas, ImgWidth, ImgHeight);
+        js.InvokeVoidAsync("BlazorComponents.PaintApp.init", canvas, ImgWidth, ImgHeight, import_input);
     }
 
     public void Clear() {

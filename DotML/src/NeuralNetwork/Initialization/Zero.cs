@@ -1,27 +1,20 @@
 namespace DotML.Network.Initialization;
 
 /// <summary>
-/// An initializer which doesn't initialize lol
-/// </summary>
-/// <typeparam name="TNetwork">Network type</typeparam>
-public class NoInitialization<TNetwork> : IInitializer<TNetwork> where TNetwork: INeuralNetwork  {
-    public static readonly NoInitialization<TNetwork> Instance = new NoInitialization<TNetwork>();
-    public void InitializeBiases(TNetwork network) {
-        throw new NotImplementedException();
-    }
-
-    public void InitializeWeights(TNetwork network) {
-        throw new NotImplementedException();
-    }
-}
-
-/// <summary>
 /// An initializer which initializes everything to 0
 /// </summary>
 /// <typeparam name="TNetwork">Network type</typeparam>
-public class ZeroInitialization<TNetwork> : IInitializer<TNetwork> where TNetwork: ILayeredNeuralNetwork<ILayerWithNeurons>  {
-    public static readonly NoInitialization<TNetwork> Instance = new NoInitialization<TNetwork>();
-    public void InitializeBiases(TNetwork network) {
+public class ZeroInitialization: IInitializer {
+    
+    public double RandomBias(int parameterCount) {
+        return 0;
+    }
+
+    public double RandomWeight(int parameterCount) {
+        return 0;
+    }
+
+    public void InitializeBiases(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         network.ForeachLayer(layer => {
             layer.ForeachNeuron(neuron => {
                 var weights = neuron.Weights;
@@ -34,7 +27,7 @@ public class ZeroInitialization<TNetwork> : IInitializer<TNetwork> where TNetwor
         });
     }
 
-    public void InitializeWeights(TNetwork network) {
+    public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         network.ForeachLayer(layer => {
             layer.ForeachNeuron(neuron => {
                 neuron.Bias = 0; 

@@ -2,9 +2,9 @@ using System.Runtime.CompilerServices;
 
 namespace DotML.Network.Initialization;
 
-public class NormalXavierInitialization<TNetwork> 
-    : IInitializer<TNetwork> 
-where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
+public class NormalXavierInitialization
+    : IInitializer
+{
     private static Random rng = new Random();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -15,7 +15,16 @@ where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
         return mean + z0 * stddev;
     }
 
-    public void InitializeWeights(TNetwork network) {
+    public double RandomWeight(int parameterCount) {
+        double stddev = Math.Sqrt(2.0 / parameterCount);
+        return NormalRandom(0, stddev);
+    }
+
+    public double RandomBias(int parameterCount) {
+        return 0.01;
+    }
+
+    public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         network.ForeachLayer(layer => {
             layer.ForeachNeuron(neuron => {
                 double stddev = Math.Sqrt(2.0 / (layer.InputCount + layer.OutputCount));
@@ -29,7 +38,7 @@ where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
         });
     }
 
-    public void InitializeBiases(TNetwork network) {
+    public void InitializeBiases(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         network.ForeachLayer(layer => {
             layer.ForeachNeuron(neuron => {
                 //double stddev = Math.Sqrt(2.0 / (layer.InputCount + layer.OutputCount));
@@ -40,9 +49,9 @@ where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
     }
 }
 
-public class UniformXavierInitialization<TNetwork> 
-    : IInitializer<TNetwork> 
-where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
+public class UniformXavierInitialization
+    : IInitializer
+{
     private static Random rng = new Random();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -50,7 +59,16 @@ where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
         return (rng.NextDouble() * 2 * limit) - limit;
     }
 
-    public void InitializeWeights(TNetwork network) {
+    public double RandomWeight(int parameterCount) {
+        double limit = Math.Sqrt(6.0 / parameterCount);
+        return UniformRandom(limit);
+    }
+
+    public double RandomBias(int parameterCount) {
+        return 0.01;
+    }
+
+    public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         network.ForeachLayer(layer => {
             layer.ForeachNeuron(neuron => {
                 double limit = Math.Sqrt(6.0 / (layer.InputCount + layer.OutputCount));
@@ -64,7 +82,7 @@ where TNetwork:ILayeredNeuralNetwork<ILayerWithNeurons> {
         });
     }
 
-    public void InitializeBiases(TNetwork network) {
+    public void InitializeBiases(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         network.ForeachLayer(layer => {
             layer.ForeachNeuron(neuron => {
                 //double limit = Math.Sqrt(6.0 / (layer.InputCount + layer.OutputCount));

@@ -1,0 +1,27 @@
+<table class="table">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Letter</th>
+            <th>Probability</th>
+        </tr>
+    </thead>
+    <tbody>
+    @{
+        var max = Output.IndexOfMaxValue();
+        var distibution = new ProbabilityDistribution(Output, ClassNames);
+        foreach (var prob in distibution.EnumerateProbabilities()) {
+            <tr>
+                <td>@if(max == prob.Index){<text>&checkmark;</text>}</td>
+                <td>@prob.Label</td>
+                <td>@((prob.Probability * 100).ToString("F3"))%</td>
+            </tr>
+        }
+    }
+    </tbody>
+</table>
+
+@code {
+    [Parameter] public Vec<double> Output {get; set;}
+    [Parameter] public string[]? ClassNames {get; set;}
+}

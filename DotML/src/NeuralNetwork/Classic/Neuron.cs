@@ -5,7 +5,7 @@ namespace DotML.Network;
 /// <summary>
 /// Simple struct based neuron
 /// </summary>
-public struct Neuron : INeuron {
+public struct Neuron : IIndividuallyActivatedNeuron {
     /// <summary>
     /// Neuron bias value
     /// </summary>

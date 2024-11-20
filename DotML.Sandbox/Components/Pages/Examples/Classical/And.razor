@@ -1,9 +1,9 @@
-@page "/xor"
+@page "/examples/classic/and"
 @using DotML
 @using DotML.Network
 @using DotML.Network.Training
 
-<NetworkExplorer TNetwork="ClassicalFeedforwardNetwork" Network=network TrainingData=training LearningRate=0.01 @ref=explorer>
+<NetworkExplorer TNetwork="ClassicalFeedforwardNetwork" Network=network TrainingData=training @ref=explorer>
     <Input>
         <div class="row" style="text-align: center;">
             <div class="col-sm-6">
@@ -45,11 +45,11 @@
 @code {
     private NetworkExplorer<ClassicalFeedforwardNetwork>? explorer;
 
-    private ClassicalFeedforwardNetwork network = new ClassicalFeedforwardNetwork(2,2,1);
+    private ClassicalFeedforwardNetwork network = new ClassicalFeedforwardNetwork(2,1);
     private TrainingSet training = new TrainingSet(
-        new TrainingPair { Input = new Vec<double>(1.0, 1.0),   Output = new Vec<double>(-1.0) },
-        new TrainingPair { Input = new Vec<double>(1.0, -1.0),  Output = new Vec<double>(1.0)  },
-        new TrainingPair { Input = new Vec<double>(-1.0, 1.0),  Output = new Vec<double>(1.0)  },
+        new TrainingPair { Input = new Vec<double>(1.0, 1.0),   Output = new Vec<double>(1.0)  },
+        new TrainingPair { Input = new Vec<double>(1.0, -1.0),  Output = new Vec<double>(-1.0) },
+        new TrainingPair { Input = new Vec<double>(-1.0, 1.0),  Output = new Vec<double>(-1.0) },
         new TrainingPair { Input = new Vec<double>(-1.0, -1.0), Output = new Vec<double>(-1.0) }
     );
 

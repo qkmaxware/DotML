@@ -1,0 +1,111 @@
+@page "/examples/cnn/xor"
+@using DotML
+@using DotML.Network
+@using DotML.Network.Training
+
+<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=@network Trainer=@trainer TrainingData=@training ValidationData=@testing>
+    <Input>
+        <div class="row" style="text-align: center;">
+            <div class="col-sm-6">
+                <label>Input 1</label><br>
+                <button type="button" class="btn @(context.Value[0] > 0 ? "btn-primary" : string.Empty)" @onclick=@((evt) => set(context, 0, context.Value[0] <= 0 ? 1.0 : -1.0))>
+                    @(context.Value[0] > 0 ? "True" : "False")
+                </button>
+            </div>
+            <div class="col-sm-6">
+                <label>Input 2</label><br>
+                <button type="button" class="btn @(context.Value[1] > 0 ? "btn-primary" : string.Empty)" @onclick=@((evt) => set(context, 1, context.Value[1] <= 0 ? 1.0 : -1.0))>
+                    @(context.Value[1] > 0 ? "True" : "False")
+                </button>
+            </div>
+        </div>
+    </Input>
+    <Output>
+        <div class="p-4" style="text-align: center; font-size: large;">
+            <label>Is-True: </label>
+            @if(context.Value[0] > 0) {
+                <span style="color: green">&checkmark;</span>
+            } else {
+                <span style="color: red">&times;</span>
+            }
+        </div>
+    </Output>
+    <DataVisualization>
+        
+    </DataVisualization>
+    <NetworkVisualization>
+        <SvgRenderer Value=context></SvgRenderer>
+        <hr> 
+        <label>Hidden Layer</label><br>
+        <label>Weights:</label>
+        <MatrixTable Matrix=@(((FullyConnectedLayer)network.GetLayer(0)).Weights)></MatrixTable>
+        <label>Biases:</label>
+        <VectorTable Vector=@(((FullyConnectedLayer)network.GetLayer(0)).Biases)></VectorTable>
+        <label>Activation:</label><br>
+        <span>@(((FullyConnectedLayer)network.GetLayer(0)).ActivationFunction.GetType().Name)</span>
+        <hr>
+        <label>Output Layer</label><br>
+        <label>Weights:</label>
+        <MatrixTable Matrix=@(((FullyConnectedLayer)network.GetLayer(1)).Weights)></MatrixTable>
+        <label>Biases:</label>
+        <VectorTable Vector=@(((FullyConnectedLayer)network.GetLayer(1)).Biases)></VectorTable>
+        <label>Activation:</label><br>
+        <span>@(((FullyConnectedLayer)network.GetLayer(1)).ActivationFunction.GetType().Name)</span> 
+    </NetworkVisualization>
+    <ValidationVisualization>
+        
+    </ValidationVisualization>
+</NetworkExplorerV2>
+
+@code {
+    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+    const int IMG_WIDTH = 2;
+    const int IMG_HEIGHT = 1;
+    const int IMG_CHANNELS = 1;
+    const int OUT_CLASSES = 1;
+
+    private ConvolutionalFeedforwardNetwork network = new ConvolutionalFeedforwardNetwork(
+        IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS,
+        [
+            // 2 - 2 - 1
+            new FullyConnectedLayer(
+                input_size: 2, 
+                neurons: 2,
+                activation: HyperbolicTangent.Instance
+            ),
+            new FullyConnectedLayer(
+                input_size: 2, 
+                neurons: OUT_CLASSES,
+                activation: HyperbolicTangent.Instance
+            )
+        ]
+    );
+    private ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>();
+
+    private bool loaded => training is null || testing is null;
+    private static TrainingSet? training = null;
+    private static TrainingSet? testing = null;
+
+    static Xor(){
+        training = new TrainingSet(
+            new TrainingPair { Input = new Vec<double>(1.0, 1.0),   Output = new Vec<double>(-1.0) },
+            new TrainingPair { Input = new Vec<double>(1.0, -1.0),  Output = new Vec<double>(1.0)  },
+            new TrainingPair { Input = new Vec<double>(-1.0, 1.0),  Output = new Vec<double>(1.0)  },
+            new TrainingPair { Input = new Vec<double>(-1.0, -1.0), Output = new Vec<double>(-1.0) }
+        );
+    }
+
+    private void set(Box<Vec<double>> vector, int dim, double value) {
+        var vec = vector.Value;
+        if (vec.Dimensionality != 2) {
+            vec = new Vec<double>(2);
+            vector.Value = vec;
+        }
+
+        if (vec.Dimensionality == 0 || dim < 0 || dim >= vec.Dimensionality)
+            return;
+
+        ((double[])vec)[dim] = value;
+        explorer?.RefreshState();
+    }
+}

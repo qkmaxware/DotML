@@ -1,0 +1,98 @@
+.header {
+    font-weight: bolder;
+    font-size: 150%;
+    display: block;
+} 
+
+.figure {
+    width: 100%;
+}
+ 
+table {
+    table-layout: fixed;
+}
+
+.tab {
+    display: inline-block;
+    cursor: pointer;
+    font-size: 160%;
+    text-align:  center;
+    user-select: none;
+    width: 240px;
+}
+
+th, td {
+    text-align: left;
+    vertical-align: top;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
+}
+
+.titled {
+    cursor: help;
+}
+
+.red {
+    color: red;
+}
+
+.green {
+    color: green;
+}
+
+.circle-small {
+    border-radius: 50%;
+    height: 40px;
+    width: 40px;
+    text-align: center;
+    font-size: 100%;
+    line-height: 100%;
+}
+
+.circle-large {
+    border-radius: 50%;
+    height: 60px;
+    width: 60px;
+    text-align: center;
+    font-size: 200%;
+    line-height: 100%;
+}
+
+.horizontal {
+    width: 100%;
+    overflow-y: hidden;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.horizontal>.form-group {
+    display: inline-block;
+    width: 240px;
+    margin: 6px;
+    vertical-align: top;
+}
+
+.horizontal label {
+    width: 100%;
+    white-space: wrap;
+}
+
+.divider {
+    min-height: 12px;
+}
+
+.summary-header {
+    background-color: lightgray;
+    display: block;
+    text-align: center;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+}
+
+.summary-contents {
+    text-align: center;
+    border: 1px solid lightgray;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+}

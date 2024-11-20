@@ -1,0 +1,19 @@
+@inject IJSRuntime js;
+<div style="text-align: right;">
+    <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_str())>get</button>
+</div>
+<figure>
+@if (Value is not null) {
+    @((MarkupString)Value.ToSvg())
+}
+</figure>
+
+@code {
+    [Parameter] public IDiagrammable? Value {get; set;}
+
+    private async void download_str(string name = "network.svg") {
+        if (Value is null)
+            return;
+        await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "text/svg", System.Text.Encoding.UTF8.GetBytes(Value.ToSvg()));
+    }
+}

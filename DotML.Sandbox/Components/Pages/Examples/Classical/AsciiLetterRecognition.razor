@@ -1,4 +1,4 @@
-@page "/ascii-recognition"
+@page "/examples/classic/ascii-recognition"
 @using DotML
 @using DotML.Network
 @using DotML.Network.Training
@@ -14,27 +14,7 @@
         <pre style="text-align: center; margin: 0 auto;">@_selected_letter_ascii</pre> 
     </Input>
     <Output>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Letter</th>
-                    <th>Probability</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{
-                    var max = context.IndexOfMaxValue();
-                    for (var i = 0; i < OUTPUT_CLASSES.Length; i++) {
-                        <tr>
-                            <td>@if(max == i){<text>&checkmark;</text>}</td>
-                            <td>@OUTPUT_CLASSES[i]</td>
-                            <td>@((((context[i] + 1) / 2) * 100).ToString("F3"))%</td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
+        <ClassificationTable Output=@context ClassNames=@OUTPUT_CLASSES_STR></ClassificationTable>
     </Output>
 </NetworkExplorer>
 
@@ -58,13 +38,18 @@
         'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 
         'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' 
     };
+    private static string[] OUTPUT_CLASSES_STR = new string[OUTPUT_SIZE] {
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", 
+        "J", "K", "L", "M", "N", "O", "P", "Q", "R", 
+        "S", "T", "U", "V", "W", "X", "Y", "Z" 
+    };
 
     private static Vec<double> VectorFromLabel<T>(int index, T[] classes, double off = -1, double on = 1) {
         double[] values = new double[classes.Length];
         Array.Fill(values, off);
         if (index >= 0 && index < classes.Length)
             values[index] = on;
-        return new Vec<double>(values);
+        return Vec<double>.Wrap(values);
     }
 
     private char _select_letter;

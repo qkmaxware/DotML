@@ -1,0 +1,16 @@
+.horizontal {
+    width: 100%;
+    overflow-y: hidden;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.layer {
+    display: inline-block;
+    width: 250px;
+    vertical-align: top;
+}
+
+.layer + .layer {
+    margin-left: 12px;
+}

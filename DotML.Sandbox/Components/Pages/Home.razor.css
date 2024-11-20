@@ -1,3 +1,7 @@
 h3 {
     margin-top: 12px;
 }
+
+section {
+    border-left: 6px solid lightgray;
+}

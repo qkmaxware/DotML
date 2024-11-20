@@ -1,0 +1,19 @@
+@typeparam TValue where TValue:INumber<TValue>,IExponentialFunctions<TValue>,IRootFunctions<TValue>
+@using DotML
+@using System.Numerics
+
+<table class="table">
+    <tbody>
+        @for (var row = 0; row < Matrix.Rows; row++) {
+            <tr>
+            @for (var col = 0; col < Matrix.Columns; col++) {
+                <td>@Matrix[row, col]</td>
+            }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter] public Matrix<TValue> Matrix {get; set;}
+}

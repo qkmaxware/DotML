@@ -36,6 +36,6 @@ public class AsciiImgVectorizor : IFeatureExtractor<string> {
             }
         }
 
-        return new Vec<double>(vec);
+        return Vec<double>.Wrap(vec);
     }
 }

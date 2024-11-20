@@ -1,4 +1,4 @@
-@page "/or"
+@page "/examples/classic/not"
 @using DotML
 @using DotML.Network
 @using DotML.Network.Training
@@ -6,18 +6,10 @@
 <NetworkExplorer TNetwork="ClassicalFeedforwardNetwork" Network=network TrainingData=training @ref=explorer>
     <Input>
         <div class="row" style="text-align: center;">
-            <div class="col-sm-6">
-                <label>Input 1</label><br>
-                <button type="button" class="btn @(context.Value[0] > 0 ? "btn-primary" : string.Empty)" @onclick=@((evt) => set(context, 0, context.Value[0] <= 0 ? 1.0 : -1.0))>
-                    @(context.Value[0] > 0 ? "True" : "False")
-                </button>
-            </div>
-            <div class="col-sm-6">
-                <label>Input 2</label><br>
-                <button type="button" class="btn @(context.Value[1] > 0 ? "btn-primary" : string.Empty)" @onclick=@((evt) => set(context, 1, context.Value[1] <= 0 ? 1.0 : -1.0))>
-                    @(context.Value[1] > 0 ? "True" : "False")
-                </button>
-            </div>
+            <label>Input</label><br>
+            <button type="button" class="btn @(context.Value[0] > 0 ? "btn-primary" : string.Empty)" @onclick=@((evt) => set(context, 0, context.Value[0] <= 0 ? 1.0 : -1.0))>
+                @(context.Value[0] > 0 ? "True" : "False")
+            </button>
         </div>
     </Input>
     <Output>
@@ -45,18 +37,16 @@
 @code {
     private NetworkExplorer<ClassicalFeedforwardNetwork>? explorer;
 
-    private ClassicalFeedforwardNetwork network = new ClassicalFeedforwardNetwork(2,1);
+    private ClassicalFeedforwardNetwork network = new ClassicalFeedforwardNetwork(1,1);
     private TrainingSet training = new TrainingSet(
-        new TrainingPair { Input = new Vec<double>(1.0, 1.0),   Output = new Vec<double>(1.0) },
-        new TrainingPair { Input = new Vec<double>(1.0, -1.0),  Output = new Vec<double>(1.0)  },
-        new TrainingPair { Input = new Vec<double>(-1.0, 1.0),  Output = new Vec<double>(1.0)  },
-        new TrainingPair { Input = new Vec<double>(-1.0, -1.0), Output = new Vec<double>(-1.0) }
+        new TrainingPair { Input = new Vec<double>(1.0),   Output = new Vec<double>(-1.0) },
+        new TrainingPair { Input = new Vec<double>(-1.0),  Output = new Vec<double>(1.0)  }
     );
 
     private void set(Box<Vec<double>> vector, int dim, double value) {
         var vec = vector.Value;
-        if (vec.Dimensionality != 2) {
-            vec = new Vec<double>(2);
+        if (vec.Dimensionality != 1) {
+            vec = new Vec<double>(1);
             vector.Value = vec;
         }
 

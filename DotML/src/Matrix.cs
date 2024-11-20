@@ -1,26 +1,101 @@
+using System.Collections;
 using System.Data;
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.Json.Serialization;
 
 namespace DotML;
 
 /// <summary>
+/// Matrix shape
+/// </summary>
+public struct Shape {
+    /// <summary>
+    ///  Number of rows
+    /// </summary>
+    public int Rows; 
+    /// <summary>
+    /// Number of columns
+    /// </summary>
+    public int Columns;
+
+    public Shape() {}
+
+    public Shape(int rows, int columns) {
+        this.Rows = rows;
+        this.Columns = columns;
+    }
+
+    public static bool operator == (Shape a, Shape b) {
+        return a.Rows == b.Rows && a.Columns == b.Columns;
+    }
+    public static bool operator != (Shape a, Shape b) {
+        return a.Rows != b.Rows || a.Columns != b.Columns;
+    }
+
+    public static implicit operator Shape((int, int) tuple) {
+        return new Shape(tuple.Item1, tuple.Item2);
+    }
+
+    public void Deconstruct(out int rows, out int columns) {
+        rows = this.Rows;
+        columns = this.Columns;
+    }
+
+    public override string ToString() => $"{Rows} x {Columns}";
+}
+
+/// <summary>
 /// Wrapper struct around value array providing matrix like functionality. Behaves like pass-by-reference rather than pass-by-value while minimizing heap allocations and dereferences. 
 /// </summary>
-public struct Matrix<T> where T:INumber<T> {
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct Matrix<T> 
+: IEnumerable<T>
+where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
+{
+    private static T[,] NONE = new T[0,0];
     private T[,] values;
 
     /// <summary>
     /// Number of elements in the matrix
     /// </summary>
-    public int Size     => values.Length;
+    [JsonIgnore] public int Size     => values.Length;
     /// <summary>
     /// Number of columns
     /// </summary>
-    public int Columns  => values.GetLength(1);
+    public int Columns  => IsTransposed ? values.GetLength(0) : values.GetLength(1);
+    private int value_columns => values.GetLength(1); // Same as Columns, here in case I swap transposition to just be a boolean flag
     /// <summary>
     /// Number of rows
     /// </summary>
-    public int Rows     => values.GetLength(0);
+    public int Rows     => IsTransposed ? values.GetLength(1) : values.GetLength(0);
+    private int value_rows => values.GetLength(0); // Same as Rows, here in case I swap transposition to just be a boolean flag
+    /// <summary>
+    /// Matrix shape (rows & columns)
+    /// </summary>
+    [JsonIgnore] public Shape Shape => IsTransposed ? new Shape(value_columns, value_rows) : new Shape(value_rows, value_columns);
+    /// <summary>
+    /// Check if the matrix is a column matrix (only one column)
+    /// </summary> 
+    [JsonIgnore] public bool IsColumn => this.Columns == 1;
+    /// <summary>
+    /// Check if the matrix is a row matrix (only one row)
+    /// </summary> 
+    [JsonIgnore] public bool IsRow => this.Rows == 1;
+    /// <summary>
+    /// Check if the matrix is square
+    /// </summary> 
+    [JsonIgnore] public bool IsSquare => this.Rows == this.Columns;
+
+
+    /// <summary>
+    /// Create an empty 0x0 matrix
+    /// </summary>
+    public Matrix() {
+        this.values = NONE;
+    }
 
     /// <summary>
     /// Create a matrix from the given values
@@ -28,6 +103,21 @@ public struct Matrix<T> where T:INumber<T> {
     /// <param name="values">values</param>
     public Matrix(T[,] values) {
         this.values = values;
+    }
+
+    /// <summary>
+    /// Create a matrix from the given values
+    /// </summary>
+    /// <param name="values">values</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)] // Hoping this will allow the internal IFs to be optimized out at calling sites, tbh no idea if it will
+    private Matrix(T[,] values, bool shared) {
+        //this.values = values;
+        if (!shared) {
+            this.values = new T[values.GetLength(0),values.GetLength(1)];
+            Array.Copy(values, this.values, values.Length);
+        } else {
+            this.values = values;
+        }
     }
 
     /// <summary>
@@ -125,10 +215,27 @@ public struct Matrix<T> where T:INumber<T> {
     /// <returns>value at row, column or zero if out of bounds</returns>
     public T this[int row, int col] {
         get {
-            if (row >= 0 && row < Rows && col >= 0 && col < Columns)
+            if (IsTransposed) {
+                (row, col) = (col, row); // Swap row, col indices if transposed from underlying
+            }
+            if (row >= 0 && row < value_rows && col >= 0 && col < value_columns)
                 return values[row, col];
             else
                 return T.Zero;
+        }
+    }
+    
+    /// <summary>
+    /// Get the value of a matrix element by a sequential index
+    /// </summary>
+    /// <param name="index">Sequential index</param>
+    /// <returns>value at row, column or zero if out of bounds</returns>
+    public T this[int index] {  
+        get {
+            var row = index / Columns;
+            var col = index % Columns;
+            var val = IsTransposed ? this[col, row] : this[row, col];
+            return val;
         }
     }
 
@@ -150,13 +257,314 @@ public struct Matrix<T> where T:INumber<T> {
     /// <typeparam name="R">Result type</typeparam>
     /// <param name="mapping">Mapping function</param>
     /// <returns>New matrix, same size as the existing one but with elements modified by the mapping function</returns>
-    public Matrix<R> Map<R>(Func<T, R> mapping) where R:INumber<R> {
+    public Matrix<R> Map<R>(Func<T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
         Matrix<R> result = new Matrix<R>(Rows, Columns);
 
-        for (var row = 0; row < Rows; row++)
-            for (var col = 0; col < Columns; col++)
+        for (var row = 0; row < value_rows; row++)
+            for (var col = 0; col < value_columns; col++)
                 result.values[row, col] = mapping(this.values[row, col]);
         
+        return result;
+    }
+
+    /// <summary>
+    /// Enumerate over a flattened version of the matrix row-by-row.
+    /// </summary>
+    /// <returns>Matrix values as a single array</returns>
+    public IEnumerable<T> FlattenRows() {
+        for (var row = 0; row < value_rows; row++) {
+            for (var col = 0; col < value_columns; col++) {
+                yield return values[row, col];
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enumerate over a flattened version of the matrix column-by-column.
+    /// </summary>
+    /// <returns>Matrix values as a single array</returns>
+    public IEnumerable<T> FlattenColumns() {
+        for (var col = 0; col < value_columns; col++) {
+            for (var row = 0; row < value_rows; row++) {
+                yield return values[row, col];
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extract a given row from the matrix
+    /// </summary>
+    /// <param name="rowIndex">row index</param>
+    /// <returns>vector representation of the row</returns>
+    public Vec<T> ExtractRow(int rowIndex) {
+        T[] vec = new T[this.Columns];
+        for (var i = 0; i < this.Columns; i++) {
+            vec[i] = this[rowIndex, i];
+        }
+        return Vec<T>.Wrap(vec);
+    }
+
+    /// <summary>
+    /// Extract a given column from the matrix
+    /// </summary>
+    /// <param name="rowIndex">column index</param>
+    /// <returns>vector representation of the column</returns>
+    public Vec<T> ExtractColumn(int colIndex) {
+        T[] vec = new T[this.Rows];
+        for (var i = 0; i < this.Rows; i++) {
+            vec[i] = this[i, colIndex];
+        }
+        return Vec<T>.Wrap(vec);
+    }
+
+    /// <summary>
+    /// Flag to indicate if this matrix is transposed from it's original dimensions
+    /// </summary>
+    public bool IsTransposed {get; private set;} = false;
+
+    /// <summary>
+    /// Transposition of the matrix
+    /// </summary>
+    /// <returns>transposed matrix</returns>
+    public Matrix<T> Transpose() {
+        var result = this;                          // Copy the struct
+        result.IsTransposed = !result.IsTransposed;     // Flip the transposed flag
+        return result;                              // return the copy (both use the same underlying array)
+        // Old "DEEP" transposition
+        /*var result = new Matrix<T>(Columns, Rows);
+        for (int i = 0; i < Rows; i++) {
+            for (int j = 0; j < Columns; j++) {
+                result.values[j, i] = this[i, j];
+            }
+        }
+        return result;*/
+    }
+
+    /// <summary>
+    /// Wrap an existing rectangular array as a matrix without copying it's elements
+    /// </summary>
+    /// <param name="values">matrix elements</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> Wrap(T[,] values) {
+        return new Matrix<T>(values, shared: true);
+    }
+
+    /// <summary>
+    /// Clone the values of the given rectangular array into the matrix copying each element
+    /// </summary>
+    /// <param name="values">matrix elements</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> FromCopy(T[,] values) {
+        return new Matrix<T>(values, shared: false);
+    }
+
+    // TODO below this point I need to clarify the difference between Rows/Columns and value_rows, value_columns
+
+    /// <summary>
+    /// Hadamard or element-wise multiplication of two matrices
+    /// </summary>
+    /// <param name="other">other matrix</param>
+    /// <returns>element-wise product</returns>
+    public Matrix<T> Hadamard(Matrix<T> other) => ElementWise(other, (a, b) => a * b);
+
+    /// <summary>
+    /// Perform an element-wise operation between two matrices
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var result = As.ElementWise(Bs, (a,b) => a + b);
+    /// </code>
+    /// </example>
+    /// <param name="other">second matric</param>
+    /// <param name="operator">element-wise operation</param>
+    /// <returns>matrix</returns>
+    /// <exception cref="ArithmeticException">Matrix dimensions must match</exception>
+    public Matrix<T> ElementWise(Matrix<T> other, Func<T, T, T> @operator) {
+        if (this.Columns != other.Columns || this.Rows != other.Rows)
+            throw new ArithmeticException("Incompatible dimensions for element-wise operations");
+
+        int rows = Rows;
+        int cols = Columns;
+
+        Matrix<T> result = new Matrix<T>(rows, cols);
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                result.values[i, j] = @operator(this[i, j], other[i, j]);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Perform an element-wise operation between two matrices
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var result = As.ElementWise<double>(Bs, (a,b) => (double)(a + b));
+    /// </code>
+    /// </example>
+    /// <param name="other">second matric</param>
+    /// <param name="operator">element-wise operation</param>
+    /// <returns>matrix</returns>
+    /// <exception cref="ArithmeticException">Matrix dimensions must match</exception>
+    public Matrix<R> ElementWise<R>(Matrix<T> other, Func<T, T, R> @operator) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+        if (this.Columns != other.Columns || this.Rows != other.Rows)
+            throw new ArithmeticException("Incompatible dimensions for element-wise operations");
+
+        int rows = Rows;
+        int cols = Columns;
+
+        Matrix<R> result = new Matrix<R>(rows, cols);
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                result.values[i, j] = @operator(this[i, j], other[i, j]);
+
+        return result;
+    }   
+
+    /// <summary>
+    /// Reshape the elements of this matrix into one or more matrices of a different shape.
+    /// </summary>
+    /// <param name="shapes">list of shapes</param>
+    /// <returns>matrices</returns>
+    public IEnumerable<Matrix<T>> Reshape(params Shape[] shapes) {
+        var index = 0;
+
+        foreach (var shape in shapes) {
+            var mtx = new Matrix<T>(shape.Rows, shape.Columns);
+            for (int row = 0; row < mtx.Rows; row++) {
+                for (int col = 0; col < mtx.Columns; col++) {
+                    if (index < Size)
+                        mtx.values[row, col] = this[index++];
+                    else 
+                        mtx.values[row, col] = T.Zero;
+                }
+            }
+            yield return mtx;
+        }
+    }
+
+    /// <summary>
+    /// Reshape the elements of this matrix into one or more matrices of a different shape.
+    /// </summary>
+    /// <param name="size">shape of the matrix</param>
+    /// <param name="channels">number of matrices</param>
+    /// <returns>matrices</returns>
+    public IEnumerable<Matrix<T>> Reshape(Shape size, int channels) {       
+        return Reshape(Enumerable.Repeat(0, channels).Select(x => size).ToArray());
+    }   
+
+    /// <summary>
+    /// Deep clone a matrix
+    /// </summary>
+    /// <returns></returns>
+    public Matrix<T> Clone() {
+        Matrix<T> res = new Matrix<T>(this.Rows, this.Columns);
+        for (var r = 0; r < res.Rows; r++)
+            for (var c = 0; c < res.Columns; c++)
+                res.values[r, c] = this[r,c];
+        return res;
+    }
+
+    /// <summary>
+    /// Generate a matrix with the given values provided by a generator function
+    /// </summary>
+    /// <param name="rows">number of rows</param>
+    /// <param name="cols">number of columns</param>
+    /// <param name="generator">generator function</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> Generate(int rows, int cols, Func<T> generator) {
+        Matrix<T> result = new Matrix<T>(rows, cols);
+        for (int i = 0; i < result.Rows; i++)
+            for (int j = 0; j < result.Columns; j++)
+                result.values[i, j] = generator();
+        return result;
+    }
+
+    /// <summary>
+    /// Create a column matrix from the given values
+    /// </summary>
+    /// <param name="args">matrix elements</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> Column(params T[] args) {
+        Matrix<T> result = new Matrix<T>(args.Length, 1);
+        for (var i = 0; i < args.Length; i++) {
+            result.values[i, 0] = args[i];
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Create a column matrix from the given values
+    /// </summary>
+    /// <param name="args">matrix elements</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> Column(Vec<T> args) {
+        Matrix<T> result = new Matrix<T>(args.Dimensionality, 1);
+        for (var i = 0; i < args.Dimensionality; i++) {
+            result.values[i, 0] = args[i];
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Create a row matrix from the given values
+    /// </summary>
+    /// <param name="args">matrix elements</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> Row(params T[] args) {
+        Matrix<T> result = new Matrix<T>(1, args.Length);
+        for (var i = 0; i < args.Length; i++) {
+            result.values[0, i] = args[i];
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Create a row matrix from the given values
+    /// </summary>
+    /// <param name="args">matrix elements</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> Row(Vec<T> args) {
+        Matrix<T> result = new Matrix<T>(1, args.Dimensionality);
+        for (var i = 0; i < args.Dimensionality; i++) {
+            result.values[0, i] = args[i];
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Multiply a matrix by a scalar value
+    /// </summary>
+    /// <param name="a">matrix</param>
+    /// <param name="b">scalar</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> operator * (T a, Matrix<T> b) {
+        int rows = b.Rows;
+        int cols = b.Columns;
+
+        Matrix<T> result = new Matrix<T>(rows, cols);
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                result.values[i, j] = a * b[i,j];
+
+        return result;
+    }
+
+    /// <summary>
+    /// Multiply a matrix by a scalar value
+    /// </summary>
+    /// <param name="a">matrix</param>
+    /// <param name="b">scalar</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> operator * (Matrix<T> a, T b) {
+        int rows = a.Rows;
+        int cols = a.Columns;
+
+        Matrix<T> result = new Matrix<T>(rows, cols);
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                result.values[i, j] = a[i,j] * b;
+
         return result;
     }
 
@@ -166,19 +574,19 @@ public struct Matrix<T> where T:INumber<T> {
     /// <param name="a">LHS matrix</param>
     /// <param name="b">RHS matrix</param>
     /// <returns>matrix</returns>
-    /// <exception cref="ArgumentException">Incompatible dimensions</exception>
+    /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
     public static Matrix<T> operator * (Matrix<T> a, Matrix<T> b) {
         if (a.Columns != b.Rows)
-            throw new ArgumentException("Incompatible dimensions for matrix multiplication");
+            throw new ArithmeticException($"Incompatible dimensions for matrix multiplication {a.Rows}x{a.Columns} · {b.Rows}x{b.Columns}");
 
         int rows = a.Rows;
         int cols = b.Columns;
 
-        Matrix<T> result = new Matrix<T>(rows, cols);
+        Matrix<T> result = new Matrix<T>(rows, cols, T.Zero);
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < cols; j++)
                 for (int k = 0; k < a.Columns; k++)
-                    result.values[i, j] += a.values[i, k] * b.values[k, j];
+                    result.values[i, j] += a[i, k] * b[k, j];
 
         return result;
     }   
@@ -189,21 +597,21 @@ public struct Matrix<T> where T:INumber<T> {
     /// <param name="a">LHS matrix</param>
     /// <param name="b">RHS vector</param>
     /// <returns>vector</returns>
-    /// <exception cref="ArgumentException">Incompatible dimensions</exception>
+    /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
     public static Vec<T> operator * (Matrix<T> a, Vec<T> b) {
         if (a.Rows != b.Dimensionality)
-            throw new ArgumentException("Incompatible dimensions for matrix/vector multiplication");
+            throw new ArithmeticException($"Incompatible dimensions for matrix/vector multiplication {a.Rows}x{a.Columns} · {b.Dimensionality}x1");
 
         T[] result = new T[a.Rows];
         for (int i = 0; i < a.Rows; i++) {
             T value = T.Zero;
             for (int j = 0; j < a.Columns; j++) {
-                value = value + a.values[i, j] * b[i];
+                value = value + a[i, j] * b[i];
             }
             result[i] = value;
         }
 
-        return result;
+        return Vec<T>.Wrap(result);
     }
 
     /// <summary>
@@ -212,10 +620,10 @@ public struct Matrix<T> where T:INumber<T> {
     /// <param name="a">LHS matrix</param>
     /// <param name="b">RHS matrix</param>
     /// <returns>matrix</returns>
-    /// <exception cref="ArgumentException">Incompatible dimensions</exception>
+    /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
     public static Matrix<T> operator + (Matrix<T> a, Matrix<T> b) {
         if (a.Rows != b.Rows || a.Columns != b.Columns)
-            throw new ArgumentException("Incompatible dimensions for matrix addition");
+            throw new ArithmeticException("Incompatible dimensions for matrix addition");
 
         int rows = a.Rows;
         int cols = a.Columns;
@@ -223,7 +631,7 @@ public struct Matrix<T> where T:INumber<T> {
         Matrix<T> result = new Matrix<T>(rows, cols);
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < cols; j++)
-                result.values[i, j] = a.values[i, j] + b.values[i, j];
+                result.values[i, j] = a[i, j] + b[i, j];
 
         return result;
     }
@@ -234,10 +642,10 @@ public struct Matrix<T> where T:INumber<T> {
     /// <param name="a">LHS matrix</param>
     /// <param name="b">RHS matrix</param>
     /// <returns>matrix</returns>
-    /// <exception cref="ArgumentException">Incompatible dimensions</exception>
+    /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
     public static Matrix<T> operator - (Matrix<T> a, Matrix<T> b) {
         if (a.Rows != b.Rows || a.Columns != b.Columns)
-            throw new ArgumentException("Incompatible dimensions for matrix subtraction");
+            throw new ArithmeticException("Incompatible dimensions for matrix subtraction");
 
         int rows = a.Rows;
         int cols = a.Columns;
@@ -245,10 +653,37 @@ public struct Matrix<T> where T:INumber<T> {
         Matrix<T> result = new Matrix<T>(rows, cols);
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < cols; j++)
-                result.values[i, j] = a.values[i, j] - b.values[i, j];
+                result.values[i, j] = a[i, j] - b[i, j];
 
         return result;
     }
 
+    /// <summary>
+    /// String representation of the matrix in a matlab/octave syntax
+    /// </summary>
+    /// <returns>matrix values</returns>
+    public override string ToString() {
+        StringBuilder str = new StringBuilder();
+        str.Append('[');
+        for (int i = 0; i < Rows; i++) {
+            if (i != 0)
+                str.Append(';');
+            for (int j = 0; j < Columns; j++) {
+                if (j != 0)
+                    str.Append(',');
+                str.Append(this[i, j]);
+            }
+        }
+        str.Append(']');
+        return str.ToString();
+    }
 
+    public IEnumerator<T> GetEnumerator() {
+        for (var row = 0; row < this.Rows; row++) {
+            for (var col = 0; col < this.Columns; col++)
+                yield return this[row, col];
+        }
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
 }

@@ -10,6 +10,7 @@ public interface IImage {
 
     // Data
     public Pixel[,]? Pixels {get;}
+    public Pixel GetPixelOrDefault(int x, int y, Pixel def);
 }
 
 /// <summary>
@@ -30,11 +31,18 @@ public class MemoryImage : IImage {
     }
 
     public MemoryImage (int width, int height) {
-        this.Pixels = new Pixel[height,width];
+        this.Pixels = new Pixel[height, width];
     }
 
     public MemoryImage(Pixel[,] pixels) {
         this.Pixels = pixels;
+    }
+
+    public Pixel GetPixelOrDefault(int x, int y, Pixel def) {
+        if (x < 0 || x >= Width || y < 0 || y >= Height)
+            return def;
+        
+        return this.Pixels[y, x];
     }
 
     public bool IsValidRow(int row) {
@@ -55,7 +63,7 @@ public class MemoryImage : IImage {
                 var cX = xOrig + x;
                 var cY = yOrig + y;
                 if (IsValidCoordinate(cX, cY)) {
-                    this.Pixels[cX, cY] = stamp.Pixels[x, y];
+                    this.Pixels[cY, cX] = stamp.Pixels[y, x];
                 }
             }
         }
@@ -86,10 +94,10 @@ public class MemoryImage : IImage {
         MemoryImage next = new MemoryImage(this.Width * times, this.Height * times);
         for (var y = 0; y < this.Height; y++) {
             for (var x = 0; x < this.Width; x++) {
-                var colour = this.Pixels[x, y];
+                var colour = this.Pixels[y, x];
                 for (var xt = 0; xt < times; xt++) {
                     for (var yt = 0; yt < times; yt++) {
-                        next.Pixels[x * times + xt, y * times + yt] = colour;
+                        next.Pixels[y * times + yt, x * times + xt] = colour;
                     }
                 }
             }

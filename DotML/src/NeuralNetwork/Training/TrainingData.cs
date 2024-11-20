@@ -21,6 +21,7 @@ public record class TrainingPair {
 /// </summary>
 public abstract class TrainingPairSequencer : IEnumerator<TrainingPair> {
     protected TrainingSet Datum {get; private set;}
+    public virtual int Size => Datum.Size;
 
     public TrainingPairSequencer(TrainingSet datum) => Datum = datum;
 
@@ -151,6 +152,10 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// </summary>
     /// <returns>sequence</returns>
     public TrainingPairSequencer SampleRandomly() => new RandomSequencer(this);
+
+    public void Split() { 
+        // TODO 
+    }
 
     public IEnumerator<TrainingPair> GetEnumerator() => this.data.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => this.data.GetEnumerator();

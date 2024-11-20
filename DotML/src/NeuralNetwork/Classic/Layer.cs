@@ -131,7 +131,7 @@ public class NeuronLayer : ILayerWithNeurons {
     /// <summary>
     /// The results of the last evaluation, for debugging
     /// </summary>
-    public Vec<double> GetLastOutputs() => outputs;
+    public Vec<double> GetLastOutputs() => Vec<double>.Wrap(outputs);
 
     private static readonly Random rng = new Random();
 
@@ -149,21 +149,39 @@ public class NeuronLayer : ILayerWithNeurons {
 
         public double Bias { 
             get => array[index].Bias;
-            set => array[index].Bias = value;
+            set {
+                var n = array[index];
+                n.Bias = value;
+                array[index] = n;
+            }
         }
         public Span<double> Weights { 
             get => array[index].Weights;
-            set => array[index].Weights = value.ToArray();
+            set {
+                var n = array[index];
+                n.Weights = value.ToArray();
+                array[index] = n;
+            }
         }
         public ActivationFunction? ActivationFunction { 
             get => array[index].ActivationFunction;
-            set => array[index].ActivationFunction = value;
+            set{
+                var n = array[index];
+                n.ActivationFunction = value;
+                array[index] = n;
+            }
         }
 
         public double Evaluate(Vec<double> inputs) {
             return array[index].Evaluate(inputs);
         }
     }
+
+    /// <summary>
+    /// Number of trainable parameters in this layer
+    /// </summary>
+    /// <returns>Number of trainable parameters</returns>
+    public int TrainableParameterCount() => InputCount * OutputCount + OutputCount; // Weights + Biases
 
     /// <summary>
     /// Get a reference to a specific neuron
@@ -207,7 +225,7 @@ public class NeuronLayer : ILayerWithNeurons {
         for (var i = 0; i < count; i++) {
             outputs[i] = neurons[i].Evaluate(input);
         }
-        return new Vec<double>(outputs);
+        return Vec<double>.Wrap(outputs);
     }
     /// <summary>
     /// Evaluate all neurons in this layer with the given inputs asynchronously
@@ -226,7 +244,7 @@ public class NeuronLayer : ILayerWithNeurons {
             for (var i = 0; i < count; i++) {
                 outputs[i] = neurons[i].Evaluate(input);
             }
-            return new Vec<double>(outputs);
+            return Vec<double>.Wrap(outputs);
         });
     }
 }

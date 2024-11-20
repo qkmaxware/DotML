@@ -1,0 +1,88 @@
+@page "/examples/classic/ocr/data"
+@using DotML.Network.Training
+@using Qkmaxware.Media.Image
+@using System.Text.Json
+@inject IJSRuntime js;
+
+<button type="button" class="btn btn-primary" @onclick=DownloadData>Download Data</button>
+@{
+    int index = 0;
+    var group_size = Ocr.OUTPUT_VECTOR_SIZE;
+    int group = 1;
+    foreach(var img in images) {
+        @if (index % group_size == 0) {
+            <h2>Font @(group++)</h2>
+        }
+        <div title="@vectors[index]" style="display: inline-block; width: 24%; margin-left: 4px;">
+            <label>#@(classes[index])</label>
+            <Image Data=@img></Image>
+        </div>
+        index++;
+    }
+}
+
+<h2>Modify Data Set</h2>
+
+<h3>Paint New Character</h3>
+<PaintApp ImgWidth=@Ocr.IMG_WIDTH ImgHeight=@Ocr.IMG_HEIGHT @ref=painter></PaintApp>
+<select class="form-control" @bind=class_index>
+    @{
+    int cindex = 0;
+    foreach (var item in Ocr.OUTPUT_CLASSLIST) {
+        <option value="@(cindex++)">@item</option>
+    }
+    }
+</select>
+<button type="button" class="btn btn-primary" @onclick=add_to_class>Add To Class</button>
+
+@code {
+    private List<IImage> images = new List<IImage>();
+    private List<int> classes = new List<int>();
+    private List<Vec<double>> vectors = new List<Vec<double>>();
+    private static readonly IFeatureExtractor<Pixel[]> vectorizor = new GreyscaleImgVectorizor();
+    private TrainingSet? set;
+
+    private PaintApp? painter;
+    private int class_index = -1;
+
+    protected override void OnInitialized() {
+        set = Ocr.preload_training(this.images);
+        var class_index = 0;
+        foreach (var img in images) {
+            vectors.Add(vectorizor.ToVector(((MemoryImage)img).FlattenPixels().ToArray()));
+            if (class_index % Ocr.OUTPUT_VECTOR_SIZE == 0) {
+                class_index = 0;
+            }
+            classes.Add(class_index++);
+        }
+    }
+
+    public async void DownloadData() {
+        if (set is null)
+            return;
+        var json = JsonSerializer.Serialize(set);
+        await js.InvokeVoidAsync("BlazorComponents.Files.download", "data.json", "text/json", System.Text.Encoding.UTF8.GetBytes(json));
+    }
+
+    private async void add_to_class() {
+        if (painter is null)
+            return;
+
+        var image = await painter.GetImage();
+        painter.Clear();
+        if (image is null)
+            return;
+        
+        var vector = vectorizor.ToVector(((MemoryImage)image).FlattenPixels().ToArray());
+        var class_vec = new double[Ocr.OUTPUT_VECTOR_SIZE];
+        Array.Fill(class_vec, -1d);
+        if (class_index >= 0 && class_index < class_vec.Length)
+            class_vec[class_index] = 1d;
+
+        set?.Add(vector, class_vec);
+        classes.Add(class_index);
+        images.Add(image);
+        vectors.Add(vector);
+        StateHasChanged();
+    }
+}

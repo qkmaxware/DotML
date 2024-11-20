@@ -172,7 +172,9 @@ public class BasicFFTest {
         Assert.AreEqual(2, network.GetLayer(0).NeuronCount);
         Assert.AreEqual(1, network.GetLayer(1).NeuronCount);
 
-        network.ForeachNeuron((ILayerWithNeurons layer, INeuron neuron) => neuron.ActivationFunction = HyperbolicTangent.Instance);
+        network.ForeachLayer((layer) => {
+            layer.ForeachNeuron((ref Neuron neuron) => neuron.ActivationFunction = HyperbolicTangent.Instance);
+        });
         network.ForeachNeuron((ILayerWithNeurons layer, INeuron neuron) => {
             Assert.AreEqual(HyperbolicTangent.Instance, neuron.ActivationFunction);
         });

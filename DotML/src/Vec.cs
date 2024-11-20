@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace DotML;
 
@@ -11,20 +12,49 @@ namespace DotML;
 public struct Vec<T> 
     : IDistanceable<Vec<T>,T>,
     IEnumerable<T>
-where T:INumber<T> 
+where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 {
+    private static T[] NONE = new T[0];
     private T[] values; // Literally just a pointer to an array... so size of struct is just int or nint.
 
-    public Vec(): this(0) {}
+    /// <summary>
+    /// Create an empty vector
+    /// </summary>
+    public Vec() {
+        this.values = NONE;
+    }
 
+    /// <summary>
+    /// Create a vector of the given size
+    /// </summary>
+    /// <param name="size">size</param>
     public Vec(int size) {
         this.values = new T[Math.Max(0, size)];
     }
 
+    /// <summary>
+    /// Create a vector with the given values
+    /// </summary>
+    /// <param name="values">values</param>
     public Vec(T[] values) {
+        //this.values = values;
         this.values = values;
     }
 
+    private Vec(T[] values, bool shared) {
+        if (!shared) {
+            this.values = new T[values.Length];
+            Array.Copy(values, this.values, values.Length);
+        } else {
+            this.values = values;
+        }
+    }
+
+    /// <summary>
+    /// Create a vector with the given values
+    /// </summary>
+    /// <param name="value">first value</param>
+    /// <param name="components">subsequent values</param>
     public Vec(T value, params T[] components) {
         this.values = new T[components.Length + 1];
         this.values[0] = value;
@@ -71,8 +101,12 @@ where T:INumber<T>
         return null;
     }
 
+    /// <summary>
+    /// Returns the index of the maximal element, useful when using the vector as the output of a ML classifier
+    /// </summary>
+    /// <returns>index</returns>
     public int IndexOfMaxValue() {
-        int index = 0;
+        int index = -1;
         T max = T.Zero;
 
         for (int i = 0; i < this.Dimensionality; i++) {
@@ -85,6 +119,10 @@ where T:INumber<T>
         return index;
     }
 
+    /// <summary>
+    /// Returns the index of the minimal element, useful when using the vector as the output of a ML classifier
+    /// </summary>
+    /// <returns>index</returns>
     public int IndexOfMinValue() {
         int index = 0;
         T min = T.Zero;
@@ -99,29 +137,10 @@ where T:INumber<T>
         return index;
     }
 
-    private static T Sqrt(T value) {
-        if (value < T.Zero) 
-            throw new ArgumentException("Cannot compute the square root of a negative number.");
-
-        T x = T.One;
-        T two = T.One + T.One;      // Represents the number 2
-        T epsilon = T.One / T.One;  // Small number to define precision (adjust if needed)
-
-        const int max_iterations = 10_000;
-        var iter = 0;
-
-        // Iterate to approximate the square root
-        while (T.Abs(x * x - value) > epsilon && (iter++ < max_iterations)) {
-            x = (x + value / x) / two;
-        }
-
-        return x;
-    }
-
     /// <summary>
     /// Length of the vector
     /// </summary>
-    public T Length => Sqrt(SqrLength);
+    public T Length => T.Sqrt(SqrLength);
 
     /// <summary>
     /// Squared length of the vector
@@ -144,7 +163,7 @@ where T:INumber<T>
             var subtraction = instance[dim] - this[dim];
             sqrDistance += subtraction * subtraction;
         }
-        return Sqrt(sqrDistance);
+        return T.Sqrt(sqrDistance);
     }
 
     /// <summary>
@@ -157,10 +176,54 @@ where T:INumber<T>
     }
 
     /// <summary>
+    /// Hadamard or element-wise multiplication of two vectors
+    /// </summary>
+    /// <param name="other">other vector</param>
+    /// <returns>element-wise product</returns>
+    public readonly Vec<T> Hadamard(Vec<T> other) {
+        int output_size = Math.Max(this.values.Length, other.values.Length);
+        T[] outs = new T[output_size];
+        for (var i = 0; i < output_size; i++) {
+            outs[i] = this.values[i] * other[i];
+        }
+        return Wrap(outs);
+    }
+
+    /// <summary>
+    /// Normalize the vector using the softmax function which converts the vector into a probability distribution with values between 0 and 1.
+    /// </summary>
+    /// <returns>normalized vector</returns>
+    public Vec<T> SoftmaxNormalized(){
+        var sum = T.Zero;
+        T[] values = new T[this.Dimensionality];
+        for (var i = 0; i < this.Dimensionality; i++) {
+            var exp_i = T.Exp(this.values[i]);
+            values[i] = exp_i;
+            sum += exp_i;
+        }
+        for (var i = 0; i < this.Dimensionality; i++) {
+            values[i] = values[i] / sum;
+        }
+        return Vec<T>.Wrap(values);
+    }
+
+    /// <summary>
+    /// Deep clone the vector
+    /// </summary>
+    /// <returns>vector</returns>
+    public Vec<T> Clone() {
+        T[] values = new T[this.Dimensionality];
+        for (var i = 0; i < this.Dimensionality; i++) {
+            values[i] = this.values[i];
+        }
+        return Vec<T>.Wrap(values);
+    }
+
+    /// <summary>
     /// Implicitly convert an array to a vector
     /// </summary>
     /// <param name="values">array</param>
-    public static implicit operator Vec<T> (T[] values) => new Vec<T>(values);
+    public static implicit operator Vec<T> (T[] values) => Vec<T>.Wrap(values);
 
     /// <summary>
     /// Explicitly convert a vector back to an array
@@ -168,7 +231,29 @@ where T:INumber<T>
     /// <param name="vec">vector</param>
     public static explicit operator T[] (Vec<T> vec) => vec.values;
 
+    public static Vec<T> operator * (T lhs, Vec<T> rhs) {
+        var result = new T[rhs.Dimensionality];
+
+        for (var i = 0; i < result.Length; i++) {
+            result[i] = lhs * rhs[i];
+        }
+
+        return Wrap(result);
+    }
+
+    public static Vec<T> operator * (Vec<T> lhs, T rhs) {
+        var result = new T[lhs.Dimensionality];
+
+        for (var i = 0; i < result.Length; i++) {
+            result[i] = lhs[i] * rhs;
+        }
+
+        return Wrap(result);
+    }
+
     public static Vec<T> operator + (Vec<T> lhs, Vec<T> rhs) {
+        if (lhs.Dimensionality != rhs.Dimensionality)
+            throw new ArgumentException("Incompatible dimensions for vector addition");
         var result = new T[Math.Max(lhs.Dimensionality, rhs.Dimensionality)];
 
         var amount = Math.Min(lhs.Dimensionality, rhs.Dimensionality);
@@ -176,10 +261,12 @@ where T:INumber<T>
             result[i] = lhs[i] + rhs[i];
         }
 
-        return result;
+        return Wrap(result);
     }
 
     public static Vec<T> operator - (Vec<T> lhs, Vec<T> rhs) {
+        if (lhs.Dimensionality != rhs.Dimensionality)
+            throw new ArgumentException("Incompatible dimensions for vector addition");
         var result = new T[Math.Max(lhs.Dimensionality, rhs.Dimensionality)];
 
         var amount = Math.Min(lhs.Dimensionality, rhs.Dimensionality);
@@ -187,11 +274,109 @@ where T:INumber<T>
             result[i] = lhs[i] - rhs[i];
         }
 
-        return result;
+        return Wrap(result);
     }
 
     public override string ToString() {
         return "[" + string.Join(", ", values) + "]";
+    }
+
+    /// <summary>
+    /// Convert the vector to a column-matrix representation
+    /// </summary>
+    /// <returns>matrix</returns>
+    public Matrix<T> ToColumnMatrix() {
+        var mat = new T[this.Dimensionality,1];
+        for(var i = 0; i < values.Length; i++) {
+            mat[i, 0] = values[i];
+        }
+        return mat;
+    }
+
+    /// <summary>
+    /// Convert the vector to a row-matrix representation
+    /// </summary>
+    /// <returns>matrix</returns>
+    public Matrix<T> ToRowMatrix() {
+        var mat = new T[1,this.Dimensionality];
+        for(var i = 0; i < values.Length; i++) {
+            mat[0, i] = values[i];
+        }
+        return mat;
+    }
+
+    /// <summary>
+    /// Shape the vector into multiple 3D matrices of the given sizes.
+    /// </summary>
+    /// <param name="shapes">Matrix sizes</param>
+    /// <returns>matrices</returns>
+    public IEnumerable<Matrix<T>> Shape(params Shape[] shapes) {
+        var index = 0;
+        foreach (var shape in shapes) {
+            T[,] values = new T[shape.Rows, shape.Columns];
+             for (var row = 0; row < shape.Rows; row++) {
+                for (var col = 0; col < shape.Columns; col++) {
+                    if (index < this.Dimensionality)
+                        values[row, col] = this[index++];
+                    else 
+                        values[row, col] = T.Zero;
+                }
+            }
+            yield return Matrix<T>.Wrap(values);
+        }
+    }
+
+    /// <summary>
+    /// Shape the vector into multiple 3D matrices of the given size.
+    /// </summary>
+    /// <param name="rows">Number of rows per matrix</param>
+    /// <param name="columns">Number of columns per matrix</param>
+    /// <param name="channels">Max number of channels (matrices) to produce. Use -1 for no limit</param>
+    /// <returns>Shaped matrices</returns>
+    public IEnumerable<Matrix<T>> Shape(Shape shape, int channels = -1) {
+        var index = 0;
+        var channel = 0;
+        while (index < this.Dimensionality && (channels < 0 || channel < channels)) {
+            T[,] values = new T[shape.Rows, shape.Columns];
+            for (var row = 0; row < shape.Rows; row++) {
+                for (var col = 0; col < shape.Columns; col++) {
+                    values[row, col] = this[index];
+                    index++;
+                }
+            }
+            yield return Matrix<T>.Wrap(values);
+            channel++;
+        }
+    }
+
+    /// <summary>
+    /// Wrap an existing array as a vector without copying it's elements
+    /// </summary>
+    /// <param name="values">vector elements</param>
+    /// <returns>vector</returns>
+    public static Vec<T> Wrap(T[] values) {
+        return new Vec<T>(values, shared: true);
+    }
+
+    /// <summary>
+    /// Clone the values of the given array into the vector copying each element
+    /// </summary>
+    /// <param name="values">vector elements</param>
+    /// <returns>vector</returns>
+    public static Vec<T> FromCopy(T[] values) {
+        return new Vec<T>(values, shared: false);
+    }
+
+    /// <summary>
+    /// Get the associated label corresponding to the element with the largest value
+    /// </summary>
+    /// <param name="labels">list of labels to use</param>
+    /// <returns>label or null if no labels match</returns>
+    public string? GetLabel(IList<string> labels) {
+        var i = this.IndexOfMaxValue();
+        if (i < 0 || i >= labels.Count)
+            return null;
+        return labels[i];
     }
 
     public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)values).GetEnumerator();

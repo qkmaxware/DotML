@@ -1,0 +1,40 @@
+@page "/examples/cnn/fruit-recognition"
+@using DotML
+@using DotML.Network
+@using DotML.Network.Training
+
+<NetworkExplorerV2 TNetwork=ConvolutionalFeedforwardNetwork Network=network Trainer=trainer>
+    <Input>
+        <PaintApp OnChange=@((pixels) => {}) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
+    </Input>
+    <Output>
+        
+    </Output>
+    <DataVisualization>
+
+    </DataVisualization>
+    <NetworkVisualization>
+
+    </NetworkVisualization>
+    <ValidationVisualization>
+        
+    </ValidationVisualization>
+</NetworkExplorerV2>
+
+@code {
+    const int IMG_WIDTH = 256;
+    const int IMG_HEIGHT = 256;
+    const int IMG_CHANNELS = 3;
+
+    const int OUT_CLASSES = 4;
+
+    private ConvolutionalFeedforwardNetwork network = new ConvolutionalFeedforwardNetwork(
+        /* 3 * 256 * 256 */ IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS, 
+        /* 3 * 256 * 256 */ new ConvolutionLayer(Padding.Same, [ new ConvolutionFilter(Kernels.RandomKernel(3)), new ConvolutionFilter(Kernels.RandomKernel(3)), new ConvolutionFilter(Kernels.RandomKernel(3)) ]),
+        /* 3 * 128 * 128 */ new LocalMaxPoolingLayer(2, 1),
+        /* 3 * 128 * 128 */ new ConvolutionLayer(Padding.Valid, [ new ConvolutionFilter(Kernels.RandomKernel(3)), new ConvolutionFilter(Kernels.RandomKernel(3)), new ConvolutionFilter(Kernels.RandomKernel(3)) ]),
+        /* 3 * 32 * 32 = 3072*/ new LocalMaxPoolingLayer(2, 2),
+        /* 4             */ new FullyConnectedLayer(3072, OUT_CLASSES, HyperbolicTangent.Instance)
+    );
+    private ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>();
+}

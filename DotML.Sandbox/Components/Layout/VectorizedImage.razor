@@ -1,0 +1,26 @@
+@using DotML.Network.Training
+
+<div class="image" style="grid-template-columns: repeat(@(Width), 1fr); grid-template-rows: repeat(@(Height), 1fr);">
+    @{
+        var pixels = Vector;
+        var frame_size = Width * Height;
+        if (pixels.HasValue) {
+            for (var row = 0; row < Height; row++) {
+                for (var col = 0; col < Width; col++) {
+                    var r = pixels.Value[row * Width + col + 0 * frame_size];
+                    var g = pixels.Value[row * Width + col + 1 * frame_size];
+                    var b = pixels.Value[row * Width + col + 2 * frame_size];
+
+                    <div class="pixel" style="background-color: rgb(@((byte)(r * ValueScale)), @((byte)(g * ValueScale)), @((byte)(b * ValueScale)));"></div>
+                }
+            }
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public int Width {get; set;}
+    [Parameter] public int Height {get; set;}
+    [Parameter] public Vec<double>? Vector {get; set;}
+    [Parameter] public int ValueScale {get; set;} = 1;
+}

@@ -23,6 +23,11 @@ where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>
     /// </summary>
     public int Epochs {get; set;} = 250;
 
+    /*/// <summary>
+    /// Number of training items per batch (default: 1)
+    /// </summary>
+    //public int BatchSize {get; set;} = 1;*/
+
     /// <summary>
     /// Flag to indicate if training should stop before the MaxEpochs has been reached if the network has achieved the desired accuracy (default: false)
     /// </summary>
@@ -93,7 +98,7 @@ where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>
     /// <summary>
     /// Network initialization strategy (defaults: NormalXavierInitialization)
     /// </summary>
-    public IInitializer<TNetwork> NetworkInitializer {get; set;} = new NormalXavierInitialization<TNetwork>();
+    public IInitializer NetworkInitializer {get; set;} = new NormalXavierInitialization();
 
     /// <summary>
     /// Train the Neural Network by sampling the training data using the provided sequencer
@@ -107,6 +112,7 @@ where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>
             network:                    network, 
             enumerator:                 dataset, 
             validator:                  validation, 
+            //batch_size:                 BatchSize,
             init:                       NetworkInitializer, 
 
             epochs:                     Epochs, 
@@ -144,6 +150,11 @@ where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>
 /// </summary>
 /// <typeparam name="TNetwork">type of network being trained</typeparam>
 public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons> {
+    /// <summary>
+    /// Number of training items per batch
+    /// </summary>
+    public int BatchSize {get; private set;}
+
     /// <summary>
     /// Maximum number of epochs to perform
     /// </summary>
@@ -205,12 +216,28 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     /// <summary>
     /// Network initialization strategy
     /// </summary>
-    public IInitializer<TNetwork> NetworkInitializer {get; set;}
+    public IInitializer NetworkInitializer {get; set;}
 
     // Standard Training Implementation --------------------
     private IEnumerator<TrainingPair> enumerator;
     private IEnumerator<TrainingPair> validator;
+    //private List<TrainingPair> batch;
     private double[][] deltas;
+    //private double[][] input_weight_gradients;
+    //private double[] input_bias_gradients;
+
+    /// <summary>
+    /// Get the computed input weight gradients for the given input neuron
+    /// </summary>
+    /// <param name="neuron">input neuron index</param>
+    /// <returns>weight gradients</returns>
+    //public Vec<double> GetInputWeightGradients(int neuron) => Vec<double>.Wrap(input_weight_gradients[neuron]);
+    /// <summary>
+    /// Get the computed input bias gradients for the given input neuron
+    /// </summary>
+    /// <param name="neuron">input neuron index</param>
+    /// <returns>bias gradients</returns>
+    //public Vec<double> GetInputBiasGradients() => Vec<double>.Wrap(input_bias_gradients);
 
     // Regularization Implementation ----------------------
     private RegularizationFunction? regularization;
@@ -228,7 +255,8 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
         TNetwork network, 
         IEnumerator<TrainingPair> enumerator, 
         IEnumerator<TrainingPair> validator, 
-        IInitializer<TNetwork> init, 
+        //int batch_size,
+        IInitializer init, 
 
         int epochs, bool earlyStop, double earlyStopAccuracy, LossFunction earlyStopAccuracyFunction,
         
@@ -249,6 +277,8 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
         Current = network;
         CurrentEpoch = 0;
         
+        //this.BatchSize = Math.Max(1, batch_size);
+        //this.batch = new List<TrainingPair>(this.BatchSize);
         this.EnableGradientClipping = gradientClipping;
         this.GradientClipThreshold = Math.Max(0, clipThreshold);
         this.EarlyStop = earlyStop;
@@ -276,6 +306,14 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
             }
             biasMomentum[layerIndex] = new double[neurons];
         }
+
+        /*input_weight_gradients = new double[network.InputCount][];
+        input_bias_gradients = new double[network.InputCount];
+        var input_layer = network.GetFirstLayer();
+        for (var neuron_index = 0; neuron_index < network.InputCount; neuron_index++) {
+            var neuron = input_layer.GetNeuron(neuron_index);
+            input_weight_gradients[neuron_index] = new double[neuron.Weights.Length];
+        }*/
 
         // Prepare network for training
         Reset();
@@ -341,7 +379,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void updateWeightsAndBias(Vec<double> inputs, double learningRate, int layerIndex, ILayerWithNeurons layer, double[] deltas, double[][] weight_momentum, double[] bias_momentum) {
+    private void updateWeightsAndBias(bool isInputLayer, Vec<double> inputs, double learningRate, int layerIndex, ILayerWithNeurons layer, double[] deltas, double[][] weight_momentum, double[] bias_momentum) {
         var neuron_count = layer.NeuronCount;
 
         for (int neuronIndex = 0; neuronIndex < neuron_count; neuronIndex++) {
@@ -364,6 +402,9 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
                     next_weight += regularization.Invoke(current_weight);
                 }
                 weights[weightIndex] = next_weight; 
+                if (isInputLayer) {
+                    //input_weight_gradients[neuronIndex][weightIndex] = combinedGradient;
+                }
             }
 
             var biasGradient = clip_gradient(gradient);
@@ -372,6 +413,9 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
             bias_momentum[neuronIndex] = b_momentum;
             var next_bias = neuron.Bias + b_momentum; // (b_momentum already includes this rateTimeDelta);
             neuron.Bias = next_bias;
+            if (isInputLayer) {
+                //input_bias_gradients[neuronIndex] = biasGradient;
+            }
         }
     }
 
@@ -389,6 +433,50 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
         #region Backpropagation
         var layer_count = Current.LayerCount;
         enumerator.Reset();
+
+        /*
+        // Setup initial batch
+        batch.Clear();
+        for (var i = 0; i < BatchSize; i++) {
+            if (enumerator.MoveNext()) {
+                batch.Add(enumerator.Current);
+            }
+        }
+        // Loop over batches
+        while (batch.Count > 0) {
+            // Feed-forward step
+            var layer_outputs = new Vec<double>[layer_count][batch.Count];
+            foreach (var data in batch) {
+                var input               = data.Input;
+                var expected            = data.Output;
+                var actual              = Current.PredictSync(input);
+                for (var l = 0; l < layer_count; l++) {
+                    layer_outputs[l][batch] = Current.GetLayer(i).GetLastOutputs();
+                }
+            }
+
+            // Errors on output layer
+            backpropagate(Current.GetOutputLayer(), deltas[^1], expected);
+
+            // Backpropagation through hidden layers
+            for (var layerIndex = layer_count - 2; layerIndex >= 0; layerIndex--) {
+                backpropagate(Current.GetLayer(layerIndex), deltas[layerIndex], Current.GetLayer(layerIndex + 1), deltas[layerIndex + 1]);
+            }
+
+            // Update weights and biases
+            for (int layerIndex = layer_count - 1; layerIndex >= 0; layerIndex--) {
+                Vec<double> inputs = (layerIndex == 0) ? batch[0].Input : Current.GetLayer(layerIndex - 1).GetLastOutputs();
+                updateWeightsAndBias(inputs, LearningRate, layerIndex, Current.GetLayer(layerIndex), deltas[layerIndex], weightMomentum[layerIndex], biasMomentum[layerIndex]);
+            }
+
+            // Setup next batch
+            batch.Clear();
+            for (var i = 0; i < BatchSize; i++) {
+                if (enumerator.MoveNext()) {
+                    batch.Add(enumerator.Current);
+                }
+            }
+        }*/
 
         while (enumerator.MoveNext()) {
             var data                = enumerator.Current;
@@ -408,8 +496,9 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
 
             // Update weights and biases
             for (int layerIndex = layer_count - 1; layerIndex >= 0; layerIndex--) {
-                Vec<double> inputs = (layerIndex == 0) ? input : Current.GetLayer(layerIndex - 1).GetLastOutputs();
-                updateWeightsAndBias(inputs, LearningRate, layerIndex, Current.GetLayer(layerIndex), deltas[layerIndex], weightMomentum[layerIndex], biasMomentum[layerIndex]);
+                bool isInputLayer = layerIndex == 0;
+                Vec<double> inputs = (isInputLayer) ? input : Current.GetLayer(layerIndex - 1).GetLastOutputs();
+                updateWeightsAndBias(isInputLayer, inputs, LearningRate, layerIndex, Current.GetLayer(layerIndex), deltas[layerIndex], weightMomentum[layerIndex], biasMomentum[layerIndex]);
             }
         }
         #endregion
@@ -446,9 +535,11 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     /// </summary>
     public void Reset() {
         CurrentEpoch = 0;
+        //this.batch.Clear();
         this.current_loss = null;
-        NetworkInitializer.InitializeWeights(Current);
-        NetworkInitializer.InitializeBiases(Current);
+        Current.Initialize(NetworkInitializer);
+        //NetworkInitializer.InitializeWeights(Current);
+        //NetworkInitializer.InitializeBiases(Current);
         LearningRateOptimizer.Initialize(Current);
 
         initMomentum();

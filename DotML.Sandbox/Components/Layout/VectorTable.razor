@@ -1,0 +1,17 @@
+@typeparam TValue where TValue:INumber<TValue>,IExponentialFunctions<TValue>,IRootFunctions<TValue>
+@using DotML
+@using System.Numerics
+
+<table class="table">
+    <tbody>
+        @for (var row = 0; row < Vector.Dimensionality; row++) {
+            <tr>
+                <td>@Vector[row]</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter] public Vec<TValue> Vector {get; set;}
+}

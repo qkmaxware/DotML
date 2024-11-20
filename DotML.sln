@@ -9,6 +9,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.Test", "DotML.Test\Do
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "DotML.Sandbox\DotML.Sandbox.csproj", "{EA405DCF-04A2-4D8E-A2ED-6993B99CE338}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DotML.Utils", "DotML.Utils", "{96CE2825-D8B7-4981-AC95-75F67B1B3D6C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Images2Dataset", "DotML.Utils\Images2Dataset\Images2Dataset.csproj", "{77B59DD2-CBC5-4ECD-8531-B18626262C52}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageSlice", "DotML.Utils\ImageSlice\ImageSlice.csproj", "{B31D21DF-BFB9-46B5-8F56-4D88112A986B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +36,17 @@ Global
 		{EA405DCF-04A2-4D8E-A2ED-6993B99CE338}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EA405DCF-04A2-4D8E-A2ED-6993B99CE338}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EA405DCF-04A2-4D8E-A2ED-6993B99CE338}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77B59DD2-CBC5-4ECD-8531-B18626262C52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77B59DD2-CBC5-4ECD-8531-B18626262C52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77B59DD2-CBC5-4ECD-8531-B18626262C52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77B59DD2-CBC5-4ECD-8531-B18626262C52}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B31D21DF-BFB9-46B5-8F56-4D88112A986B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B31D21DF-BFB9-46B5-8F56-4D88112A986B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B31D21DF-BFB9-46B5-8F56-4D88112A986B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B31D21DF-BFB9-46B5-8F56-4D88112A986B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{77B59DD2-CBC5-4ECD-8531-B18626262C52} = {96CE2825-D8B7-4981-AC95-75F67B1B3D6C}
+		{B31D21DF-BFB9-46B5-8F56-4D88112A986B} = {96CE2825-D8B7-4981-AC95-75F67B1B3D6C}
 	EndGlobalSection
 EndGlobal

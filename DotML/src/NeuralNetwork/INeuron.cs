@@ -18,5 +18,13 @@ public interface INeuron {
     /// Activation function for outputs
     /// </summary>
     /// <value>activation function or null</value>
-    public ActivationFunction? ActivationFunction {get; set;}
+    public ActivationFunction? ActivationFunction {get;}
+}
+
+public interface IIndividuallyActivatedNeuron : INeuron {
+    /// <summary>
+    /// Activation function for outputs
+    /// </summary>
+    /// <value>activation function or null</value>
+    public new ActivationFunction? ActivationFunction {get; set;}
 }

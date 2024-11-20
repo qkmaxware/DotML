@@ -1,3 +1,5 @@
+using DotML.Network.Initialization;
+
 namespace DotML.Network;
 
 /// <summary>
@@ -16,18 +18,23 @@ public interface INeuralNetwork {
     public int OutputCount {get;}
 
     /// <summary>
+    /// Initialize the weights and biases of the neural network
+    /// </summary>
+    /// <param name="initializer">Initializer to produce values</param>
+    public void Initialize(IInitializer initializer);
+
+    /// <summary>
+    /// Number of trainable parameters in this layer
+    /// </summary>
+    /// <returns>Number of trainable parameters</returns>
+    public int TrainableParameterCount();
+
+    /// <summary>
     /// Run a prediction against the network synchronously
     /// </summary>
     /// <param name="input">vectorized input</param>
     /// <returns>vectorized network output</returns>
     public Vec<double> PredictSync(Vec<double> input);
-    
-    /// <summary>
-    /// Run a prediction against the network asynchronously
-    /// </summary>
-    /// <param name="input">vectorized input</param>
-    /// <returns>task that eventually resolves to a vectorized network output</returns>
-    public Task<Vec<double>> PredictAsync(Vec<double> input);
 }
 
 /// <summary>

@@ -2,13 +2,14 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DotML.Network.Initialization;
 
 namespace DotML.Network;
 
 /// <summary>
 /// A simple, fully connected, Feed Forward Neural Network based on layers.
 /// </summary>
-public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>, IJsonizable, IDiagrammable {
+public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>, IJsonizable, IDiagrammable, ISafetensorable {
     private List<NeuronLayer> layers = new List<NeuronLayer>();
 
     /// <summary>
@@ -80,6 +81,20 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
         }
     }
 
+    public void Initialize(IInitializer initializer) {
+        this.ForeachLayer(layer => {
+            layer.ForeachNeuron((ref Neuron neuron) => {
+                neuron.Bias = initializer.RandomBias(layer.NeuronCount);
+                var weights = neuron.Weights;
+                var weightc = weights.Length; 
+
+                for (var i = 0; i < weightc; i++) {
+                    weights[i] = initializer.RandomWeight(layer.InputCount + layer.OutputCount);
+                }
+            });
+        });
+    }
+
     /// <summary>
     /// Apply an action to every layer in the network
     /// </summary>
@@ -106,6 +121,12 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
             }
         }
     }
+
+    /// <summary>
+    /// Number of trainable parameters in this layer
+    /// </summary>
+    /// <returns>Number of trainable parameters</returns>
+    public int TrainableParameterCount() => this.layers.Select(layer => layer.TrainableParameterCount()).Sum();
 
     /// <summary>
     /// Get a particular layer by index
@@ -159,7 +180,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
             var outputs = layer.EvaluateSync(inputs);
             inputs = outputs;
         }
-        return new Vec<double>((double[])((double[])inputs).Clone());
+        return inputs.Clone(); // Deep clone this since the outputs are just wrapped
     }
     
     /// <summary>
@@ -182,7 +203,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
             var outputs =  await layer.EvaluateAsync(inputs);
             inputs = outputs;
         }
-        return new Vec<double>((double[])((double[])inputs).Clone());
+        return inputs.Clone(); // Deep clone this since the outputs are just wrapped
     }
 
     /// <summary>
@@ -252,7 +273,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
         }
     }
 
-    	/// <summary>
+    /// <summary>
     /// Convert this network to an SVG representation
     /// </summary>
     /// <returns>svg string</returns>

@@ -1,0 +1,111 @@
+@page "/examples/cnn/digit-recognition"
+@using DotML
+@using DotML.Network
+@using DotML.Network.Training
+@using Qkmaxware.Media.Image
+
+<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing>
+    <Input>
+        <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
+    </Input>
+    <Output>
+        <ClassificationTable Output=@context.Value ClassNames=@OUT_CLASS_NAMES></ClassificationTable>
+    </Output>
+    <DataVisualization>
+        <VectorizedImageCarousel Width=@IMG_WIDTH Height=@IMG_HEIGHT Data=@context ValueScale=255></VectorizedImageCarousel>
+    </DataVisualization>
+    <NetworkVisualization>
+        <!--<SvgRenderer Value=context></SvgRenderer>-->
+        <CnnLayerOutputVisualizer Network=@leNet Data=@training ValueScale=255></CnnLayerOutputVisualizer>
+    </NetworkVisualization>
+    <ValidationVisualization>
+        
+    </ValidationVisualization>
+</NetworkExplorerV2>
+
+@code {
+    const int IMG_WIDTH = 32;
+    const int IMG_HEIGHT = 32;
+    const int IMG_CHANNELS = 1;
+    const int OUT_CLASSES = 10;
+    private static string[] OUT_CLASS_NAMES = [
+        "0", "1", "2", "3", "4", "5", "6",  "7", "8", "9"
+    ];
+    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+
+    private ConvolutionalFeedforwardNetwork leNet = new ConvolutionalFeedforwardNetwork(
+        IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS,
+        [
+            new ConvolutionLayer(
+                padding: Padding.Valid, 
+                stride: 1, 
+                filters: Enumerable.Range(0, 6).Select(i => new ConvolutionFilter(Kernels.RandomKernel(5))).ToArray()
+            ) { ActivationFunction = HyperbolicTangent.Instance },
+            new LocalAvgPoolingLayer (
+                size: 2, 
+                stride: 2
+            ),
+            new ConvolutionLayer(
+                padding: Padding.Valid, 
+                stride: 1, 
+                filters: Enumerable.Range(0, 16).Select(i1 => new ConvolutionFilter(
+                    Enumerable.Range(0, 6).Select(i2 => Kernels.RandomKernel(5)).ToArray()
+                )).ToArray()
+            ) { ActivationFunction = HyperbolicTangent.Instance },
+            new LocalAvgPoolingLayer(
+                size: 2, 
+                stride: 2
+            ),
+            new FullyConnectedLayer(
+                input_size: 400, 
+                neurons: 120,
+                activation: HyperbolicTangent.Instance
+            ),
+            new FullyConnectedLayer(
+                input_size: 120, 
+                neurons: 84,
+                activation: HyperbolicTangent.Instance
+            ),
+            new FullyConnectedLayer(
+                input_size: 84, 
+                neurons: OUT_CLASSES,
+                activation: HyperbolicTangent.Instance
+            ),
+            new SoftmaxLayer(OUT_CLASSES)
+        ]
+    );
+    private ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>(){
+        LossFunction = LossFunctions.CrossEntropy
+    };
+
+    private bool loaded => training is null || testing is null;
+    private static TrainingSet? training = null;
+    private static TrainingSet? testing = null;
+    bool initialized = false;
+    private static SafetensorBuilder weights;
+
+    static DigitRecognition(){
+        // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
+        training = ResourceLoader.LoadBinaryVectors(["data/Digits/digits.32x32.bin"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
+        testing = training; 
+
+        weights = ResourceLoader.LoadSafetensors("data/Digits/digitrecognizer.tanh.safetensors");
+    }
+
+    protected override void OnInitialized() {
+        if (initialized)
+            return;
+
+        leNet.FromSafetensor(weights);
+        initialized = true;
+    }
+
+    private static double vectorize(byte b) => b / 255.0;
+    private static Vec<double> vectorize(Pixel[] pixels) {
+        double[] values = new double[pixels.Length];
+        for (var i = 0; i < pixels.Length; i++) {
+            values[i] = vectorize(pixels[i].R);
+        }
+        return Vec<double>.Wrap(values);
+    }
+}

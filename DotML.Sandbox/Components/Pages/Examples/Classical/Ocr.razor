@@ -1,4 +1,4 @@
-@page "/ocr"
+@page "/examples/classic/ocr"
 @using DotML
 @using DotML.Network
 @using DotML.Network.Initialization
@@ -16,33 +16,7 @@
         <PaintApp OnChange=@((pixels) => vectorize(context, pixels)) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
     </Input>
     <Output>
-        <table class="table">
-            <thead> 
-                <tr>
-                    <th></th>
-                    <th>Letter</th>
-                    <th>Probability</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{
-                    var max = context.IndexOfMaxValue();
-                    var sum = 0.0; // Sum of all weights
-                    for (var i = 0; i < OUTPUT_CLASSES.Length; i++) {
-                        sum += ((context[i] + 1) / 2);
-                    }
-                    for (var i = 0; i < OUTPUT_CLASSES.Length; i++) {
-                        var raw = ((context[i] + 1) / 2); // 0 -> 1 weight scale
-                        var percent = (raw / sum) * 100; // 0 -> 1 weight / sum = 0 -> 1 probability * 100 = 1 -> 100 probability
-                        <tr>
-                            <td>@if(max == i){<text>&checkmark;</text>}</td>
-                            <td>@OUTPUT_CLASSES[i]</td>
-                            <td>@(percent.ToString("F3"))%</td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
+        <ClassificationTable Output=@context ClassNames=@OUTPUT_CLASSES_STR></ClassificationTable>
     </Output>
 </NetworkExplorer>
 
@@ -62,6 +36,11 @@
         'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 
         'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 
         'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' 
+    };
+    private static string[] OUTPUT_CLASSES_STR = new string[OUTPUT_SIZE] {
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", 
+        "J", "K", "L", "M", "N", "O", "P", "Q", "R", 
+        "S", "T", "U", "V", "W", "X", "Y", "Z" 
     };
     public static IEnumerable<char> OUTPUT_CLASSLIST => Array.AsReadOnly(OUTPUT_CLASSES);
 
@@ -116,7 +95,7 @@
         Array.Fill(values, off);
         if (index >= 0 && index < classes.Length)
             values[index] = on;
-        return new Vec<double>(values);
+        return Vec<double>.Wrap(values);
     }
 
     private static MemoryImage[,] load_font(string path, int hcells, int vcells) {
