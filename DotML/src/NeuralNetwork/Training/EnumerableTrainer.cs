@@ -206,6 +206,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     /// Current training epoch
     /// </summary>
     public int CurrentEpoch {get; private set;}
+    private int updateTimestep = 0;
 
     /// <summary>
     /// Current status of the neural network being trained
@@ -379,8 +380,13 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void updateWeightsAndBias(bool isInputLayer, Vec<double> inputs, double learningRate, int layerIndex, ILayerWithNeurons layer, double[] deltas, double[][] weight_momentum, double[] bias_momentum) {
+    private void updateWeightsAndBias(int timestep, int parameters_start, bool isInputLayer, Vec<double> inputs, double learningRate, int layerIndex, ILayerWithNeurons layer, double[] deltas, double[][] weight_momentum, double[] bias_momentum) {
         var neuron_count = layer.NeuronCount;
+
+        var weight_parameters = layer.InputCount * layer.OutputCount;
+        var bias_parameters = layer.NeuronCount;
+        var weight_parameter_index = 0;
+        var bias_parameters_index = 0;
 
         for (int neuronIndex = 0; neuronIndex < neuron_count; neuronIndex++) {
             INeuron neuron = layer.GetNeuron(neuronIndex);
@@ -393,7 +399,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
                 var current_weight = weights[weightIndex];
                 var combinedGradient = clip_gradient(gradient * inputs[weightIndex]);
 
-                var weightAdjustedLearningRate = LearningRateOptimizer.UpdateLearningRate(learningRate, combinedGradient, layerIndex, neuronIndex, weightIndex);
+                var weightAdjustedLearningRate = LearningRateOptimizer.UpdateLearningRate(timestep, learningRate, combinedGradient, weight_parameter_index++);
                 var w_momentum = weightAdjustedLearningRate * combinedGradient + WeightMomentumFactor * momentums[weightIndex];
                 momentums[weightIndex] = w_momentum;
 
@@ -408,7 +414,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
             }
 
             var biasGradient = clip_gradient(gradient);
-            var biasAdjustedLearningRate = LearningRateOptimizer.UpdateLearningRate(learningRate, biasGradient, layerIndex, neuronIndex);
+            var biasAdjustedLearningRate = LearningRateOptimizer.UpdateLearningRate(timestep, learningRate, biasGradient, weight_parameters + bias_parameters_index++);
             var b_momentum = (biasAdjustedLearningRate * biasGradient) + BiasMomentumFactor * bias_momentum[neuronIndex];
             bias_momentum[neuronIndex] = b_momentum;
             var next_bias = neuron.Bias + b_momentum; // (b_momentum already includes this rateTimeDelta);
@@ -495,11 +501,15 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
             }
 
             // Update weights and biases
+            var parameter_offset = 0;
             for (int layerIndex = layer_count - 1; layerIndex >= 0; layerIndex--) {
                 bool isInputLayer = layerIndex == 0;
                 Vec<double> inputs = (isInputLayer) ? input : Current.GetLayer(layerIndex - 1).GetLastOutputs();
-                updateWeightsAndBias(isInputLayer, inputs, LearningRate, layerIndex, Current.GetLayer(layerIndex), deltas[layerIndex], weightMomentum[layerIndex], biasMomentum[layerIndex]);
+                var layer = Current.GetLayer(layerIndex);
+                updateWeightsAndBias(updateTimestep, parameter_offset, isInputLayer, inputs, LearningRate, layerIndex, layer, deltas[layerIndex], weightMomentum[layerIndex], biasMomentum[layerIndex]);
+                parameter_offset += layer.TrainableParameterCount();
             }
+            updateTimestep++;
         }
         #endregion
 
@@ -535,6 +545,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     /// </summary>
     public void Reset() {
         CurrentEpoch = 0;
+        updateTimestep = 0;
         //this.batch.Clear();
         this.current_loss = null;
         Current.Initialize(NetworkInitializer);
