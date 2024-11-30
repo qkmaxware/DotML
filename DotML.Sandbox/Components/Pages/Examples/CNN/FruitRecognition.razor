@@ -36,5 +36,5 @@
         /* 3 * 32 * 32 = 3072*/ new LocalMaxPoolingLayer(2, 2),
         /* 4             */ new FullyConnectedLayer(3072, OUT_CLASSES, HyperbolicTangent.Instance)
     );
-    private ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>();
+    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>();
 }

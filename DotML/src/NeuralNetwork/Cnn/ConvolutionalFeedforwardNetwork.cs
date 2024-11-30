@@ -99,7 +99,7 @@ public class ConvolutionalFeedforwardNetwork:
 
     public Vec<double> PredictSync(Vec<double> input) {
         return PredictSync(input.Shape(
-            new Shape(this.InputImageHeight, this.InputImageWidth), 
+            new Shape2D(this.InputImageHeight, this.InputImageWidth), 
                 this.InputImageChannels
             ).ToArray()
         ); 
@@ -141,8 +141,7 @@ public class ConvolutionalFeedforwardNetwork:
     /// <summary>
     /// Output this network's configuration in the safetensor format
     /// </summary>
-    /// <param name="writer">binary writer to write to</param>
-    public void ToSafetensor(BinaryWriter writer) {
+    public SafetensorBuilder ToSafetensor() {
         SafetensorBuilder sb = new SafetensorBuilder();
 
         for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
@@ -164,6 +163,15 @@ public class ConvolutionalFeedforwardNetwork:
             }
         }
 
+        return sb;
+    }
+
+    /// <summary>
+    /// Output this network's configuration in the safetensor format
+    /// </summary>
+    /// <param name="writer">binary writer to write to</param>
+    public void ToSafetensor(BinaryWriter writer) {
+        var sb = ToSafetensor();
         sb.WriteTo(writer);
     }
 

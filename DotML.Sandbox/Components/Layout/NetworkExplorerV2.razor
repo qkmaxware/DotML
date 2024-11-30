@@ -128,11 +128,6 @@
         </div>
         <div id="Network State" class="col-sm" style="overflow-x: auto;">
             <label class="header">Network</label>
-            @if (NetworkVisualization is not null && Network is not null) {
-                <label>Network Digram</label>
-                @NetworkVisualization(Network)
-            }
-            <div class="divider"></div>
             @if (Network is ISafetensorable safeable) {
                 <figure>
                     <figcaption>Safetensors</figcaption>
@@ -141,6 +136,7 @@
                     </div>
                     <p>Safetensors is a simple binary format for the storage of tensor data for safe distribution. Download all tensors related to this network by pressing the "get" button above.</p>
                 </figure>
+                <div class="divider"><hr></div>
             }
             @if (Network is IJsonizable jsonizable) {
                 <figure>
@@ -153,6 +149,11 @@
                         @jsonizable.ToJsonOrDefault("null")
                     </textarea>
                 </figure>
+                <div class="divider"><hr></div>
+            }
+            @if (NetworkVisualization is not null && Network is not null) {
+                <label>Network Digram</label>
+                @NetworkVisualization(Network)
             }
         </div>
         <div id="Training Results" class="col-sm" style="overflow-x: auto;">
@@ -227,7 +228,7 @@
 </div>
 } else {
 <div class="row p-4"> 
-    <div class=col-sm>
+    <div class=col-sm-6>
         <label class="header">Input</label>
         <p>
             Enter your input vector below. You may enter the vector's values directly by typing a double[] into the JSON field below. Additionally, some helpful controls may also be provided below to manipulate the input vector.
@@ -239,7 +240,7 @@
             @Input(this.input_vector)
         }
     </div>
-    <div class=col-sm>
+    <div class=col-sm-6>
         <label class="header">Output</label>
         <p>
             After you have entered your input vector on the left, press the button below to have the network process the input and show you the results.
@@ -247,7 +248,7 @@
         <button type="button" class="btn btn-primary" style="width: 100%" @onclick=process>Process Input</button>
         <div>
             @if (Output is not null) {
-                @Output(output_vector)
+                @Output((input_vector, output_vector))
             }
         </div>
     </div>
@@ -308,7 +309,7 @@
     }
     [Parameter] public RenderFragment<Box<Vec<double>>>? Input {get; set;}
      private Box<Vec<double>> output_vector = new Box<Vec<double>>(new Vec<double>());
-    [Parameter] public RenderFragment<Box<Vec<double>>>? Output {get; set;}
+    [Parameter] public RenderFragment<(Box<Vec<double>> Input, Box<Vec<double>> Output)>? Output {get; set;}
     private Exception? process_error;
     private void process() {
         process_error = null;

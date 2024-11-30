@@ -23,7 +23,7 @@
 @code {
     private NetworkExplorer<ClassicalFeedforwardNetwork>? explorer;
     private ClassicalFeedforwardNetwork network = new ClassicalFeedforwardNetwork(INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE); //ClassicalFeedforwardNetwork.FromJson(ResourceLoader.LoadContents("data/Letter Recognition/Ocr.Pretrained.json"));
-    private TrainingSet training;
+    private TrainingSet training = new TrainingSet();
     private static readonly IFeatureExtractor<Pixel[]> vectorizor = new GreyscaleImgVectorizor();
     
     public static readonly int IMG_WIDTH = 16;

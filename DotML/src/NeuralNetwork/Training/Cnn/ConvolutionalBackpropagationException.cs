@@ -14,6 +14,7 @@ public class ConvolutionalBackpropagationException : System.ArithmeticException 
         this.Network = network;
     }
 
-    // TODO handly utility functions like DumpMatrices
+    public SafetensorBuilder DumpMatrices() => Network.ToSafetensor();
 
+    public void DumpMatrices(BinaryWriter writer) => Network.ToSafetensor(writer);
 }

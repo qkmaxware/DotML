@@ -9,14 +9,18 @@
         <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
     </Input>
     <Output>
-        <ClassificationTable Output=@context.Value ClassNames=@OUT_CLASS_NAMES></ClassificationTable>
+        <ClassificationTable Output=@context.Output.Value ClassNames=@OUT_CLASS_NAMES></ClassificationTable>
+        <details>
+            <summary>Layer Breakdown</summary>
+            <CnnDataVisualizer Network=@leNet ValueScale=255 Input=@context.Input.Value></CnnDataVisualizer>
+        </details>
     </Output>
     <DataVisualization>
         <VectorizedImageCarousel Width=@IMG_WIDTH Height=@IMG_HEIGHT Data=@context ValueScale=255></VectorizedImageCarousel>
     </DataVisualization>
     <NetworkVisualization>
         <!--<SvgRenderer Value=context></SvgRenderer>-->
-        <CnnLayerOutputVisualizer Network=@leNet Data=@training ValueScale=255></CnnLayerOutputVisualizer>
+        <CnnTrainingDataVisualizer Network=@leNet Data=@training ValueScale=255></CnnTrainingDataVisualizer>
     </NetworkVisualization>
     <ValidationVisualization>
         
@@ -74,7 +78,7 @@
             new SoftmaxLayer(OUT_CLASSES)
         ]
     );
-    private ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>(){
+    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>(){
         LossFunction = LossFunctions.CrossEntropy
     };
 
@@ -86,7 +90,7 @@
 
     static DigitRecognition(){
         // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
-        training = ResourceLoader.LoadBinaryVectors(["data/Digits/digits.32x32.bin"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
+        training = ResourceLoader.LoadBinaryVectors(["data/Digits/digits.augmented.32x32.bin"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
         testing = training; 
 
         weights = ResourceLoader.LoadSafetensors("data/Digits/digitrecognizer.tanh.safetensors");

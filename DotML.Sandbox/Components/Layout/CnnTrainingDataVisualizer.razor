@@ -2,44 +2,12 @@
 @using DotML.Network
 @using DotML.Network.Training
 
-@if (Network is not null) {
-<div class="horizontal">
-    <div class="layer">
-        <div style="text-align: center;">
-            <label>Input Layer</label>
-        </div>
-        <hr>
-        <VectorizedImage Width=@Network.InputImageWidth Height=@Network.InputImageHeight ValueScale=@ValueScale Vector=@selected?.Input></VectorizedImage>
-        <div style="text-align:  center;">
-            <button type="button" class="btn btn-primary" @onclick=prev>Prev.</button>
-            <button type="button" class="btn btn-primary" @onclick=next>Next</button>
-            <button type="button" class="btn btn-primary" @onclick=compute_images>Refresh</button>
-        </div>
-    </div>
-    @if (this.inputs is not null && this.outputs is not null) {
-        for (var layerIndex = 0; layerIndex < Math.Min(this.inputs.Length, this.outputs.Length); layerIndex++) {
-            var output = outputs[layerIndex];
-            var layer = this.Network.GetLayer(layerIndex);
-            <div class="layer">
-                    <div style="text-align: center;">
-                        <label>Layer @layerIndex</label>
-                    </div>
-                    @for (var outputIndex = 0; outputIndex < output.Length; outputIndex++) {
-                        var o_i = output[outputIndex];
-                        var o_vec = Vec<double>.Wrap(o_i.FlattenRows().ToArray());
-                        @if (layer is not FullyConnectedLayer full && layer is not SoftmaxLayer softmax) {
-                            <hr>
-                            <label>Output @outputIndex</label><br>
-                            <VectorizedImage Width=@o_i.Columns Height=@o_i.Rows ValueScale=@ValueScale Vector=@o_vec></VectorizedImage>
-                        }  else {
-                            <VectorTable TValue=double Vector=@o_vec></VectorTable>
-                        }
-                    }
-            </div>
-        }
-    }
-</div>
-}
+<CnnDataVisualizer Network=@Network ValueScale=@ValueScale Input=@selected?.Input>
+    <Header>
+        <button type="button" class="btn btn-primary" @onclick=prev>Prev.</button>
+        <button type="button" class="btn btn-primary" @onclick=next>Next</button>
+    </Header>
+</CnnDataVisualizer>
 
 @code {
     [Parameter] public ConvolutionalFeedforwardNetwork? Network {get; set;} = null;
@@ -77,7 +45,7 @@
                 return;
 
             var input = current.Input.Shape(
-                new Shape(this.Network.InputImageHeight, this.Network.InputImageWidth), 
+                new Shape2D(this.Network.InputImageHeight, this.Network.InputImageWidth), 
                 this.Network.InputImageChannels
             ).ToArray();
             var expected = current.Output;

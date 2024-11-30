@@ -399,8 +399,8 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
                 var current_weight = weights[weightIndex];
                 var combinedGradient = clip_gradient(gradient * inputs[weightIndex]);
 
-                var weightAdjustedLearningRate = LearningRateOptimizer.UpdateLearningRate(timestep, learningRate, combinedGradient, weight_parameter_index++);
-                var w_momentum = weightAdjustedLearningRate * combinedGradient + WeightMomentumFactor * momentums[weightIndex];
+                var weightAdjustedLearningRate = LearningRateOptimizer.GetParameterUpdate(timestep, learningRate, combinedGradient, weight_parameter_index++);
+                var w_momentum = weightAdjustedLearningRate + WeightMomentumFactor * momentums[weightIndex];
                 momentums[weightIndex] = w_momentum;
 
                 var next_weight = current_weight + w_momentum; // (w_momentum already includes this rateTimeDelta * inputs[j]);
@@ -414,8 +414,8 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
             }
 
             var biasGradient = clip_gradient(gradient);
-            var biasAdjustedLearningRate = LearningRateOptimizer.UpdateLearningRate(timestep, learningRate, biasGradient, weight_parameters + bias_parameters_index++);
-            var b_momentum = (biasAdjustedLearningRate * biasGradient) + BiasMomentumFactor * bias_momentum[neuronIndex];
+            var biasAdjustedLearningRate = LearningRateOptimizer.GetParameterUpdate(timestep, learningRate, biasGradient, weight_parameters + bias_parameters_index++);
+            var b_momentum = (biasAdjustedLearningRate) + BiasMomentumFactor * bias_momentum[neuronIndex];
             bias_momentum[neuronIndex] = b_momentum;
             var next_bias = neuron.Bias + b_momentum; // (b_momentum already includes this rateTimeDelta);
             neuron.Bias = next_bias;

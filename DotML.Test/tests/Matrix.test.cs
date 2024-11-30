@@ -72,13 +72,13 @@ public class BasicMatrix {
             { 3, 4 }
         };
 
-        var B = A.Map((x) => x * x);
+        var B = A.Transform((x) => x * x);
         Assert.AreEqual(1, B[0,0]);
         Assert.AreEqual(2*2, B[0,1]);
         Assert.AreEqual(3*3, B[1,0]);
         Assert.AreEqual(4*4, B[1,1]);
 
-        var C = A.Map<float>((x) => (float)(x * x));
+        var C = A.Transform<float>((x) => (float)(x * x));
     }
 
     [TestMethod]
@@ -152,8 +152,8 @@ public class BasicMatrix {
             { 1, 2 },
             { 3, 4 }
         };
-        var row = A.Reshape(new Shape(rows: 1, columns: 4)).ToArray();
-        var col = A.Reshape(new Shape(rows: 4, columns: 1)).ToArray();
+        var row = A.Reshape(new Shape2D(rows: 1, columns: 4)).ToArray();
+        var col = A.Reshape(new Shape2D(rows: 4, columns: 1)).ToArray();
 
         Assert.AreEqual(1, row.Length);
         Assert.AreEqual(1, row[0].Rows);

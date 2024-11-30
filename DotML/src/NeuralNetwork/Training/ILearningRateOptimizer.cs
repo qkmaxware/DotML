@@ -17,14 +17,14 @@ public interface ILearningRateOptimizer {
     /// <param name="network">Neural network</param>
     public void Initialize(INeuralNetwork network) => Initialize(network.TrainableParameterCount());
     /// <summary>
-    /// Return an adjusted learning rate based on the gradient of the weight at the given layer, neuron, synapse index
+    /// Return a new gradient which can be used to update a network parameter
     /// </summary>
     /// <param name="baseLearningRate">Base learning rate</param>
-    /// <param name="gradient">weight gradient</param>
+    /// <param name="gradient">raw gradient</param>
     /// <param name="timestep">update timestep</param>
     /// <param name="parameterIndex">index of the trainable parameter</param>
-    /// <returns>adjusted learning rate</returns>
-    public double UpdateLearningRate(int timestep, double baseLearningRate, double gradient, int parameterIndex);
+    /// <returns>adjusted gradient</returns>
+    public double GetParameterUpdate(int timestep, double baseLearningRate, double gradient, int parameterIndex);
 }
 
 /// <summary>
@@ -33,8 +33,8 @@ public interface ILearningRateOptimizer {
 public class ConstantRate : ILearningRateOptimizer {
     public void Initialize(int parameterCount) { /* No need to do anything */ }
 
-    public double UpdateLearningRate(int timestep, double baseLearningRate, double gradient, int parameterIndex) {
-        return baseLearningRate;
+    public double GetParameterUpdate(int timestep, double baseLearningRate, double gradient, int parameterIndex) {
+        return baseLearningRate * gradient;
     }
 }
 
@@ -61,6 +61,7 @@ public class RMSPropOptimizer : ILearningRateOptimizer {
 
     public void Initialize(int parameters) {
         moments = new double[parameters];
+        Array.Fill(moments, 0d);
     }
 
     /*
@@ -71,11 +72,14 @@ public class RMSPropOptimizer : ILearningRateOptimizer {
         return learningRate / (Math.Sqrt(cache[index]) + epsilon);
     */
 
-    public double UpdateLearningRate(int timestep, double baseLearningRate, double gradient, int parameterIndex) {
+    public double GetParameterUpdate(int timestep, double baseLearningRate, double gradient, int parameterIndex) {
         var cached = DecayRate * moments[parameterIndex] + (1 - DecayRate) * gradient * gradient;
         moments[parameterIndex] = cached;
 
-        return baseLearningRate / (Math.Sqrt(cached) + epsilon);
+        var adjusted_gradient = gradient / (Math.Sqrt(cached) + epsilon);
+        var parameter_update = baseLearningRate * adjusted_gradient;
+
+        return parameter_update;
     }
 }
 
@@ -93,7 +97,7 @@ public class AdamOptimizer : ILearningRateOptimizer {
     /// </summary>
     public double Beta2 {get; init;}
 
-    private int timestep = 0;
+    const double epsilon = 1e-8;
 
     struct Moment {
         public double First;
@@ -108,12 +112,13 @@ public class AdamOptimizer : ILearningRateOptimizer {
 
     public void Initialize(int parameters) {
         moments = new Moment[parameters];
+        Array.Fill(moments, new Moment{ First = 0, Second = 0 });
     }
 
     // TODO double check the below logic. Make NULL safe (I mean shouldnt be an issue since initialize should set everything up... but could be if I forget to call it)
     // Dereference of a possibly null reference.
     #pragma warning disable CS8602
-    public double UpdateLearningRate(int timestep, double baseLearningRate, double gradient, int parameterIndex) {
+    public double GetParameterUpdate(int timestep, double baseLearningRate, double gradient, int parameterIndex) {
         var cached = moments[parameterIndex];
 
         // Update biased first moment estimate
@@ -130,7 +135,15 @@ public class AdamOptimizer : ILearningRateOptimizer {
         double vHat = cached.Second / (1 - Math.Pow(Beta2, timestep));
 
         // Adjusted learning rate
-        return baseLearningRate * mHat / (Math.Sqrt(vHat) + double.Epsilon);
+        vHat = Math.Max(vHat, epsilon);
+        var adjusted_gradient = mHat / Math.Sqrt(vHat);
+        var parameter_update = baseLearningRate * adjusted_gradient;
+        if (double.IsNaN(parameter_update)) {
+            throw new ArithmeticException(
+                $"baseLearningRate = {baseLearningRate}; sqrt(vHat) = {Math.Sqrt(vHat)}; t = {timestep}; cached.First = {cached.First}; cached.Second = {cached.Second}; mHat = {mHat}; vHat = {vHat}; Beta1^t = {Math.Pow(Beta1, timestep)}; Beta2^t = {Math.Pow(Beta2, timestep)}"
+            );
+        }
+        return parameter_update;
     }
     // Dereference of a possibly null reference.
     #pragma warning restore CS8602 

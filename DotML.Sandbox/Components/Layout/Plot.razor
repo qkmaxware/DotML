@@ -3,9 +3,9 @@
         <g id="y-axis">
             @if (Data is not null && Data.Any()) {
             <g id="ticks">
-                <text x="40" y="@(YOffset + 15)">@getRangeMax()</text>
+                <text x="40" y="@(YOffset + 15)">@(getRangeMax().ToString("F2"))</text>
                 @*<text x="40" y="@(GraphMidpoint + YOffset)">@getRangeMid()</text>*@
-                <text x="40" y="@(GraphHeight + YOffset)">@getRangeMin()</text>
+                <text x="40" y="@(GraphHeight + YOffset)">@(getRangeMin().ToString("F2"))</text>
             </g>
             }
             <text x="-@(GraphHeight/2)"  y="@YOffset" transform=" rotate(-90)" dominant-baseline="hanging" text-anchor="middle">@YAxisLabel</text>

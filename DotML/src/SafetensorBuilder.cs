@@ -58,13 +58,13 @@ public class SafetensorBuilder {
     /// <exception cref="KeyNotFoundException">thrown when the given key doesn't exist in the safetensors set</exception>
     public Matrix<TOut> GetTensor<TOut>(string key) where TOut:INumber<TOut>,IExponentialFunctions<TOut>,IRootFunctions<TOut> {
         if (matrices_f16.TryGetValue(key, out Matrix<Half> m16)) {
-            return m16.Map<TOut>((v) => (TOut)Convert.ChangeType(v, typeof(TOut)));
+            return m16.Transform<TOut>((v) => (TOut)Convert.ChangeType(v, typeof(TOut)));
         }
         if (matrices_f32.TryGetValue(key, out Matrix<float> m32)) {
-            return m32.Map<TOut>((v) => (TOut)Convert.ChangeType(v, typeof(TOut)));
+            return m32.Transform<TOut>((v) => (TOut)Convert.ChangeType(v, typeof(TOut)));
         }
         if (matrices_f64.TryGetValue(key, out Matrix<double> m64)) {
-            return m64.Map<TOut>((v) => (TOut)Convert.ChangeType(v, typeof(TOut)));
+            return m64.Transform<TOut>((v) => (TOut)Convert.ChangeType(v, typeof(TOut)));
         }
 
         throw new KeyNotFoundException(key);

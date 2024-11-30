@@ -23,6 +23,10 @@ where TNetwork : ConvolutionalFeedforwardNetwork
     /// Learning rate for changes to weights/biases, usually between 0.0001 and 0.1. (default: 0.1)
     /// </summary>
     public double LearningRate {get; set;} = 0.1;
+    /// <summary>
+    /// Strategy for learning rate adjusting during training. (default: ConstantRate)
+    /// </summary>
+    public ILearningRateOptimizer LearningRateOptimizer {get; set;} = new ConstantRate();
 
     /// <summary>
     /// Enable to perform clipping of gradients with magnitudes larger than the GradientClipThreshold value. (default: false)
@@ -83,6 +87,7 @@ where TNetwork : ConvolutionalFeedforwardNetwork
             lossFunction:           this.LossFunction,
 
             networkInitializer:     this.NetworkInitializer,
+            optimizer:              this.LearningRateOptimizer,
 
             epochs:                 this.Epochs,
             learningRate:           this.LearningRate,
@@ -123,6 +128,8 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
 
     public IInitializer NetworkInitializer {get; private set;}
 
+    public ILearningRateOptimizer LearningRateOptimizer {get; private set;}
+
     public ConvolutionalBackpropagationEnumerator(
         TNetwork network,
         IEnumerator<TrainingPair> training,
@@ -133,6 +140,7 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
         LossFunction lossFunction,
 
         IInitializer networkInitializer,
+        ILearningRateOptimizer optimizer,
 
         int epochs,
         double learningRate,
@@ -156,6 +164,7 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
         this.EarlyStopThreshold = earlyStopThreshold;
         this.LossFunction = lossFunction;
         this.NetworkInitializer = networkInitializer;
+        this.LearningRateOptimizer = optimizer;
 
         this.UseGradientClipping = useClipping;
         this.GradientClippingThresholdWeight = clipThresholdWeight;
@@ -172,11 +181,12 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
 
     public void Reset() {
         this.CurrentEpoch = 0;
-        this.CurrentUpdateTimestep = 0;
+        this.CurrentUpdateTimestep = 1;
         this.training.Reset();
         this.validation.Reset();
 
         this.Current.Initialize(this.NetworkInitializer);
+        this.LearningRateOptimizer.Initialize(this.Current);
 
         this.inputs   = new Matrix<double>[Current.LayerCount][]; // The inputs to each layer
         this.outputs  = new Matrix<double>[Current.LayerCount][]; // The outputs from each layer
@@ -266,33 +276,18 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
             // Update weights
             var update_args = new LayerUpdateArgs();
             update_args.UpdateTimestep = CurrentUpdateTimestep;
+            update_args.ParameterOffset = 0;
             for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                 update_args.Gradients = layer_gradients[layerIndex];
 
                 var layer = Current.GetLayer(layerIndex);
                 update_args.LayerIndex = layerIndex;
                 layer.Visit<LayerUpdateArgs, LayerUpdateReturns>(this, update_args);
+                update_args.ParameterOffset += layer.TrainableParameterCount();
             }
             CurrentUpdateTimestep++;
             pos++;
             } catch (Exception e) {
-                // DUMP EVERYTHING
-                /*for (var i = 0; i < Current.LayerCount; i++) {
-                    var layer = Current.GetLayer(i);
-                    Console.WriteLine($"Epoch {CurrentEpoch}, Iteration {pos}");
-                    Console.WriteLine("Layer " + i+ ": " + layer.GetType().Name);
-                    Console.WriteLine("Inputs: "); 
-                    var ips = inputs[i];
-                    for (var j = 0; j < ips.Length; j++) {
-                        Console.Write(" - "); Console.WriteLine(ips[j]);
-                    }
-                    Console.WriteLine("Outputs: ");
-                    var ops = outputs[i];
-                    for (var j = 0; j < ops.Length; j++) {
-                        Console.Write(" - "); Console.WriteLine(ops[j]);
-                    }
-                    Console.WriteLine();
-                }*/
                 throw new ConvolutionalBackpropagationException(Current, e);
             }
         }
@@ -637,6 +632,7 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
 
     #region Weight Updates
     public struct LayerUpdateArgs {
+        public int ParameterOffset;
         public int UpdateTimestep;
         public int LayerIndex;
         public Gradients? Gradients;
@@ -649,21 +645,24 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
         if (args.Gradients is null || args.Gradients is not ConvolutionGradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));
 
-        
+        var param_offset = args.ParameterOffset;        
         if (gradients.FilterKernelGradients is not null) {
             for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
                 var filter = layer.Filters[filterIndex];
 
                 for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
                     var kernel = filter[kernelIndex];
+                    var kernel_width = kernel.Columns;
                     var grads = gradients.FilterKernelGradients[filterIndex][kernelIndex];
                     foreach (var elem in grads) {
                         if (double.IsNaN(elem)) {
                             throw new ArithmeticException($"NaN detected in kernel gradients for Filter {filterIndex}, Kernel {kernelIndex} while updating weights of a ConvolutionalLayer");
                         }
                     }
-                    var next_kernel = kernel - LearningRate * grads;
+                    var kernel_update = grads.Transform((index, grad) => LearningRateOptimizer.GetParameterUpdate(args.UpdateTimestep, LearningRate, grad, param_offset + index.Column + index.Row * kernel_width));
+                    var next_kernel = kernel - kernel_update;
                     filter[kernelIndex] = next_kernel;
+                    param_offset += kernel.Size;
                 }
             }
         }
@@ -677,7 +676,8 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
 			for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
 				var filter = layer.Filters[filterIndex];
                 var grads = gradients.BiasGradients[filterIndex];
-				filter.Bias -= LearningRate * grads;
+                var bias_update = LearningRateOptimizer.GetParameterUpdate(args.UpdateTimestep, LearningRate, grads, param_offset + filterIndex);
+				filter.Bias = filter.Bias - bias_update;
 			}
 		}
 
@@ -693,8 +693,12 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
         if (args.Gradients is null || args.Gradients is not FullyConnectedGradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));
 
+        var param_offset = args.ParameterOffset;
+        var weight_count = layer.Weights.Size;
+        var weight_width = layer.Weights.Columns;
         if (gradients.WeightGradients.HasValue) {
-            layer.Weights = layer.Weights - LearningRate * gradients.WeightGradients.Value;
+            var weight_update = gradients.WeightGradients.Value.Transform((index, grad) => LearningRateOptimizer.GetParameterUpdate(args.UpdateTimestep, LearningRate, grad, param_offset + index.Column + index.Row * weight_width));
+            layer.Weights = layer.Weights - weight_update;
         
             foreach (var elem in gradients.WeightGradients.Value) {
                 if (double.IsNaN(elem)) {
@@ -704,7 +708,8 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
         }
         
         if (gradients.BiasGradients.HasValue) {
-            layer.Biases = layer.Biases - LearningRate * gradients.BiasGradients.Value;
+            var bias_update = gradients.BiasGradients.Value.Transform((index, grad) => LearningRateOptimizer.GetParameterUpdate(args.UpdateTimestep, LearningRate, grad, param_offset + weight_count + index.Value));
+            layer.Biases = layer.Biases - bias_update;
             foreach (var elem in gradients.BiasGradients.Value) {
                 if (double.IsNaN(elem)) {
                     throw new ArithmeticException($"NaN detected in bias gradients for a FullyConnectedLayer");

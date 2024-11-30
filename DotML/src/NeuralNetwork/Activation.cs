@@ -16,7 +16,7 @@ public abstract class ActivationFunction {
     /// </summary>
     /// <param name="x">function input</param>
     /// <returns>function result</returns>
-    public virtual Matrix<double> Invoke(Matrix<double> xs) => xs.Map(x => Invoke(x));
+    public virtual Matrix<double> Invoke(Matrix<double> xs) => xs.Transform(x => Invoke(x));
     // /// <summary>
     // /// Invoke the activation function on all values in the given vector
     // /// </summary>
@@ -50,7 +50,7 @@ public abstract class ActivationFunction {
     /// <returns>derivative result</returns>
     public abstract double InvokeDerivative(double y);
 
-    public virtual Matrix<double> InvokeDerivative(Matrix<double> dA, Matrix<double> Z) => Z.Map(y => InvokeDerivative(y));
+    public virtual Matrix<double> InvokeDerivative(Matrix<double> dA, Matrix<double> Z) => Z.Transform(y => InvokeDerivative(y));
     // /// <summary>
     // /// Invoke the derivative of the activation function on all output values in the given vector
     // /// </summary>
@@ -165,7 +165,7 @@ public class PReLU : ActivationFunction {
         return y < 0 ? Alpha : 1;
     }
 
-    public override string? ToString() {
+    public override string ToString() {
         return base.ToString() + $"({Alpha})";
     }
 }
@@ -185,7 +185,7 @@ public class ExponentialLU : ActivationFunction {
         return y < 0 ? y + Alpha : 1;
     }
 
-    public override string? ToString() {
+    public override string ToString() {
         return base.ToString() + $"({Alpha})";
     }
 }

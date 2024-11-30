@@ -9,8 +9,8 @@
     <tbody>
     @{
         var max = Output.IndexOfMaxValue();
-        var distibution = new ProbabilityDistribution(Output, ClassNames);
-        foreach (var prob in distibution.EnumerateProbabilities()) {
+        var distribution = new ProbabilityDistribution(Output, ClassNames);
+        foreach (var prob in distribution.EnumerateProbabilities()) {
             <tr>
                 <td>@if(max == prob.Index){<text>&checkmark;</text>}</td>
                 <td>@prob.Label</td>

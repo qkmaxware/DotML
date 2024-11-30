@@ -38,11 +38,22 @@
             <option value="@i">@initializers[i].GetType().Name</option>
         }
     </select>
-}
- else if (Property.PropertyType.IsAssignableTo(typeof(ActivationFunction))) {
+} else if (Property.PropertyType.IsAssignableTo(typeof(ActivationFunction))) {
     <select class="form-control" @bind=activation>
         @for (var i = 0; i < activations.Count; i++) {
             <option value="@i">@activations[i]</option>
+        }
+    </select>
+} else if (Property.PropertyType.IsAssignableTo(typeof(ILearningRateOptimizer))) {
+    <select class="form-control" @bind=optimizer>
+        @for (var i = 0; i < optimizers.Count; i++) {
+            <option value="@i">@optimizers[i].GetType().Name</option>
+        }
+    </select>
+} else if (Property.PropertyType.IsAssignableTo(typeof(RegularizationFunction))) {
+    <select class="form-control" @bind=regularization>
+        @for (var i = 0; i < regularizations.Count; i++) {
+            <option value="@i">@regularizations[i].GetType().Name</option>
         }
     </select>
 }
@@ -93,7 +104,43 @@
 
 @using DotML.Network
 @using DotML.Network.Initialization
+@using DotML.Network.Training
 @code {
+    private static List<ILearningRateOptimizer> optimizers = [
+        new ConstantRate(),
+        new RMSPropOptimizer(),
+        new AdamOptimizer()
+    ];
+    private int optimizer {
+        get {
+            var instance = (ILearningRateOptimizer?)Property.GetValue(Owner);
+            var instance_type = instance?.GetType();
+            return (instance is null || instance_type is null)
+                ? -1 
+                : optimizers.FindIndex((init) => instance_type.IsAssignableTo(init.GetType()));
+        }
+        set {
+            Property.SetValue(Owner, value >= 0 && value < optimizers.Count ? optimizers[value] : null);
+        }
+    }
+
+    private static List<RegularizationFunction> regularizations = [
+        new NoRegularization(),
+        new L1Regularization(),
+        new L2Regularization()
+    ];
+    private int regularization {
+        get {
+            var instance = (RegularizationFunction?)Property.GetValue(Owner);
+            var instance_type = instance?.GetType();
+            return (instance is null || instance_type is null)
+                ? -1 
+                : regularizations.FindIndex((init) => instance_type.IsAssignableTo(init.GetType()));
+        }
+        set {
+            Property.SetValue(Owner, value >= 0 && value < regularizations.Count ? regularizations[value] : null);
+        }
+    }
     private static List<ActivationFunction> activations = [
         Identity.Instance,
         BinaryStep.Instance,

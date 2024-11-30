@@ -6,6 +6,8 @@ namespace DotML.Network;
 public interface IConvolutionalLayerVisitor {
     public void Visit(ConvolutionLayer layer);
     public void Visit(PoolingLayer layer);
+    public void Visit(FlatteningLayer layer);
+    public void Visit(DropoutLayer layer);
     public void Visit(FullyConnectedLayer layer);
     public void Visit(SoftmaxLayer layer);
 }
@@ -16,6 +18,8 @@ public interface IConvolutionalLayerVisitor {
 public interface IConvolutionalLayerVisitor<T> {
     public T Visit(ConvolutionLayer layer);
     public T Visit(PoolingLayer layer);
+    public T Visit(FlatteningLayer layer);
+    public T Visit(DropoutLayer layer);
     public T Visit(FullyConnectedLayer layer);
     public T Visit(SoftmaxLayer layer);
 }
@@ -26,6 +30,8 @@ public interface IConvolutionalLayerVisitor<T> {
 public interface IConvolutionalLayerVisitor<TIn, TOut> {
     public TOut Visit(ConvolutionLayer layer, TIn args);
     public TOut Visit(PoolingLayer layer, TIn args);
+    public TOut Visit(FlatteningLayer layer, TIn args);
+    public TOut Visit(DropoutLayer layer, TIn args);
     public TOut Visit(FullyConnectedLayer layer, TIn args);
     public TOut Visit(SoftmaxLayer layer, TIn args);
 }

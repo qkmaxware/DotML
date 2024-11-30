@@ -190,6 +190,36 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
+    /// Transform the values in this vector to values of another type.
+    /// </summary>
+    /// <typeparam name="R">Result type</typeparam>
+    /// <param name="mapping">Mapping function</param>
+    /// <returns>New vector, same size as the existing one but with elements modified by the mapping function</returns>
+    public Vec<R> Transform<R>(Func<T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+        R[] values = new R[this.Dimensionality];
+
+        for (var col = 0; col < values.Length; col++)
+            values[col] = mapping(this.values[col]);
+        
+        return Vec<R>.Wrap(values);
+    }
+
+    /// <summary>
+    /// Transform the values in this vector to values of another type.
+    /// </summary>
+    /// <typeparam name="R">Result type</typeparam>
+    /// <param name="mapping">Mapping function</param>
+    /// <returns>New vector, same size as the existing one but with elements modified by the mapping function</returns>
+    public Vec<R> Transform<R>(Func<Index, T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+        R[] values = new R[this.Dimensionality];
+
+        for (var col = 0; col < values.Length; col++)
+            values[col] = mapping(col, this.values[col]);
+        
+        return Vec<R>.Wrap(values);
+    }
+
+    /// <summary>
     /// Normalize the vector using the softmax function which converts the vector into a probability distribution with values between 0 and 1.
     /// </summary>
     /// <returns>normalized vector</returns>
@@ -204,6 +234,42 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         for (var i = 0; i < this.Dimensionality; i++) {
             values[i] = values[i] / sum;
         }
+        return Vec<T>.Wrap(values);
+    }
+
+    /// <summary>
+    /// Create a vector whose values are the average of all vectors. Vectors should be the same size.
+    /// </summary>
+    /// <param name="vectors">list of vectors</param>
+    /// <returns>vector with averaged values</returns>
+    public static Vec<T> Average(IEnumerable<Vec<T>> vectors) {
+        T[]? values = null;
+
+        // Sum across all elements
+        int size = 0;
+        T count = T.Zero;
+        foreach (var matrix in vectors) {
+            if (values == null) {
+                size = matrix.Dimensionality;
+                values = new T[size];
+            }
+
+            for (var c = 0; c < size; c++) {
+                values[c] += matrix[c];
+            }
+
+            count = count + T.One;
+        }
+
+        if (values is null || count == T.Zero) {
+            throw new DivideByZeroException();
+        }
+
+        // Divide by count to average it
+        for (var c = 0; c < size; c++) {
+            values[c] = values[c] / count;
+        }
+
         return Vec<T>.Wrap(values);
     }
 
@@ -310,7 +376,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary>
     /// <param name="shapes">Matrix sizes</param>
     /// <returns>matrices</returns>
-    public IEnumerable<Matrix<T>> Shape(params Shape[] shapes) {
+    public IEnumerable<Matrix<T>> Shape(params Shape2D[] shapes) {
         var index = 0;
         foreach (var shape in shapes) {
             T[,] values = new T[shape.Rows, shape.Columns];
@@ -333,7 +399,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="columns">Number of columns per matrix</param>
     /// <param name="channels">Max number of channels (matrices) to produce. Use -1 for no limit</param>
     /// <returns>Shaped matrices</returns>
-    public IEnumerable<Matrix<T>> Shape(Shape shape, int channels = -1) {
+    public IEnumerable<Matrix<T>> Shape(Shape2D shape, int channels = -1) {
         var index = 0;
         var channel = 0;
         while (index < this.Dimensionality && (channels < 0 || channel < channels)) {

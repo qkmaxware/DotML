@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -7,45 +8,6 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 namespace DotML;
-
-/// <summary>
-/// Matrix shape
-/// </summary>
-public struct Shape {
-    /// <summary>
-    ///  Number of rows
-    /// </summary>
-    public int Rows; 
-    /// <summary>
-    /// Number of columns
-    /// </summary>
-    public int Columns;
-
-    public Shape() {}
-
-    public Shape(int rows, int columns) {
-        this.Rows = rows;
-        this.Columns = columns;
-    }
-
-    public static bool operator == (Shape a, Shape b) {
-        return a.Rows == b.Rows && a.Columns == b.Columns;
-    }
-    public static bool operator != (Shape a, Shape b) {
-        return a.Rows != b.Rows || a.Columns != b.Columns;
-    }
-
-    public static implicit operator Shape((int, int) tuple) {
-        return new Shape(tuple.Item1, tuple.Item2);
-    }
-
-    public void Deconstruct(out int rows, out int columns) {
-        rows = this.Rows;
-        columns = this.Columns;
-    }
-
-    public override string ToString() => $"{Rows} x {Columns}";
-}
 
 /// <summary>
 /// Wrapper struct around value array providing matrix like functionality. Behaves like pass-by-reference rather than pass-by-value while minimizing heap allocations and dereferences. 
@@ -75,7 +37,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <summary>
     /// Matrix shape (rows & columns)
     /// </summary>
-    [JsonIgnore] public Shape Shape => IsTransposed ? new Shape(value_columns, value_rows) : new Shape(value_rows, value_columns);
+    [JsonIgnore] public Shape2D Shape => IsTransposed ? new Shape2D(value_columns, value_rows) : new Shape2D(value_rows, value_columns);
     /// <summary>
     /// Check if the matrix is a column matrix (only one column)
     /// </summary> 
@@ -252,17 +214,33 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     public static explicit operator T[,] (Matrix<T> mat) => mat.values;
 
     /// <summary>
-    /// Map the values in this matrix to values of another type.
+    /// Transform the values in this matrix to values of another type.
     /// </summary>
     /// <typeparam name="R">Result type</typeparam>
     /// <param name="mapping">Mapping function</param>
     /// <returns>New matrix, same size as the existing one but with elements modified by the mapping function</returns>
-    public Matrix<R> Map<R>(Func<T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+    public Matrix<R> Transform<R>(Func<T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
         Matrix<R> result = new Matrix<R>(Rows, Columns);
 
         for (var row = 0; row < value_rows; row++)
             for (var col = 0; col < value_columns; col++)
                 result.values[row, col] = mapping(this.values[row, col]);
+        
+        return result;
+    }
+
+    /// <summary>
+    /// Transform the values in this matrix to values of another type.
+    /// </summary>
+    /// <typeparam name="R">Result type</typeparam>
+    /// <param name="mapping">Mapping function</param>
+    /// <returns>New matrix, same size as the existing one but with elements modified by the mapping function</returns>
+    public Matrix<R> Transform<R>(Func<(int Row, int Column), T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+        Matrix<R> result = new Matrix<R>(Rows, Columns);
+
+        for (var row = 0; row < value_rows; row++)
+            for (var col = 0; col < value_columns; col++)
+                result.values[row, col] = mapping((row, col), this.values[row, col]);
         
         return result;
     }
@@ -375,7 +353,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// var result = As.ElementWise(Bs, (a,b) => a + b);
     /// </code>
     /// </example>
-    /// <param name="other">second matric</param>
+    /// <param name="other">second matrix</param>
     /// <param name="operator">element-wise operation</param>
     /// <returns>matrix</returns>
     /// <exception cref="ArithmeticException">Matrix dimensions must match</exception>
@@ -402,7 +380,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// var result = As.ElementWise<double>(Bs, (a,b) => (double)(a + b));
     /// </code>
     /// </example>
-    /// <param name="other">second matric</param>
+    /// <param name="other">second matrix</param>
     /// <param name="operator">element-wise operation</param>
     /// <returns>matrix</returns>
     /// <exception cref="ArithmeticException">Matrix dimensions must match</exception>
@@ -426,7 +404,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary>
     /// <param name="shapes">list of shapes</param>
     /// <returns>matrices</returns>
-    public IEnumerable<Matrix<T>> Reshape(params Shape[] shapes) {
+    public IEnumerable<Matrix<T>> Reshape(params Shape2D[] shapes) {
         var index = 0;
 
         foreach (var shape in shapes) {
@@ -449,7 +427,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="size">shape of the matrix</param>
     /// <param name="channels">number of matrices</param>
     /// <returns>matrices</returns>
-    public IEnumerable<Matrix<T>> Reshape(Shape size, int channels) {       
+    public IEnumerable<Matrix<T>> Reshape(Shape2D size, int channels) {       
         return Reshape(Enumerable.Repeat(0, channels).Select(x => size).ToArray());
     }   
 
@@ -478,6 +456,48 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
             for (int j = 0; j < result.Columns; j++)
                 result.values[i, j] = generator();
         return result;
+    }
+
+    /// <summary>
+    /// Create a matrix whose values are the average of all matrices. Matrices should be the same size.
+    /// </summary>
+    /// <param name="matrices">list of matrices</param>
+    /// <returns>matrix with averaged values</returns>
+    public static Matrix<T> Average(IEnumerable<Matrix<T>> matrices) {
+        T[,]? values = null;
+
+        // Sum across all elements
+        int rows = 0;
+        int columns = 0;
+        T count = T.Zero;
+        foreach (var matrix in matrices) {
+            if (values == null) {
+                rows = matrix.Rows;
+                columns =  matrix.Columns;
+                values = new T[rows, columns];
+            }
+
+            for (var r = 0; r < rows; r++) {
+                for (var c = 0; c < columns; c++) {
+                    values[r, c] += matrix[r, c];
+                }
+            }
+
+            count = count + T.One;
+        }
+
+        if (values is null || count == T.Zero) {
+            throw new DivideByZeroException();
+        }
+
+        // Divide by count to average it
+         for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < columns; c++) {
+                values[r, c] = values[r, c] / count;
+            }
+        }
+
+        return Matrix<T>.Wrap(values);
     }
 
     /// <summary>

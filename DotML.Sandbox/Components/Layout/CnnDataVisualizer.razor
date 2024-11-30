@@ -1,0 +1,83 @@
+@using DotML
+@using DotML.Network
+@using DotML.Network.Training
+
+<div style="text-align:  center;">
+    @Header
+    <button type="button" class="btn btn-primary" @onclick=compute_images>Refresh</button>
+</div>
+@if (Network is not null && Input.HasValue) {
+<div class="horizontal">
+    <div class="layer">
+        <div style="text-align: center;">
+            <label>Input Layer</label>
+        </div>
+        <hr>
+        <label>Input 0</label><br>
+        <VectorizedImage Width=@Network.InputImageWidth Height=@Network.InputImageHeight ValueScale=@ValueScale Vector=@Input.Value></VectorizedImage>
+    </div>
+    @if (this.inputs is not null && this.outputs is not null) {
+        for (var layerIndex = 0; layerIndex < Math.Min(this.inputs.Length, this.outputs.Length); layerIndex++) {
+            var output = outputs[layerIndex];
+            var layer = this.Network.GetLayer(layerIndex);
+            <div class="layer">
+                    <div style="text-align: center;">
+                        <label>Layer @layerIndex</label>
+                    </div>
+                    @for (var outputIndex = 0; outputIndex < output.Length; outputIndex++) {
+                        var o_i = output[outputIndex];
+                        var o_vec = Vec<double>.Wrap(o_i.FlattenRows().ToArray());
+                        @if (layer is not FullyConnectedLayer full && layer is not SoftmaxLayer softmax && layer is not FlatteningLayer flattening) {
+                            <hr>
+                            <label>Output @outputIndex</label><br>
+                            <VectorizedImage Width=@o_i.Columns Height=@o_i.Rows ValueScale=@ValueScale Vector=@o_vec></VectorizedImage>
+                        }  else {
+                            <VectorTable TValue=double Vector=@o_vec></VectorTable>
+                        }
+                    }
+            </div>
+        }
+    }
+</div>
+}
+
+@code {
+    [Parameter] public ConvolutionalFeedforwardNetwork? Network {get; set;} = null;
+    [Parameter] public Vec<double>? Input {get; set;}
+    [Parameter] public int ValueScale {get; set;} = 1;
+    [Parameter] public RenderFragment? Header {get; set;}
+
+    Matrix<double>[][]? inputs; // The inputs to each layer
+    Matrix<double>[][]? outputs; // The outputs from each layer
+
+    private void compute_images() {
+        try {
+            if (!Input.HasValue)
+                return;
+
+            var current = Input.Value;
+            if (this.Network is null)
+                return;
+
+            var input = current.Shape(
+                new Shape2D(this.Network.InputImageHeight, this.Network.InputImageWidth), 
+                this.Network.InputImageChannels
+            ).ToArray();
+
+            // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)
+            this.inputs   = new Matrix<double>[this.Network.LayerCount][]; // The inputs to each layer
+            this.outputs  = new Matrix<double>[this.Network.LayerCount][]; // The outputs from each layer
+
+            Matrix<double>[] layer_input = input;
+            for (var layerIndex = 0; layerIndex < this.Network.LayerCount; layerIndex++) {
+                inputs[layerIndex] = layer_input;
+                var layer = this.Network.GetLayer(layerIndex);
+                var layer_output = layer.EvaluateSync(layer_input);
+                outputs[layerIndex] = layer_output;
+                layer_input = layer_output;
+            }
+            var actual = layer_input;
+        } catch {}
+    }
+
+}

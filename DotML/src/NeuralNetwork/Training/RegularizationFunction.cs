@@ -13,6 +13,20 @@ public abstract class RegularizationFunction {
 }
 
 /// <summary>
+/// No Regularization function
+/// </summary>
+public class NoRegularization : RegularizationFunction {
+
+    public NoRegularization() { }
+
+    public override double Invoke(double x) => 0.0d;
+
+    //public double InvokeDerivative(double y) {
+        //return y < 0 ? -1 : (y > 0 ? 1 : 0);
+    //}
+}
+
+/// <summary>
 /// L1 Regularization function
 /// </summary>
 public class L1Regularization : RegularizationFunction {
@@ -24,7 +38,7 @@ public class L1Regularization : RegularizationFunction {
     }
 
     public override double Invoke(double x) {
-        return -Math.Sign(x) * Hyperparameter;
+        return Hyperparameter * Math.Abs(x);
     }
 
     //public double InvokeDerivative(double y) {
@@ -44,7 +58,7 @@ public class L2Regularization : RegularizationFunction {
     }
 
     public override double Invoke(double x) {
-        return -Hyperparameter * x * x;
+        return Hyperparameter * x * x;
     }
 
     //public double InvokeDerivative(double y) {

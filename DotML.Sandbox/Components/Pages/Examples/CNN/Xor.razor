@@ -23,7 +23,7 @@
     <Output>
         <div class="p-4" style="text-align: center; font-size: large;">
             <label>Is-True: </label>
-            @if(context.Value[0] > 0) {
+            @if(context.Output.Value[0] > 0) {
                 <span style="color: green">&checkmark;</span>
             } else {
                 <span style="color: red">&times;</span>
@@ -80,7 +80,7 @@
             )
         ]
     );
-    private ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new ConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>();
+    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>();
 
     private bool loaded => training is null || testing is null;
     private static TrainingSet? training = null;

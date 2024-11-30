@@ -79,6 +79,7 @@ th, td {
 }
 
 .divider {
+    line-height: 12px;
     min-height: 12px;
 }
 
