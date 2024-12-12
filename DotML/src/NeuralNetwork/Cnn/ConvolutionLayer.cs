@@ -152,7 +152,10 @@ public class ConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
 
         var a = new Matrix<double>[z.Length];
         for (var i = 0; i < z.Length; i++) {
-            a[i] = this.ActivationFunction.Invoke(z[i]);
+            var zi = z[i];
+            Matrix<double>.TransformInplace(zi, zi, this.ActivationFunction.Invoke);
+            a[i] = zi;
+            //a[i] = this.ActivationFunction.Invoke(z[i]);
         }
         return a;
     }

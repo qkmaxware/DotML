@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using DotML.Network.Initialization;
 
@@ -119,14 +120,29 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
     public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) => visitor.Visit(this);
     public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void AddMatVecInplace(Matrix<double> target, Matrix<double> a, Vec<double> b) {
+        var result = (double[,])target;
+        var rows = a.Rows;
+        if (rows != target.Rows) {
+            throw new ArithmeticException("Incompatible dimensions for storing results of matrix/vector addition");
+        }
+        for (var row = 0; row < rows; row++) {
+            result[row, 0] = a[row, 0] + b[row];
+        }
+    }
+
     public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) {
         // input is a 2D matrix processed from prior layers like a pooling layer
         var x = inputs.Length == 1 && inputs[0].IsColumn ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
         //var x = Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray()); 
         var mul  = Weights * x; 
-        var biased = mul + Matrix<double>.Column(bias_values); 
-        var activated = this.ActivationFunction.Invoke(biased);
-        return [ activated ];
+        AddMatVecInplace(mul, mul, bias_values);
+        Matrix<double>.TransformInplace(mul, mul, this.ActivationFunction.Invoke);
+        return [ mul ];
+        //var biased = mul + Matrix<double>.Column(bias_values); 
+        //var activated = this.ActivationFunction.Invoke(biased);
+        //return [ activated ];
     }
 
 }

@@ -1,0 +1,244 @@
+@page "/examples/cnn/ocr"
+@using DotML
+@using DotML.Network
+@using DotML.Network.Training
+@using Qkmaxware.Media.Image
+
+<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing UseDefaultEval=false>
+    <Input>
+        <PaintApp @ref=input ImgWidth=@(IMG_WIDTH * CHAR_COUNT) ImgHeight=IMG_HEIGHT></PaintApp>
+    </Input>
+    <Output>
+        <button type="button" class="btn btn-primary" style="width: 100%" @onclick=ocr>Do OCR</button>
+        <div style="margin-top: 32px;">
+            <label>Identified Word</label>
+            <div style="text-align: center; font-family: Verdana, sans-serif;">
+                <h2>
+                @foreach (var letter in understood) {
+                    @letter
+                }
+                </h2>
+            </div>
+            <label>Word Region</label>
+            <Image Data=@target_area></Image>
+            <label>Character Region(s)</label>
+            <div>
+            @if (characters is not null) {
+            <div style="width: 100%; overflow-y: hidden; overflow-x: auto; white-space: nowrap;">
+                @foreach (var character in characters) {
+                    <div style="display: inline-block; width: 240px; padding: 4px;">
+                        <Image Data=@character></Image>
+                    </div>
+                }
+            </div>
+            }
+            </div>
+        </div>
+    </Output>
+    <DataVisualization>
+        <VectorizedImageCarousel Width=@IMG_WIDTH Height=@IMG_HEIGHT Data=@context ValueScale=255>
+            <Label Context="selected">
+                @{
+                    new ProbabilityDistribution(selected.Output, OUT_CLASS_NAMES).SelectMostProbable(out string? label);
+                }
+                <label>Classification: @label</label>
+            </Label>
+        </VectorizedImageCarousel>
+    </DataVisualization>
+    <NetworkVisualization>
+    </NetworkVisualization>
+    <ValidationVisualization>
+    </ValidationVisualization>
+</NetworkExplorerV2>
+
+@code {
+    const int CHAR_COUNT = 4;
+    const int IMG_WIDTH = 32;
+    const int IMG_HEIGHT = 32;
+    const int IMG_CHANNELS = 1;
+    const int OUT_CLASSES = 38;
+    const double MIN_VEC_VALUE = 0.0;
+    const double MAX_VEC_VALUE = 1.0;
+    private static string[] OUT_CLASS_NAMES = new string[OUT_CLASSES] {
+        "0", "1", "2", "3", "4", "5", "6",  "7", "8", "9",
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", 
+        "J", "K", "L", "M", "N", "O", "P", "Q", "R", 
+        "S", "T", "U", "V", "W", "X", "Y", "Z", "!", "?"
+    };
+    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+    private PaintApp? input;
+
+    private ConvolutionalFeedforwardNetwork leNet = new ConvolutionalFeedforwardNetwork(
+        IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS,
+        [
+            new ConvolutionLayer(
+                padding: Padding.Valid, 
+                stride: 1, 
+                filters: Enumerable.Range(0, 6).Select(i => new ConvolutionFilter(Kernels.RandomKernel(5))).ToArray()
+            ) { ActivationFunction = HyperbolicTangent.Instance },
+            new LocalAvgPoolingLayer (
+                size: 2, 
+                stride: 2
+            ),
+            new ConvolutionLayer(
+                padding: Padding.Valid, 
+                stride: 1, 
+                filters: Enumerable.Range(0, 16).Select(i1 => new ConvolutionFilter(
+                    Enumerable.Range(0, 6).Select(i2 => Kernels.RandomKernel(5)).ToArray()
+                )).ToArray()
+            ) { ActivationFunction = HyperbolicTangent.Instance },
+            new LocalAvgPoolingLayer(
+                size: 2, 
+                stride: 2
+            ),
+            new FullyConnectedLayer(
+                input_size: 400, 
+                neurons: 120,
+                activation: HyperbolicTangent.Instance
+            ),
+            new FullyConnectedLayer(
+                input_size: 120, 
+                neurons: 84,
+                activation: HyperbolicTangent.Instance
+            ),
+            new FullyConnectedLayer(
+                input_size: 84, 
+                neurons: OUT_CLASSES,
+                activation: HyperbolicTangent.Instance
+            ),
+            new SoftmaxLayer(OUT_CLASSES)
+        ]
+    );
+    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>(){
+        LearningRate = 0.001,
+        LearningRateOptimizer = new AdamOptimizer(),
+        LossFunction = LossFunctions.CrossEntropy,
+        BatchSize = 8
+    };
+
+    private bool loaded => training is null || testing is null;
+    private static TrainingSet? training = null;
+    private static TrainingSet? testing = null;
+    bool initialized = false;
+    private static SafetensorBuilder? weights;
+
+    static Ocr(){
+        // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
+        var digit_training = ResourceLoader.LoadBinaryVectors(["data/Digits/digits.augmented.32x32.bin"], OUT_CLASSES, MIN_VEC_VALUE, MAX_VEC_VALUE, (reader) => vectorize(reader.ReadByte()));
+        var letter_training = ResourceLoader.LoadBinaryVectors(["data/Letter Recognition/letters.augmented.32x32.bin"], OUT_CLASSES, MIN_VEC_VALUE, MAX_VEC_VALUE, (reader) => vectorize(reader.ReadByte()));
+        var all_training = new TrainingSet(
+            digit_training.Select(p => ExpandPair(p, 0)), 
+            letter_training.Select(p => ExpandPair(p, 10)) // Offset classes by the number of digits
+        );
+        training = all_training;
+        testing = training; 
+
+        weights = ResourceLoader.LoadSafetensors("data/ocr/ocr.tanh.safetensors");
+    }
+
+    private static TrainingPair ExpandPair(TrainingPair pair, int offset) {
+        if (pair.Input.Dimensionality != IMG_WIDTH * IMG_HEIGHT * IMG_CHANNELS) {
+            throw new NotImplementedException("Input Image Size Wrong");
+        }
+        var expanded_output = ExpandVector(pair.Output, offset);
+        if (expanded_output.Dimensionality != OUT_CLASSES) {
+            throw new NotImplementedException("Output Dimensionality Wrong");
+        }
+        return new TrainingPair {
+            Input = pair.Input,
+            Output = expanded_output
+        };
+    }
+    private static Vec<double> ExpandVector(Vec<double> vector, int offset) {
+        var current_pos = vector.IndexOfMaxValue();
+        var new_pos = current_pos + offset;
+        double[] new_vec = new double[OUT_CLASSES];
+        Array.Fill(new_vec, MIN_VEC_VALUE);
+        if (new_pos >= 0 && new_pos < new_vec.Length) {
+            new_vec[new_pos] = MAX_VEC_VALUE;
+        }
+        return Vec<double>.Wrap(new_vec);
+    }
+
+    protected override void OnInitialized() {
+        if (initialized)
+            return;
+        
+        if (weights is not null) {
+            leNet.FromSafetensor(weights);
+        }
+        initialized = true;
+    }
+
+    private static double vectorize(byte b) => b / 255.0;
+    private static Vec<double> vectorize(Pixel[] pixels) {
+        double[] values = new double[pixels.Length];
+        for (var i = 0; i < pixels.Length; i++) {
+            values[i] = vectorize(pixels[i].R);
+        }
+        return Vec<double>.Wrap(values);
+    }
+    private static Vec<double> vectorize(MemoryImage pixels) {
+        double[] values = new double[pixels.Width * pixels.Height];
+        var i = 0;
+        for (var r = 0; r < pixels.Height; r++) {
+            for (var c = 0; c < pixels.Width; c++) {
+                values[i] = vectorize(pixels.Pixels[r, c].R);
+                i++;
+            }
+        }
+        return Vec<double>.Wrap(values);
+    }
+
+    private IImage? target_area;
+    private IImage[]? characters;
+    private List<char> understood = new List<char>();
+    private async void ocr() {
+        if (input is null || explorer is null)
+            return;
+        
+        // Image pre-processing
+        var base_image = (MemoryImage)await input.GetImage();
+        var bg_colour = Pixel.Black;
+        var cropped_image = base_image.CropToTarget(bg_colour);
+        this.target_area = cropped_image;
+        var characters = cropped_image
+            .SliceAutoWidth(bg_colour)
+            .Select(c => {
+                // Create image of size expected by CNN
+                var img = new MemoryImage(IMG_WIDTH, IMG_HEIGHT);
+
+                // Create stamp
+                var stamp = c.CropToTarget(bg_colour);
+                var growth_factor_d = Math.Max((double)Math.Max(IMG_WIDTH, IMG_HEIGHT) / (double)Math.Max(stamp.Width, stamp.Height), 0);
+                var growth_factor = (int)Math.Floor(growth_factor_d);
+                if (growth_factor > 1)
+                    stamp = stamp.Enlarge(growth_factor);
+
+                // Stamp image
+                img.Stamp(IMG_WIDTH / 2 - stamp.Width / 2, IMG_HEIGHT / 2 - stamp.Height / 2, stamp);
+                return img;
+            })
+            .ToArray();
+        this.characters = characters;
+
+        // Vector processing
+        understood.Clear();
+        foreach (var character in characters) {
+            var result = explorer?.Process(vectorize(character));
+            if (result.HasValue) {
+                var probability = new ProbabilityDistribution(result.Value, OUT_CLASS_NAMES);
+                probability.SelectMostProbable(out string? class_name);
+                if (string.IsNullOrEmpty(class_name)) {
+                    understood.Add('�');
+                } else {
+                    understood.Add(class_name[0]);
+                }
+            } else {
+                understood.Add('�');
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+}

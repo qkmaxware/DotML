@@ -1,3 +1,5 @@
+using System.Drawing;
+
 namespace Qkmaxware.Media.Image;
 
 /// <summary>
@@ -88,6 +90,112 @@ public class MemoryImage : IImage {
 
         return next;
     } 
+
+    public IEnumerable<MemoryImage> SliceAutoWidth(Pixel background) {
+        // Find first vscan that only contains background pixels
+        var startx = 0;
+        for (var x = 0; x < this.Width; x++) {
+            bool is_vscan_all_background = true;
+            for (var y = 0; y < this.Height; y++) {
+                var colour = this.Pixels[y, x];
+                if (colour != background) {
+                    is_vscan_all_background = false;
+                    break;
+                }
+            }
+
+            if (!is_vscan_all_background)
+                continue;
+
+            if (startx == x) {
+                // Image has a width of 0, skip it
+                startx = x + 1;
+                continue;
+            }
+            else {
+                // Do copy 
+                MemoryImage img = new MemoryImage(x - startx, this.Height);
+                for (var x2 = startx; x2 < x; x2++) {
+                    for (var y2 = 0; y2 < this.Height; y2++) {
+                        img.Pixels[y2, x2 - startx] = this.Pixels[y2, x2];
+                    }
+                }
+                yield return img;
+                startx = x + 1;
+                continue;
+            }
+        }
+
+        if (startx != this.Width) {
+            // Do copy 
+            MemoryImage img = new MemoryImage(this.Width - startx, this.Height);
+            for (var x2 = startx; x2 < this.Width; x2++) {
+                for (var y2 = 0; y2 < this.Height; y2++) {
+                    img.Pixels[y2, x2 - startx] = this.Pixels[y2, x2];
+                }
+            }
+            yield return img;
+        }
+    }
+
+    public MemoryImage CropToTarget(Pixel background) {
+        // Determine the "background colour"
+        // Find the region containing pixels that aren't the background colour
+        var xmin = 0; var ymin = 0;
+        var xmax = this.Width - 1; var ymax = this.Height - 1;
+        
+        for (var y = 0; y < this.Height; y++) {
+            for (var x = 0; x < this.Width; x++) {
+                var colour = this.Pixels[y, x];
+                if (colour != background) {
+                    ymin = y;
+                    goto max_height;
+                }
+            }
+        }
+        max_height:
+        for (var y = this.Height - 1; y >= ymin; y--) {
+            for (var x = 0; x < this.Width; x++) {
+                var colour = this.Pixels[y, x];
+                if (colour != background) {
+                    ymax = y;
+                    goto done_y;
+                }
+            }
+        }
+        done_y:
+
+        for (var x = 0; x < this.Width; x++) {
+            for (var y = 0; y < this.Height; y++) {
+                var colour = this.Pixels[y, x];
+                if (colour != background) {
+                    xmin = x;
+                    goto max_width;
+                }
+            }
+        }
+        max_width:
+        for (var x = this.Width - 1; x >= xmin; x--) {
+            for (var y = 0; y < this.Height; y++) {
+                var colour = this.Pixels[y, x];
+                if (colour != background) {
+                    xmax = x;
+                    goto done_x;
+                }
+            }
+        }
+        done_x:
+
+        // Create a new image with just those pixels in the region
+        var result = new MemoryImage(xmax - xmin + 1, ymax - ymin + 1);
+        for (var y = ymin; y <= ymax; y++) {
+            for (var x = xmin; x <= xmax; x++) {
+                result.Pixels[y - ymin, x - xmin] = this.Pixels[y, x];
+            }
+        }
+
+        return result;
+    }
     
     public MemoryImage Enlarge (int times) {
         times = Math.Max(1, times);

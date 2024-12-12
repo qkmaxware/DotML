@@ -5,6 +5,9 @@
 <div class="canvas-container">
     <canvas @ref="canvas" width="@ImgWidth" height="@ImgHeight" @onmouseup=canvas_changed></canvas>
     <button class="btn delete" @onclick=Clear>&times; Clear</button>
+    <div class="transfer @(transferring ? "show" : "hide")">
+        transferring data...
+    </div>
 </div>
 <div class="controls-container">
     <label>Import image </label>
@@ -17,6 +20,8 @@
     [Parameter] public Action<Pixel[]>? OnChange {get; set;}
     private ElementReference? canvas;
     private ElementReference? import_input;
+
+    private bool transferring = false;
 
     protected override void OnAfterRender(bool firstRender) {
         if (!firstRender)
@@ -32,7 +37,7 @@
     }
 
     public async Task<IImage> GetImage() {
-        var pixels = await getPixels();
+        var pixels = await streamPixels();
         var image = new MemoryImage(ImgWidth, ImgHeight);
         if (image.Pixels is null)
             return image;
@@ -46,13 +51,79 @@
         return image;
     }
 
+    private async Task<Pixel[]> streamPixels() {
+        transferring = true;
+        await InvokeAsync(StateHasChanged);
+
+        var tcs = new TaskCompletionSource<Pixel[]>();
+        JsStream stream = new JsStream(this.ImgHeight * this.ImgWidth * 3);
+        var writer = stream.GetJsWriter();
+        stream.OnStreamFlush += (pixeldata) => {
+            const int values_per_pixel = 3;
+            var pixels = new Pixel[pixeldata.Count / values_per_pixel];
+
+            for (int i = 0, j = 0, n = pixeldata.Count; i < n; i += values_per_pixel, j++) {
+                pixels[j] = new Pixel(
+                    r: pixeldata[i],
+                    g: pixeldata[i + 1],
+                    b: pixeldata[i + 2]
+                    // Alpha would be i+3
+                );
+            }
+
+            writer.Dispose();
+            tcs.SetResult(pixels);
+        };
+        CancellationTokenSource source = new CancellationTokenSource(TimeSpan.FromMinutes(4));
+        await js.InvokeVoidAsync(
+            "BlazorComponents.PaintApp.stream_pixels", 
+            source.Token,
+            canvas, 
+            writer, 
+            ImgWidth, 
+            ImgHeight
+        );
+        var px = await tcs.Task;
+
+        transferring = false;
+        await InvokeAsync(StateHasChanged);
+        
+        return px;
+    }
+
     private async Task<Pixel[]> getPixels() {
-        return await js.InvokeAsync<Pixel[]>("BlazorComponents.PaintApp.get_pixels", canvas,  ImgWidth, ImgHeight);
+        transferring = true;
+        await InvokeAsync(StateHasChanged);
+        
+        CancellationTokenSource source = new CancellationTokenSource(TimeSpan.FromMinutes(4));
+        var pixeldata = await js.InvokeAsync<byte[]>(
+            "BlazorComponents.PaintApp.get_pixels", 
+            source.Token,
+            canvas,  
+            ImgWidth, 
+            ImgHeight
+        );
+        const int values_per_pixel = 3;
+        var pixels = new Pixel[pixeldata.Length / values_per_pixel];
+
+        for (int i = 0, j = 0, n = pixeldata.Length; i < n; i += values_per_pixel, j++) {
+            pixels[j] = new Pixel(
+                r: pixeldata[i],
+                g: pixeldata[i + 1],
+                b: pixeldata[i + 2]
+                // Alpha would be i+3
+            );
+        }
+
+        transferring = false;
+        await InvokeAsync(StateHasChanged);
+        
+        return pixels;
     }
 
     private async void canvas_changed() {
         if (OnChange is not null) {
-            OnChange.Invoke(await getPixels());
+            OnChange.Invoke(await streamPixels());
         }
     }
 }

@@ -678,6 +678,111 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         return result;
     }
 
+    #region In-place Operations
+    /// <summary>
+    /// Transform a matrix using an existing matrix as in-place storage without allocating new memory
+    /// </summary>
+    /// <typeparam name="R">result type</typeparam>
+    /// <param name="target">matrix to store results</param>
+    /// <param name="src">matrix with original values</param>
+    /// <param name="mapping">mapping function</param>
+    /// <exception cref="ArithmeticException">thrown if matrices are of incompatible dimensions</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void TransformInplace<R>(Matrix<R> target, Matrix<T> src, Func<T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+        var result = (R[,])target;
+        var rows = target.Rows;
+        var cols = target.Columns;
+        var transposed = target.IsTransposed;
+        if (rows != src.Rows || cols != src.Columns) {
+            throw new ArithmeticException("Incompatible dimensions for storing matrix transformation result");
+        }
+        
+        for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+                if (transposed) {
+                    result[c,r] =  mapping(src[r, c]);
+                } else {
+                    result[r,c] =  mapping(src[r, c]);
+                }
+            }
+        }
+    } 
+    /// <summary>
+    /// Transform a matrix using an existing matrix as in-place storage without allocating new memory
+    /// </summary>
+    /// <typeparam name="R">result type</typeparam>
+    /// <param name="target">matrix to store results</param>
+    /// <param name="src">matrix with original values</param>
+    /// <param name="mapping">mapping function</param>
+    /// <exception cref="ArithmeticException">thrown if matrices are of incompatible dimensions</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void TransformInplace<R>(Matrix<R> target, Matrix<T> src, Func<(int Row, int Column), T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+        var result = (R[,])target;
+        var rows = target.Rows;
+        var cols = target.Columns;
+        var transposed = target.IsTransposed;
+        if (rows != src.Rows || cols != src.Columns) {
+            throw new ArithmeticException("Incompatible dimensions for storing matrix transformation result");
+        }
+        
+        for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+                if (transposed) {
+                    result[c,r] =  mapping((r, c), src[r, c]);
+                } else {
+                    result[r,c] =  mapping((r, c), src[r, c]);
+                }
+            }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void AddInplace(Matrix<T> target, Matrix<T> a, Matrix<T> b) {
+        if (a.Rows != b.Rows || a.Columns != b.Columns)
+            throw new ArithmeticException("Incompatible dimensions for matrix addition");
+
+        int rows = a.Rows;
+        int cols = a.Columns;
+        var result = (T[,])target;
+        var transposed = target.IsTransposed;
+
+        if (target.Rows != rows || target.Columns != cols) {
+            throw new ArithmeticException("Incompatible dimensions for storing matrix addition result");
+        }
+
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                if (transposed) {
+                    result[j, i] = a[i, j] + b[i, j];
+                } else {
+                    result[i, j] = a[i, j] + b[i, j];
+                }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void SubInplace(Matrix<T> target, Matrix<T> a, Matrix<T> b) {
+        if (a.Rows != b.Rows || a.Columns != b.Columns)
+            throw new ArithmeticException("Incompatible dimensions for matrix subtraction");
+
+        int rows = a.Rows;
+        int cols = a.Columns;
+        var result = (T[,])target;
+        var transposed = target.IsTransposed;
+
+        if (target.Rows != rows || target.Columns != cols) {
+            throw new ArithmeticException("Incompatible dimensions for storing matrix subtraction result");
+        }
+
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                if (transposed) {
+                    result[j, i] = a[i, j] - b[i, j];
+                } else {
+                    result[i, j] = a[i, j] - b[i, j];
+                }
+    }
+    #endregion
+
     /// <summary>
     /// String representation of the matrix in a matlab/octave syntax
     /// </summary>

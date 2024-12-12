@@ -38,6 +38,17 @@ public struct ProbabilityDistribution
     }
 
     /// <summary>
+    /// Get the probability of the given option
+    /// </summary>
+    /// <param name="index">option index</param>
+    /// <returns>probability</returns>
+    public double GetProbabilityOf(int index) {
+        if (index < 0 || index >= values.Length)
+            return 0;
+        return 100 * values[index];
+    }
+
+    /// <summary>
     /// Select a category by choosing the one with the highest probability.
     /// </summary>
     /// <returns>index of the selected category</returns>
@@ -57,7 +68,7 @@ public struct ProbabilityDistribution
     }
 
     /// <summary>
-    /// Select a category by chosing the one with the highest probability.
+    /// Select a category by choosing the one with the highest probability.
     /// </summary>
     /// <returns>index of the selected category</returns>
     public int SelectMostProbable(out string? label)
@@ -133,7 +144,7 @@ public struct ProbabilityDistribution
         {
             var label = this.GetCategoryLabel(index) ?? string.Empty;
             sb.Append(index); sb.Append(":"); sb.Append(label.PadRight(label_width, ' ')); sb.Append(' ');
-            sb.Append(new String('#', (int)(max_width * prob))); sb.Append(' '); sb.Append((int)(prob * 100)); sb.AppendLine("%");
+            sb.Append(new String('#', (int)(max_width * prob))); sb.Append(' '); sb.Append((prob * 100).ToString("F2")); sb.AppendLine("%");
             index++;
         }
 

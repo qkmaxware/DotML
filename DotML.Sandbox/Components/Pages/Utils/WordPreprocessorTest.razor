@@ -1,0 +1,52 @@
+@using Qkmaxware.Media.Image
+@page "/util/word-preprocess"
+
+<h2>Original</h2>
+<PaintApp @ref=painter ImgWidth="@(32 * 4)" ImgHeight="32"></PaintApp>
+<div style="padding: 16px;">
+<button class="btn btn-primary" style="width: 100%;" @onclick=doit>Process</button>
+</div>
+<hr>
+
+<h2>Word Region</h2>
+@if (region is not null) {
+    <span>@region.Width x @region.Height</span>
+}
+<Image Data=@region></Image>
+
+<h2>Letters (@letters.Count)</h2>
+<ol>
+@foreach(var letter in letters) {
+    var self = letter;
+    <li>
+        @if (self is not null) {
+            <span>@self.Width x @self.Height</span>
+        }
+        <Image Data=@self></Image>
+    </li>
+}
+</ol>
+
+@code {
+    private PaintApp? painter;
+
+    private MemoryImage? region;
+    private List<MemoryImage> letters = new List<MemoryImage>();
+
+    private async void doit() {
+        if (painter is null) {
+            throw new Exception("Missing painter");
+        }
+        var original = (MemoryImage)(await painter.GetImage());
+
+        var cropped = original.CropToTarget(Pixel.Black);
+        if (cropped.Width == 0 || cropped.Height == 0)
+            throw new Exception("No cropping region detected");
+
+        this.region = cropped;
+        this.letters.Clear();
+        this.letters.AddRange(cropped.SliceAutoWidth(Pixel.Black));
+
+        StateHasChanged();
+    }
+}    

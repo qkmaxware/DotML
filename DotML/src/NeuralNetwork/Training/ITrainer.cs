@@ -27,6 +27,11 @@ public interface ITrainer<TNetwork> where TNetwork:INeuralNetwork {
 /// <typeparam name="TNetwork">Type of network to train<</typeparam>
 public interface IEnumerableTrainer<TNetwork> : ITrainer<TNetwork> where TNetwork:INeuralNetwork {
     /// <summary>
+    /// Gets or sets a place to report testing validation results to
+    /// </summary>
+    public IValidationReport? ValidationReport {get; set;}
+
+    /// <summary>
     /// Fetch an enumerator which can be used to train the network step by step.
     /// </summary>
     /// <param name="network">network to train</param>

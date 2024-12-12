@@ -14,6 +14,8 @@ public class Program {
         public int ImageWidth {get; set;}
         [Option("height", HelpText = "Image height used for scaling, resizing, and cropping. Output vectors have a size of width x height x channels.", Default = TILE_HEIGHT)]
         public int ImageHeight {get; set;}
+        [Option("labels", HelpText ="Label names", Separator = ',')]
+        public IEnumerable<string>? ClassLabels {get; set;}
     }
 
     public static void Main() {
@@ -30,8 +32,13 @@ public class Program {
 
                 int slice_index = 0;
                 foreach (var submap in Slice(bitmap, options.ImageWidth, options.ImageHeight)) {
-                    Directory.CreateDirectory(Path.Combine("data", "images", "processed", slice_index.ToString()));
-                    submap.Save(Path.Combine("data", "images", "processed", slice_index.ToString(), file.Name));
+                    string? label = options.ClassLabels?.ElementAtOrDefault(slice_index);
+                    if (string.IsNullOrEmpty(label)) {
+                        label = slice_index.ToString();
+                    }
+
+                    Directory.CreateDirectory(Path.Combine("data", "images", "processed", label));
+                    submap.Save(Path.Combine("data", "images", "processed", label, file.Name));
 
                     // Done
                     slice_index++;

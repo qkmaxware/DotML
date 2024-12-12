@@ -62,8 +62,12 @@ private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutiona
                             throw new ArithmeticException($"NaN detected in kernel gradients for Filter {filterIndex}, Kernel {kernelIndex} while updating weights of a ConvolutionalLayer");
                         }
                     }
-                    var kernel_update = grads.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
-                    var next_kernel = kernel - kernel_update;
+                    Matrix<double>.TransformInplace(grads, grads, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
+                    var kernel_update = grads;
+                    Matrix<double>.SubInplace(grads, kernel, kernel_update);
+                    var next_kernel = grads;
+                    //var kernel_update = grads.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
+                    //var next_kernel = kernel - kernel_update;
                     filter[kernelIndex] = next_kernel;
                     param_offset += kernel.Size;
                 }
@@ -109,12 +113,17 @@ private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutiona
         var param_offset = args.ParameterOffset;
         var weight_count = layer.Weights.Size;
         var weight_width = layer.Weights.Columns;
-        var weight_update = gradients.WeightGradients.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Weights[index.Row, index.Column], grad, param_offset + index.Column + index.Row * weight_width));
-        layer.Weights = layer.Weights - weight_update;
+        Matrix<double>.TransformInplace(gradients.WeightGradients, gradients.WeightGradients, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Weights[index.Row, index.Column], grad, param_offset + index.Column + index.Row * weight_width));
+        var weight_update = gradients.WeightGradients;
+        Matrix<double>.SubInplace(layer.Weights, layer.Weights, weight_update);
+        //var weight_update = gradients.WeightGradients.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Weights[index.Row, index.Column], grad, param_offset + index.Column + index.Row * weight_width));
+        //layer.Weights = layer.Weights - weight_update;
         
-        
-        var bias_update = gradients.BiasGradients.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Biases[index.Value], grad, param_offset + weight_count + index.Value));
-        layer.Biases = layer.Biases - bias_update;
+        Vec<double>.TransformInplace(gradients.BiasGradients, gradients.BiasGradients, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Biases[index.Value], grad, param_offset + weight_count + index.Value));
+        var bias_update = gradients.BiasGradients;
+        Vec<double>.SubInplace(layer.Biases, layer.Biases, bias_update);
+        //var bias_update = gradients.BiasGradients.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Biases[index.Value], grad, param_offset + weight_count + index.Value));
+        //layer.Biases = layer.Biases - bias_update;
         
         return new LayerUpdateReturns {};
     }

@@ -72,6 +72,11 @@ where TNetwork : ConvolutionalFeedforwardNetwork
     public LossFunction LossFunction {get; set;} = LossFunctions.MeanSquaredError;
 
     /// <summary>
+    /// Gets or sets a place to report testing validation results to
+    /// </summary>
+    public IValidationReport? ValidationReport {get; set;} = new DefaultValidationReportWithBreakdown();
+
+    /// <summary>
     /// Regularization function (default: NoRegularization)
     /// </summary>
     public RegularizationFunction Regularization {get; set;} = new NoRegularization();
@@ -96,6 +101,7 @@ where TNetwork : ConvolutionalFeedforwardNetwork
             earlyStop:              this.EarlyStop,
             earlyStopThreshold:     this.EarlyStopAccuracy,
             lossFunction:           this.LossFunction,
+            validationReport:       this.ValidationReport,
             regularization:         this.Regularization,
 
             networkInitializer:     this.NetworkInitializer,
@@ -127,6 +133,8 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
     public double LearningRate => layerUpdateActions.LearningRate;
     public int BatchSize {get; init;}
 
+    public IValidationReport? ValidationReport {get; set;}
+
     public TNetwork Current {get; private set;}
     object IEnumerator.Current => Current;
 
@@ -151,6 +159,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
         bool earlyStop,
         double earlyStopThreshold,
         LossFunction lossFunction,
+        IValidationReport? validationReport,
         RegularizationFunction regularization,
 
         IInitializer networkInitializer,
@@ -177,6 +186,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
 
         this.EnableEarlyStop = earlyStop;
         this.EarlyStopThreshold = earlyStopThreshold;
+        this.ValidationReport = validationReport;
         this.LossFunction = lossFunction;
         this.NetworkInitializer = networkInitializer;
 
@@ -189,13 +199,24 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
     public void Dispose() { }
 
     private List<TrainingPair> batch;
+    private int num_batches;
     Matrix<double>[][][] batch_inputs;
     Matrix<double>[][][] batch_outputs;
     Gradients?[][] batch_gradients;
 
+    private int count_training_items() {
+        int count = 0;
+        training.Reset();
+        while(training.MoveNext()) {
+            count++;
+        }
+        return count;
+    }
+
     public void Reset() {
         this.CurrentEpoch = 0;
         this.CurrentUpdateTimestep = 1; // Timesteps start at 1. Avoids divide by 0s common with Adam
+        this.num_batches = (count_training_items() + this.BatchSize - 1) / this.BatchSize;
         this.training.Reset();
         this.validation.Reset();
 
@@ -219,11 +240,15 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
             return false;
         }
 
+        OnEpochStart(this.CurrentEpoch, this.MaxEpochs);
         TrainingStep();
+        OnEpochEnd(this.CurrentEpoch, this.MaxEpochs);
 
         // TODO early STOP
         bool stopEarly = false;
         if (EnableEarlyStop) {
+            ValidationReport?.Reset();
+            OnValidationStart(this.CurrentEpoch, this.MaxEpochs);
             validation.Reset();
             var sum_error = 0d; var count = 0;
             var max_error = double.MinValue;
@@ -236,8 +261,11 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
                 var loss = LossFunction(predicted, @true);
                 sum_error += loss;
                 max_error = Math.Max(max_error, loss);
-                all_less_threshold &= loss < EarlyStopThreshold;
+                var passed = loss < EarlyStopThreshold;
+                all_less_threshold &= passed;
+                OnValidated(this.CurrentEpoch, this.MaxEpochs, count, loss);
                 count++;
+                ValidationReport?.Append(input, @true, predicted, passed, loss);
             }
             if (double.IsNaN(sum_error)) {
                 throw new ArithmeticException("NaN detected during output evaluation.");
@@ -246,6 +274,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
             if (max_error <= EarlyStopThreshold) {
                 stopEarly = true;
             }
+            OnValidationEnd(this.CurrentEpoch, this.MaxEpochs, max_error);
         }
 
         CurrentEpoch += 1;
@@ -257,7 +286,6 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
 
     private void TrainingStep() {
         training.Reset();
-        var pos = 0;
         try {
 
         // Compute initial batch
@@ -267,7 +295,10 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
         }
 
         // Do batch
+        int batch_number = 0; int total_batches = num_batches;
         while (batch.Count > 0) { 
+            OnBatchStart(batch_number, total_batches);
+
             // Init layers for batch
             for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                 Current.GetLayer(layerIndex).Visit(this.batchInitializer);
@@ -364,7 +395,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
                 update_args.ParameterOffset += layer.TrainableParameterCount();
             }
             CurrentUpdateTimestep++;
-            pos++;
+            OnBatchEnd(batch_number++, total_batches);
 
             // Cleanup layers for batch
             for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
@@ -383,5 +414,12 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
         }
     }
 
+    public event EpochStartHandler OnEpochStart = delegate {};
+    public event BatchStartHandler OnBatchStart = delegate {};
+    public event BatchEndHandler OnBatchEnd = delegate {};
+    public event ValidationStartHandler OnValidationStart = delegate {};
+    public event ValidationStepHandler OnValidated = delegate {};
+    public event ValidationEndHandler OnValidationEnd = delegate {};
+    public event EpochEndHandler OnEpochEnd = delegate {};
 }
 #endregion

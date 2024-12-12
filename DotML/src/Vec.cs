@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
@@ -341,6 +342,61 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         }
 
         return Wrap(result);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void TransformInplace<R>(Vec<R> target, Vec<T> src, Func<T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+        var result = (R[])target;
+        var dims = target.Dimensionality;
+        if (src.Dimensionality != dims) {
+            throw new ArithmeticException("Incompatible dimensions for storing vector transformation result");
+        }
+        
+        for (var r = 0; r < dims; r++) {
+            result[r] =  mapping(src[r]);
+        }
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void TransformInplace<R>(Vec<R> target, Vec<T> src, Func<Index, T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+        var result = (R[])target;
+        var dims = target.Dimensionality;
+        if (src.Dimensionality != dims) {
+            throw new ArithmeticException("Incompatible dimensions for storing vector transformation result");
+        }
+        
+        for (var r = 0; r < dims; r++) {
+            result[r] =  mapping(r, src[r]);
+        }
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void AddInplace(Vec<T> target, Vec<T> a, Vec<T> b) {
+        if (a.Dimensionality != b.Dimensionality || a.Dimensionality != b.Dimensionality)
+            throw new ArithmeticException("Incompatible dimensions for vector addition");
+
+        int dims = target.Dimensionality;
+        var result = (T[])target;
+
+        if (dims != a.Dimensionality) {
+            throw new ArithmeticException("Incompatible dimensions for storing vector addition result");
+        }
+
+        for (int i = 0; i < dims; i++)
+            result[i] = a[i] + b[i];   
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void SubInplace(Vec<T> target, Vec<T> a, Vec<T> b) {
+        if (a.Dimensionality != b.Dimensionality || a.Dimensionality != b.Dimensionality)
+            throw new ArithmeticException("Incompatible dimensions for vector subtraction");
+
+        int dims = target.Dimensionality;
+        var result = (T[])target;
+
+        if (dims != a.Dimensionality) {
+            throw new ArithmeticException("Incompatible dimensions for storing vector subtraction result");
+        }
+
+        for (int i = 0; i < dims; i++)
+            result[i] = a[i] - b[i];   
     }
 
     public override string ToString() {

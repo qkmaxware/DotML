@@ -6,7 +6,9 @@
 @using System.Timers
 @using System.Diagnostics
 @using System.Text.Json
-@inject IJSRuntime js;
+@using System.Text.Json.Serialization
+@inject IJSRuntime js
+@inject NavigationManager nav
 @implements IDisposable
 
 <nav class="bg-dark text-light">
@@ -17,23 +19,20 @@
 </nav>
 @if(state == State.Training ) {
 <nav id="Training Controls" class="p-4 navbar navbar-inverse text-light bg-secondary">
-    <div class="row" style="width: 100%">
-        <div class="col-sm-2" style="text-align: center;">
+    <div style="width: 100%; display:block flex; align-items: stretch;">
+        <div style="text-align: center; width: 270px; flex-grow: 0; flex-shrink: 0;">
             <div>
                 <button title="Reset Training" type="button" class="btn btn-light circle-small" @onclick=reset_training>&#8635;</button>
                 <button title="Play/Pause Training" type="button" class="btn btn-primary circle-large" @onclick=play_pause>@if(step_timer is null || !step_timer.Enabled){<text>&#9658;</text>}else{<text>||</text>}</button>
                 <button title="Cancel Training" type="button" disabled="@((step_timer is null || !step_timer.Enabled))" class="btn btn-danger circle-small" @onclick=cancel_training>&times;</button>
                 <button title="Next Epoch" type="button" class="btn btn-light circle-small" @onclick=step_training>&#x21B7;</button>
-                <br>
+                <TrainingProgress @ref=training_progress></TrainingProgress>
                 <button type="button" class="btn btn-primary" style="width: 100%; margin-top: 6px;" @onclick=complete_training>
                     Complete Training
-                    @if (training_session is not null) {
-                        <small>(@training_session.CurrentEpoch / @(training_session.GetType().GetProperty("MaxEpochs")?.GetValue(training_session, null) ?? 500))</small>
-                    }
                 </button>
             </div>
         </div>
-        <div class="col-sm-10">
+        <div style="width: calc(100% - 270px); flex-grow: 1; flex-shrink: 1;">
             <label><b>Trainer Parameters:</b></label>
             <div class="horizontal">
                 @if (Trainer is not null) {
@@ -78,8 +77,16 @@
                                 @for (var i = 0; i < Math.Min(TrainingData.Size, MAX_SET_DISPLAY_SIZE); i++) {
                                     var pair = TrainingData[i];
                                     <tr>
-                                        <td title="@pair.Input" class="titled">@pair.Input</td>
-                                        <td title="@pair.Output" class="titled">@pair.Output</td>
+                                        @if(pair.Input.Dimensionality <= MAX_VECTOR_LENGTH) {
+                                            <td title="@pair.Input" class="titled">@pair.Input</td>
+                                        } else {
+                                            <td>[...]</td>
+                                        }
+                                        @if (pair.Output.Dimensionality <= MAX_VECTOR_LENGTH) {
+                                            <td title="@pair.Output" class="titled">@pair.Output</td>
+                                        } else {
+                                            <td>[...]</td>
+                                        }
                                     </tr>
                                 }
                         </tbody>
@@ -111,8 +118,16 @@
                                 @for (var i = 0; i < Math.Min(data.Size, MAX_SET_DISPLAY_SIZE); i++) {
                                     var pair = data[i];
                                     <tr>
-                                        <td title="@pair.Input" class="titled">@pair.Input</td>
-                                        <td title="@pair.Output" class="titled">@pair.Output</td>
+                                        @if(pair.Input.Dimensionality <= MAX_VECTOR_LENGTH) {
+                                            <td title="@pair.Input" class="titled">@pair.Input</td>
+                                        } else {
+                                            <td>[...]</td>
+                                        }
+                                        @if (pair.Output.Dimensionality <= MAX_VECTOR_LENGTH) {
+                                            <td title="@pair.Output" class="titled">@pair.Output</td>
+                                        } else {
+                                            <td>[...]</td>
+                                        }
                                     </tr>
                                 }
                         </tbody>
@@ -174,17 +189,17 @@
                         <button type="button" class="btn" @onclick=@(() => evaluate_loss())>&#8635;</button>
                     </div>
                     <div class="col" style="text-align: right;">
-                        <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download(last_results, "validation.json"))>get</button>
+                        <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_validation(last_results, "validation.json"))>get</button>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-sm">
                         <label class="summary-header">Tests</label>
-                        <p title="passed: @last_results.TestsPassedCount, failed: @last_results.TestsFailedCount" class="summary-contents titled">@last_results.TestsPassedCount/@(last_results.TestsPerformed)</p>
+                        <p title="passed: @last_results?.TestsPassedCount, failed: @last_results?.TestsFailedCount" class="summary-contents titled">@last_results?.TestsPassedCount/@(last_results?.TestCount)</p>
                     </div>
                     <div class="col-sm">
                         <label class="summary-header">Loss</label>
-                        <p title="min: @last_results.MinLoss, max: @last_results.MaxLoss, avg: @last_results.AvgLoss, function: @this.last_results.LossFunction.Method.Name" class="summary-contents titled">@last_results.AvgLoss.ToString("F2") &plusmn; @(((last_results.MaxLoss - last_results.MinLoss) / 2.0).ToString("F2"))</p>
+                        <p title="min: @last_results?.MinLoss, max: @last_results?.MaxLoss, avg: @last_results?.AverageLoss, function: @this.used_loss_function.Method.Name" class="summary-contents titled">@((last_results?.AverageLoss ?? 0.0).ToString("F2")) &plusmn; @(((last_results?.MaxLoss ?? 0.0 - last_results?.MinLoss ?? 0.0) / 2.0).ToString("F2"))</p>
                     </div>
                     <div class="col-sm">
                         <label class="summary-header">Step Duration</label>
@@ -192,8 +207,8 @@
                     </div> 
                 </div>
             </figure>
-            @{
-                var result_data = last_results.TestBreakdown;
+            @if(last_results is IValidationReportWithTestBreakdown breakdown) {
+                var result_data = breakdown.TestBreakdown;
                 <table class="table">
                     <thead>
                         <tr>
@@ -207,17 +222,29 @@
                     <tbody>
                             @foreach (var pair in result_data.Take(MAX_SET_DISPLAY_SIZE)){
                                 <tr>
-                                    <td>@if(pair.Accuracy <= ACCURACY_TOLERANCE) {<span class="green">&checkmark;</span>} else {<span class="red">&times;</span>}</td>
-                                    <td title="@pair.Test.Input" class="titled">@pair.Test.Input</td>
-                                    <td title="@pair.Test.Output" class="titled">@pair.Test.Output</td>
-                                    <td title="@pair.Prediction" class="titled">@pair.Prediction</td>
-                                    <td title="@pair.Accuracy" class="titled">@pair.Accuracy.ToString("F8")</td>
+                                    <td>@if(pair.Loss <= ACCURACY_TOLERANCE) {<span class="green">&checkmark;</span>} else {<span class="red">&times;</span>}</td>
+                                    @if(pair.Input.Dimensionality <= MAX_VECTOR_LENGTH) {
+                                        <td title="@pair.Input" class="titled">@pair.Input</td>
+                                    } else {
+                                        <td>[...]</td>
+                                    }
+                                    @if (pair.Expected.Dimensionality <= MAX_VECTOR_LENGTH) {
+                                        <td title="@pair.Expected" class="titled">@pair.Expected</td>
+                                    } else {
+                                        <td>[...]</td>
+                                    }
+                                    @if (pair.Predicted.Dimensionality <= MAX_VECTOR_LENGTH) {
+                                        <td title="@pair.Predicted" class="titled">@pair.Predicted</td>
+                                    } else {
+                                        <td>[...]</td>
+                                    }
+                                    <td title="@pair.Loss" class="titled">@pair.Loss.ToString("F8")</td>
                                 </tr>
                             }
                     </tbody>
                 </table>
-                if (last_results.TestsPerformed > MAX_SET_DISPLAY_SIZE) {
-                    <p>Validation set contains @last_results.TestsPerformed test pairs which is too large for all of them to be displayed. Download the test results data via the get button above to view all tests.</p>
+                if (breakdown.TestCount > MAX_SET_DISPLAY_SIZE) {
+                    <p>Validation set contains @breakdown.TestCount test pairs which is too large for all of them to be displayed. Download the test results data via the get button above to view all tests.</p>
                 }
             }
             @if (ValidationVisualization is not null && Network is not null && last_results is not null) {
@@ -230,11 +257,13 @@
 <div class="row p-4"> 
     <div class=col-sm-6>
         <label class="header">Input</label>
+        @if (UseDefaultEval) {
         <p>
             Enter your input vector below. You may enter the vector's values directly by typing a double[] into the JSON field below. Additionally, some helpful controls may also be provided below to manipulate the input vector.
         </p>
         <label>JSON:</label>
         <textarea bind="input_json" class="form-control" @bind=input_json></textarea>
+        }
         @if (Input is not null) {
             <label style="margin-top: 6px;">Controls:</label>
             @Input(this.input_vector)
@@ -242,10 +271,17 @@
     </div>
     <div class=col-sm-6>
         <label class="header">Output</label>
+        @if (UseDefaultEval) {
         <p>
             After you have entered your input vector on the left, press the button below to have the network process the input and show you the results.
         </p>
         <button type="button" class="btn btn-primary" style="width: 100%" @onclick=process>Process Input</button>
+        }
+        @if (process_error is not null) {
+            <div class="alert alert-danger" role="alert" style="margin-top: 12px; margin-bottom: 12px;">
+                @process_error
+            </div>
+        }
         <div>
             @if (Output is not null) {
                 @Output((input_vector, output_vector))
@@ -257,6 +293,9 @@
 
 @code {
     const int MAX_SET_DISPLAY_SIZE = 10;
+    const int MAX_VECTOR_LENGTH = 1024;
+
+    [Parameter] public bool UseDefaultEval {get; set;} = true;
 
     [Parameter] public TNetwork? Network {get; set;} = default(TNetwork);
     [Parameter] public TrainingSet? TrainingData {get; set;}
@@ -287,6 +326,12 @@
         if (data is null)
             return;
         await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "application/octet-stream", data);
+    }
+    private async void download_validation(IValidationReport? data, string name = "data.json") {
+        if (data is null)
+            return;
+        var json = data is IValidationReportWithTestBreakdown br ? JsonSerializer.Serialize(br) : JsonSerializer.Serialize(data);
+        await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "text/json", System.Text.Encoding.UTF8.GetBytes(json));
     }
     private async void download<T>(T data, string name = "data.json") {
         if (data is null)
@@ -326,54 +371,38 @@
             return;
         }
     }
+
+    public Vec<double>? Process(Vec<double> input) {
+        process_error = null;
+
+        if (Network is null) {
+            process_error = new NullReferenceException(nameof(Network));
+            return null;
+        }
+
+         try {
+            input_vector.Value = input;
+            var outvec = Network.PredictSync(input);
+            output_vector.Value = outvec;
+            return outvec;
+        } catch (Exception e) {
+            process_error = e;
+            return null;
+        }
+    }
     #endregion
 
     #region Training
     [Parameter] public IEnumerableTrainer<TNetwork>? Trainer {get; set;}
     [Parameter] public RenderFragment<TrainingSet>? DataVisualization {get; set;}
     [Parameter] public RenderFragment<TNetwork>? NetworkVisualization {get; set;}
-    [Parameter] public RenderFragment<(TNetwork Network, TrainingResults Validation)>? ValidationVisualization {get; set;}
+    [Parameter] public RenderFragment<(TNetwork Network, IValidationReport? Validation)>? ValidationVisualization {get; set;}
     [Parameter] public RenderFragment<(TNetwork Network, IEnumerableTrainer<TNetwork> Trainer)>? TrainingParams {get; set;}
     
-    public struct Breakdown {
-        public int Index {get; set;} 
-        public double Accuracy {get; set;} 
-        public TrainingPair Test {get; set;}
-        public Vec<double> Prediction {get; set;}
-    }
-    public class TrainingResults {
-        public LossFunction LossFunction {get; set;} = LossFunctions.MeanSquaredError;
-        public double MaxLoss {get; set;}
-        public double MinLoss {get; set;}
-        public double AvgLoss {get; set;}
-
-        public int TestsPerformed {get; set;}
-        public int TestsPassedCount {get; set;}
-        public int TestsFailedCount {get; set;}
-
-        public TrainingSet? Data;
-        public double[]? TestAccuracy;
-        public Vec<double>[]? PredictedAnswers;
-
-        public IEnumerable<Breakdown> TestBreakdown {
-            get {
-                if (Data is null)
-                    yield break;
-                for (var i = 0; i < Data.Size; i++) {
-                    var accuracy = 0.0;
-                    if (TestAccuracy is not null && i >= 0 && i < TestAccuracy.Length)
-                        accuracy = TestAccuracy[i];
-                    var answer = new Vec<double>();
-                    if (PredictedAnswers is not null && i >= 0 && i < PredictedAnswers.Length)
-                        answer = PredictedAnswers[i];
-                    yield return new Breakdown{ Index = i, Accuracy = accuracy, Test = Data[i], Prediction = answer };
-                }
-            }
-        }
-    }
-    private TrainingResults last_results = new TrainingResults();
+    private IValidationReport? last_results;
 
     private IEpochEnumerator<TNetwork>? training_session;
+    private TrainingProgress? training_progress;
     private Timer? step_timer;
     private TimeSpan max_step_time = TimeSpan.Zero;
     private TimeSpan min_step_time = TimeSpan.Zero;
@@ -382,6 +411,7 @@
     private Stopwatch stopwatch = new Stopwatch();
     private List<(double X, double Y)> loss_graph = new List<(double X, double Y)>(500);
     private Exception? step_error;
+    [Parameter] public int? MaxEpochSize {get; set;}
     private void reset_training() {
         step_timer?.Stop(); 
         loss_graph.Clear();
@@ -398,9 +428,69 @@
             return;
 
         // Start training
-        if (TrainingData is null)
+        if (TrainingData is null || validation_data is null)
             return;
-        training_session = Trainer.EnumerateTraining(Network, TrainingData.SampleRandomly(), (ValidationData ?? TrainingData).SampleSequentially());
+
+        //var sampled_count = Math.Min(200, TrainingData.Size);
+        //TrainingData.SampleRandomly(sampled_count), // Only use a max of 200 samples per epoch
+        var training = MaxEpochSize.HasValue ? TrainingData.SampleRandomly(Math.Min(MaxEpochSize.Value, TrainingData.Size)) : TrainingData.SampleRandomly();
+        training_session = Trainer.EnumerateTraining(
+            Network, 
+            training, 
+            validation_data.SampleSequentially()
+        );
+        training_session.OnBatchEnd += (batchIndex, batchCount) => training_progress?.UpdateBatchAsync(batchIndex + 1, batchCount);
+        training_session.OnValidationStart += (epoch, maxEpochs) => training_progress?.UpdateValidatedAsync(0, validation_data?.Size ?? 0);
+        training_session.OnValidated += (epoch, maxEpochs, inputIndex, loss) => training_progress?.UpdateValidatedAsync(inputIndex + 1, validation_data?.Size ?? 0);
+        training_session.OnEpochEnd += (epoch, maxEpochs) => save_session(epoch);
+
+        training_progress?.Update(0, 0, 0, validation_data?.Size ?? 0, training_session.CurrentEpoch, training_session.MaxEpochs);
+    }
+
+    [Parameter] public ICheckpointManager<TNetwork>? Checkpoint {get; set;}
+    public bool AllowSessionResuming => Checkpoint is not null;
+    private void save_session(int epoch) {
+        if (!AllowSessionResuming || Network is null)
+            return;
+        
+        Checkpoint?.CreateCheckpoint(this.Network);
+    }
+    private bool does_prev_session_exist() {
+        return Checkpoint?.ListCheckpoints()?.Any() ?? false;
+    }
+    protected override async Task OnAfterRenderAsync(bool first) {
+        if (first && does_prev_session_exist()) {
+            await restore_prev_session();
+        }
+    }
+    private async Task restore_prev_session() {
+        if (Network is null || Checkpoint is null) {
+            return;
+        }
+
+        // Get all saved checkpoints
+        var most_recent = Checkpoint.ListCheckpoints().OrderByDescending(x => x.Created);
+        if (!most_recent.Any())
+            return;
+
+        // Prompt user to select a checkpoint
+        var options = string.Join('\n', most_recent.Select((c,i) => (i + 1).ToString() + ". " + c.Name));
+        var first = most_recent.FirstOrDefault();
+        var name = await js.InvokeAsync<string>("prompt", "Restore a training session.\n\n" + options + "\n\nLeave blank to not restore any session.", first?.Name);
+        var selected = most_recent.Where(c => c.Name == name).FirstOrDefault();
+
+        if (selected is null)
+            return;
+
+        // Start a new training session, but restore the weights of the checkpoint
+        try {
+            reset_training();
+            Checkpoint.RestoreFromCheckpoint(this.Network, selected);
+            await js.InvokeVoidAsync("alert", "Training session successfully restored.");
+        } catch (Exception e) {
+            Console.WriteLine(e);
+            await js.InvokeVoidAsync("alert", "An error occurred while loading checkpoint.");
+        }
     }
 
     private void play_pause() {
@@ -446,6 +536,7 @@
         bool has_next = false;
         try {
             has_next = training_session.MoveNext();
+            training_progress?.UpdateAsync(0, 0, 0, validation_data?.Size ?? 0, training_session.CurrentEpoch, training_session.MaxEpochs);
         } catch (Exception ex) {
             step_timer?.Stop();
             training_session = null;
@@ -467,6 +558,7 @@
         if (!has_next) {
             // No next step
             loss_graph.Add((training_session.CurrentEpoch, evaluate_loss()));
+            Checkpoint?.ClearCheckpoints();
         } else {
             // Next step
             loss_graph.Add((training_session.CurrentEpoch, evaluate_loss()));
@@ -487,6 +579,7 @@
         bool has_next = false;
         try {
             has_next = training_session.MoveNext();
+            training_progress?.Update(0, 0, 0, validation_data?.Size ?? 0, training_session.CurrentEpoch, training_session.MaxEpochs);
         } catch (Exception ex) {
             step_timer?.Stop();
             training_session = null;
@@ -507,6 +600,7 @@
         if (!has_next) {
             // No next step
             loss_graph.Add((training_session.CurrentEpoch, evaluate_loss()));
+            Checkpoint?.ClearCheckpoints();
         } else {
             // Next step
             loss_graph.Add((training_session.CurrentEpoch, evaluate_loss()));
@@ -530,55 +624,19 @@
         total_training_time += stopwatch.Elapsed;
 
         evaluate_loss();
+        Checkpoint?.ClearCheckpoints();
     }
 
     const double ACCURACY_TOLERANCE = 0.1;
+    private LossFunction used_loss_function => training_session?.GetType()?.GetProperties()?.Where(p => p.PropertyType.IsAssignableTo(typeof(LossFunction)))?.Select(p => (LossFunction?)p.GetValue(training_session)).FirstOrDefault() ?? LossFunctions.MeanSquaredError;
     private double evaluate_loss() {
-        var data = (ValidationData ?? TrainingData);
-        this.last_results.Data = data;
-        var loss_function_property = training_session?.GetType()?.GetProperties()?.Where(p => p.PropertyType.IsAssignableTo(typeof(LossFunction)))?.Select(p => (LossFunction?)p.GetValue(training_session)).FirstOrDefault();
-        var loss_func = loss_function_property ?? LossFunctions.MeanSquaredError;
-        this.last_results.LossFunction = loss_func;
-        if (Network is not null && data is not null) {
-            if (this.last_results.TestAccuracy is null || this.last_results.TestAccuracy.Length != data.Size) {
-                this.last_results.TestAccuracy = new double[data.Size];
-            }
-            if (this.last_results.PredictedAnswers is null || this.last_results.PredictedAnswers.Length != data.Size) {
-                this.last_results.PredictedAnswers = new Vec<double>[data.Size];
-            }
-            
-            var loss_sum = 0.0;
-            var loss_max = 0.0;
-            var loss_min = 0.0;
-            var loss_count = 0; var passed_count = 0; var failed_count = 0;
-            foreach (var pair in data) {
-                var output = Network.PredictSync(pair.Input);
-                var loss = loss_func(output, pair.Output);
-                this.last_results.TestAccuracy[loss_count] = loss;
-                this.last_results.PredictedAnswers[loss_count] = output;
-                loss_sum += loss;
-                if (loss <= ACCURACY_TOLERANCE)
-                    passed_count++;
-                else 
-                    failed_count++;
-                if (loss_count == 0 || loss > loss_max)
-                    loss_max = loss;
-                if (loss_count == 0 || loss < loss_min)
-                    loss_min = loss;
-                loss_count ++;
-            }
-
-            var loss_avg = loss_sum / loss_count;
-            this.last_results.MaxLoss = loss_max;
-            this.last_results.MinLoss = loss_min;
-            this.last_results.AvgLoss = loss_avg;
-            this.last_results.TestsPerformed = loss_count;
-            this.last_results.TestsPassedCount = passed_count;
-            this.last_results.TestsFailedCount = failed_count;
-
-            return loss_avg;
-        } else {
+        var report = Trainer?.ValidationReport;
+        if (report is null) {
+            this.last_results = null;
             return 0;
+        } else {
+            this.last_results = report;
+            return report.AverageLoss;            
         }
     }
 

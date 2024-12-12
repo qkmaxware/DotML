@@ -2,13 +2,20 @@
 @using DotML
 @using DotML.Network
 @using DotML.Network.Training
+@using DotML.Network.Initialization
+@using Qkmaxware.Media.Image
 
-<NetworkExplorerV2 TNetwork=ConvolutionalFeedforwardNetwork Network=network Trainer=trainer>
+<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=alexNet Trainer=trainer TrainingData=training MaxEpochSize=200 ValidationData=testing Checkpoint=checkpointManager>
     <Input>
-        <PaintApp OnChange=@((pixels) => {}) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
+        <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
     </Input>
     <Output>
-        
+        @{
+            var prob = new ProbabilityDistribution(context.Output.Value, OUT_CLASS_NAMES);
+            int selected = prob.SelectMostProbable(out string? name);
+        }
+        <h2 class="@name" style="text-align:center; margin-top: 24px;">@name (@prob.GetProbabilityOf(selected).ToString("F2"))</h2>
+        <ClassificationTable Output=@context.Output.Value ClassNames=@OUT_CLASS_NAMES></ClassificationTable>
     </Output>
     <DataVisualization>
 
@@ -22,19 +29,82 @@
 </NetworkExplorerV2>
 
 @code {
-    const int IMG_WIDTH = 256;
-    const int IMG_HEIGHT = 256;
+    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+
+    const int IMG_WIDTH = 227;
+    const int IMG_HEIGHT = 227;
     const int IMG_CHANNELS = 3;
+    const int OUT_CLASSES = 3;
+    string[] OUT_CLASS_NAMES = new string[OUT_CLASSES] {
+        "apple", "banana", "orange",
+    };
 
-    const int OUT_CLASSES = 4;
-
-    private ConvolutionalFeedforwardNetwork network = new ConvolutionalFeedforwardNetwork(
-        /* 3 * 256 * 256 */ IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS, 
-        /* 3 * 256 * 256 */ new ConvolutionLayer(Padding.Same, [ new ConvolutionFilter(Kernels.RandomKernel(3)), new ConvolutionFilter(Kernels.RandomKernel(3)), new ConvolutionFilter(Kernels.RandomKernel(3)) ]),
-        /* 3 * 128 * 128 */ new LocalMaxPoolingLayer(2, 1),
-        /* 3 * 128 * 128 */ new ConvolutionLayer(Padding.Valid, [ new ConvolutionFilter(Kernels.RandomKernel(3)), new ConvolutionFilter(Kernels.RandomKernel(3)), new ConvolutionFilter(Kernels.RandomKernel(3)) ]),
-        /* 3 * 32 * 32 = 3072*/ new LocalMaxPoolingLayer(2, 2),
-        /* 4             */ new FullyConnectedLayer(3072, OUT_CLASSES, HyperbolicTangent.Instance)
+    // AlexNet (https://medium.com/@siddheshb008/alexnet-architecture-explained-b6240c528bd5)
+    /*
+    Image       227x227x3
+    Convolution 55x55x96   11x11 Kernel, Stride 4, ReLU
+    Max Pooling 27x27x96   3x3 Kernel, Stride 2, ReLU
+    Convolution 27x27x256  5x5 Kernel, Stride 1, ReLU
+    Max Pooling 13x13x256  3x3 Kernel, Stride 2, ReLU,
+    Convolution 13x13x384  3x3 Kernel, Stride 1, ReLU,
+    Convolution 13x13x384  3x3 Kernel, Stride 1, ReLU
+    Convolution 13x13x256  3x3 Kernel, Stride 1, ReLU
+    Max Pooling 6x6x256    3x3 Kernel, Stride 2, ReLU
+    FC          9216       ReLU
+    FC          4096       ReLU
+    FC          4096       ReLU
+    Softmax     1000       Softmax
+    */
+    private ConvolutionalFeedforwardNetwork alexNet = new ConvolutionalFeedforwardNetwork(
+        IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS,
+        new ConvolutionLayer        (padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)) { ActivationFunction = HyperbolicTangent.Instance },
+        new LocalMaxPoolingLayer    (size: 3, stride: 2),
+        new ConvolutionLayer        (padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 96, 5)) { ActivationFunction = HyperbolicTangent.Instance },
+        new LocalMaxPoolingLayer    (size: 3, stride: 2),
+        new ConvolutionLayer        (padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 256, 3)) { ActivationFunction = HyperbolicTangent.Instance },
+        new ConvolutionLayer        (padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 384, 3)) { ActivationFunction = HyperbolicTangent.Instance },
+        new ConvolutionLayer        (padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 384, 3)) { ActivationFunction = HyperbolicTangent.Instance },
+        new LocalMaxPoolingLayer    (size: 3, stride: 2),
+        new FullyConnectedLayer     (9216, 4096)  { ActivationFunction = HyperbolicTangent.Instance },
+        new FullyConnectedLayer     (4096, 4096)  { ActivationFunction = HyperbolicTangent.Instance },
+        new FullyConnectedLayer     (4096, OUT_CLASSES)  { ActivationFunction = HyperbolicTangent.Instance },
+        new SoftmaxLayer            (OUT_CLASSES)
     );
-    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>();
+
+    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
+        LearningRate = 0.001,
+        LearningRateOptimizer = new AdamOptimizer(),
+        LossFunction = LossFunctions.CrossEntropy,
+        NetworkInitializer = new HeInitialization(),
+        BatchSize = 6,
+        EnableGradientClipping = true
+    };
+
+    private ICheckpointManager<ConvolutionalFeedforwardNetwork> checkpointManager = new CnnSingleCheckpointManager("_session_fruit_recognition");
+
+    private bool loaded => training is null || testing is null;
+    private static TrainingSet? training = null;
+    private static TrainingSet? testing = null;
+    private static SafetensorBuilder? weights;
+
+    static FruitRecognition(){
+        // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
+        training = ResourceLoader.LoadBinaryVectors(["data/Fruits/fruits.augmented.227x277.bin"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
+        testing = training; 
+
+        //weights = ResourceLoader.LoadSafetensors("data/Fruits/fruitrecognizer.tanh.safetensors");
+    }
+
+    private static double vectorize(byte b) => b / 255.0;
+    private static Vec<double> vectorize(Pixel[] pixels) {
+        var len = pixels.Length;
+        double[] values = new double[len * 3];
+        for (var i = 0; i < pixels.Length; i++) {
+            var pixel = pixels[i];
+            values[0     + i] = vectorize(pixel.R);
+            values[len   + i] = vectorize(pixel.G);
+            values[2*len + i] = vectorize(pixel.B);
+        }
+        return Vec<double>.Wrap(values);
+    }
 }

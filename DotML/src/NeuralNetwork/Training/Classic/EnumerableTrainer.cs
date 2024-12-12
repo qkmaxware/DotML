@@ -19,6 +19,14 @@ where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>
     public EnumerableBackpropagationTrainer() {}
 
     /// <summary>
+    /// Gets or sets a place to report testing validation results to
+    /// </summary>
+    public IValidationReport? ValidationReport {
+        get => null;
+        set {}
+    }
+
+    /// <summary>
     /// Number of epochs (default: 250)
     /// </summary>
     public int Epochs {get; set;} = 250;
@@ -484,7 +492,10 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
             }
         }*/
 
+        OnEpochStart(this.CurrentEpoch, this.MaxEpochs);
+
         while (enumerator.MoveNext()) {
+            OnBatchStart(0, 1);
             var data                = enumerator.Current;
             
             // Feed-forward step
@@ -510,25 +521,33 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
                 parameter_offset += layer.TrainableParameterCount();
             }
             updateTimestep++;
+            OnBatchEnd(0, 1);
         }
+
+        OnEpochEnd(this.CurrentEpoch, this.MaxEpochs);
         #endregion
 
         // Early Stop & Accuracy Test
         #region Early Stop
         var validation = this.validator ?? this.enumerator;
         if (EarlyStop && validation is not null) {
+            OnValidationStart(this.CurrentEpoch, this.MaxEpochs);
             validation.Reset();
 
             var loss = 0.0;
             var count = 0;
             while (validation.MoveNext()) {
+                
                 var set = validation.Current;
                 var predicted = Current.PredictSync(set.Input);
-                loss = Math.Max(loss, LossFunction(predicted, set.Output)); // loss + LossFunction(predicted, set.Output) for avg, currently max
+                var self_loss = LossFunction(predicted, set.Output);
+                loss = Math.Max(loss, self_loss); // loss + LossFunction(predicted, set.Output) for avg, currently max
+                OnValidated(this.CurrentEpoch, this.MaxEpochs, count, self_loss);
                 count++;
             }
             if (count > 0)
                 current_loss = loss; // / count; // Should this be max or avg ? currently max
+            OnValidationEnd(this.CurrentEpoch, this.MaxEpochs, loss);
         }
         #endregion
 
@@ -577,5 +596,13 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
             }
         }
     }
+
+    public event EpochStartHandler OnEpochStart = delegate {};
+    public event BatchStartHandler OnBatchStart = delegate {};
+    public event BatchEndHandler OnBatchEnd = delegate {};
+    public event ValidationStartHandler OnValidationStart = delegate {};
+    public event ValidationStepHandler OnValidated = delegate {};
+    public event ValidationEndHandler OnValidationEnd = delegate {};
+    public event EpochEndHandler OnEpochEnd = delegate {};
 }
 #endregion

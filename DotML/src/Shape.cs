@@ -48,6 +48,10 @@ public struct Shape3D {
         return new Shape3D(tuple.Item1, tuple.Item2, tuple.Item3);
     }
 
+    public static implicit operator Shape2D[](Shape3D shape) {
+        return Enumerable.Range(0, shape.Channels).Select(x => new Shape2D(shape.Rows, shape.Columns)).ToArray();
+    }
+
     public void Deconstruct(out int channels, out int rows, out int columns) {
         channels = this.Channels;
         rows = this.Rows;

@@ -1,9 +1,15 @@
 @using DotML.Network.Training
 
 <div class="carousel">
+    <div>
+    @if(current_pair is not null && Label is not null) {
+        @Label(current_pair)
+    }
+    </div>
     <VectorizedImage Width=@Width Height=@Height ValueScale=@ValueScale Vector=@current_vector></VectorizedImage>
     <div style="text-align:  center;">
         <button type="button" class="btn btn-primary" @onclick=prev>Prev.</button>
+        <span><input type="number" style="width: 5em" min="0" @bind=current_index>/ @Data?.Size</span>
         <button type="button" class="btn btn-primary" @onclick=next>Next</button>
     </div>
 </div>
@@ -14,7 +20,9 @@
     [Parameter] public int Height {get; set;}
     [Parameter] public TrainingSet? Data {get; set;}
     [Parameter] public int ValueScale {get; set;} = 1;
-
+    [Parameter] public RenderFragment<TrainingPair>? Label {get; set;}
+    
+    private TrainingPair? current_pair => Data is not null && current_index >= 0 && current_index < Data.Size ? Data[current_index] : null; 
     private Vec<double>? current_vector => Data is not null && current_index >= 0 && current_index < Data.Size ? (Vec<double>?)Data[current_index].Input : (Vec<double>?)null; 
 
     private void prev() {

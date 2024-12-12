@@ -1,6 +1,6 @@
 @using DotML.Network.Training
 
-<div class="image" style="grid-template-columns: repeat(@(Width), 1fr); grid-template-rows: repeat(@(Height), 1fr);">
+<div class="image" style="grid-template-columns: repeat(@(Width), 1fr); grid-template-rows: repeat(@(Height), 1fr); aspect-ratio: @(Width)/@(Height);">
     @{
         var pixels = Vector;
         var frame_size = Width * Height;

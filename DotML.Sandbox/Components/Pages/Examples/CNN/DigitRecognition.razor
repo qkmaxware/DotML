@@ -6,6 +6,7 @@
 
 <NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing>
     <Input>
+        <p>Draw a digit into the panel below (0-9).</p>
         <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
     </Input>
     <Output>
@@ -86,7 +87,7 @@
     private static TrainingSet? training = null;
     private static TrainingSet? testing = null;
     bool initialized = false;
-    private static SafetensorBuilder weights;
+    private static SafetensorBuilder? weights;
 
     static DigitRecognition(){
         // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
@@ -99,8 +100,10 @@
     protected override void OnInitialized() {
         if (initialized)
             return;
-
-        leNet.FromSafetensor(weights);
+        
+        if (weights is not null) {
+            leNet.FromSafetensor(weights);
+        }
         initialized = true;
     }
 

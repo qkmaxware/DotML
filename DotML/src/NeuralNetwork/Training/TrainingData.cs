@@ -55,15 +55,47 @@ public class InOrderSequencer : TrainingPairSequencer {
     }
 }
 
+public class RandomSequencer : TrainingPairSequencer {
+
+    private int max_taken;
+    private int current = -1;
+
+    public RandomSequencer(TrainingSet set, int amount) : base(set) {
+        this.max_taken = Math.Max(1, amount);
+        this.current = -1;
+    }
+
+    private TrainingPair? selected = null;
+    public override TrainingPair Current => selected is not null ? selected : throw new IndexOutOfRangeException();
+
+    private Random rng = new Random();
+
+    public override bool MoveNext() {
+        if ((current + 1) < max_taken) {
+            current += 1;
+            if (Datum.Size > 0)
+                selected = Datum[rng.Next(Datum.Size)];
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public override void Reset() {
+        this.selected = null;
+        this.current = -1;
+    }
+}
+
 /// <summary>
 /// An enumerator that accesses the training data in a randomized order
 /// </summary>
-public class RandomSequencer : TrainingPairSequencer {
+public class ShuffledSequencer : TrainingPairSequencer {
     private static readonly Random rng = new Random();
     private List<TrainingPair> shuffled;
     private int current = -1;
 
-    public RandomSequencer(TrainingSet set) : base(set) {
+    public ShuffledSequencer(TrainingSet set) : base(set) {
         shuffled = [..set];
         shuffle();
         current = -1;
@@ -122,6 +154,11 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     public TrainingSet(TrainingPair first, params TrainingPair[] next) {
         this.data = [first, ..next];
     }
+    public TrainingSet(params IEnumerable<TrainingPair>[] datas) {
+        this.data = new List<TrainingPair>();
+        foreach (var d in datas)
+            this.data.AddRange(d);
+    }
 
     public TrainingSet(IEnumerable<TrainingPair> data) {
         this.data = [..data];
@@ -151,12 +188,31 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// Sample the training data in a random order
     /// </summary>
     /// <returns>sequence</returns>
-    public TrainingPairSequencer SampleRandomly() => new RandomSequencer(this);
+    public TrainingPairSequencer SampleRandomly() => new ShuffledSequencer(this);
 
-    public void Split() { 
-        // TODO 
-    }
+    /// <summary>
+    /// Sample the training data in a random order a certain number of times
+    /// </summary>
+    /// <param name="count">number of samples to take</param>
+    /// <returns>sequence</returns>
+    public TrainingPairSequencer SampleRandomly(int count) => new RandomSequencer(this, count);
 
     public IEnumerator<TrainingPair> GetEnumerator() => this.data.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => this.data.GetEnumerator();
+
+    /// <summary>
+    /// Split the data into groups as evenly distributed as possible
+    /// </summary>
+    /// <param name="groupCount">number of groups</param>
+    /// <returns>groups</returns>
+    public IEnumerable<IEnumerable<TrainingPair>> SplitEvenly(int groupCount) {
+        int totalCount = this.Size;
+        int groupSize = (int)(Math.Ceiling((double)totalCount / (double)groupCount));
+
+        int startIndex = 0;
+        for (int i = 0; i < groupCount; i++) {
+            yield return this.Skip(startIndex).Take(groupSize);
+            startIndex += groupSize;
+        }
+    }
 }

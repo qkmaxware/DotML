@@ -1,0 +1,66 @@
+<table style="width: 100%">
+    <tbody>
+        <tr>
+            <td><small>train</small></td>
+            <td><progress value="@batch" max="@batches"></progress></td>
+            <td>@batch/@batches</td>
+        </tr>
+        <tr>
+            <td><small>test</small></td>
+            <td><progress value="@validated" max="@validation_size"></progress></td>
+            <td>@validated/@validation_size</td>
+        </tr>
+        <tr>
+            <td><small>epoch</small></td>
+            <td><progress value="@epoch" max="@max_epoch"></progress></td>
+            <td>@epoch/@max_epoch</td>
+        </tr>
+    </tbody>
+</table>
+
+@code {
+    private int batch;
+    private int batches;
+    private int validated;
+    private int validation_size;
+    private int epoch;
+    private int max_epoch;
+
+    public void Update(int batch, int batches, int validated, int validation_size, int epoch, int max_epoch) {
+        this.batch = batch;
+        this.batches = batches;
+        this.validated = validated;
+        this.validation_size = validation_size;
+        this.epoch = epoch;
+        this.max_epoch = max_epoch;
+        StateHasChanged();
+    }
+
+    public void UpdateAsync(int batch, int batches, int validated, int validation_size, int epoch, int max_epoch) {
+        this.batch = batch;
+        this.batches = batches;
+        this.validated = validated;
+        this.validation_size = validation_size;
+        this.epoch = epoch;
+        this.max_epoch = max_epoch;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void UpdateBatchAsync(int batch, int batches) {
+        this.batch = batch;
+        this.batches = batches;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void UpdateValidatedAsync(int validated, int validation_size) {
+        this.validated = validated;
+        this.validation_size = validation_size;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void UpdateEpochAsync(int epoch, int max_epoch) {
+        this.epoch = epoch;
+        this.max_epoch = max_epoch;
+        InvokeAsync(StateHasChanged);
+    }
+}

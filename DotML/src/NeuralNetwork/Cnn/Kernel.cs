@@ -6,6 +6,7 @@ namespace DotML.Network;
 /// Static class containing some common kernels/filters for ConvolutionLayer
 /// </summary>
 public static class Kernels {
+    static HeInitialization he = new HeInitialization();
     /// <summary>
     /// Create a kernel of the given size with random weights from a He distribution
     /// </summary>
@@ -13,14 +14,14 @@ public static class Kernels {
     /// <returns>matrix</returns>
     public static Matrix<double> HeKernel(int size) {
         double[,] filter = new double[size, size];
-        var xavier = new HeInitialization();
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
-                filter[i, j] = xavier.RandomWeight(size);
+                filter[i, j] = he.RandomWeight(size);
             }
         }
         return Matrix<double>.Wrap(filter);
     }
+    static NormalXavierInitialization xavier = new NormalXavierInitialization();
     /// <summary>
     /// Create a kernel of the given size with random weights from a normal Xavier distribution
     /// </summary>
@@ -28,7 +29,6 @@ public static class Kernels {
     /// <returns>matrix</returns>
     public static Matrix<double> XavierKernel(int size) {
         double[,] filter = new double[size, size];
-        var xavier = new NormalXavierInitialization();
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
                 filter[i, j] = xavier.RandomWeight(size);
@@ -36,6 +36,8 @@ public static class Kernels {
         }
         return Matrix<double>.Wrap(filter);
     }
+
+    static Random rand = new Random();
     /// <summary>
     /// Create a kernel of the given size with random weights
     /// </summary>
@@ -44,7 +46,6 @@ public static class Kernels {
     public static Matrix<double> RandomKernel(int size) {
         size = Math.Max(1, size);
         double[,] filter = new double[size, size];
-        Random rand = new Random();
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++)
             {

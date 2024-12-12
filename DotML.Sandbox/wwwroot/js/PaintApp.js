@@ -10,19 +10,45 @@ BlazorComponents.PaintApp = (function(){
         context.clearRect(0, 0, canvas.width, canvas.height); 
     }
 
+    exports.stream_pixels = function(canvas, writer, width, height) {
+        const context = canvas.getContext('2d');
+        const chunk_size = 1024;
+        var imaged = context.getImageData(0, 0, width, height).data;
+        var array = new Uint8Array(width * height * 3);
+
+        for (var i=0, j=0, n=imaged.length; i < n; i+=4, j+=3) {
+            array[j]    = imaged[i];
+            array[j+1]  = imaged[i+1];
+            array[j+2]  = imaged[i+2];
+            // i + 3 is alpha which is ignored
+        }
+
+        async function send_chunk() {
+            for (var offset = 0; offset < array.length; offset+=chunk_size) {
+                // Get next chunk
+                var chunk = array.slice(offset, offset + chunk_size);
+                await writer.invokeMethodAsync("Write", chunk);
+            }
+
+            await writer.invokeMethodAsync("Flush");
+            return;
+        }
+        send_chunk();
+    }
+
     exports.get_pixels = function(canvas, width, height) {
         const context = canvas.getContext('2d');
         var imaged = context.getImageData(0, 0, width, height).data;
-        var pixels=[];
-        for (var i = 0, n = imaged.length; i < n; i += 4) {
-            pixels.push({
-                R: imaged[i],
-                G: imaged[i + 1],
-                B: imaged[i + 2],
-                // Alpha would be i+3
-            });
+        var array = new Uint8Array(width * height * 3);
+
+        for (var i=0, j=0, n=imaged.length; i < n; i+=4, j+=3) {
+            array[j]    = imaged[i];
+            array[j+1]  = imaged[i+1];
+            array[j+2]  = imaged[i+2];
+            // i + 3 is alpha which is ignored
         }
-        return pixels;
+
+        return array;
     }
 
     exports.set_color = function(canvas, colour) {

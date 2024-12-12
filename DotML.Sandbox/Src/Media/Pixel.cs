@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Qkmaxware.Media.Image;
 
 public struct Pixel {
@@ -49,7 +51,23 @@ public struct Pixel {
     public bool IsGreenLargest => G > R && G > B;
     public bool IsBlueLargest => B > R && B > G;
 
-    public float Luminance => 0.2126f * R + 0.7152f * G + 0.0722f * B; 
+    public float Luminance => 0.2126f * R + 0.7152f * G + 0.0722f * B;
+
+    public override bool Equals([NotNullWhen(true)] object? obj) {
+        return obj is Pixel p && this.R == p.R && this.G == p.G && this.B == p.G;
+    }
+
+    public static bool operator == (Pixel a, Pixel b) {
+        return a.R == b.R && a.G == b.G && a.B == b.G;
+    }
+
+    public static bool operator != (Pixel a, Pixel b) {
+        return !(a.R == b.R && a.G == b.G && a.B == b.G);
+    }
+
+    public override int GetHashCode() {
+        return HashCode.Combine(this.R, this.G, this.B);
+    }
 
     public override string ToString() {
         return $"(r: {R}, g: {G}, b: {B})";
