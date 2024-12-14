@@ -144,7 +144,7 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
         var mul  = Weights * x; 
         AddMatVecInplace(mul, mul, bias_values);
         Matrix<double>.TransformInplace(mul, mul, this.ActivationFunction.Invoke);
-        return [ mul ];
+        return [ mul ]; 
         //var biased = mul + Matrix<double>.Column(bias_values); 
         //var activated = this.ActivationFunction.Invoke(biased);
         //return [ activated ];

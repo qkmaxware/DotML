@@ -23,6 +23,8 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
 
         public void Visit(FullyConnectedLayer layer) { }
 
+        public void Visit(ActivationLayer layer) { }
+
         public void Visit(SoftmaxLayer layer) { }
     }
 } 

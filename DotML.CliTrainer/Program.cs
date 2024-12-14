@@ -17,32 +17,31 @@ public static void Main() {
         "apple", "banana", "orange",
     };
 
-    ConvolutionalFeedforwardNetwork network = new ConvolutionalFeedforwardNetwork(
-        IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS,
-        new ConvolutionLayer        (input_size: new Shape3D(3, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)) { ActivationFunction = HyperbolicTangent.Instance },
-        new LocalMaxPoolingLayer    (size: 3, stride: 2),
+    var network = new ConvolutionalFeedforwardNetwork(
+        new ConvolutionLayer        (input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)) { ActivationFunction = HyperbolicTangent.Instance },
+        new LocalMaxPoolingLayer    (input_size: new Shape3D(96, 55, 55), size: 3, stride: 2),
         new ConvolutionLayer        (input_size: new Shape3D(96, 27, 27), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 96, 5)) { ActivationFunction = HyperbolicTangent.Instance },
-        new LocalMaxPoolingLayer    (size: 3, stride: 2),
+        new LocalMaxPoolingLayer    (input_size: new Shape3D(256, 27, 27), size: 3, stride: 2),
         new ConvolutionLayer        (input_size: new Shape3D(256, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 256, 3)) { ActivationFunction = HyperbolicTangent.Instance },
         new ConvolutionLayer        (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 384, 3)) { ActivationFunction = HyperbolicTangent.Instance },
         new ConvolutionLayer        (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 384, 3)) { ActivationFunction = HyperbolicTangent.Instance },
-        new LocalMaxPoolingLayer    (size: 3, stride: 2),
+        new LocalMaxPoolingLayer    (input_size: new Shape3D(256, 13, 13), size: 3, stride: 2),
         new FullyConnectedLayer     (9216, 4096)  { ActivationFunction = HyperbolicTangent.Instance },
         new FullyConnectedLayer     (4096, 4096)  { ActivationFunction = HyperbolicTangent.Instance },
         new FullyConnectedLayer     (4096, OUT_CLASSES)  { ActivationFunction = HyperbolicTangent.Instance },
         new SoftmaxLayer            (OUT_CLASSES)
     );
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
-    //Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
+    Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
     for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
         var layer = network.GetLayer(layerIndex);
-        //Console.Write("    "); Console.WriteLine("layer" + layerIndex + ": " + layer.OutputShape + " " + layer.GetType().Name);
+        Console.Write("    "); Console.WriteLine("layer" + layerIndex + ": " + layer.OutputShape + " " + layer.GetType().Name);
     }
     #endregion
 
     #region Trainer
     DefaultValidationReport report = new DefaultValidationReport();
-    BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
+    var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
         LearningRate = 0.01,
         LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CrossEntropy,

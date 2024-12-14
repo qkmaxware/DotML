@@ -50,6 +50,39 @@ public class SafetensorBuilder {
     public bool ContainsKey(string key) => used_names.Contains(key);
 
     /// <summary>
+    /// Rename a key from one name to another. The old key must exist and the new key must not already exist.
+    /// </summary>
+    /// <param name="fromKey">The key to rename from, must be present already</param>
+    /// <param name="toKey">The key to rename to, must not already exist</param>
+    /// <returns>true if renaming was successful</returns>
+    public bool RenameKey(string fromKey, string toKey) {
+        // Check that the fromKey exists and that the toKey does not
+        if (!used_names.Contains(fromKey)) {
+            return false;
+        }
+        if (used_names.Contains(toKey)) {
+            return false;
+        }
+
+        // Do the renaming (remove value with old key, add same value with new key)
+        used_names.Remove(fromKey);
+        if (matrices_f16.TryGetValue(fromKey, out Matrix<Half> mhalf)) {
+            matrices_f16.Remove(fromKey);
+            matrices_f16.Add(toKey, mhalf);
+        }
+        if (matrices_f32.TryGetValue(fromKey, out Matrix<float> msingle)) {
+            matrices_f32.Remove(fromKey);
+            matrices_f32.Add(toKey, msingle);
+        }
+        if (matrices_f64.TryGetValue(fromKey, out Matrix<double> mdouble)) {
+            matrices_f64.Remove(fromKey);
+            matrices_f64.Add(toKey, mdouble);
+        }
+        used_names.Add(toKey);
+        return true;
+    }
+
+    /// <summary>
     /// Get the tensor associated with the given key
     /// </summary>
     /// <typeparam name="TOut">output type</typeparam>
