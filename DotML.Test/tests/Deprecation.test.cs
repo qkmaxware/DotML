@@ -138,10 +138,18 @@ public class DeprecationTest {
         var initializer = new HeInitialization();
         var layer = new ConvolutionLayer(new Shape3D(1, 2, 2), Padding.Same);
         layer.Initialize(initializer);
-
+        
+        layer.ActivationFunction = Identity.Instance;
         var outputs_noact = layer.EvaluateSync([input]);
+        Matrix<double>[] outputs_noact_act = [outputs_noact[0].Transform(HyperbolicTangent.Instance.Invoke)];
         layer.ActivationFunction = HyperbolicTangent.Instance;
         var outputs_act = layer.EvaluateSync([input]);
+        for (var r = 0; r < outputs_act[0].Rows; r++) {
+            for (var c = 0; c < outputs_act[0].Columns; c++) {
+                Assert.AreNotEqual(outputs_act[0][r, c], outputs_noact[0][r, c]);
+                Assert.AreEqual(outputs_act[0][r, c], outputs_noact_act[0][r, c], $"at {r},{c}");
+            }
+        }
 
         var actions = new BatchedConvolutionalBackpropagationEnumerator<ConvolutionalFeedforwardNetwork>.BackpropagationActions(false, 0, 0);
         var args = new BatchedConvolutionalBackpropagationEnumerator<ConvolutionalFeedforwardNetwork>.BackpropagationArgs {
@@ -154,9 +162,13 @@ public class DeprecationTest {
         // Part 2, test with removed activation layer
         layer.ActivationFunction = Identity.Instance;
         var activation = new ActivationLayer(layer.OutputShape, HyperbolicTangent.Instance);
+        args.Inputs = outputs_noact;
+        args.Outputs = outputs_act;
+        args.Errors = [tested_errors];
         var results2_a = activation.Visit(actions, args);
-        args.Errors = results2_a.Errors;
+        args.Inputs = [input];
         args.Outputs = outputs_noact;
+        args.Errors = results2_a.Errors;
         var results2_b = layer.Visit(actions, args);
 
         // Assert results are identical
@@ -164,6 +176,7 @@ public class DeprecationTest {
         Assert.AreEqual(results1.Errors.Length, results2_b.Errors.Length);
         Assert.AreEqual(results1.Errors[0].Rows, results2_b.Errors[0].Rows);
         Assert.AreEqual(results1.Errors[0].Columns, results2_b.Errors[0].Columns);
+        Assert.Fail(results1.Errors[0].ToString() + "/" + results2_a.Errors[0].ToString() + "/" + results2_b.Errors[0].ToString());
         for (var r = 0; r < results1.Errors[0].Rows; r++) {
             for (var c = 0; c < results1.Errors[0].Columns; c++) {
                 Assert.AreEqual(results1.Errors[0][r, c], results2_b.Errors[0][r, c], $"at {r},{c}");

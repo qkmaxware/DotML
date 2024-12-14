@@ -42,15 +42,15 @@
         <label>Biases:</label>
         <VectorTable Vector=@(((FullyConnectedLayer)network.GetLayer(0)).Biases)></VectorTable>
         <label>Activation:</label><br>
-        <span>@(((FullyConnectedLayer)network.GetLayer(0)).ActivationFunction.GetType().Name)</span>
+        <span>@(((ActivationLayer)network.GetLayer(1)).ActivationFunction.GetType().Name)</span>
         <hr>
         <label>Output Layer</label><br>
         <label>Weights:</label>
-        <MatrixTable Matrix=@(((FullyConnectedLayer)network.GetLayer(1)).Weights)></MatrixTable>
+        <MatrixTable Matrix=@(((FullyConnectedLayer)network.GetLayer(2)).Weights)></MatrixTable>
         <label>Biases:</label>
-        <VectorTable Vector=@(((FullyConnectedLayer)network.GetLayer(1)).Biases)></VectorTable>
+        <VectorTable Vector=@(((FullyConnectedLayer)network.GetLayer(2)).Biases)></VectorTable>
         <label>Activation:</label><br>
-        <span>@(((FullyConnectedLayer)network.GetLayer(1)).ActivationFunction.GetType().Name)</span> 
+        <span>@(((ActivationLayer)network.GetLayer(3)).ActivationFunction.GetType().Name)</span> 
     </NetworkVisualization>
     <ValidationVisualization>
         
@@ -70,13 +70,15 @@
             new FullyConnectedLayer(
                 input_size: 2, 
                 neurons: 2,
-                activation: HyperbolicTangent.Instance
+                activation: Identity.Instance
             ),
+            new ActivationLayer(new Shape3D(1, 2, 1), HyperbolicTangent.Instance),
             new FullyConnectedLayer(
                 input_size: 2, 
                 neurons: OUT_CLASSES,
-                activation: HyperbolicTangent.Instance
-            )
+                activation: Identity.Instance
+            ),
+            new ActivationLayer(new Shape3D(1, OUT_CLASSES, 1), HyperbolicTangent.Instance)
         ]
     );
     private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>();

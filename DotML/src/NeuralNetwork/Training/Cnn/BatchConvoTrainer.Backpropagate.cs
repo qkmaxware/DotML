@@ -323,8 +323,9 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
 
         // Compute the gradient of the error with respect to the inputs
         for (var channel = 0; channel < input_channels; channel++) {
-            var derivative = layer.ActivationFunction.InvokeDerivative(output_gradients[channel], args.Outputs[channel]);   // Gradient of vector elements
-            var delta = output_gradients[channel].Hadamard(derivative);                               // Delta of vector elements (column)
+            var output_gradient = output_gradients[channel];
+            var derivative = args.Outputs[channel].Transform(layer.ActivationFunction.InvokeDerivative);   // Gradient of vector elements
+            var delta = output_gradient.Hadamard(derivative);                               // Delta of vector elements (column)
             input_gradients[channel] = delta;
         }
 

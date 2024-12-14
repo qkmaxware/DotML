@@ -75,4 +75,12 @@ public class PerformanceTest {
         var _result = layer.EvaluateSync([matrix]);
     }
 
+    [TestMethod]
+    public void TestActivationLayer() {
+        var matrix = new Matrix<double>(1024,1024);
+        var layer = new ActivationLayer(matrix.Shape, HyperbolicTangent.Instance);
+
+        var _result = layer.EvaluateSync([matrix]);
+    }
+
 }

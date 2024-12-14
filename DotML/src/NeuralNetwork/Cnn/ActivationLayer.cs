@@ -23,9 +23,9 @@ public class ActivationLayer : ConvolutionalFeedforwardNetworkLayer {
     public override Matrix<double>[] EvaluateSync(Matrix<double>[] channels) {
         var len = channels.Length;
         Matrix<double>[] outputs = new Matrix<double>[len];
-        for (var i = 0; i < len; i++) {
+        Parallel.For(0, len, i => {
             outputs[i] = channels[i].Transform(ActivationFunction.Invoke);
-        }
+        });
         return outputs;
     }
 

@@ -102,6 +102,10 @@ public struct Shape2D {
         return new Shape2D(tuple.Item1, tuple.Item2);
     }
 
+    public static implicit operator Shape3D(Shape2D shape) {
+        return new Shape3D(1, shape.Rows, shape.Columns);
+    }
+
     public void Deconstruct(out int rows, out int columns) {
         rows = this.Rows;
         columns = this.Columns;

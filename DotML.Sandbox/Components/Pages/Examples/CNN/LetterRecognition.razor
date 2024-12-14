@@ -47,7 +47,8 @@
                 padding: Padding.Valid, 
                 stride: 1, 
                 filters: Enumerable.Range(0, 6).Select(i => new ConvolutionFilter(Kernels.RandomKernel(5))).ToArray()
-            ) { ActivationFunction = HyperbolicTangent.Instance },
+            ) { ActivationFunction = Identity.Instance },
+            new ActivationLayer(new Shape3D(6, 28, 28), HyperbolicTangent.Instance),
             new LocalAvgPoolingLayer (
                 new Shape3D(6, 28, 28),
                 size: 2, 
@@ -60,7 +61,8 @@
                 filters: Enumerable.Range(0, 16).Select(i1 => new ConvolutionFilter(
                     Enumerable.Range(0, 6).Select(i2 => Kernels.RandomKernel(5)).ToArray()
                 )).ToArray()
-            ) { ActivationFunction = HyperbolicTangent.Instance },
+            ) { ActivationFunction = Identity.Instance },
+            new ActivationLayer(new Shape3D(16, 10, 10), HyperbolicTangent.Instance),
             new LocalAvgPoolingLayer(
                 new Shape3D(16, 10, 10),
                 size: 2, 
@@ -69,18 +71,21 @@
             new FullyConnectedLayer(
                 input_size: 400, 
                 neurons: 120,
-                activation: HyperbolicTangent.Instance
+                activation: Identity.Instance
             ),
+            new ActivationLayer(new Shape3D(1, 120, 1), HyperbolicTangent.Instance),
             new FullyConnectedLayer(
                 input_size: 120, 
                 neurons: 84,
-                activation: HyperbolicTangent.Instance
+                activation: Identity.Instance
             ),
+            new ActivationLayer(new Shape3D(1, 84, 1), HyperbolicTangent.Instance),
             new FullyConnectedLayer(
                 input_size: 84, 
                 neurons: OUT_CLASSES,
-                activation: HyperbolicTangent.Instance
+                activation: Identity.Instance
             ),
+            new ActivationLayer(new Shape3D(1, OUT_CLASSES, 1), HyperbolicTangent.Instance),
             new SoftmaxLayer(OUT_CLASSES)
         ]
     );

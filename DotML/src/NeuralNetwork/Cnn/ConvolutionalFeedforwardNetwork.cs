@@ -11,7 +11,7 @@ namespace DotML.Network;
 /// </summary>
 public class ConvolutionalFeedforwardNetwork: 
     ILayeredNeuralNetwork<IConvolutionalFeedforwardNetworkLayer>, 
-    IDiagrammable, ISafetensorable
+    IDiagrammable, ISafetensorable, IMarkdownable
 {
     private List<IConvolutionalFeedforwardNetworkLayer> layers = new List<IConvolutionalFeedforwardNetworkLayer>();
 
@@ -227,6 +227,7 @@ public class ConvolutionalFeedforwardNetwork:
         var last_layer_midpoint_y = start_layer_midpoint_y;
         bool last_layer_was_fully_connected = false;
         for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
+            s.AppendLine($"<g id='layer{layerIndex}'>");
             // Compute dimensions
             var layer = this.GetLayer(layerIndex);
             var layer_start_x   = (layer_buffer + layer_width) * (layerIndex + 1);
@@ -254,6 +255,29 @@ public class ConvolutionalFeedforwardNetwork:
                         s.AppendLine($"<rect x='{matrix_offset + layer_start_x}' y='{header_size + i * matrix_size}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
                     }
                     layer_midpoint_y = last_layer_midpoint_y;
+                    break;
+                case ActivationLayer active:
+                    {
+                        s.AppendLine("<g id='synapses'>");
+                        if (last_layer_was_fully_connected) {
+                            for (var i = 0; i < active.InputShape.Count; i++) {
+                                var neuron_offset = (matrix_size - 2*neuron_radius) / 2;
+                                var center_x = matrix_offset + layer_start_x + matrix_size / 2;
+                                var center_y = header_size + i * matrix_size + matrix_size / 2;
+                                var in_center_x = (layer_buffer + layer_width) * layerIndex + matrix_offset + matrix_size - neuron_offset; // from the prev_layer
+                                var in_center_y = header_size + i * matrix_size + matrix_size / 2;
+                                s.AppendLine($"<line x1='{in_center_x}' y1='{in_center_y}' x2='{center_x - neuron_radius}' y2='{center_y}' stroke='gray'/>");
+                            }
+                        }
+                        s.AppendLine("</g>");
+                        for (var i = 0; i < active.InputShape.Count; i++) {
+                            var center_x = matrix_offset + layer_start_x + matrix_size / 2;
+                            var center_y = header_size + i * matrix_size + matrix_size / 2;
+                            s.AppendLine($"<circle cx='{center_x}' cy='{center_y}' r='{neuron_radius}' fill='black' stroke='black'/>");
+                            s.AppendLine($"<text x='{center_x}' y='{center_y}' text-anchor='middle' fill='white'>F(x)</text>");
+                        }
+                        layer_midpoint_y = last_layer_midpoint_y;
+                    }
                     break;
                 case FullyConnectedLayer connect:
                     for (var i = 0; i < connect.OutputShape.Count; i++) {
@@ -305,9 +329,57 @@ public class ConvolutionalFeedforwardNetwork:
                     break;
             }
             last_layer_midpoint_y = layer_midpoint_y;
+            s.AppendLine("</g>");
         }
 
         s.Append("</svg>");
         return s.ToString();
+    }
+
+    /// <summary>
+    /// Convert this object to a Markdown representation
+    /// </summary>
+    /// <returns>Markdown serialized string</returns>
+    public string ToMarkdown() {
+        StringBuilder sb = new StringBuilder();
+        sb.Append('|'); sb.Append("Layer Type"); sb.Append('|'); sb.Append("Output Shape"); sb.Append('|'); sb.Append("Parameters"); sb.Append('|'); sb.Append("Description"); sb.Append('|'); sb.AppendLine();
+        sb.Append('|'); sb.Append("---"); sb.Append('|'); sb.Append("---"); sb.Append('|'); sb.Append("---"); sb.Append('|'); sb.Append("---"); sb.Append('|'); sb.AppendLine();
+
+        sb.Append('|');
+            sb.Append("Input");
+        sb.Append('|');
+            sb.Append(this.InputShape);
+        sb.Append('|');
+            sb.Append(string.Empty);
+        sb.Append('|');
+            sb.Append("Input image/tensor");
+        sb.Append('|');
+            sb.AppendLine();
+
+        foreach (var layer in layers) {
+            sb.Append('|');
+                sb.Append(layer.GetType().Name);
+            sb.Append('|');
+                sb.Append(layer.OutputShape);
+            sb.Append('|');
+                sb.Append(layer.TrainableParameterCount());
+            sb.Append('|');
+                sb.Append(
+                    layer switch {
+                        ConvolutionLayer conv2d => $"{conv2d.FilterCount} filters of size {conv2d.Filters.FirstOrDefault()?.FirstOrDefault().Shape}",
+                        PoolingLayer pooling => $"Pooling with a size of {pooling.FilterHeight}x{pooling.FilterWidth}",
+                        DropoutLayer drop => $"Dropout with probability {drop.DropoutRate} to reduce overfitting",
+                        FlatteningLayer flat => $"Flatten multi-dimensional input to 1D",
+                        FullyConnectedLayer dense => $"Fully connected layer of {dense.NeuronCount} neurons",
+                        ActivationLayer active => $"Apply {active.ActivationFunction?.GetType().Name} activation function to inputs",
+                        SoftmaxLayer softmax => $"Convert output to probability distribution over {softmax.OutputShape.Count} classes",
+                        _ => string.Empty,
+                    }
+                );
+            sb.Append('|');
+             sb.AppendLine();
+        }
+
+        return sb.ToString();
     }
 }
