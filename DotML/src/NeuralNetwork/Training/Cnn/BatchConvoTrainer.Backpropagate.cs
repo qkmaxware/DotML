@@ -36,7 +36,7 @@ public double GradientClippingThresholdWeight => backpropagationActions.Gradient
 public double GradientClippingThresholdBias => backpropagationActions.GradientClippingThresholdBias;
 
 private BackpropagationActions backpropagationActions {get; init;}
-private class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationArgs, BatchedConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationReturns> {
+public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationArgs, BatchedConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationReturns> {
 
     public BackpropagationActions(bool useClipping, double weightThreshold, double biasThreshold) {
         this.UseGradientClipping = useClipping;
