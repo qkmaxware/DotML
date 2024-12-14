@@ -111,6 +111,6 @@
 
     private double[]? vec_data;
 
-    private int inputs => Network?.InputCount ?? 0;
-    private int outputs => Network?.OutputCount ?? 0;
+    private int inputs => Network?.InputShape.Count ?? 0;
+    private int outputs => Network?.OutputShape.Count ?? 0;
 }

@@ -45,9 +45,11 @@ private class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolu
     }
 
     // Helper to perform tranpose convolution
-    private Matrix<double>[] TransposeConvolve(Matrix<double>[] inputs, Matrix<double>[] errors, int strideX, int strideY, Padding padding, IList<ConvolutionFilter> filters) {
+    private Matrix<double>[] TransposeConvolve(Matrix<double>[] inputs, Matrix<double>[] errors, int strideX, int strideY, int padRows, int padColumns, IList<ConvolutionFilter> filters) {
         var inputChannels = inputs.Length;
         var inputErrors = new Matrix<double>[inputChannels];
+        var paddingRows         = padRows;
+        var paddingColumns      = padColumns;
 
         for (var channel = 0; channel < inputChannels; channel++) {
             var input = inputs[channel];
@@ -58,19 +60,21 @@ private class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolu
                 var filter = filters[filterIndex];
                 var filterRows = filter.Height;
                 var filterColumns = filter.Width;
-                var paddingRows         = padding == Padding.Same ? (filterRows - 1) / 2 : 0;
-                var paddingColumns      = padding == Padding.Same ? (filterColumns - 1) / 2 : 0;
                 var error = errors[filterIndex];
+                var rows = error.Rows;
+                var cols = error.Columns;
                 var kernel = filter[channel];
 
                 // Iterate over output errors to compute gradient
-                for (int outY = 0; outY < error.Rows; outY++) {
-                    for (int outX = 0; outX < error.Columns; outX++) {
+                for (int outY = 0; outY < rows; outY++) {
+                    var startY = outY * strideY - paddingRows;
+                    for (int outX = 0; outX < cols; outX++) {
+                        var startX = outX * strideX - paddingColumns;
                         // Place the error at the corresponding position in the input space
                         for (int ky = 0; ky < filterRows; ky++) {
+                            var inY = startY + ky;
                             for (int kx = 0; kx < filterColumns; kx++) {
-                                var inY = outY * strideY - paddingRows + ky;
-                                var inX = outX * strideX - paddingColumns + kx;
+                                var inX = startX + kx;
 
                                 if (inY >= 0 && inY < input.Rows && inX >= 0 && inX < input.Columns) {
                                     inputError[inY, inX] += error[outY, outX] * kernel[ky, kx];
@@ -91,38 +95,40 @@ private class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolu
         // Initialize extra storage
         var filterGradients = new Matrix<double>[layer.FilterCount][];
         var biasGradients = new double[layer.FilterCount];
+        var paddingRows         = layer.RowsPadding; 
+        var paddingColumns      = layer.ColumnsPadding; 
 
         // Loop through each filter and compute gradients
         for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
-            var filter = layer.Filters[filterIndex];
-            var filterRows          = filter.Height;                                                     
-            var filterColumns       = filter.Width;                                                        
-            var paddingRows         = layer.Padding == Padding.Same ? (filterRows - 1) / 2 : 0; 
-            var paddingColumns      = layer.Padding == Padding.Same ? (filterColumns - 1) / 2 : 0; 
+            var filter              = layer.Filters[filterIndex];                                                    
 
-            var gradient = new Matrix<double>[args.Inputs.Length];
-            var error = args.Errors[filterIndex];
-            var output = args.Outputs[filterIndex];
-            var gradOut = layer.ActivationFunction.InvokeDerivative(error, output);
-            var biasGradient = 0.0;
+            var gradient            = new Matrix<double>[args.Inputs.Length];
+            var error               = args.Errors[filterIndex];
+            var rows                = error.Rows;
+            var cols                = error.Columns;
+            var output              = args.Outputs[filterIndex];
+            var gradOut             = layer.ActivationFunction.InvokeDerivative(error, output);
+            var biasGradient        = 0.0;
 
             for (var inputIndex = 0; inputIndex < args.Inputs.Length; inputIndex++) {
-                var input = args.Inputs[inputIndex];
-                var kernel = filter[inputIndex];
-                var kernelGradient = new double[kernel.Rows, kernel.Columns];
+                var input           = args.Inputs[inputIndex];
+                var kernel          = filter[inputIndex];
+                var kernelGradient  = new double[kernel.Rows, kernel.Columns];
 
                 // Slide the kernel over the error map computing the correlation
-                for (int outY = 0; outY < error.Rows; outY++) {
-                    for (int outX = 0; outX < error.Columns; outX++) {
+                for (int outY = 0; outY < rows; outY++) {
+                    var startY = outY * layer.StrideY - paddingRows;
+                    for (int outX = 0; outX < cols; outX++) {
+                        var startX = outX * layer.StrideX - paddingColumns;
                         var slope = gradOut[outY, outX];
                         var pixel_error = error[outY, outX];
                         var errorContribution = slope * pixel_error;
                         biasGradient += errorContribution;
 
                         for (var ky = 0; ky < kernel.Rows; ky++) {
+                            var inY = startY + ky;
                             for (var kx = 0; kx < kernel.Columns; kx++) {
-                                var inY = outY * layer.StrideY - paddingRows + ky;
-                                var inX = outX * layer.StrideX - paddingColumns + kx;
+                                var inX = startX + kx;
 
                                 if (inY >= 0 && inY < input.Rows && inX >= 0 && inX < input.Columns) {
                                     kernelGradient[ky, kx] += errorContribution * input[inY, inX];
@@ -141,7 +147,7 @@ private class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolu
             biasGradients[filterIndex] = biasGradient;
         }
 
-        var inputErrors = TransposeConvolve(args.Inputs, args.Errors, layer.StrideX, layer.StrideY, layer.Padding, layer.Filters);
+        var inputErrors = TransposeConvolve(args.Inputs, args.Errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filters);
 
         return new BackpropagationReturns {
             Errors = inputErrors,
@@ -176,21 +182,18 @@ private class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolu
 
             // Loop over output
             for (int row = 0; row < output.Rows; row++) {
+                var StartY = row * layer.StrideY;
+                var EndY = Math.Min(row * layer.StrideY + filterHeight, input.Rows);
                 for (int col = 0; col < output.Columns; col++) {
-                    // Calculate the region of the input corresponding to this output
-                    (int StartX, int StartY, int EndX, int EndY) region = (
-                        col * layer.StrideX, 
-                        row * layer.StrideY,
-                        Math.Min(col * layer.StrideX + filterWidth, input.Columns),
-                        Math.Min(row * layer.StrideY + filterHeight, input.Rows)
-                    );
+                    var StartX = col * layer.StrideX;
+                    var EndX = Math.Min(col * layer.StrideX + filterWidth, input.Columns);
 
                     // Loop over input values where the filter is applied
                     switch (layer) {
                         case LocalMaxPoolingLayer maxPool:
                             int maxRow = 0, maxCol = 0; double maxVal = double.MinValue; // Values for max pooling
-                            for (int kr = region.StartY; kr < region.EndY; kr++) {
-                                for (int kc = region.StartX; kc < region.EndX; kc++) {
+                            for (int kr = StartY; kr < EndY; kr++) {
+                                for (int kc = StartX; kc < EndX; kc++) {
                                     var value = input[kr, kc];
 
                                     // Compute; Assume max pooling (avg is different)
@@ -205,8 +208,8 @@ private class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolu
                             break;
                         case LocalAvgPoolingLayer avgPool:
                             double errorContribution = error[row, col] / Math.Max(1, filterElementCount); // Distribute the error
-                            for (int kr = region.StartY; kr < region.EndY; kr++) {
-                                for (int kc = region.StartX; kc < region.EndX; kc++) {
+                            for (int kr = StartY; kr < EndY; kr++) {
+                                for (int kc = StartX; kc < EndX; kc++) {
                                     inputError[kr, kc] += errorContribution;            // Assign the error contribution to each element in the pooling region
                                 }   
                             }
@@ -271,19 +274,20 @@ private class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolu
 
     public BackpropagationReturns Visit(FullyConnectedLayer layer, BackpropagationArgs args) {
         // Current layer deltas
-        var flattened_inputs = Matrix<double>.Column(args.Inputs.SelectMany(x => x.FlattenRows()).ToArray());
+        var flattened_inputs = Matrix<double>.Row(args.Inputs.SelectMany(x => x.FlattenRows()).ToArray());
         var output = args.Outputs[0];                                       // Output vector (column)
         var error = args.Errors[0];                                         // Output vector (column)
         var gradient = layer.ActivationFunction.InvokeDerivative(error, output);   // Gradient of vector elements
-        var delta = error.Hadamard(gradient);                               // Delta of vector elements (column)
-
+        var delta = gradient;
+        Matrix<double>.HadamardInplace(delta, error, gradient);                               // Delta of vector elements (column)
+        
 		// Do gradient clipping on the bias gradients
 		clip(delta, GradientClippingThresholdBias);						    // Clip using the default clip size
         
         // Compute gradients for weight updates
         // Delta is a column matrix of size (neurons)
         // Flattened inputs is a column matrix of size (input neurons) when transposed it is a row matrix
-        Matrix<double> weight_gradients = delta * flattened_inputs.Transpose();
+        Matrix<double> weight_gradients = delta * flattened_inputs;
 
         // Do gradient clipping on weight gradients
         clip(weight_gradients, GradientClippingThresholdWeight);

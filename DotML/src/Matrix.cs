@@ -4,6 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -27,17 +29,17 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <summary>
     /// Number of columns
     /// </summary>
-    public int Columns  => IsTransposed ? values.GetLength(0) : values.GetLength(1);
+    public int Columns  => values.GetLength(1);
     private int value_columns => values.GetLength(1); // Same as Columns, here in case I swap transposition to just be a boolean flag
     /// <summary>
     /// Number of rows
     /// </summary>
-    public int Rows     => IsTransposed ? values.GetLength(1) : values.GetLength(0);
+    public int Rows     => values.GetLength(0);
     private int value_rows => values.GetLength(0); // Same as Rows, here in case I swap transposition to just be a boolean flag
     /// <summary>
     /// Matrix shape (rows & columns)
     /// </summary>
-    [JsonIgnore] public Shape2D Shape => IsTransposed ? new Shape2D(value_columns, value_rows) : new Shape2D(value_rows, value_columns);
+    [JsonIgnore] public Shape2D Shape => new Shape2D(value_rows, value_columns);
     /// <summary>
     /// Check if the matrix is a column matrix (only one column)
     /// </summary> 
@@ -176,10 +178,8 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="col">Column index</param>
     /// <returns>value at row, column or zero if out of bounds</returns>
     public T this[int row, int col] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get {
-            if (IsTransposed) {
-                (row, col) = (col, row); // Swap row, col indices if transposed from underlying
-            }
             if (row >= 0 && row < value_rows && col >= 0 && col < value_columns)
                 return values[row, col];
             else
@@ -192,11 +192,12 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary>
     /// <param name="index">Sequential index</param>
     /// <returns>value at row, column or zero if out of bounds</returns>
-    public T this[int index] {  
+    public T this[int index] { 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         get {
             var row = index / Columns;
             var col = index % Columns;
-            var val = IsTransposed ? this[col, row] : this[row, col];
+            var val = this[row, col];
             return val;
         }
     }
@@ -296,26 +297,17 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
-    /// Flag to indicate if this matrix is transposed from it's original dimensions
-    /// </summary>
-    public bool IsTransposed {get; private set;} = false;
-
-    /// <summary>
     /// Transposition of the matrix
     /// </summary>
     /// <returns>transposed matrix</returns>
     public Matrix<T> Transpose() {
-        var result = this;                          // Copy the struct
-        result.IsTransposed = !result.IsTransposed;     // Flip the transposed flag
-        return result;                              // return the copy (both use the same underlying array)
-        // Old "DEEP" transposition
-        /*var result = new Matrix<T>(Columns, Rows);
-        for (int i = 0; i < Rows; i++) {
-            for (int j = 0; j < Columns; j++) {
-                result.values[j, i] = this[i, j];
-            }
-        }
-        return result;*/
+        var rows = this.Rows;
+        var cols = this.Columns;
+        T[,] transposed = new T[cols,rows];
+        for (var r = 0; r < rows; r++)
+            for (var c = 0; c < cols; c++)
+                transposed[c, r] = this[r, c];
+        return Matrix<T>.Wrap(transposed);
     }
 
     /// <summary>
@@ -323,6 +315,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary>
     /// <param name="values">matrix elements</param>
     /// <returns>matrix</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Matrix<T> Wrap(T[,] values) {
         return new Matrix<T>(values, shared: true);
     }
@@ -332,6 +325,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary>
     /// <param name="values">matrix elements</param>
     /// <returns>matrix</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Matrix<T> FromCopy(T[,] values) {
         return new Matrix<T>(values, shared: false);
     }
@@ -596,20 +590,8 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <returns>matrix</returns>
     /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
     public static Matrix<T> operator * (Matrix<T> a, Matrix<T> b) {
-        if (a.Columns != b.Rows)
-            throw new ArithmeticException($"Incompatible dimensions for matrix multiplication {a.Rows}x{a.Columns} · {b.Rows}x{b.Columns}");
-
-        int rows = a.Rows;
-        int cols = b.Columns;
-
-        Matrix<T> result = new Matrix<T>(rows, cols, T.Zero);
-        for (int i = 0; i < rows; i++)
-            for (int j = 0; j < cols; j++)
-                for (int k = 0; k < a.Columns; k++)
-                    result.values[i, j] += a[i, k] * b[k, j];
-
-        return result;
-    }   
+        return MatrixHelper<T>.MultiplyInParallel(a, b); // I hate that this is the fastest. Seems like it works great in a single threaded app. Will have to see how it works in multi-threaded apps where threads are not as readily available.
+    }
 
     /// <summary>
     /// Matrix vector multiplication
@@ -692,18 +674,13 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         var result = (R[,])target;
         var rows = target.Rows;
         var cols = target.Columns;
-        var transposed = target.IsTransposed;
         if (rows != src.Rows || cols != src.Columns) {
             throw new ArithmeticException("Incompatible dimensions for storing matrix transformation result");
         }
         
         for (var r = 0; r < rows; r++) {
             for (var c = 0; c < cols; c++) {
-                if (transposed) {
-                    result[c,r] =  mapping(src[r, c]);
-                } else {
-                    result[r,c] =  mapping(src[r, c]);
-                }
+                result[r,c] =  mapping(src[r, c]);
             }
         }
     } 
@@ -720,20 +697,33 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         var result = (R[,])target;
         var rows = target.Rows;
         var cols = target.Columns;
-        var transposed = target.IsTransposed;
         if (rows != src.Rows || cols != src.Columns) {
             throw new ArithmeticException("Incompatible dimensions for storing matrix transformation result");
         }
         
         for (var r = 0; r < rows; r++) {
             for (var c = 0; c < cols; c++) {
-                if (transposed) {
-                    result[c,r] =  mapping((r, c), src[r, c]);
-                } else {
-                    result[r,c] =  mapping((r, c), src[r, c]);
-                }
+                result[r,c] =  mapping((r, c), src[r, c]);
             }
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void HadamardInplace(Matrix<T> target, Matrix<T> a, Matrix<T> b) {
+        if (a.Rows != b.Rows || a.Columns != b.Columns)
+            throw new ArithmeticException("Incompatible dimensions for element-wise multiplication");
+
+        int rows = a.Rows;
+        int cols = a.Columns;
+        var result = (T[,])target;
+
+        if (target.Rows != rows || target.Columns != cols) {
+            throw new ArithmeticException("Incompatible dimensions for storing element-wise multiplication result");
+        }
+
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                result[i, j] = a[i, j] * b[i, j];
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -744,7 +734,6 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         int rows = a.Rows;
         int cols = a.Columns;
         var result = (T[,])target;
-        var transposed = target.IsTransposed;
 
         if (target.Rows != rows || target.Columns != cols) {
             throw new ArithmeticException("Incompatible dimensions for storing matrix addition result");
@@ -752,11 +741,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < cols; j++)
-                if (transposed) {
-                    result[j, i] = a[i, j] + b[i, j];
-                } else {
-                    result[i, j] = a[i, j] + b[i, j];
-                }
+                result[i, j] = a[i, j] + b[i, j];
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -767,7 +752,6 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         int rows = a.Rows;
         int cols = a.Columns;
         var result = (T[,])target;
-        var transposed = target.IsTransposed;
 
         if (target.Rows != rows || target.Columns != cols) {
             throw new ArithmeticException("Incompatible dimensions for storing matrix subtraction result");
@@ -775,11 +759,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < cols; j++)
-                if (transposed) {
-                    result[j, i] = a[i, j] - b[i, j];
-                } else {
-                    result[i, j] = a[i, j] - b[i, j];
-                }
+                result[i, j] = a[i, j] - b[i, j];
     }
     #endregion
 

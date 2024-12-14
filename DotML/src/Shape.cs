@@ -22,6 +22,10 @@ public struct Shape3D {
     /// Number of columns
     /// </summary>
     public readonly int Columns;
+    /// <summary>
+    /// Total number of tensor elements contained in the shape
+    /// </summary>
+    public readonly int Count => Channels * Rows * Columns;
 
     public Shape3D() {}
 

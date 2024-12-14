@@ -27,7 +27,7 @@ public class NormalXavierInitialization
     public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         network.ForeachLayer(layer => {
             layer.ForeachNeuron(neuron => {
-                double stddev = Math.Sqrt(2.0 / (layer.InputCount + layer.OutputCount));
+                double stddev = Math.Sqrt(2.0 / (layer.InputShape.Count + layer.OutputShape.Count));
                 var weights = neuron.Weights;
                 var weightc = weights.Length;
 
@@ -71,7 +71,7 @@ public class UniformXavierInitialization
     public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
         network.ForeachLayer(layer => {
             layer.ForeachNeuron(neuron => {
-                double limit = Math.Sqrt(6.0 / (layer.InputCount + layer.OutputCount));
+                double limit = Math.Sqrt(6.0 / (layer.InputShape.Count + layer.OutputShape.Count));
                 var weights = neuron.Weights;
                 var weightc = weights.Length;
 

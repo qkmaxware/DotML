@@ -22,11 +22,11 @@ public class ConvolutionalFeedforwardNetwork:
     /// <summary>
     /// Size of the input 
     /// </summary>
-    [JsonIgnore] public int InputCount => InputImageWidth * InputImageHeight * InputImageChannels;
+    [JsonIgnore] public Shape3D InputShape => GetFirstLayer().InputShape;
     /// <summary>
     /// Size of the output / number of classifications
     /// </summary>
-    [JsonIgnore] public int OutputCount => GetOutputLayer().OutputCount;
+    [JsonIgnore] public Shape3D OutputShape => GetOutputLayer().OutputShape;
 
     /// <summary>
     /// Reference to the first layer in the network
@@ -47,23 +47,8 @@ public class ConvolutionalFeedforwardNetwork:
     /// <returns>layer</returns>
     public IConvolutionalFeedforwardNetworkLayer GetOutputLayer() => layers[^1];
 
-    /// <summary>
-    /// Allowed width of the input images
-    /// </summary>
-    public int InputImageWidth {get; init;}
-    /// <summary>
-    /// Allowed height of the input images
-    /// </summary>
-    public int InputImageHeight {get; init;}
-    /// <summary>
-    /// Allowed number of channels in the input images. Commonly 1 for grayscale or 3 for RGB.
-    /// </summary>
-    public int InputImageChannels {get; init;}
 
-    public ConvolutionalFeedforwardNetwork(int input_width, int input_height, int input_channels, params IConvolutionalFeedforwardNetworkLayer[] layers) {
-        this.InputImageWidth = input_width;
-        this.InputImageHeight = input_height;
-        this.InputImageChannels = input_channels;
+    public ConvolutionalFeedforwardNetwork(params IConvolutionalFeedforwardNetworkLayer[] layers) {
         this.layers.AddRange(layers);
     }
 
@@ -80,27 +65,34 @@ public class ConvolutionalFeedforwardNetwork:
     public int TrainableParameterCount() => this.layers.Select(layer => layer.TrainableParameterCount()).Sum();
 
     public Vec<double> PredictSync(Matrix<double>[] values) {
-        if (values.Length != InputImageChannels) {
-            throw new ArgumentException($"Invalid number of channels for input. Expected {InputImageChannels}, got {values.Length}.");
+        var ishape = this.InputShape;
+
+        if (values.Length != ishape.Channels) {
+            throw new ArgumentException($"Invalid number of channels for input. Expected {ishape.Channels}, got {values.Length}.");
         }
         foreach (var matrix in values) {
-            if (matrix.Columns != InputImageWidth)
-                throw new ArgumentException($"Invalid channel width. Expected {InputImageWidth}, got {matrix.Columns}.");
-            if (matrix.Rows != InputImageHeight)
-                throw new ArgumentException($"Invalid channel height. Expected {InputImageHeight}, got {matrix.Rows}.");
+            if (matrix.Columns != ishape.Columns)
+                throw new ArgumentException($"Invalid channel width. Expected {ishape.Columns}, got {matrix.Columns}.");
+            if (matrix.Rows != ishape.Rows)
+                throw new ArgumentException($"Invalid channel height. Expected {ishape.Rows}, got {matrix.Rows}.");
         }
 
         Matrix<double>[] input = values;
+        var layer_index = 0;
         foreach (var layer in this.layers) {
+            if (!layer.DoesShapeMatchInputShape(input))
+                throw new ArithmeticException($"Input of shape {input.Length}x{input.FirstOrDefault().Rows}x{input.FirstOrDefault().Columns} is incompatible with layer {layer_index} input's of shape {layer.InputShape}.");
             input = layer.EvaluateSync(input);
+            layer_index++;
         }
         return Vec<double>.Wrap(input[0].FlattenRows().ToArray());
     }
 
     public Vec<double> PredictSync(Vec<double> input) {
+        var ishape = this.InputShape;
         return PredictSync(input.Shape(
-            new Shape2D(this.InputImageHeight, this.InputImageWidth), 
-                this.InputImageChannels
+            new Shape2D(ishape.Rows, ishape.Columns), 
+                ishape.Channels
             ).ToArray()
         ); 
     }
@@ -179,7 +171,7 @@ public class ConvolutionalFeedforwardNetwork:
         // Draw input layer
         StringBuilder s = new StringBuilder();
 
-        var max_outputs_matrices = this.InputImageChannels;
+        var max_outputs_matrices = this.InputShape.Channels;
         var kernel_buffer = 0;
         var last_output_matrices = 0;
         var kernel_offset = 6;
@@ -194,7 +186,7 @@ public class ConvolutionalFeedforwardNetwork:
                 case PoolingLayer pool:
                     break;
                 case FullyConnectedLayer connect:
-                    max_outputs_matrices = Math.Max(max_outputs_matrices, connect.OutputCount);
+                    max_outputs_matrices = Math.Max(max_outputs_matrices, connect.OutputShape.Count);
                     last_output_matrices = 1;
                     break;
             }
@@ -223,7 +215,7 @@ public class ConvolutionalFeedforwardNetwork:
 
         // Draw "input" layer
         s.AppendLine($"<text x='{layer_width/2}' y='{16}' text-anchor='middle'>Input</text>");
-        var input_count = this.InputImageChannels;
+        var input_count = this.InputShape.Channels;
         var matrix_offset = (layer_width - matrix_size) / 2;
         for (var i = 0; i < input_count; i++) {
             s.AppendLine($"<rect x='{matrix_offset}' y='{i * matrix_size + header_size}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
@@ -264,13 +256,13 @@ public class ConvolutionalFeedforwardNetwork:
                     layer_midpoint_y = last_layer_midpoint_y;
                     break;
                 case FullyConnectedLayer connect:
-                    for (var i = 0; i < connect.OutputCount; i++) {
+                    for (var i = 0; i < connect.OutputShape.Count; i++) {
                         var neuron_offset = (matrix_size - 2*neuron_radius) / 2;
                         var center_x = matrix_offset + layer_start_x + matrix_size / 2;
                         var center_y = header_size + i * matrix_size + matrix_size / 2;
                         s.AppendLine("<g id='synapses'>");
                         if (last_layer_was_fully_connected) {
-                            for (var j = 0; j < connect.InputCount; j++) {
+                            for (var j = 0; j < connect.InputShape.Count; j++) {
                                 var in_center_x = (layer_buffer + layer_width) * layerIndex + matrix_offset + matrix_size - neuron_offset; // from the prev_layer
                                 var in_center_y = header_size + j * matrix_size + matrix_size / 2;
                                 s.AppendLine($"<line x1='{in_center_x}' y1='{in_center_y}' x2='{center_x - neuron_radius}' y2='{center_y}' stroke='gray'/>");
@@ -279,7 +271,7 @@ public class ConvolutionalFeedforwardNetwork:
                         s.AppendLine("</g>");
                         s.AppendLine($"<circle cx='{center_x}' cy='{center_y}' r='{neuron_radius}'/>");
                     }
-                    layer_midpoint_y = header_size + (connect.OutputCount * matrix_size) / 2;
+                    layer_midpoint_y = header_size + (connect.OutputShape.Count * matrix_size) / 2;
                     break;
                 case SoftmaxLayer softmax:
                     s.AppendLine($"<text x='{layer_width/2}' y='{layer_midpoint_y}' text-anchor='middle'>softmax(x)</text>");

@@ -45,8 +45,7 @@
                 return;
 
             var input = current.Input.Shape(
-                new Shape2D(this.Network.InputImageHeight, this.Network.InputImageWidth), 
-                this.Network.InputImageChannels
+                this.Network.InputShape
             ).ToArray();
             var expected = current.Output;
 

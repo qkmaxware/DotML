@@ -10,6 +10,8 @@ public interface IConvolutionalFeedforwardNetworkLayer : ILayer {
 
     public void Initialize(IInitializer initializer);
 
+    public bool DoesShapeMatchInputShape(Matrix<double>[] channels);
+
     public void Visit(IConvolutionalLayerVisitor visitor);
     public T Visit<T>(IConvolutionalLayerVisitor<T> visitor);
     public TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args);
@@ -19,12 +21,18 @@ public interface IConvolutionalFeedforwardNetworkLayer : ILayer {
 /// Base class for all layers for a CNN
 /// </summary>
 public abstract class ConvolutionalFeedforwardNetworkLayer : IConvolutionalFeedforwardNetworkLayer {
-    public abstract int InputCount {get;}
-    public abstract int OutputCount {get;}
-    public abstract int NeuronCount {get;}
+    public virtual Shape3D InputShape {get; protected set;}
+    public virtual Shape3D OutputShape {get; protected set;}
 
     public Vec<double> GetLastOutputs() {
         throw new NotImplementedException();
+    }
+
+    public virtual bool DoesShapeMatchInputShape(Matrix<double>[] channels) {
+        return channels.Length == InputShape.Channels 
+            && InputShape.Rows == channels.FirstOrDefault().Rows
+            && InputShape.Columns == channels.FirstOrDefault().Columns
+        ;
     }
 
     public abstract void Initialize(IInitializer initializer);

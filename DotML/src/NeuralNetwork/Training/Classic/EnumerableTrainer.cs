@@ -391,7 +391,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     private void updateWeightsAndBias(int timestep, int parameters_start, bool isInputLayer, Vec<double> inputs, double learningRate, int layerIndex, ILayerWithNeurons layer, double[] deltas, double[][] weight_momentum, double[] bias_momentum) {
         var neuron_count = layer.NeuronCount;
 
-        var weight_parameters = layer.InputCount * layer.OutputCount;
+        var weight_parameters = layer.InputShape.Count * layer.OutputShape.Count;
         var bias_parameters = layer.NeuronCount;
         var weight_parameter_index = 0;
         var bias_parameters_index = 0;

@@ -108,8 +108,8 @@
 
     private void set(Box<Vec<double>> vector, int dim, double value) {
         var vec = vector.Value;
-        if (vec.Dimensionality != network.GetFirstLayer().InputCount) {
-            vec = new Vec<double>(network.GetFirstLayer().InputCount);
+        if (vec.Dimensionality != network.GetFirstLayer().InputShape.Count) {
+            vec = new Vec<double>(network.GetFirstLayer().InputShape.Count);
             vector.Value = vec;
         }
 

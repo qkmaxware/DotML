@@ -96,12 +96,12 @@ public class NeuronLayer : ILayerWithNeurons {
     /// <summary>
     /// Size of the input to this layer
     /// </summary>
-    [JsonIgnore] public int InputCount => Neurons.Select(n => n.Weights.Length).Max();
+    [JsonIgnore] public Shape3D InputShape => new Shape3D(1, Neurons.Select(n => n.Weights.Length).Max(), 1);
 
     /// <summary>
     /// Number of outputs from the layer
     /// </summary>
-    [JsonIgnore] public int OutputCount => neurons.Length;
+    [JsonIgnore] public Shape3D OutputShape => new Shape3D(1, neurons.Length, 1);
 
     /// <summary>
     /// Deserialization constructor
@@ -181,7 +181,7 @@ public class NeuronLayer : ILayerWithNeurons {
     /// Number of trainable parameters in this layer
     /// </summary>
     /// <returns>Number of trainable parameters</returns>
-    public int TrainableParameterCount() => InputCount * OutputCount + OutputCount; // Weights + Biases
+    public int TrainableParameterCount() => InputShape.Count * OutputShape.Count + OutputShape.Count; // Weights + Biases
 
     /// <summary>
     /// Get a reference to a specific neuron

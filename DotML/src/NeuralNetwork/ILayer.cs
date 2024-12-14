@@ -7,12 +7,12 @@ public interface ILayer {
     /// <summary>
     /// Number of inputs into the layer
     /// </summary>
-    public int InputCount {get;}
+    public Shape3D InputShape {get;}
 
     /// <summary>
     /// Number of outputs from the layer
     /// </summary>
-    public int OutputCount {get;}
+    public Shape3D OutputShape {get;}
 
     /// <summary>
     /// The results of the last evaluation, for debugging

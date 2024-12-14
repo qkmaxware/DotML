@@ -41,7 +41,6 @@ public class BasicMatrix {
             {1, 2, 3},
             {4, 5, 6}
         };
-        Assert.AreEqual(false, m2.IsTransposed);
         Assert.AreEqual(2, m2.Rows);
         Assert.AreEqual(3, m2.Columns);
         Assert.AreEqual(1, m2[0, 0]);
@@ -53,7 +52,6 @@ public class BasicMatrix {
         Assert.AreEqual(3, m2shape.Columns);
 
         var transposed = m2.Transpose();
-        Assert.AreEqual(true, transposed.IsTransposed);
         Assert.AreEqual(3, transposed.Rows);
         Assert.AreEqual(2, transposed.Columns);
         Assert.AreEqual(1, transposed[0, 0]);

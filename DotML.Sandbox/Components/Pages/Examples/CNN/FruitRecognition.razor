@@ -5,7 +5,7 @@
 @using DotML.Network.Initialization
 @using Qkmaxware.Media.Image
 
-<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=alexNet Trainer=trainer TrainingData=training MaxEpochSize=200 ValidationData=testing Checkpoint=checkpointManager>
+<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=alexNet Trainer=trainer TrainingData=training ValidationData=testing Checkpoint=checkpointManager>
     <Input>
         <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
     </Input>
@@ -56,15 +56,14 @@
     Softmax     1000       Softmax
     */
     private ConvolutionalFeedforwardNetwork alexNet = new ConvolutionalFeedforwardNetwork(
-        IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS,
-        new ConvolutionLayer        (padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)) { ActivationFunction = HyperbolicTangent.Instance },
-        new LocalMaxPoolingLayer    (size: 3, stride: 2),
-        new ConvolutionLayer        (padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 96, 5)) { ActivationFunction = HyperbolicTangent.Instance },
-        new LocalMaxPoolingLayer    (size: 3, stride: 2),
-        new ConvolutionLayer        (padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 256, 3)) { ActivationFunction = HyperbolicTangent.Instance },
-        new ConvolutionLayer        (padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 384, 3)) { ActivationFunction = HyperbolicTangent.Instance },
-        new ConvolutionLayer        (padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 384, 3)) { ActivationFunction = HyperbolicTangent.Instance },
-        new LocalMaxPoolingLayer    (size: 3, stride: 2),
+        new ConvolutionLayer        (input_size: new Shape3D(3, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)) { ActivationFunction = HyperbolicTangent.Instance },
+        new LocalMaxPoolingLayer    (input_size: new Shape3D(96, 55, 55), size: 3, stride: 2),
+        new ConvolutionLayer        (input_size: new Shape3D(96, 27, 27), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 96, 5)) { ActivationFunction = HyperbolicTangent.Instance },
+        new LocalMaxPoolingLayer    (input_size: new Shape3D(256, 27, 27), size: 3, stride: 2),
+        new ConvolutionLayer        (input_size: new Shape3D(256, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 256, 3)) { ActivationFunction = HyperbolicTangent.Instance },
+        new ConvolutionLayer        (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 384, 3)) { ActivationFunction = HyperbolicTangent.Instance },
+        new ConvolutionLayer        (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 384, 3)) { ActivationFunction = HyperbolicTangent.Instance },
+        new LocalMaxPoolingLayer    (input_size: new Shape3D(256, 13, 13), size: 3, stride: 2),
         new FullyConnectedLayer     (9216, 4096)  { ActivationFunction = HyperbolicTangent.Instance },
         new FullyConnectedLayer     (4096, 4096)  { ActivationFunction = HyperbolicTangent.Instance },
         new FullyConnectedLayer     (4096, OUT_CLASSES)  { ActivationFunction = HyperbolicTangent.Instance },

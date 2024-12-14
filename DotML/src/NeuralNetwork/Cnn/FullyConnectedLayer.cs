@@ -12,9 +12,7 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
     private int inputs;
     private int outputs;
     private int neuronc;
-    public override int InputCount => inputs;
-    public override int OutputCount=> outputs;
-    public override int NeuronCount=> neuronc;
+    public int NeuronCount=> neuronc;
  
     public Matrix<double> Weights {
         get => Matrix<double>.Wrap(weight_values);
@@ -87,6 +85,9 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
         this.bias_values = (double[])Biases;
         this.ActivationFunction = activation ?? Identity.Instance;
 
+        this.InputShape = new Shape3D(1, input_size, 1);
+        this.OutputShape = new Shape3D(1, neurons, 1);
+
         this.neurons = Enumerable.Range(0, neurons).Select(x => new NeuronRef(this, x)).ToArray();
     }
 
@@ -94,7 +95,7 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
     /// Number of trainable parameters in this layer
     /// </summary>
     /// <returns>Number of trainable parameters</returns>
-    public override int TrainableParameterCount() => InputCount * OutputCount + OutputCount;
+    public override int TrainableParameterCount() => Weights.Size + Biases.Dimensionality;
 
     /// <summary>
     /// Get a given neuron from this layer
@@ -108,7 +109,7 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
             bias_values[b] = initializer.RandomBias(bias_values.Length);
         }
 
-        var parameters = this.InputCount + this.OutputCount;
+        var parameters = this.InputShape.Count + this.OutputShape.Count;
         for (var i = 0; i < weight_values.GetLength(0); i++) {
             for (var j = 0; j < weight_values.GetLength(1); j++) {
                 weight_values[i, j] = initializer.RandomWeight(parameters);
@@ -130,6 +131,10 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
         for (var row = 0; row < rows; row++) {
             result[row, 0] = a[row, 0] + b[row];
         }
+    }
+
+    public override bool DoesShapeMatchInputShape(Matrix<double>[] channels) {
+        return channels.Select(c => c.Size).Sum() == inputs;
     }
 
     public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) {

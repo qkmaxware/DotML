@@ -14,7 +14,7 @@
         </div>
         <hr>
         <label>Input 0</label><br>
-        <VectorizedImage Width=@Network.InputImageWidth Height=@Network.InputImageHeight ValueScale=@ValueScale Vector=@Input.Value></VectorizedImage>
+        <VectorizedImage Width=@Network.InputShape.Columns Height=@Network.InputShape.Rows ValueScale=@ValueScale Vector=@Input.Value></VectorizedImage>
     </div>
     @if (this.inputs is not null && this.outputs is not null) {
         for (var layerIndex = 0; layerIndex < Math.Min(this.inputs.Length, this.outputs.Length); layerIndex++) {
@@ -60,8 +60,7 @@
                 return;
 
             var input = current.Shape(
-                new Shape2D(this.Network.InputImageHeight, this.Network.InputImageWidth), 
-                this.Network.InputImageChannels
+                this.Network.InputShape
             ).ToArray();
 
             // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)

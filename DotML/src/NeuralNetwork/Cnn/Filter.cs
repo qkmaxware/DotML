@@ -64,17 +64,19 @@ public class ConvolutionFilter : List<Matrix<double>> {
     /// <param name="kernel_size">size of each kernel (width & height)</param>
     /// <returns>filter list</returns>
     public static ConvolutionFilter[] Make(int filters, int kernels_per_filter, int kernel_size) {
-        return Enumerable
-            .Range(0, filters)
-            .Select(i => 
-                new ConvolutionFilter(
-                    Enumerable.Range(0, kernels_per_filter)
-                    .Select(j => 
-                        Kernels.HeKernel(kernel_size)
-                    )
-                    .ToArray()
-                )
-            ).ToArray();
+        kernels_per_filter = Math.Max(0, kernels_per_filter);
+        filters = Math.Max(0, filters);
+
+        var objs = new ConvolutionFilter[filters]; 
+        for (var i = 0; i < objs.Length; i++) {
+            var kernels = new Matrix<double>[kernels_per_filter];
+            for (var j = 0; j < kernels_per_filter; j++) {
+                kernels[j] = Kernels.HeKernel(kernel_size);
+            }
+            var filter = new ConvolutionFilter(kernels);
+            objs[i] = filter;
+        }
+        return objs;
     }
 
 }

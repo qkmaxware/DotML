@@ -15,12 +15,12 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
     /// <summary>
     /// The number of input values (size of input vector) allowed by this network.
     /// </summary>
-    [JsonIgnore] public int InputCount => GetFirstLayer().InputCount;
+    [JsonIgnore] public Shape3D InputShape => GetFirstLayer().InputShape;
 
     /// <summary>
     /// The number of output values (size of output vector) created by evaluating this network.
     /// </summary>
-    [JsonIgnore] public int OutputCount => GetOutputLayer().OutputCount;
+    [JsonIgnore] public Shape3D OutputShape => GetOutputLayer().OutputShape;
 
     /// <summary>
     /// Number of layers in this neural network.
@@ -89,7 +89,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
                 var weightc = weights.Length; 
 
                 for (var i = 0; i < weightc; i++) {
-                    weights[i] = initializer.RandomWeight(layer.InputCount + layer.OutputCount);
+                    weights[i] = initializer.RandomWeight(layer.InputShape.Count + layer.OutputShape.Count);
                 }
             });
         });
@@ -285,7 +285,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
         var circle_diameter = circle_radius * 2;
         var circle_buffer = 24;
         var layer_width = circle_diameter + (2 * circle_buffer);
-        var input_neuron_count = layers.Count > 0 ? layers[0].InputCount : 0;
+        var input_neuron_count = layers.Count > 0 ? layers[0].InputShape.Count : 0;
         var layer_height = Math.Max(this.layers.Select(x => x.NeuronCount).Max(), input_neuron_count) * (circle_diameter + 2*circle_buffer);
 
         var gap_between_layers = 48;

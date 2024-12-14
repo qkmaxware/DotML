@@ -26,28 +26,24 @@ public abstract class PoolingLayer : ConvolutionalFeedforwardNetworkLayer {
     /// </summary>
     public int StrideY {get; private set;}
 
-    public override int InputCount => -1;
-    public override int OutputCount => -1;
-    public override int NeuronCount => -1;
-
     /// <summary>
     /// Create a pooling layer with a square filter
     /// </summary>
     /// <param name="size">width and height</param>
-    public PoolingLayer(int size) : this(size, size, size, size) { }
+    public PoolingLayer(Shape3D input_size, int size) : this(input_size, size, size, size, size) { }
 
     /// <summary>
     /// Create a pooling layer with a square filter
     /// </summary>
     /// <param name="size">width and height</param>
     /// <param name="stride">stride to apply the filter</param>
-    public PoolingLayer(int size, int stride) : this(size, size, stride, stride) { }
+    public PoolingLayer(Shape3D input_size, int size, int stride) : this(input_size, size, size, stride, stride) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
     /// </summary>
     /// <param name="size">filter size</param>
-    public PoolingLayer(Size size) : this(size, size.Width, size.Height) { }
+    public PoolingLayer(Shape3D input_size, Size size) : this(input_size, size, size.Width, size.Height) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
@@ -55,7 +51,7 @@ public abstract class PoolingLayer : ConvolutionalFeedforwardNetworkLayer {
     /// <param name="size">filter size</param>
     /// <param name="strideX">horizontal stride</param>
     /// <param name="strideY">vertical stride</param>
-    public PoolingLayer(Size size, int strideX, int strideY) : this(size.Width, size.Height, strideX, strideY) {}
+    public PoolingLayer(Shape3D input_size, Size size, int strideX, int strideY) : this(input_size, size.Width, size.Height, strideX, strideY) {}
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
@@ -64,11 +60,16 @@ public abstract class PoolingLayer : ConvolutionalFeedforwardNetworkLayer {
     /// <param name="height">filter height</param>
     /// <param name="strideX">horizontal stride</param>
     /// <param name="strideY">vertical stride</param>
-    public PoolingLayer(int width, int height, int strideX, int strideY) {
+    public PoolingLayer(Shape3D input_size, int width, int height, int strideX, int strideY) {
         this.FilterWidth = width;
         this.FilterHeight = height;
         this.StrideX = Math.Max(1, strideX);
         this.StrideY = Math.Max(1, strideY);
+
+        this.InputShape = input_size;
+        var outputWidth = ((input_size.Columns - this.FilterWidth) / this.StrideX) + 1;
+        var outputHeight = ((input_size.Rows - this.FilterHeight) / this.StrideY) + 1;
+        this.OutputShape = new Shape3D(input_size.Channels, outputHeight, outputWidth);
     }
 
     public override void Initialize(IInitializer initializer) {}
@@ -90,20 +91,20 @@ public abstract class LocalPoolingLayer : PoolingLayer {
     /// Create a pooling layer with a square filter
     /// </summary>
     /// <param name="size">width and height</param>
-    public LocalPoolingLayer(int size) : base(size) { }
+    public LocalPoolingLayer(Shape3D input_size, int size) : base(input_size, size) { }
 
     /// <summary>
     /// Create a pooling layer with a square filter
     /// </summary>
     /// <param name="size">width and height</param>
     /// <param name="stride">stride to apply the filter</param>
-    public LocalPoolingLayer(int size, int stride) : base(size, stride) { }
+    public LocalPoolingLayer(Shape3D input_size, int size, int stride) : base(input_size, size, stride) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
     /// </summary>
     /// <param name="size">filter size</param>
-    public LocalPoolingLayer(Size size) : base(size) { }
+    public LocalPoolingLayer(Shape3D input_size, Size size) : base(input_size, size) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
@@ -111,7 +112,7 @@ public abstract class LocalPoolingLayer : PoolingLayer {
     /// <param name="size">filter size</param>
     /// <param name="strideX">horizontal stride</param>
     /// <param name="strideY">vertical stride</param>
-    public LocalPoolingLayer(Size size, int strideX, int strideY) : base(size, strideX, strideY) { }
+    public LocalPoolingLayer(Shape3D input_size, Size size, int strideX, int strideY) : base(input_size, size, strideX, strideY) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
@@ -120,7 +121,7 @@ public abstract class LocalPoolingLayer : PoolingLayer {
     /// <param name="height">filter height</param>
     /// <param name="strideX">horizontal stride</param>
     /// <param name="strideY">vertical stride</param>
-    public LocalPoolingLayer(int width, int height, int strideX, int strideY) : base(width, height, strideX, strideY) { }
+    public LocalPoolingLayer(Shape3D input_size, int width, int height, int strideX, int strideY) : base(input_size, width, height, strideX, strideY) { }
 
 
     protected abstract double Accumulate(double current, double delta, int count);
@@ -134,31 +135,30 @@ public abstract class LocalPoolingLayer : PoolingLayer {
         var filterWidth = this.FilterWidth;
         var filterHeight = this.FilterHeight;
 
+        var stridex = this.StrideX;
+        var stridey = this.StrideY;
+
+        var outputWidth = this.OutputShape.Columns;
+        var outputHeight = this.OutputShape.Rows;
+
         for (var channel = 0; channel < channels; channel++) {
             var input = inputs[channel];
-            var inputWidth = input.Columns;
-            var inputHeight = input.Rows;
-
-            var outputWidth = ((inputWidth - filterWidth) / StrideX) + 1;
-            var outputHeight = ((inputHeight - filterHeight) / StrideY) + 1;
 
             var result = new Matrix<double>(outputWidth, outputHeight);
             var data = (double[,])result;
             pooled[channel] = result;
 
             for (var row = 0; row < outputHeight; row++) {
+                var StartY = row * stridey;
+                var EndY = row * stridey + filterHeight;
                 for (var col = 0; col < outputWidth; col++) {
-                    (int StartX, int StartY, int EndX, int EndY) region = (
-                        col * StrideX, 
-                        row * StrideY,
-                        col * StrideX + filterWidth,
-                        row * StrideY + filterHeight
-                    );
+                    var StartX = col * stridex;
+                    var EndX = col * stridex + filterWidth;
 
                     var accumulator = 0.0;
                     var count = 0;
-                    for (var irow = region.StartY; irow < region.EndY; irow++) {
-                        for (var icol = region.StartX; icol < region.EndX; icol++) {
+                    for (var irow = StartY; irow < EndY; irow++) {
+                        for (var icol = StartX; icol < EndX; icol++) {
                             accumulator = Accumulate(accumulator, input[irow, icol], ++count);
                         }
                     }
@@ -180,20 +180,20 @@ public class LocalMaxPoolingLayer : LocalPoolingLayer {
     /// Create a pooling layer with a square filter
     /// </summary>
     /// <param name="size">width and height</param>
-    public LocalMaxPoolingLayer(int size) : base(size) { }
+    public LocalMaxPoolingLayer(Shape3D input_size, int size) : base(input_size, size) { }
 
     /// <summary>
     /// Create a pooling layer with a square filter
     /// </summary>
     /// <param name="size">width and height</param>
     /// <param name="stride">stride to apply the filter</param>
-    public LocalMaxPoolingLayer(int size, int stride) : base(size, stride) { }
+    public LocalMaxPoolingLayer(Shape3D input_size, int size, int stride) : base(input_size, size, stride) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
     /// </summary>
     /// <param name="size">filter size</param>
-    public LocalMaxPoolingLayer(Size size) : base(size) { }
+    public LocalMaxPoolingLayer(Shape3D input_size, Size size) : base(input_size, size) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
@@ -201,7 +201,7 @@ public class LocalMaxPoolingLayer : LocalPoolingLayer {
     /// <param name="size">filter size</param>
     /// <param name="strideX">horizontal stride</param>
     /// <param name="strideY">vertical stride</param>
-    public LocalMaxPoolingLayer(Size size, int strideX, int strideY) : base(size, strideX, strideY) { }
+    public LocalMaxPoolingLayer(Shape3D input_size, Size size, int strideX, int strideY) : base(input_size, size, strideX, strideY) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
@@ -210,7 +210,7 @@ public class LocalMaxPoolingLayer : LocalPoolingLayer {
     /// <param name="height">filter height</param>
     /// <param name="strideX">horizontal stride</param>
     /// <param name="strideY">vertical stride</param>
-    public LocalMaxPoolingLayer(int width, int height, int strideX, int strideY) : base(width, height, strideX, strideY) { }
+    public LocalMaxPoolingLayer(Shape3D input_size, int width, int height, int strideX, int strideY) : base(input_size, width, height, strideX, strideY) { }
 
     protected override double Accumulate(double current, double delta, int count) {
         return Math.Max(current, delta);
@@ -229,20 +229,20 @@ public class LocalAvgPoolingLayer : LocalPoolingLayer {
     /// Create a pooling layer with a square filter
     /// </summary>
     /// <param name="size">width and height</param>
-    public LocalAvgPoolingLayer(int size) : base(size) { }
+    public LocalAvgPoolingLayer(Shape3D input_size, int size) : base(input_size, size) { }
 
     /// <summary>
     /// Create a pooling layer with a square filter
     /// </summary>
     /// <param name="size">width and height</param>
     /// <param name="stride">stride to apply the filter</param>
-    public LocalAvgPoolingLayer(int size, int stride) : base(size, stride) { }
+    public LocalAvgPoolingLayer(Shape3D input_size, int size, int stride) : base(input_size, size, stride) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
     /// </summary>
     /// <param name="size">filter size</param>
-    public LocalAvgPoolingLayer(Size size) : base(size) { }
+    public LocalAvgPoolingLayer(Shape3D input_size, Size size) : base(input_size, size) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
@@ -250,7 +250,7 @@ public class LocalAvgPoolingLayer : LocalPoolingLayer {
     /// <param name="size">filter size</param>
     /// <param name="strideX">horizontal stride</param>
     /// <param name="strideY">vertical stride</param>
-    public LocalAvgPoolingLayer(Size size, int strideX, int strideY) : base(size, strideX, strideY) { }
+    public LocalAvgPoolingLayer(Shape3D input_size, Size size, int strideX, int strideY) : base(input_size, size, strideX, strideY) { }
 
     /// <summary>
     /// Create a pooling layer with a rectangular filter
@@ -259,7 +259,7 @@ public class LocalAvgPoolingLayer : LocalPoolingLayer {
     /// <param name="height">filter height</param>
     /// <param name="strideX">horizontal stride</param>
     /// <param name="strideY">vertical stride</param>
-    public LocalAvgPoolingLayer(int width, int height, int strideX, int strideY) : base(width, height, strideX, strideY) { }
+    public LocalAvgPoolingLayer(Shape3D input_size, int width, int height, int strideX, int strideY) : base(input_size, width, height, strideX, strideY) { }
 
     protected override double Accumulate(double current, double delta, int count) {
         return current + delta;

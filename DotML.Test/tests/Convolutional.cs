@@ -14,7 +14,7 @@ public class ConvolutionalFFTest {
                 {1, 0, 1}
             }
         };
-        var layer = new ConvolutionLayer(Padding.Valid, new ConvolutionFilter(kernels));
+        var layer = new ConvolutionLayer(new Shape3D(1, 5, 5), Padding.Valid, new ConvolutionFilter(kernels));
         var input = new Matrix<double>[] {
             new double[,]{
                 {1, 1, 1, 0, 0},
@@ -52,7 +52,7 @@ public class ConvolutionalFFTest {
                 {1, 0, 1}
             }
         };
-        var layer = new ConvolutionLayer(Padding.Same, new ConvolutionFilter(kernels));
+        var layer = new ConvolutionLayer(new Shape3D(1, 5, 5), Padding.Same, new ConvolutionFilter(kernels));
         Matrix<double> input = new double[,]{
             {1, 1, 1, 0, 0},
             {0, 1, 1, 1, 0},
@@ -87,7 +87,7 @@ public class ConvolutionalFFTest {
 
     [TestMethod]
     public void TestLocalMaxPooling() {
-        var layer = new LocalMaxPoolingLayer(2, 2);
+        var layer = new LocalMaxPoolingLayer(new Shape3D(1, 4, 4), 2, 2);
         Matrix<double> input = new double[,] {
             {12, 20, 30, 00},
             {08, 12, 02, 00},
@@ -114,7 +114,7 @@ public class ConvolutionalFFTest {
 
     [TestMethod]
     public void TestAvgMaxPooling() {
-        var layer = new LocalAvgPoolingLayer(2, 2);
+        var layer = new LocalAvgPoolingLayer(new Shape3D(1, 4, 4), 2, 2);
         Matrix<double> input = new double[,] {
             {12, 20, 30, 00},
             {08, 12, 02, 00},

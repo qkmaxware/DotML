@@ -7,12 +7,13 @@ namespace DotML.Network;
 /// Layer which flattens inputs into a column vector 
 /// </summary>
 public class FlatteningLayer : ConvolutionalFeedforwardNetworkLayer {
-    public override int InputCount => -1;
-    public override int OutputCount => -1;
-    public override int NeuronCount => -1;
-
     public override void Initialize(IInitializer initializer) { }
     public override int TrainableParameterCount() => 0;
+
+    public FlatteningLayer(Shape3D input_size) {
+        this.InputShape = input_size;
+        this.OutputShape = new Shape3D(1, input_size.Count, 1);
+    }
 
     public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) {
         // input is a 2D matrix processed from prior layers like a pooling layer

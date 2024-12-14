@@ -7,14 +7,12 @@ namespace DotML.Network;
 /// Layer which performs dropout
 /// </summary>
 public class DropoutLayer : ConvolutionalFeedforwardNetworkLayer {
-    public override int InputCount => -1;
-    public override int OutputCount => -1;
-    public override int NeuronCount => -1;
-
     public double DropoutRate {get; init;}
     public double KeepRate => 1 - DropoutRate;
 
-    public DropoutLayer(double dropoutRate) {
+    public DropoutLayer(Shape3D input_size, double dropoutRate) {
+        this.InputShape = input_size;
+        this.OutputShape = input_size;
         this.DropoutRate = Math.Clamp(dropoutRate, 0.0, 1.0);
     }
 

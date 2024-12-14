@@ -1,0 +1,15 @@
+@page "/examples/cnn/fruit-recognition/data"
+@using DotML.Network.Training
+@using Qkmaxware.Media.Image
+
+<VectorizedImageCarousel Width=@IMG_WIDTH Height=@IMG_HEIGHT Data=@context ValueScale=255></VectorizedImageCarousel>
+
+@code {
+    const int IMG_WIDTH = 227;
+    const int IMG_HEIGHT = 227;
+    const int OUT_CLASSES = 3;
+
+    TrainingSet context = ResourceLoader.LoadBinaryVectors(["data/Fruits/fruits.augmented.227x277.bin"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
+
+    private static double vectorize(byte b) => b / 255.0;
+}  

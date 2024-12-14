@@ -9,12 +9,12 @@ namespace DotML.Network;
 public class SoftmaxLayer : ConvolutionalFeedforwardNetworkLayer {
 
     private int size;
-    public override int InputCount => size;
-    public override int OutputCount=> size;
-    public override int NeuronCount=> size;
 
     public SoftmaxLayer(int size) {
         this.size = size;
+
+        this.InputShape = new Shape3D(1, size, 1);
+        this.OutputShape = new Shape3D(1, size, 1);
     }
 
     public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) {

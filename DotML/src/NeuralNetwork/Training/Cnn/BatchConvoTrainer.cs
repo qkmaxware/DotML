@@ -308,8 +308,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
             Parallel.For(0, batch.Count, (batchIndex) => {
                 var currentPair = batch[batchIndex];
                 var input = currentPair.Input.Shape(
-                    new Shape2D(Current.InputImageHeight, Current.InputImageWidth), 
-                    Current.InputImageChannels
+                    Current.InputShape
                 ).ToArray();
                 var expected = currentPair.Output; // TODO Output of a FULLY CONNECTED LAYER SHOULDtm BE A COLUMN MATRIX THIS IS NOT GUARANTEED TO BE THE CASE IF THE NETWORK DOESN'T USE THEM
 

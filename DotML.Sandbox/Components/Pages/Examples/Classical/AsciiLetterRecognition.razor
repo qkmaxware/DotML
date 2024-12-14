@@ -61,7 +61,7 @@
             vecref.Value = training[index].Input;
             _selected_letter_ascii = ResourceLoader.LoadContents("data/Letter Recognition/letters/" + _select_letter.ToString() + ".ascii");
         } else {
-            vecref.Value = new Vec<double>(network.InputCount);
+            vecref.Value = new Vec<double>(network.InputShape.Count);
         }
         explorer?.RefreshState();
     } 

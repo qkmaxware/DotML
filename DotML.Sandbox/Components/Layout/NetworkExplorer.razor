@@ -156,7 +156,7 @@
         <label class="header">Network</label>
         <figure>
             <figcaption>Network Digram</figcaption>
-        @if (Network is not null && Network is IDiagrammable diagrammableNetwork && Network.InputCount < 128) {
+        @if (Network is not null && Network is IDiagrammable diagrammableNetwork && Network.InputShape.Count < 128) {
             @((MarkupString)diagrammableNetwork.ToSvg())
         } else {
             <div class="alert alert-danger" role="alert">
@@ -249,7 +249,7 @@ else if (state == State.Playground) {
         </p>
         <label>JSON:</label>
         <textarea bind="input_json" class="form-control" @bind=input_json></textarea>
-        @if (Network is not null && input.Value.Dimensionality < Network.InputCount) {
+        @if (Network is not null && input.Value.Dimensionality < Network.InputShape.Count) {
             <div class="alert alert-danger" role="alert" style="margin-top: 12px; margin-bottom: 12px;">
                 System.FormatException: Input vector has wrong dimensionality for network
             </div>
@@ -512,7 +512,7 @@ else if (state == State.Playground) {
         var i = input.Value;
         var l1 = Network.GetFirstLayer();
 
-        if (i.Dimensionality != l1.InputCount) {
+        if (i.Dimensionality != l1.InputShape.Count) {
             process_error = new FormatException("Input vector has wrong dimensionality for network");
             return;
         }

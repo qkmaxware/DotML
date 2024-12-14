@@ -10,12 +10,12 @@ public interface INeuralNetwork {
     /// <summary>
     /// The number of input values (size of input vector) allowed by this network.
     /// </summary>
-    public int InputCount {get;}
+    public Shape3D InputShape {get;}
 
     /// <summary>
     /// The number of output values (size of output vector) created by evaluating this network.
     /// </summary>
-    public int OutputCount {get;}
+    public Shape3D OutputShape {get;}
 
     /// <summary>
     /// Initialize the weights and biases of the neural network
