@@ -106,6 +106,11 @@ private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutiona
         return new LayerUpdateReturns {};
     }
 
+    public LayerUpdateReturns Visit(ActivationLayer layer, LayerUpdateArgs args) {
+        // Do nothing for gradient updates on the activation layer
+        return new LayerUpdateReturns {};
+    }
+
     public LayerUpdateReturns Visit(FullyConnectedLayer layer, LayerUpdateArgs args) {
         if (args.Gradients is null || args.Gradients is not FullyConnectedGradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));

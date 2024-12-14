@@ -316,6 +316,25 @@ private class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolu
         };
     }
 
+    public BackpropagationReturns Visit(ActivationLayer layer, BackpropagationArgs args) {
+        var input_channels = args.Inputs.Length;
+        var input_gradients = new Matrix<double>[input_channels];
+        var output_gradients = args.Errors;
+
+        // Compute the gradient of the error with respect to the inputs
+        for (var channel = 0; channel < input_channels; channel++) {
+            var derivative = layer.ActivationFunction.InvokeDerivative(output_gradients[channel], args.Outputs[channel]);   // Gradient of vector elements
+            var delta = output_gradients[channel].Hadamard(derivative);                               // Delta of vector elements (column)
+            input_gradients[channel] = delta;
+        }
+
+        // Return the gradients to be propagated to the previous layer
+        return new BackpropagationReturns {
+            Errors = input_gradients,
+            Gradient = null
+        };
+    }
+
     public BackpropagationReturns Visit(SoftmaxLayer layer, BackpropagationArgs args) {
         // Basically we just pass on the errors we know of.
         // This assumes this is the LAST layer and cross-entropy is the loss function
