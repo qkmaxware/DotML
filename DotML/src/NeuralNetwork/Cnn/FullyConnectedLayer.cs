@@ -28,8 +28,6 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
         }
     }
     private double[] bias_values;
-
-    public ActivationFunction ActivationFunction {get; set;}
  
     /// <summary>
     /// Neuron interface to access individual neuron properties from matrix and vector data
@@ -69,13 +67,13 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
         /// Neuron activation function
         /// </summary>
         public ActivationFunction? ActivationFunction {
-            get => parent.ActivationFunction;
+            get => Identity.Instance;
         }
     }
 
     private NeuronRef[] neurons;
 
-    public FullyConnectedLayer(int input_size, int neurons, ActivationFunction? activation = null) {
+    public FullyConnectedLayer(int input_size, int neurons) {
         this.inputs = input_size;
         this.outputs = neurons;
         this.neuronc = neurons;
@@ -83,7 +81,6 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
         this.weight_values = (double[,])Weights;
         this.Biases = new Vec<double>(neurons);
         this.bias_values = (double[])Biases;
-        this.ActivationFunction = activation ?? Identity.Instance;
 
         this.InputShape = new Shape3D(1, input_size, 1);
         this.OutputShape = new Shape3D(1, neurons, 1);
@@ -143,7 +140,6 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
         //var x = Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray()); 
         var mul  = Weights * x; 
         AddMatVecInplace(mul, mul, bias_values);
-        Matrix<double>.TransformInplace(mul, mul, this.ActivationFunction.Invoke);
         return [ mul ]; 
         //var biased = mul + Matrix<double>.Column(bias_values); 
         //var activated = this.ActivationFunction.Invoke(biased);

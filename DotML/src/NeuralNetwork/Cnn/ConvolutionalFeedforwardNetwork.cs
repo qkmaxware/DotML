@@ -64,6 +64,18 @@ public class ConvolutionalFeedforwardNetwork:
     /// <returns>Number of trainable parameters</returns>
     public int TrainableParameterCount() => this.layers.Select(layer => layer.TrainableParameterCount()).Sum();
 
+    public void ValidateSizes() {
+        var input_size = this.InputShape;
+        int layer_index = 0;
+        foreach (var layer in this.layers) { 
+            if (input_size != layer.InputShape) {
+                throw new ArgumentException($"Layer {layer_index} expects an input shape of {layer.InputShape} but is receiving an input of shape {input_size} from the previous layer.");
+            }
+            input_size = layer.OutputShape;
+            layer_index++;
+        }
+    }
+
     public Vec<double> PredictSync(Matrix<double>[] values) {
         var ishape = this.InputShape;
 

@@ -69,14 +69,12 @@
             // 2 - 2 - 1
             new FullyConnectedLayer(
                 input_size: 2, 
-                neurons: 2,
-                activation: Identity.Instance
+                neurons: 2
             ),
             new ActivationLayer(new Shape3D(1, 2, 1), HyperbolicTangent.Instance),
             new FullyConnectedLayer(
                 input_size: 2, 
-                neurons: OUT_CLASSES,
-                activation: Identity.Instance
+                neurons: OUT_CLASSES
             ),
             new ActivationLayer(new Shape3D(1, OUT_CLASSES, 1), HyperbolicTangent.Instance)
         ]

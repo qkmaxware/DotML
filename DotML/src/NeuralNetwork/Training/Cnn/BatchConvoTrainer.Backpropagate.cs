@@ -107,7 +107,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             var rows                = error.Rows;
             var cols                = error.Columns;
             var output              = args.Outputs[filterIndex];
-            var gradOut             = layer.ActivationFunction.InvokeDerivative(error, output);
+            const int gradOut       = 1;
             var biasGradient        = 0.0;
 
             for (var inputIndex = 0; inputIndex < args.Inputs.Length; inputIndex++) {
@@ -120,7 +120,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
                     var startY = outY * layer.StrideY - paddingRows;
                     for (int outX = 0; outX < cols; outX++) {
                         var startX = outX * layer.StrideX - paddingColumns;
-                        var slope = gradOut[outY, outX];
+                        var slope = gradOut;
                         var pixel_error = error[outY, outX];
                         var errorContribution = slope * pixel_error;
                         biasGradient += errorContribution;
@@ -171,7 +171,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var filterHeight = layer.FilterHeight;
         var filterElementCount = filterWidth * filterHeight;
 
-        for (int b = 0; b < batchSize; b++) {
+        Parallel.For(0, batchSize, b => {
             // Get the input and output for this batch item
             var input = inputs[b];
             var output = outputs[b];
@@ -222,7 +222,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
 
             // Assign the errors for this input
             inputErrors[b] = Matrix<double>.Wrap(inputError);
-        }
+        });
 
         // Pass errors along for next layer
         return new BackpropagationReturns { 
@@ -277,9 +277,9 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var flattened_inputs = Matrix<double>.Row(args.Inputs.SelectMany(x => x.FlattenRows()).ToArray());
         var output = args.Outputs[0];                                       // Output vector (column)
         var error = args.Errors[0];                                         // Output vector (column)
-        var gradient = layer.ActivationFunction.InvokeDerivative(error, output);   // Gradient of vector elements
-        var delta = gradient;
-        Matrix<double>.HadamardInplace(delta, error, gradient);                               // Delta of vector elements (column)
+        //var gradient = layer.ActivationFunction.InvokeDerivative(error, output);   // Gradient of vector elements
+        var delta = error;
+        //Matrix<double>.HadamardInplace(delta, error, gradient);                               // Delta of vector elements (column)
         
 		// Do gradient clipping on the bias gradients
 		clip(delta, GradientClippingThresholdBias);						    // Clip using the default clip size
@@ -322,12 +322,12 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var output_gradients = args.Errors;
 
         // Compute the gradient of the error with respect to the inputs
-        for (var channel = 0; channel < input_channels; channel++) {
+        Parallel.For(0, input_channels, channel => {
             var output_gradient = output_gradients[channel];
             var derivative = args.Outputs[channel].Transform(layer.ActivationFunction.InvokeDerivative);   // Gradient of vector elements
             var delta = output_gradient.Hadamard(derivative);                               // Delta of vector elements (column)
             input_gradients[channel] = delta;
-        }
+        });
 
         // Return the gradients to be propagated to the previous layer
         return new BackpropagationReturns {

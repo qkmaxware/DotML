@@ -11,7 +11,6 @@ public class ConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
     private ConvolutionFilter[] filters;
     public ReadOnlyCollection<ConvolutionFilter> Filters {get; init;}
     public Padding Padding {get; init;}
-    public ActivationFunction ActivationFunction {get; set;} = Identity.Instance;
     public int StrideX {get; init;}
     public int StrideY {get; init;}
 
@@ -184,12 +183,6 @@ public class ConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
 
     public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) {
         var z = this.Convolve(inputs);
-
-        for (var i = 0; i < z.Length; i++) {
-            var zi = z[i];
-            Matrix<double>.TransformInplace(zi, zi, this.ActivationFunction.Invoke);
-            //a[i] = this.ActivationFunction.Invoke(z[i]);
-        }
         return z;
     }
 
