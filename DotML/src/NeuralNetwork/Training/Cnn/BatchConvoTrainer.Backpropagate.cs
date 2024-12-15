@@ -51,7 +51,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var paddingRows         = padRows;
         var paddingColumns      = padColumns;
 
-        for (var channel = 0; channel < inputChannels; channel++) {
+        Parallel.For(0, inputChannels, channel => {;
             var input = inputs[channel];
             var inputError = new double[input.Rows, input.Columns];
 
@@ -86,7 +86,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             }
 
             inputErrors[channel] = Matrix<double>.Wrap(inputError);
-        }
+        });
 
         return inputErrors;
     }
@@ -99,7 +99,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var paddingColumns      = layer.ColumnsPadding; 
 
         // Loop through each filter and compute gradients
-        for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
+        Parallel.For(0, layer.FilterCount, filterIndex => {
             var filter              = layer.Filters[filterIndex];                                                    
 
             var gradient            = new Matrix<double>[args.Inputs.Length];
@@ -145,7 +145,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             // Store gradients
             filterGradients[filterIndex] = gradient;
             biasGradients[filterIndex] = biasGradient;
-        }
+        });
 
         var inputErrors = TransposeConvolve(args.Inputs, args.Errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filters);
 
