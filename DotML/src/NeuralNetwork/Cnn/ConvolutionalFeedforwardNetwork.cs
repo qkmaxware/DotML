@@ -11,7 +11,7 @@ namespace DotML.Network;
 /// </summary>
 public class ConvolutionalFeedforwardNetwork: 
     ILayeredNeuralNetwork<IConvolutionalFeedforwardNetworkLayer>, 
-    IDiagrammable, ISafetensorable, IMarkdownable
+    IDiagrammable, ISafetensorable, IMarkdownable, IHtmlable
 {
     private List<IConvolutionalFeedforwardNetworkLayer> layers = new List<IConvolutionalFeedforwardNetworkLayer>();
 
@@ -49,6 +49,10 @@ public class ConvolutionalFeedforwardNetwork:
 
 
     public ConvolutionalFeedforwardNetwork(params IConvolutionalFeedforwardNetworkLayer[] layers) {
+        this.layers.AddRange(layers);
+    }
+
+    public ConvolutionalFeedforwardNetwork(IEnumerable<IConvolutionalFeedforwardNetworkLayer> layers) {
         this.layers.AddRange(layers);
     }
 
@@ -392,6 +396,62 @@ public class ConvolutionalFeedforwardNetwork:
              sb.AppendLine();
         }
 
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Convert this object to an HTML representation
+    /// </summary>
+    /// <returns>HTML serialized string</returns>
+    public string ToHtml() {
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine("<table>");
+        sb.AppendLine("<thead>");
+        sb.AppendLine("<tr>");
+        sb.Append("<th>");sb.Append("Layer Type"); sb.Append("</th><th>"); sb.Append("Output Shape"); sb.Append("</th><th>"); sb.Append("Parameters"); sb.Append("</th><th>"); sb.Append("Description"); sb.AppendLine("</th>");
+        sb.AppendLine("</tr>");
+        sb.AppendLine("</thead>");
+        sb.AppendLine("<tbody>");
+
+        sb.AppendLine("<tr>");
+        sb.Append("<td>");
+            sb.Append("Input");
+        sb.Append("</td><td>");
+            sb.Append(this.InputShape);
+        sb.Append("</td><td>");
+            sb.Append(string.Empty);
+        sb.Append("</td><td>");
+            sb.Append("Input image/tensor");
+        sb.Append("</td>");
+            sb.AppendLine("</tr>");
+
+        foreach (var layer in layers) {
+            sb.AppendLine("<tr>");
+            sb.Append("<td>");
+                sb.Append(layer.GetType().Name);
+            sb.Append("</td><td>");
+                sb.Append(layer.OutputShape);
+            sb.Append("</td><td>");
+                sb.Append(layer.TrainableParameterCount());
+            sb.Append("</td><td>");
+                sb.Append(
+                    layer switch {
+                        ConvolutionLayer conv2d => $"{conv2d.FilterCount} filters of size {conv2d.Filters.FirstOrDefault()?.FirstOrDefault().Shape}",
+                        PoolingLayer pooling => $"Pooling with a size of {pooling.FilterHeight}x{pooling.FilterWidth}",
+                        DropoutLayer drop => $"Dropout with probability {drop.DropoutRate} to reduce overfitting",
+                        FlatteningLayer flat => $"Flatten multi-dimensional input to 1D",
+                        FullyConnectedLayer dense => $"Fully connected layer of {dense.NeuronCount} neurons",
+                        ActivationLayer active => $"Apply {active.ActivationFunction?.GetType().Name} activation function to inputs",
+                        SoftmaxLayer softmax => $"Convert output to probability distribution over {softmax.OutputShape.Count} classes",
+                        _ => string.Empty,
+                    }
+                );
+            sb.Append("</td>");
+            sb.AppendLine("</tr>");
+        }
+
+        sb.AppendLine("</tbody>");
+        sb.AppendLine("</table>");
         return sb.ToString();
     }
 }

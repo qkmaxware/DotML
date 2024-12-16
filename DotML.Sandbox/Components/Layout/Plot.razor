@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 @(GraphWidth + 2 * XOffset) @(GraphHeight + 2 * YOffset + 30)">
+<svg id="@Id" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 @(GraphWidth + 2 * XOffset) @(GraphHeight + 2 * YOffset + 30)">
     <g id="axes" stroke="gray" fill="gray" text-anchor="end">
         <g id="y-axis">
             @if (Data is not null && Data.Any()) {
             <g id="ticks">
                 <text x="40" y="@(YOffset + 15)">@(getRangeMax().ToString("F2"))</text>
-                @*<text x="40" y="@(GraphMidpoint + YOffset)">@getRangeMid()</text>*@
+                @*<text x="40" y="@(GraphMidpoint + YOffset)">@(getRangeMid().ToString("F3"))</text>*@
                 <text x="40" y="@(GraphHeight + YOffset)">@(getRangeMin().ToString("F2"))</text>
             </g>
             }
@@ -20,19 +20,28 @@
 
     <g id="series">
         @if (Data is not null && Data.Any()) {
-        <polyline stroke="@(StrokeColour)" fill="none" points="@PointList(Data)"/>
+        <polyline id="trend" stroke="@(StrokeColour)" fill="none" points="@PointList(Data)"/>
+        <g id="points">
+            @foreach(var point in Data) {
+                <circle cx="@(XPoint(point.X))" cy="@(YPoint(point.Y))" r="4" fill="@FillColour">
+                    <title>(@(XAxisLabel ?? "x"): @point.X.ToString("F8"), @(YAxisLabel ?? "y"): @point.Y.ToString("F8"))</title>
+                </circle>
+            }
+        </g>
         }
     </g>
 </svg>
 
 @code {
+    [Parameter] public string? Id {get; set;}
     [Parameter] public string StrokeColour {get; set;} = "black";
+    [Parameter] public string FillColour {get; set;} = "royalblue";
     [Parameter] public IEnumerable<(double X, double Y)>? Data {get; set;}
      
 
     [Parameter] public double GraphHeight {get; set;} = 300.0;
     [Parameter] public double GraphWidth {get; set;} = 500.0;
-    private const int YOffset = 0;
+    private const int YOffset = 5;
     private const int XOffset = 50;
 
     [Parameter] public Range? YAxis {get; set;} = null;

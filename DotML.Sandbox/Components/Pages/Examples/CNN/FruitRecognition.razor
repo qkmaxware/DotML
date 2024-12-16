@@ -5,7 +5,7 @@
 @using DotML.Network.Initialization
 @using Qkmaxware.Media.Image
 
-<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=alexNet Trainer=trainer TrainingData=training ValidationData=testing Checkpoint=checkpointManager>
+<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=network Trainer=trainer TrainingData=training ValidationData=testing Checkpoint=checkpointManager>
     <Input>
         <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
     </Input>
@@ -21,7 +21,7 @@
 
     </DataVisualization>
     <NetworkVisualization>
-
+        <NetworkHtml Network=network></NetworkHtml>
     </NetworkVisualization>
     <ValidationVisualization>
         
@@ -74,9 +74,31 @@
         new FullyConnectedLayer  (input_size: 4096, neurons: 4096),
         new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), HyperbolicTangent.Instance),
         new FullyConnectedLayer  (input_size: 4096, neurons: OUT_CLASSES),
-        new ActivationLayer      (input_size: new Shape3D(1, OUT_CLASSES, 1), HyperbolicTangent.Instance),
         new SoftmaxLayer         (OUT_CLASSES)
     );
+
+    /*private ConvolutionalFeedforwardNetwork network = new ConvolutionalFeedforwardNetwork(
+        new ConvolutionLayer(input_size: new Shape3D(3, 227, 227), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(32, 3, 3)),
+        new ActivationLayer(input_size: new Shape3D(32, 227, 227), activation: HyperbolicTangent.Instance),
+        new LocalMaxPoolingLayer(input_size: new Shape3D(32, 227, 227), size: 2, stride: 2),
+        
+        new ConvolutionLayer(input_size: (32, 113, 113), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(64, 32, 3)),
+        new ActivationLayer(input_size: new Shape3D(64, 113, 113), activation: HyperbolicTangent.Instance),
+        new LocalMaxPoolingLayer(input_size: new Shape3D(64, 113, 113), size: 2, stride: 2),
+
+        new ConvolutionLayer(input_size: (64, 56, 56), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(128, 64, 3)),
+        new ActivationLayer(input_size: new Shape3D(128, 56, 56), activation: HyperbolicTangent.Instance),
+        new LocalMaxPoolingLayer(input_size: new Shape3D(128, 56, 56), size: 2, stride: 2),
+
+        new FullyConnectedLayer(input_size: new Shape3D(128, 28, 28).Count, neurons: 512),
+        new ActivationLayer(input_size: new Shape3D(1, 512, 1), activation: HyperbolicTangent.Instance),
+
+        new FullyConnectedLayer(input_size: new Shape3D(1, 512, 1).Count, neurons: 128),
+        new ActivationLayer(input_size: new Shape3D(1, 128, 1), activation: HyperbolicTangent.Instance),
+
+        new FullyConnectedLayer(input_size: new Shape3D(1, 128, 1).Count, neurons: OUT_CLASSES),
+        new SoftmaxLayer(size: OUT_CLASSES)
+    );*/
 
     private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
         LearningRate = 0.001,

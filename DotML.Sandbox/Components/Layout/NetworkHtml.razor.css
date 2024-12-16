@@ -1,0 +1,27 @@
+figure {
+    width: 100%;
+    overflow-x: auto;
+}
+
+::deep table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+::deep table td, ::deep table th {
+    border: 1px solid #ddd;
+    padding: 8px;
+    min-width: 128px;
+}
+
+::deep table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+::deep table tr:hover {
+    background-color: #ddd;
+}
+
+::deep table th {
+    font-weight: bold;
+}

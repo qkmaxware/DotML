@@ -175,7 +175,10 @@
             <label class="header">Validation</label>
             <figure style="overflow: auto;">
                 <figcaption>Loss vs Epoch</figcaption>
-                <Plot Data=loss_graph YAxisLabel="Loss" XAxisLabel="Epoch"></Plot>
+                <div class="col" style="text-align: right;">
+                    <button type="button" class="btn" style="text-decoration: underline;" onclick="BlazorComponents.Files.download('loss-vs-epoch.svg', 'image/svg+xml', new TextEncoder().encode(document.getElementById('training-loss-graph').outerHTML));">get</button>
+                </div>
+                <Plot Id="training-loss-graph" Data=loss_graph YAxisLabel="Loss" XAxisLabel="Epoch"></Plot>
                 <div class="row" style="margin-left: 0; margin-right: 0;">
                     <div class="col text-start">0</div>
                     <div class="col text-center">&Delta;@last_step_time</div>

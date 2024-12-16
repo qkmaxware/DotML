@@ -1,0 +1,11 @@
+@using DotML.Network
+
+<figure>
+@if (Network is not null && Network is IHtmlable htmlable) {
+    @((MarkupString)(htmlable.ToHtml()))
+}
+</figure>
+
+@code {
+    [Parameter] public INeuralNetwork? Network {get; set;}
+}
