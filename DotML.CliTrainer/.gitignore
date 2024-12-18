@@ -1,3 +1,5 @@
 *.bin
 *.csv
 *.safetensors
+*.md
+*.yaml

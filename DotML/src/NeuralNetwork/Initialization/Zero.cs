@@ -6,11 +6,11 @@ namespace DotML.Network.Initialization;
 /// <typeparam name="TNetwork">Network type</typeparam>
 public class ZeroInitialization: IInitializer {
     
-    public double RandomBias(int parameterCount) {
+    public double RandomBias(int input_count, int output_count, int parameterCount) {
         return 0;
     }
 
-    public double RandomWeight(int parameterCount) {
+    public double RandomWeight(int input_count, int output_count, int parameterCount) {
         return 0;
     }
 

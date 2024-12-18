@@ -84,12 +84,12 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
     public void Initialize(IInitializer initializer) {
         this.ForeachLayer(layer => {
             layer.ForeachNeuron((ref Neuron neuron) => {
-                neuron.Bias = initializer.RandomBias(layer.NeuronCount);
+                neuron.Bias = initializer.RandomBias(layer.InputShape.Count, layer.OutputShape.Count, layer.TrainableParameterCount());
                 var weights = neuron.Weights;
                 var weightc = weights.Length; 
 
                 for (var i = 0; i < weightc; i++) {
-                    weights[i] = initializer.RandomWeight(layer.InputShape.Count + layer.OutputShape.Count);
+                    weights[i] = initializer.RandomWeight(layer.InputShape.Count, layer.OutputShape.Count, layer.TrainableParameterCount());
                 }
             });
         });

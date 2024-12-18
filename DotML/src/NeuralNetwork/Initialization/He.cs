@@ -7,7 +7,7 @@ public class HeInitialization
 {
     private static Random rng = new Random();
 
-    public double RandomBias(int parameterCount) {
+    public double RandomBias(int input_count, int output_count, int parameterCount) {
         return 0.01;
     }
 
@@ -18,8 +18,8 @@ public class HeInitialization
         return z0;
     }
 
-    public double RandomWeight(int parameterCount) {
-        double stddev = Math.Sqrt(2.0 / parameterCount);
+    public double RandomWeight(int input_count, int output_count, int parameterCount) {
+        double stddev = Math.Sqrt(2.0 / (input_count + output_count));
         return NextGaussian() * stddev;
     }
 }

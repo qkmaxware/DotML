@@ -265,9 +265,7 @@ public class LocalAvgPoolingLayer : LocalPoolingLayer {
         return current + delta;
     }
 
-    private static readonly double Epsilon = 1e-8;
-
     protected override double Aggregate(double current, int count){
-        return current / (count + Epsilon);
+        return current / Math.Max(1, count);
     }
 }

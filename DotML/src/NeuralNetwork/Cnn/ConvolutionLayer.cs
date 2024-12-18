@@ -54,15 +54,15 @@ public class ConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
     }
 
     public override void Initialize(IInitializer initializer) {
+        var parameters = this.TrainableParameterCount();
         foreach (var filter in filters) {
-            filter.Bias = initializer.RandomBias(filters.Length);
+            filter.Bias = initializer.RandomBias(this.InputShape.Count, this.OutputShape.Count, parameters);
             foreach (var kernel in filter) {
                 var values = (double[,])kernel;
-                var parameters = Math.Max(values.GetLength(0), values.GetLength(1));
 
                 for (var i = 0; i < values.GetLength(0); i++) {
                     for (var j = 0; j < values.GetLength(1); j++) {
-                        values[i, j] = initializer.RandomWeight(parameters);
+                        values[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
                     }
                 }
             }

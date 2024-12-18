@@ -16,7 +16,7 @@ public static class Kernels {
         double[,] filter = new double[size, size];
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
-                filter[i, j] = he.RandomWeight(size);
+                filter[i, j] = he.RandomWeight(size, size, size);
             }
         }
         return Matrix<double>.Wrap(filter);
@@ -31,7 +31,7 @@ public static class Kernels {
         double[,] filter = new double[size, size];
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
-                filter[i, j] = xavier.RandomWeight(size);
+                filter[i, j] = xavier.RandomWeight(size, size, size);
             }
         }
         return Matrix<double>.Wrap(filter);

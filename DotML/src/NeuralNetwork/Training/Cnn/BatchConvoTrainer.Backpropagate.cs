@@ -143,6 +143,8 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             }
 
             // Store gradients
+            clip(gradient, GradientClippingThresholdWeight);
+            clip(ref biasGradient, GradientClippingThresholdBias);
             filterGradients[filterIndex] = gradient;
             biasGradients[filterIndex] = biasGradient;
         });

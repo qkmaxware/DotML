@@ -55,7 +55,7 @@
     FC          4096       ReLU
     Softmax     1000       Softmax
     */
-    private ConvolutionalFeedforwardNetwork alexNet = new ConvolutionalFeedforwardNetwork(
+    private ConvolutionalFeedforwardNetwork network = new ConvolutionalFeedforwardNetwork(
         new ConvolutionLayer     (input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)),
         new ActivationLayer      (input_size: new Shape3D(96, 55, 55), HyperbolicTangent.Instance),
         new LocalMaxPoolingLayer (input_size: new Shape3D(96, 55, 55), size: 3, stride: 2),
@@ -109,7 +109,7 @@
         EnableGradientClipping = true
     };
 
-    private ICheckpointManager<ConvolutionalFeedforwardNetwork> checkpointManager = new CnnSingleCheckpointManager("_session_fruit_recognition");
+    private ICheckpointManager<ConvolutionalFeedforwardNetwork>? checkpointManager = null;//new CnnSingleCheckpointManager("_session_fruit_recognition");
 
     private bool loaded => training is null || testing is null;
     private static TrainingSet? training = null;

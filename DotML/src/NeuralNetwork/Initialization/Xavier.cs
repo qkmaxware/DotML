@@ -15,12 +15,12 @@ public class NormalXavierInitialization
         return mean + z0 * stddev;
     }
 
-    public double RandomWeight(int parameterCount) {
-        double stddev = Math.Sqrt(2.0 / parameterCount);
+    public double RandomWeight(int input_count, int output_count, int parameterCount) {
+        double stddev = Math.Sqrt(2.0 / (input_count + output_count));
         return NormalRandom(0, stddev);
     }
 
-    public double RandomBias(int parameterCount) {
+    public double RandomBias(int input_count, int output_count, int parameterCount) {
         return 0.01;
     }
 
@@ -59,12 +59,12 @@ public class UniformXavierInitialization
         return (rng.NextDouble() * 2 * limit) - limit;
     }
 
-    public double RandomWeight(int parameterCount) {
-        double limit = Math.Sqrt(6.0 / parameterCount);
+    public double RandomWeight(int input_count, int output_count, int parameterCount) {
+        double limit = Math.Sqrt(6.0 / (input_count + output_count));
         return UniformRandom(limit);
     }
 
-    public double RandomBias(int parameterCount) {
+    public double RandomBias(int input_count, int output_count, int parameterCount) {
         return 0.01;
     }
 

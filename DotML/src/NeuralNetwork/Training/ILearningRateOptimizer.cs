@@ -76,7 +76,8 @@ public class RMSPropOptimizer : ILearningRateOptimizer {
         var cached = DecayRate * moments[parameterIndex] + (1 - DecayRate) * gradient * gradient;
         moments[parameterIndex] = cached;
 
-        var adjusted_gradient = gradient / (Math.Sqrt(cached) + epsilon);
+        var denom = Math.Max(cached, epsilon);
+        var adjusted_gradient = gradient / Math.Sqrt(denom);
         var parameter_update = baseLearningRate * adjusted_gradient;
 
         return parameter_update;
@@ -139,9 +140,7 @@ public class AdamOptimizer : ILearningRateOptimizer {
         var adjusted_gradient = mHat / Math.Sqrt(vHat);
         var parameter_update = baseLearningRate * adjusted_gradient;
         if (double.IsNaN(parameter_update)) {
-            throw new ArithmeticException(
-                $"baseLearningRate = {baseLearningRate}; sqrt(vHat) = {Math.Sqrt(vHat)}; t = {timestep}; cached.First = {cached.First}; cached.Second = {cached.Second}; mHat = {mHat}; vHat = {vHat}; Beta1^t = {Math.Pow(Beta1, timestep)}; Beta2^t = {Math.Pow(Beta2, timestep)}"
-            );
+            throw new ArithmeticException("NaN generated for parameter update.");
         }
         return parameter_update;
     }

@@ -121,12 +121,22 @@ private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutiona
         Matrix<double>.TransformInplace(gradients.WeightGradients, gradients.WeightGradients, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Weights[index.Row, index.Column], grad, param_offset + index.Column + index.Row * weight_width));
         var weight_update = gradients.WeightGradients;
         Matrix<double>.SubInplace(layer.Weights, layer.Weights, weight_update);
+        foreach (var elem in layer.Weights) {
+            if (double.IsNaN(elem)) {
+                throw new ArithmeticException($"NaN detected while updating weights of a FullyConnectedLayer");
+            }
+        }
         //var weight_update = gradients.WeightGradients.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Weights[index.Row, index.Column], grad, param_offset + index.Column + index.Row * weight_width));
         //layer.Weights = layer.Weights - weight_update;
         
         Vec<double>.TransformInplace(gradients.BiasGradients, gradients.BiasGradients, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Biases[index.Value], grad, param_offset + weight_count + index.Value));
         var bias_update = gradients.BiasGradients;
         Vec<double>.SubInplace(layer.Biases, layer.Biases, bias_update);
+        foreach (var elem in layer.Biases) {
+            if (double.IsNaN(elem)) {
+                throw new ArithmeticException($"NaN detected while updating biases of a FullyConnectedLayer");
+            }
+        }
         //var bias_update = gradients.BiasGradients.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Biases[index.Value], grad, param_offset + weight_count + index.Value));
         //layer.Biases = layer.Biases - bias_update;
         

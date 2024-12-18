@@ -102,14 +102,15 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
     public INeuron GetNeuron(int index) => this.neurons[index];
 
     public override void Initialize(IInitializer initializer) {
+        var parameters = this.TrainableParameterCount();
+
         for (var b = 0; b < bias_values.Length; b++) {
-            bias_values[b] = initializer.RandomBias(bias_values.Length);
+            bias_values[b] = initializer.RandomBias(this.InputShape.Count, this.OutputShape.Count, parameters);
         }
 
-        var parameters = this.InputShape.Count + this.OutputShape.Count;
         for (var i = 0; i < weight_values.GetLength(0); i++) {
             for (var j = 0; j < weight_values.GetLength(1); j++) {
-                weight_values[i, j] = initializer.RandomWeight(parameters);
+                weight_values[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
             }
         }
     }

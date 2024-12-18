@@ -7,6 +7,7 @@ using System.Diagnostics;
 
 public class Program {
 public static void Main() {
+    var filename_root = $"{DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss")}.";
 
     #region Network
     const int IMG_WIDTH = 227;
@@ -19,24 +20,24 @@ public static void Main() {
 
     var network = new ConvolutionalFeedforwardNetwork(
         new ConvolutionLayer     (input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)),
-        new ActivationLayer      (input_size: new Shape3D(96, 55, 55), HyperbolicTangent.Instance),
+        new ActivationLayer      (input_size: new Shape3D(96, 55, 55), LeakyReLU.Instance),
         new LocalMaxPoolingLayer (input_size: new Shape3D(96, 55, 55), size: 3, stride: 2),
         new ConvolutionLayer     (input_size: new Shape3D(96, 27, 27), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 96, 5)),
-        new ActivationLayer      (input_size: new Shape3D(256, 27, 27), HyperbolicTangent.Instance),
+        new ActivationLayer      (input_size: new Shape3D(256, 27, 27), LeakyReLU.Instance),
         new LocalMaxPoolingLayer (input_size: new Shape3D(256, 27, 27), size: 3, stride: 2),
         new ConvolutionLayer     (input_size: new Shape3D(256, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 256, 3)),
-        new ActivationLayer      (input_size: new Shape3D(384, 13, 13), HyperbolicTangent.Instance),
+        new ActivationLayer      (input_size: new Shape3D(384, 13, 13), LeakyReLU.Instance),
         new ConvolutionLayer     (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 384, 3)),
-        new ActivationLayer      (input_size: new Shape3D(384, 13, 13), HyperbolicTangent.Instance),
+        new ActivationLayer      (input_size: new Shape3D(384, 13, 13), LeakyReLU.Instance),
         new ConvolutionLayer     (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 384, 3)),
-        new ActivationLayer      (input_size: new Shape3D(256, 13, 13), HyperbolicTangent.Instance),
+        new ActivationLayer      (input_size: new Shape3D(256, 13, 13), LeakyReLU.Instance),
         new LocalMaxPoolingLayer (input_size: new Shape3D(256, 13, 13), size: 3, stride: 2),
         new FullyConnectedLayer  (input_size: 9216, neurons: 4096),
-        new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), HyperbolicTangent.Instance),
+        new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), LeakyReLU.Instance),
         new FullyConnectedLayer  (input_size: 4096, neurons: 4096),
-        new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), HyperbolicTangent.Instance),
+        new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), LeakyReLU.Instance),
         new FullyConnectedLayer  (input_size: 4096, neurons: OUT_CLASSES),
-        new ActivationLayer      (input_size: new Shape3D(1, OUT_CLASSES, 1), HyperbolicTangent.Instance),
+        new ActivationLayer      (input_size: new Shape3D(1, OUT_CLASSES, 1), LeakyReLU.Instance),
         new SoftmaxLayer         (OUT_CLASSES)
     );
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
@@ -45,22 +46,45 @@ public static void Main() {
         var layer = network.GetLayer(layerIndex);
         Console.Write("    "); Console.WriteLine("layer" + layerIndex + ": " + layer.OutputShape + " " + layer.GetType().Name);
     }
+    if (network is IJsonizable json) {
+        using (var writer = new StreamWriter($"{filename_root}network.json")) {
+            writer.Write(json.ToJson());
+        }
+    } else if (network is IMarkdownable md) {
+        using (var writer = new StreamWriter($"{filename_root}network.md")) {
+            writer.Write(md.ToMarkdown());
+        }
+    } else if (network is IHtmlable html) {
+        using (var writer = new StreamWriter($"{filename_root}network.html")) {
+            writer.Write(html.ToHtml());
+        }
+    } else if (network is IDiagrammable svg) {
+        using (var writer = new StreamWriter($"{filename_root}network.svg")) {
+            writer.Write(svg.ToSvg());
+        }
+    }
     #endregion
 
     #region Trainer
     DefaultValidationReport report = new DefaultValidationReport();
     var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
-        LearningRate = 0.001,
-        LearningRateOptimizer = new AdamOptimizer(),
+        LearningRate = 0.01,
+        LearningRateOptimizer = new ConstantRate(),
         LossFunction = LossFunctions.CrossEntropy,
-        NetworkInitializer = new NormalXavierInitialization(),
+        NetworkInitializer = new HeInitialization(),
         BatchSize = 6,
-        EnableGradientClipping = false,
+        EnableGradientClipping = true,
+        ClippingThreshold = 5.0,
         ValidationReport = report
     };
     Console.WriteLine("Trainer configured: " + trainer.GetType().Name);
-    foreach (PropertyInfo property in trainer.GetType().GetProperties()) {
-        Console.Write("    "); Console.Write(property.Name); Console.Write(": "); Console.WriteLine(property.CanRead ? property.GetValue(trainer, null) : "n/a");
+    using (var trainer_prop_writer = new StreamWriter($"{filename_root}trainer.yaml")) {
+        trainer_prop_writer.WriteLine("Trainer:");
+        trainer_prop_writer.Write("    "); trainer_prop_writer.Write("Type"); trainer_prop_writer.Write(": "); trainer_prop_writer.WriteLine(trainer.GetType().Name);
+        foreach (PropertyInfo property in trainer.GetType().GetProperties()) {
+            Console.Write("    "); Console.Write(property.Name); Console.Write(": "); Console.WriteLine(property.CanRead ? property.GetValue(trainer, null) : "n/a");
+            trainer_prop_writer.Write("    "); trainer_prop_writer.Write(property.Name); trainer_prop_writer.Write(": "); trainer_prop_writer.WriteLine(property.CanRead ? property.GetValue(trainer, null) : "n/a");
+        }
     }
     #endregion
 
@@ -75,6 +99,21 @@ public static void Main() {
     #region Training Steps
     var position = Console.GetCursorPosition();
     var session = trainer.EnumerateTraining(network, data.SampleRandomly(), data.SampleSequentially());
+    session.Reset();
+    var checkpoints = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.safetensors").Select(f => new FileInfo(f)).OrderByDescending(f => f.CreationTime).ToArray();
+    if (checkpoints.Length > 0) {
+        var check = checkpoints[0];
+        Console.WriteLine($"Previous session weights found '{check.Name}'. Reload weights (y/n)?");
+        Console.Write("> "); var read = Console.ReadLine()?.ToLower();
+        switch (read) {
+            case "y":
+            case "yes":
+            case "true":
+                var tensors = SafetensorBuilder.ReadFromFile(check);
+                network.FromSafetensor(tensors);
+                break;
+        }
+    }
     const float progress_bar_step = 0.05f;
     session.OnBatchEnd += (int batch, int batchCount) => {
         Console.SetCursorPosition(position.Left, position.Top);
@@ -125,7 +164,6 @@ public static void Main() {
     var has_next = true;
     var reset_colour = Console.ForegroundColor;
     Console.WriteLine();
-    var filename_root = $"{DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss")}.";
     var filename = $"{filename_root}training-report.csv";
     Console.WriteLine($"Training started: \"{filename}\"");
     using var report_writer = new StreamWriter(filename);
@@ -149,19 +187,26 @@ public static void Main() {
 
         // Last report
         Console.SetCursorPosition(position.Left, position.Top);
+        var status_char = ' ';
         if (min_loss.HasValue) {
             if (report.MaxLoss < min_loss.Value) {
                 Console.ForegroundColor = ConsoleColor.Green;
                 min_loss = report.MaxLoss;
-            } else {
+                status_char = '+';
+            } else if (report.MaxLoss > min_loss.Value) {
                 Console.ForegroundColor = ConsoleColor.Red;
+                status_char = '-';
             }
+        } else {
+            min_loss = report.MaxLoss;
         }
-        Console.Write($"{report.TestsPassedCount}/{report.TestCount} passed, {elapsed} elapsed, {report.AverageLoss} loss,                              ");
+        Console.Write($"{status_char} {report.TestsPassedCount}/{report.TestCount} passed, {elapsed} elapsed, {report.AverageLoss} loss, ");
         report_writer.WriteLine($"{session.CurrentEpoch}, {report.MinLoss}, {report.MaxLoss}, {report.AverageLoss}, {report.TestsPassedCount}, {report.TestsFailedCount}");
         report_writer.Flush();
         Console.ForegroundColor = reset_colour;
-        Console.WriteLine();
+        var epochfname = $"{filename_root}epoch-{session.CurrentEpoch}.safetensors";
+        network.ToSafetensor().WriteToFile(epochfname);
+        Console.WriteLine($"weights '{epochfname}'");
     }
     #endregion
 

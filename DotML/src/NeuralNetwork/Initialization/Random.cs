@@ -13,13 +13,13 @@ public class RandomInitialization
         this.max = Math.Max(min, max);
     }
 
-    public double RandomWeight(int parameterCount) {
+    public double RandomWeight(int input_count, int output_count, int parameterCount) {
         var sample = rng.NextDouble();
         var number = (max * sample) + (min * (1d - sample));
         return number;
     }
 
-    public double RandomBias(int parameterCount) {
+    public double RandomBias(int input_count, int output_count, int parameterCount) {
         var sample = rng.NextDouble();
         var number = (max * sample) + (min * (1d - sample));
         return number;
