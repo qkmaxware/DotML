@@ -165,6 +165,10 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         };
     }
 
+    public BackpropagationReturns Visit(DepthwiseConvolutionLayer layer, BackpropagationArgs args) {
+        throw new NotImplementedException();
+    }
+
     public BackpropagationReturns Visit(PoolingLayer layer, BackpropagationArgs args) {
         // Extract inputs, outputs, and errors
         var inputs = args.Inputs;

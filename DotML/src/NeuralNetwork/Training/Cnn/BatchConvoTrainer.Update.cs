@@ -91,6 +91,10 @@ private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutiona
         return new LayerUpdateReturns {};
     }
 
+    public LayerUpdateReturns Visit(DepthwiseConvolutionLayer layer, LayerUpdateArgs args) {
+        throw new NotImplementedException();
+    }
+
     public LayerUpdateReturns Visit(PoolingLayer layer, LayerUpdateArgs args) {
         // Do nothing for gradient updates on the pooling layer
         return new LayerUpdateReturns {};

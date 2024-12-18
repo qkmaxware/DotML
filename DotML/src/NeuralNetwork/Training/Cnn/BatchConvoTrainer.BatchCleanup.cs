@@ -11,6 +11,8 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
     private class BatchCleanup : IConvolutionalLayerVisitor {
         public void Visit(ConvolutionLayer layer) { }
 
+        public void Visit(DepthwiseConvolutionLayer layer) { }
+
         public void Visit(PoolingLayer layer) { }
 
         public void Visit(FlatteningLayer layer) { }
