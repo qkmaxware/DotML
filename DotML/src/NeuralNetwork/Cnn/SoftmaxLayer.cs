@@ -5,6 +5,7 @@ namespace DotML.Network;
 
 /// <summary>
 /// Softmax output layer for a ConvolutionalFeedforwardNetwork
+/// <see href="https://en.wikipedia.org/wiki/Softmax_function"/>
 /// </summary>
 public class SoftmaxLayer : ConvolutionalFeedforwardNetworkLayer {
 

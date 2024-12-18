@@ -101,6 +101,42 @@ private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutiona
         return new LayerUpdateReturns {};
     }
 
+    public LayerUpdateReturns Visit(LayerNorm layer, LayerUpdateArgs args) {
+        if (args.Gradients is null || args.Gradients is not LayerNormGradients gradients)
+            throw new NullReferenceException(nameof(args.Gradients));
+        
+        var param_offset = args.ParameterOffset;
+        var gamma_width = layer.InputShape.Columns;
+
+        if (gradients.GammaGradients is not null) {
+            for (var i = 0; i < gradients.GammaGradients.Length; i++) {
+                var gamma = layer.Gammas[i];
+                var gradient = gradients.GammaGradients[i];
+
+                Matrix<double>.TransformInplace(gradient, gradient, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, gamma[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
+                var weight_update = gradient;
+                Matrix<double>.SubInplace(gamma, gamma, weight_update);
+                param_offset += gamma.Size;
+            }
+        }
+
+        var beta_width = layer.InputShape.Columns;
+
+        if (gradients.BetaGradients is not null) {
+            for (var i = 0; i < gradients.BetaGradients.Length; i++) {
+                var beta = layer.Betas[i];
+                var gradient = gradients.BetaGradients[i];
+
+                Matrix<double>.TransformInplace(gradient, gradient, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, beta[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
+                var weight_update = gradient;
+                Matrix<double>.SubInplace(beta, beta, weight_update);
+                param_offset += beta.Size;
+            }
+        }
+        
+        return new LayerUpdateReturns {};
+    }   
+
     public LayerUpdateReturns Visit(FlatteningLayer layer, LayerUpdateArgs args) {
         // Do nothing for gradient updates on the flattening layer
         return new LayerUpdateReturns {};

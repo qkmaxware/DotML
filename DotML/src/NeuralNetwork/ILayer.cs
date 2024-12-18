@@ -15,11 +15,6 @@ public interface ILayer {
     public Shape3D OutputShape {get;}
 
     /// <summary>
-    /// The results of the last evaluation, for debugging
-    /// </summary>
-    public Vec<double> GetLastOutputs();
-
-    /// <summary>
     /// Number of trainable parameters in this layer
     /// </summary>
     /// <returns>Number of trainable parameters</returns>
@@ -47,4 +42,11 @@ public interface ILayerWithNeurons : ILayer {
             action(neuron);
         }
     }
+}
+
+public interface ILayerWithVectorOutput : ILayerWithNeurons {
+    /// <summary>
+    /// The results of the last evaluation, for debugging
+    /// </summary>
+    public Vec<double> GetLastOutputs();
 }

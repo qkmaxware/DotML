@@ -5,6 +5,7 @@ namespace DotML.Network;
 
 /// <summary>
 /// Layer which performs dropout
+/// <see href="https://en.wikipedia.org/wiki/Dilution_(neural_networks)"/>
 /// </summary>
 public class DropoutLayer : ConvolutionalFeedforwardNetworkLayer {
     public double DropoutRate {get; init;}

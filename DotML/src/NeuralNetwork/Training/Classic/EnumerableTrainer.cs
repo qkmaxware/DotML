@@ -11,7 +11,7 @@ namespace DotML.Network.Training;
 /// <typeparam name="TNetwork">type of network to train</typeparam>
 public class EnumerableBackpropagationTrainer<TNetwork>
     : IEnumerableTrainer<TNetwork>
-where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>
+where TNetwork : ILayeredNeuralNetwork<ILayerWithVectorOutput>
 {
     /// <summary>
     /// Create a new Neural Network trainer
@@ -157,7 +157,7 @@ where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>
 /// Simple enumerator for a backpropagation trainer
 /// </summary>
 /// <typeparam name="TNetwork">type of network being trained</typeparam>
-public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> where TNetwork : ILayeredNeuralNetwork<ILayerWithNeurons> {
+public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> where TNetwork : ILayeredNeuralNetwork<ILayerWithVectorOutput> {
     /// <summary>
     /// Number of training items per batch
     /// </summary>
@@ -339,7 +339,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void backpropagate(ILayerWithNeurons layer, double[] layerDeltas, Vec<double> targets) {
+    private void backpropagate(ILayerWithVectorOutput layer, double[] layerDeltas, Vec<double> targets) {
         var neuron_count = layer.NeuronCount;
         var outputs = layer.GetLastOutputs();
 
@@ -357,7 +357,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void backpropagate(ILayerWithNeurons layer, double[] layerDeltas, ILayerWithNeurons next_layer, double[] next_layerDeltas) {
+    private void backpropagate(ILayerWithVectorOutput layer, double[] layerDeltas, ILayerWithNeurons next_layer, double[] next_layerDeltas) {
         var neuron_count = layer.NeuronCount;
         var nextlayer_neuron_count = next_layer.NeuronCount;
         var outputs = layer.GetLastOutputs();

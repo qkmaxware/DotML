@@ -6,6 +6,7 @@ namespace DotML.Network;
 
 /// <summary>
 /// Apply a convolution using the given kernel/filter
+/// <see href="https://en.wikipedia.org/wiki/Convolutional_layer"/>
 /// </summary>
 public class ConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
     private ConvolutionFilter[] filters;

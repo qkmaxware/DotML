@@ -9,7 +9,7 @@ namespace DotML.Network;
 /// <summary>
 /// A simple, fully connected, Feed Forward Neural Network based on layers.
 /// </summary>
-public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeurons>, IJsonizable, IDiagrammable, ISafetensorable {
+public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithVectorOutput>, IJsonizable, IDiagrammable, ISafetensorable {
     private List<NeuronLayer> layers = new List<NeuronLayer>();
 
     /// <summary>
@@ -133,7 +133,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
     /// </summary>
     /// <param name="index">index to layer</param>
     /// <returns>layer</returns>
-    public ILayerWithNeurons GetLayer(int index) {
+    public ILayerWithVectorOutput GetLayer(int index) {
         return this.layers[index];
     }
 
@@ -141,7 +141,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
     /// Gets the first hidden layer in the network 
     /// </summary>
     /// <returns>layer</returns>
-    public ILayerWithNeurons GetFirstLayer() {
+    public ILayerWithVectorOutput GetFirstLayer() {
         return this.layers[0];
     }
 
@@ -149,7 +149,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithNeuro
     /// Gets the last layer in the network where outputs are produced
     /// </summary>
     /// <returns>layer</returns>
-    public ILayerWithNeurons GetOutputLayer() {
+    public ILayerWithVectorOutput GetOutputLayer() {
         return this.layers[this.layers.Count - 1];
     }
 

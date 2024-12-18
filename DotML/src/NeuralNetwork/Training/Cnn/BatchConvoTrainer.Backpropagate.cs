@@ -26,6 +26,11 @@ public class ConvolutionGradients : Gradients {
     public double[]? BiasGradients;
 }
 
+public class LayerNormGradients : Gradients {
+    public Matrix<double>[]? GammaGradients;
+    public Matrix<double>[]? BetaGradients;
+}
+
 public struct BackpropagationReturns {
     public Matrix<double>[] Errors;
     public Gradients? Gradient;
@@ -253,6 +258,50 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         return new BackpropagationReturns {
             Errors = return_errors,
             Gradient = null
+        };
+    }
+
+    public BackpropagationReturns Visit(LayerNorm layer, BackpropagationArgs args) {
+        // Getting the inputs, outputs, and errors from the BackpropagationArgs
+        Matrix<double>[] inputs = args.Inputs;
+        Matrix<double>[] outputs = args.Outputs;
+        Matrix<double>[] errors = args.Errors;
+        var channels = inputs.Length;
+    
+        // Create gradients for gamma and beta
+        var gammaGradients = new Matrix<double>[channels];
+        var betaGradients = new Matrix<double>[channels];
+
+        // Output list for backpropagated errors
+        var inputErrors = new Matrix<double>[channels];
+
+        // Process each channel
+        for (int i = 0; i < channels; i++) {
+            var xHat = outputs[i];
+            var input = inputs[i];
+            var gamma = layer.Gammas[i];
+            var error = errors[i];
+
+            gammaGradients[i] = error.Hadamard(xHat);
+            betaGradients[i] = error;
+
+            var mean = input.Average();
+            var variance = input.Select(v => Math.Pow(v - mean, 2)).Average();
+            var denom = Math.Sqrt(variance + epsilon);
+            var inputError = error.Hadamard(gamma);
+            Matrix<double>.TransformInplace(inputError, inputError, (v) => v / denom);
+            inputErrors[i] = inputError;
+        }
+
+        clip(gammaGradients, GradientClippingThresholdWeight);
+        clip(betaGradients, GradientClippingThresholdWeight);
+
+        return new BackpropagationReturns {
+            Errors = inputErrors,
+            Gradient = new LayerNormGradients {
+                GammaGradients = gammaGradients,
+                BetaGradients = betaGradients
+            }
         };
     }
 

@@ -5,7 +5,7 @@ namespace DotML.Network;
 /// <summary>
 /// Basic layer of neurons
 /// </summary>
-public class NeuronLayer : ILayerWithNeurons {
+public class NeuronLayer : ILayerWithNeurons, ILayerWithVectorOutput {
     public delegate void NeuronAction(ref Neuron neuron);
     
     private Neuron[] neurons;

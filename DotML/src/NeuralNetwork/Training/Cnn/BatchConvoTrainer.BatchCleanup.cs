@@ -21,6 +21,8 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
             layer.ClearSharedMask();
         }
 
+        public void Visit(LayerNorm layer) {}
+
         public void Visit(FullyConnectedLayer layer) { }
 
         public void Visit(ActivationLayer layer) { }

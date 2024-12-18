@@ -62,6 +62,11 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
+    /// Create a matrix with the given shape
+    /// </summary>
+    public Matrix(Shape2D shape) : this(shape.Rows, shape.Columns) {}
+
+    /// <summary>
     /// Create a matrix from the given values
     /// </summary>
     /// <param name="values">values</param>

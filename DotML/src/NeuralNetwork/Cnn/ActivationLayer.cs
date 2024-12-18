@@ -5,6 +5,7 @@ namespace DotML.Network;
 
 /// <summary>
 /// Activation layer for a ConvolutionalFeedforwardNetwork
+/// <see href="https://en.wikipedia.org/wiki/Activation_function"/>
 /// </summary>
 public class ActivationLayer : ConvolutionalFeedforwardNetworkLayer {
 

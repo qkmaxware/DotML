@@ -25,10 +25,6 @@ public abstract class ConvolutionalFeedforwardNetworkLayer : IConvolutionalFeedf
     public virtual Shape3D InputShape {get; protected set;}
     public virtual Shape3D OutputShape {get; protected set;}
 
-    public Vec<double> GetLastOutputs() {
-        throw new NotImplementedException();
-    }
-
     public virtual bool DoesShapeMatchInputShape(Matrix<double>[] channels) {
         return channels.Length == InputShape.Channels 
             && InputShape.Rows == channels.FirstOrDefault().Rows
