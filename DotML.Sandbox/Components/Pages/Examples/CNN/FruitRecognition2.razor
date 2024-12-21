@@ -1,0 +1,165 @@
+@page "/examples/cnn/fruit-recognition2"
+@using DotML
+@using DotML.Network
+@using DotML.Network.Training
+@using DotML.Network.Initialization
+@using Qkmaxware.Media.Image
+
+<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=network Trainer=trainer TrainingData=training ValidationData=testing>
+    <Input>
+        <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
+    </Input>
+    <Output>
+        @{
+            var prob = new ProbabilityDistribution(context.Output.Value, OUT_CLASS_NAMES);
+            int selected = prob.SelectMostProbable(out string? name);
+        }
+        <h2 class="@name" style="text-align:center; margin-top: 24px;">@name (@prob.GetProbabilityOf(selected).ToString("F2"))</h2>
+        <ClassificationTable Output=@context.Output.Value ClassNames=@OUT_CLASS_NAMES></ClassificationTable>
+        <details>
+            <summary>Layer Breakdown</summary>
+            <CnnDataVisualizer Network=@network ValueScale=255 Input=@context.Input.Value></CnnDataVisualizer>
+        </details>
+    </Output>
+    <DataVisualization>
+         <VectorizedImageCarousel Width=@IMG_WIDTH Height=@IMG_HEIGHT Data=@context ValueScale=255></VectorizedImageCarousel>
+    </DataVisualization>
+    <NetworkVisualization>
+        <NetworkHtml Network=network></NetworkHtml>
+    </NetworkVisualization>
+    <ValidationVisualization>
+        
+    </ValidationVisualization>
+</NetworkExplorerV2>
+
+@code {
+    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+
+    const int IMG_WIDTH = 224;
+    const int IMG_HEIGHT = 224;
+    const int IMG_CHANNELS = 3;
+    const int OUT_CLASSES = 3;
+    string[] OUT_CLASS_NAMES = new string[OUT_CLASSES] {
+        "apple", "banana", "orange",
+    };
+
+    /*
+    Layer	Description	Output Size
+    Input Layer	Input image (224x224x3)	(224, 224, 3)
+    Initial Convolution Layer	3x3 Convolution, 32 filters, stride 2, Batch Normalization, ReLU6	(112, 112, 32)
+    Block 1	Depthwise 3x3, 32 filters, Pointwise 1x1, 64 filters, Batch Norm, ReLU6	(112, 112, 64)
+    Block 2	Depthwise 3x3, 64 filters, Pointwise 1x1, 128 filters, Batch Norm, ReLU6	(112, 112, 128)
+    
+    Block 3	Depthwise 3x3, 128 filters, Pointwise 1x1, 128 filters, Batch Norm, ReLU6	(56, 56, 128)
+    Block 4	Depthwise 3x3, 128 filters, Pointwise 1x1, 256 filters, Batch Norm, ReLU6	(56, 56, 256)
+    Block 5	Depthwise 3x3, 256 filters, Pointwise 1x1, 256 filters, Batch Norm, ReLU6	(56, 56, 256)
+    Block 6	Depthwise 3x3, 256 filters, Pointwise 1x1, 512 filters, Batch Norm, ReLU6	(28, 28, 512)
+    Block 7	Depthwise 3x3, 512 filters, Pointwise 1x1, 512 filters, Batch Norm, ReLU6	(28, 28, 512)
+    Block 8	Depthwise 3x3, 512 filters, Pointwise 1x1, 1024 filters, Batch Norm, ReLU6	(14, 14, 1024)
+    Block 9	Depthwise 3x3, 1024 filters, Pointwise 1x1, 1024 filters, Batch Norm, ReLU6	(14, 14, 1024)
+    Fully Connected Layer	Flatten the output, then Dense (1000 classes for ImageNet)	(1, 1000)
+    Softmax Output Layer	Softmax for classification	(1, 1000)
+
+    */
+    // https://github.com/danilojodas/MobileNet/blob/master/MobileNet.ipynb
+    private ConvolutionalFeedforwardNetwork network = new ConvolutionalFeedforwardNetwork(
+        // Input layer & first convolution
+        new ConvolutionLayer(input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Same, stride: 2, filters: ConvolutionFilter.Make(32, 3, 3))
+        .Then((size) => new LayerNorm(input_size: size))
+        .Then((size) => new ActivationLayer(input_size: size, activation: ReLU.Instance))
+        // First depthwise separable convolution block
+        .Then((size) => DepthwiseBlock(size, stride: 1, kernel_size: 3))
+        .Then((size) => PointwiseBlock(size, filter_count: 64, stride: 1))
+        // Second depthwise separable convolution block
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 2))
+        .Then((size) => PointwiseBlock(size, filter_count: 128, stride: 1))
+        // Third depthwise separable convolution block
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 1))
+        .Then((size) => PointwiseBlock(size, filter_count: 128, stride: 1))
+        // Fourth depthwise separable convolution block
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 2))
+        .Then((size) => PointwiseBlock(size, filter_count: 256, stride: 1))
+        // Fifth depthwise separable convolution block
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 1))
+        .Then((size) => PointwiseBlock(size, filter_count: 256, stride: 1))
+        // Sixth depthwise separable convolution block
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 2))
+        .Then((size) => PointwiseBlock(size, filter_count: 512, stride: 1))
+        // Seventh depthwise separable convolution block (repeated 5 times)
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 1))
+        .Then((size) => PointwiseBlock(size, filter_count: 512, stride: 1))
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 1))
+        .Then((size) => PointwiseBlock(size, filter_count: 512, stride: 1))
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 1))
+        .Then((size) => PointwiseBlock(size, filter_count: 512, stride: 1))
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 1))
+        .Then((size) => PointwiseBlock(size, filter_count: 512, stride: 1))
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 1))
+        .Then((size) => PointwiseBlock(size, filter_count: 512, stride: 1))
+        // Eighth depthwise separable convolution block
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 2))
+        .Then((size) => PointwiseBlock(size, filter_count: 1024, stride: 1))
+        // Ninth depthwise separable convolution block
+        .Then((size) => DepthwiseBlock(size, kernel_size: 3, stride: 1))
+        .Then((size) => PointwiseBlock(size, filter_count: 1024, stride: 1))
+        // Pooling layer
+        .Then((size) => new LocalAvgPoolingLayer(input_size: size, size: 7, stride: 1))
+        // Output layers
+        .Then((size) => new FullyConnectedLayer(input_size: size.Count, neurons: 1024))
+        .Then((size) => new ActivationLayer(input_size: size, activation: ReLU.Instance))
+        .Then((size) => new FullyConnectedLayer(input_size: size.Count, OUT_CLASSES))
+        .Then((size) => new SoftmaxLayer(size: size.Count))
+    );
+
+    private static IEnumerable<IConvolutionalFeedforwardNetworkLayer> DepthwiseBlock(Shape3D size, int stride, int kernel_size=3, Padding padding = Padding.Same) {
+        var first = new DepthwiseConvolutionLayer(input_size: size, padding: padding, stride: stride, filter: ConvolutionFilter.Make(1, size.Channels, kernel_size)[0]);
+        yield return first;
+        yield return new LayerNorm(input_size: first.OutputShape);
+        yield return new ActivationLayer(input_size: first.OutputShape, activation: ReLU.Instance);
+    }
+
+    private static IEnumerable<IConvolutionalFeedforwardNetworkLayer> PointwiseBlock(Shape3D size, int filter_count, int kernel_size = 1, int stride=1, Padding padding = Padding.Same, bool dropout = false, double dropout_percent = 0.1) {
+        var first = new ConvolutionLayer(input_size: size, padding: padding, stride: stride, filters: ConvolutionFilter.Make(filter_count, size.Channels, kernel_size));
+        yield return first;
+        yield return new LayerNorm(input_size: first.OutputShape);
+        yield return new ActivationLayer(input_size: first.OutputShape, activation: ReLU.Instance);
+
+        if (dropout) {
+            yield return new DropoutLayer(input_size: first.OutputShape, dropoutRate: dropout_percent);
+        }
+    }
+
+    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
+        LearningRate = 0.001,
+        LearningRateOptimizer = new AdamOptimizer(),
+        LossFunction = LossFunctions.CrossEntropy,
+        NetworkInitializer = new HeInitialization(),
+        BatchSize = 6,
+        EnableGradientClipping = true
+    };
+
+    private static TrainingSet? training = null;
+    private static TrainingSet? testing = null;
+    private static SafetensorBuilder? weights;
+
+    static FruitRecognition2(){
+        // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
+        training = ResourceLoader.LoadBinaryVectors(["data/Fruits/fruits.augmented.224x224.zip"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
+        testing = training; 
+
+        //weights = ResourceLoader.LoadSafetensors("data/Fruits/fruitrecognizer.tanh.safetensors");
+    }
+
+    private static double vectorize(byte b) => b / 255.0;
+    private static Vec<double> vectorize(Pixel[] pixels) {
+        var len = pixels.Length;
+        double[] values = new double[len * 3];
+        for (var i = 0; i < pixels.Length; i++) {
+            var pixel = pixels[i];
+            values[0     + i] = vectorize(pixel.R);
+            values[len   + i] = vectorize(pixel.G);
+            values[2*len + i] = vectorize(pixel.B);
+        }
+        return Vec<double>.Wrap(values);
+    }
+}

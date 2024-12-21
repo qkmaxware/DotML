@@ -11,7 +11,7 @@ figure {
 ::deep table td, ::deep table th {
     border: 1px solid #ddd;
     padding: 8px;
-    min-width: 128px;
+    min-width: 256px;
 }
 
 ::deep table tr:nth-child(even) {

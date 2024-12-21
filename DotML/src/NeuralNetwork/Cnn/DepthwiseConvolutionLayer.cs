@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using DotML.Network.Initialization;
 
@@ -8,6 +9,7 @@ namespace DotML.Network;
 /// Apply a convolution using the given kernel/filter
 /// <see href="https://towardsdatascience.com/understanding-depthwise-separable-convolutions-and-the-efficiency-of-mobilenets-6de3d6b62503"/>
 /// </summary>
+[Untested()]
 public class DepthwiseConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
     
     /// <summary>
@@ -59,7 +61,7 @@ public class DepthwiseConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
     public override void Initialize(IInitializer initializer) {
         var parameters = this.TrainableParameterCount();
 
-        Filter.Bias = initializer.RandomBias(this.InputShape.Count, this.OutputShape.Count, parameters);
+        Filter.Bias = 0; // Unused //initializer.RandomBias(this.InputShape.Count, this.OutputShape.Count, parameters);
         foreach (var kernel in Filter) {
             var values = (double[,])kernel;
 
@@ -117,12 +119,12 @@ public class DepthwiseConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
         var len = channels.Length;
         var outputs = new Matrix<double>[len];
 
-        for (var i = 0; i < len; i++) {
+        Parallel.For(0, len, i => {
             var channel = channels[i];
             var kernel = Filter[i];
 
             outputs[i] = Convolve(channel, kernel);
-        }
+        });
 
         return outputs;
     }

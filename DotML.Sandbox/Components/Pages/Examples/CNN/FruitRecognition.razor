@@ -118,7 +118,7 @@
 
     static FruitRecognition(){
         // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
-        training = ResourceLoader.LoadBinaryVectors(["data/Fruits/fruits.augmented.227x277.bin"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
+        training = ResourceLoader.LoadBinaryVectors(["data/Fruits/fruits.augmented.227x277.zip"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
         testing = training; 
 
         //weights = ResourceLoader.LoadSafetensors("data/Fruits/fruitrecognizer.tanh.safetensors");

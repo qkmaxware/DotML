@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using DotML.Network.Initialization;
 
@@ -7,6 +8,7 @@ namespace DotML.Network;
 /// Layer that performs layer (non batch) normalization 
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
+[Untested()]
 public class LayerNorm : ConvolutionalFeedforwardNetworkLayer {
 
     /// <summary>

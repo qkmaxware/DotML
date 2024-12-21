@@ -77,6 +77,11 @@ public class LayerSequencer : IEnumerable<IConvolutionalFeedforwardNetworkLayer>
         return this;
     }
 
+    public LayerSequencer Then(Func<Shape3D, IEnumerable<IConvolutionalFeedforwardNetworkLayer>> generator) {
+        this.layers.AddRange(generator(OutputShape));
+        return this;
+    }
+
     public IEnumerator<IConvolutionalFeedforwardNetworkLayer> GetEnumerator() => layers.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => layers.GetEnumerator();
 }

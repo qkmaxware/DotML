@@ -9,7 +9,7 @@
     const int IMG_HEIGHT = 227;
     const int OUT_CLASSES = 3;
 
-    TrainingSet context = ResourceLoader.LoadBinaryVectors(["data/Fruits/fruits.augmented.227x277.bin"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
+    TrainingSet context = ResourceLoader.LoadBinaryVectors(["data/Fruits/fruits.augmented.227x277.zip"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
 
     private static double vectorize(byte b) => b / 255.0;
 }  

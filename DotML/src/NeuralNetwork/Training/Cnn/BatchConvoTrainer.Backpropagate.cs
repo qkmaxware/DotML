@@ -26,6 +26,10 @@ public class ConvolutionGradients : Gradients {
     public double[]? BiasGradients;
 }
 
+public class DepthwiseConvolutionGradients : Gradients {
+    public Matrix<double>[]? KernelGradients;
+}
+
 public class LayerNormGradients : Gradients {
     public Matrix<double>[]? GammaGradients;
     public Matrix<double>[]? BetaGradients;
@@ -165,8 +169,96 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         };
     }
 
+    private Matrix<double>[] DepthwiseTransposeConvolve(Matrix<double>[] inputs, Matrix<double>[] errors, int strideX, int strideY, int padRows, int padColumns, ConvolutionFilter filter) {
+        var inputChannels = inputs.Length;
+        var inputErrors = new Matrix<double>[inputChannels];
+        var paddingRows         = padRows;
+        var paddingColumns      = padColumns;
+
+        Parallel.For(0, inputChannels, channel => {;
+            var input = inputs[channel];
+            var inputError = new double[input.Rows, input.Columns];
+
+            // Calculate the input errors for each filter
+            var filterRows = filter.Height;
+            var filterColumns = filter.Width;
+            var error = errors[channel];
+            var rows = error.Rows;
+            var cols = error.Columns;
+            var kernel = filter[channel];
+
+            // Iterate over output errors to compute gradient
+            for (int outY = 0; outY < rows; outY++) {
+                var startY = outY * strideY - paddingRows;
+                for (int outX = 0; outX < cols; outX++) {
+                    var startX = outX * strideX - paddingColumns;
+                    // Place the error at the corresponding position in the input space
+                    for (int ky = 0; ky < filterRows; ky++) {
+                        var inY = startY + ky;
+                        for (int kx = 0; kx < filterColumns; kx++) {
+                            var inX = startX + kx;
+
+                            if (inY >= 0 && inY < input.Rows && inX >= 0 && inX < input.Columns) {
+                                inputError[inY, inX] += error[outY, outX] * kernel[ky, kx];
+                            }
+                        }
+                    }
+                }
+            }
+
+            inputErrors[channel] = Matrix<double>.Wrap(inputError);
+        });
+
+        return inputErrors;
+    }
+
     public BackpropagationReturns Visit(DepthwiseConvolutionLayer layer, BackpropagationArgs args) {
-        throw new NotImplementedException();
+        var length              = layer.Filter.Count;
+        var gradients           = new Matrix<double>[length];
+        var paddingRows         = layer.RowsPadding; 
+        var paddingColumns      = layer.ColumnsPadding; 
+
+        for (var inputIndex = 0; inputIndex < length; inputIndex++) {
+            var input           = args.Inputs[inputIndex];
+            var kernel          = layer.Filter[inputIndex];
+            var kernelGradient  = new double[kernel.Rows, kernel.Columns];
+            var error           = args.Errors[inputIndex];
+            var rows            = error.Rows;
+            var cols            = error.Columns;
+
+            // Slide the kernel over the error map computing the correlation
+            for (int outY = 0; outY < rows; outY++) {
+                var startY = outY * layer.StrideY - paddingRows;
+                for (int outX = 0; outX < cols; outX++) {
+                    var startX = outX * layer.StrideX - paddingColumns;
+                    var pixel_error = error[outY, outX];
+                    var errorContribution = pixel_error;
+
+                    for (var ky = 0; ky < kernel.Rows; ky++) {
+                        var inY = startY + ky;
+                        for (var kx = 0; kx < kernel.Columns; kx++) {
+                            var inX = startX + kx;
+
+                            if (inY >= 0 && inY < input.Rows && inX >= 0 && inX < input.Columns) {
+                                kernelGradient[ky, kx] += errorContribution * input[inY, inX];
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Save the kernel gradient
+            gradients[inputIndex] = Matrix<double>.Wrap(kernelGradient);
+        }
+
+        var inputErrors = DepthwiseTransposeConvolve(args.Inputs, args.Errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filter);
+
+        return new BackpropagationReturns {
+            Errors = inputErrors,
+            Gradient = new DepthwiseConvolutionGradients {
+                KernelGradients = gradients
+            }
+        };
     }
 
     public BackpropagationReturns Visit(PoolingLayer layer, BackpropagationArgs args) {

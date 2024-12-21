@@ -383,6 +383,45 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
                             connect.WeightGradients = Matrix<double>.Average(all_fc_batches.Select(fcg => fcg.WeightGradients));
                             connect.BiasGradients = Vec<double>.Average(all_fc_batches.Select(fcg => fcg.BiasGradients));
                             break;
+                        case DepthwiseConvolutionGradients depth:
+                            {
+                                #pragma warning disable CS8602 
+                                var kernels = depth.KernelGradients?.Length ?? 0;
+                                var kernel_grads = new Matrix<double>[kernels];
+                                var all_batches = batch_gradients.Select(x => x[layerIndex]).OfType<DepthwiseConvolutionGradients>();
+                                for (var i = 0; i < kernels; i++) {
+                                    kernel_grads[i] = Matrix<double>.Average(all_batches.Select(c => c.KernelGradients[i]));
+                                }
+                                depth.KernelGradients = kernel_grads;
+                                #pragma warning restore CS8602
+                            }
+                            break;
+                        case LayerNormGradients norm:
+                            {
+                                #pragma warning disable CS8602 
+                                var all_batches = batch_gradients.Select(x => x[layerIndex]).OfType<LayerNormGradients>();
+
+                                var gamma_c = norm.GammaGradients?.Length ?? 0;
+                                var beta_c = norm.BetaGradients?.Length ?? 0;
+
+                                var new_gammas = new Matrix<double>[gamma_c];
+                                for (var i = 0; i < gamma_c; i++) {
+                                    new_gammas[i] = Matrix<double>.Average(all_batches.Select(
+                                        batch_elem => batch_elem.GammaGradients[i]
+                                    ));
+                                }
+                                norm.GammaGradients = new_gammas;
+                                
+                                var new_betas = new Matrix<double>[beta_c];
+                                for (var i = 0; i < gamma_c; i++) {
+                                    new_betas[i] = Matrix<double>.Average(all_batches.Select(
+                                        batch_elem => batch_elem.BetaGradients[i]
+                                    ));
+                                }
+                                norm.BetaGradients = new_betas;
+                                #pragma warning restore CS8602
+                            }
+                            break;
                     }
                 }
 

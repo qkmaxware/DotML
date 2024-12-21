@@ -27,7 +27,7 @@
                     @for (var outputIndex = 0; outputIndex < output.Length; outputIndex++) {
                         var o_i = output[outputIndex];
                         var o_vec = Vec<double>.Wrap(o_i.FlattenRows().ToArray());
-                        @if (layer is not FullyConnectedLayer full && layer is not SoftmaxLayer softmax && layer is not FlatteningLayer flattening) {
+                        @if (layer is ConvolutionLayer || layer is DepthwiseConvolutionLayer || layer is PoolingLayer) {
                             <hr>
                             <label>Output @outputIndex</label><br>
                             <VectorizedImage Width=@o_i.Columns Height=@o_i.Rows ValueScale=@ValueScale Vector=@o_vec></VectorizedImage>

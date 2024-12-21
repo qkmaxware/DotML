@@ -92,7 +92,25 @@ private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutiona
     }
 
     public LayerUpdateReturns Visit(DepthwiseConvolutionLayer layer, LayerUpdateArgs args) {
-        throw new NotImplementedException();
+        if (args.Gradients is null || args.Gradients is not DepthwiseConvolutionGradients gradients)
+            throw new NullReferenceException(nameof(args));
+
+        if (gradients.KernelGradients is not null) {
+            var param_offset = args.ParameterOffset;
+            for (var kernelIndex = 0; kernelIndex < layer.Filter.Count; kernelIndex++) {
+                var grads = gradients.KernelGradients[kernelIndex];
+                var kernel = layer.Filter[kernelIndex];
+                var kernel_width = kernel.Columns;
+
+                Matrix<double>.TransformInplace(grads, grads, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
+                var kernel_update = grads;
+                Matrix<double>.SubInplace(kernel, kernel, kernel_update);
+
+                param_offset += kernel.Size;
+            }
+        }
+
+        return new LayerUpdateReturns {};
     }
 
     public LayerUpdateReturns Visit(PoolingLayer layer, LayerUpdateArgs args) {

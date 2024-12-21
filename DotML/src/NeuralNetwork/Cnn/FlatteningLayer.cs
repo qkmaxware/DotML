@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using DotML.Network.Initialization;
 
@@ -6,6 +7,7 @@ namespace DotML.Network;
 /// <summary>
 /// Layer which flattens inputs into a column vector 
 /// </summary>
+[Untested()]
 public class FlatteningLayer : ConvolutionalFeedforwardNetworkLayer {
     public override void Initialize(IInitializer initializer) { }
     public override int TrainableParameterCount() => 0;

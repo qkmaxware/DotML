@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using DotML.Network.Initialization;
 
@@ -7,6 +8,7 @@ namespace DotML.Network;
 /// Layer which performs dropout
 /// <see href="https://en.wikipedia.org/wiki/Dilution_(neural_networks)"/>
 /// </summary>
+[Untested()]
 public class DropoutLayer : ConvolutionalFeedforwardNetworkLayer {
     public double DropoutRate {get; init;}
     public double KeepRate => 1 - DropoutRate;

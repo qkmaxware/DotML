@@ -33,7 +33,10 @@
             </div>
         </div>
         <div style="width: calc(100% - 270px); flex-grow: 1; flex-shrink: 1;">
-            <label><b>Trainer Parameters:</b></label>
+            <label><b>Trainer Options:</b></label>
+            <div>
+                Parameter size: @(sizeof(double))bytes, Trainable parameters: @Network?.TrainableParameterCount(), Size on disk: @(((Network?.TrainableParameterCount() ?? 0) * sizeof(double) / 1e9).ToString("F4"))Gb
+            </div>
             <div class="horizontal">
                 @if (Trainer is not null) {
                 foreach(var property in Trainer.GetType().GetProperties()) {

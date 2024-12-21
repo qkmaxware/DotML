@@ -130,6 +130,10 @@ public class ConvolutionalFeedforwardNetwork:
                                 filter[kernelIndex] = sb.GetTensor<double>(key);
                             }
                         }
+                        var fbkey = $"Layers[{layerIndex}].Filters[{filterIndex}].Bias";
+                        if (sb.ContainsKey(fbkey)) {
+                            filter.Bias = sb.GetTensor<double>(fbkey)[0, 0];
+                        }
                     }
                     break;
                 case FullyConnectedLayer conn:
@@ -162,6 +166,7 @@ public class ConvolutionalFeedforwardNetwork:
                             var kernel = filter[kernelIndex];
                             sb.Add($"Layers[{layerIndex}].Filters[{filterIndex}].Kernel[{kernelIndex}]", kernel);
                         }
+                        sb.Add($"Layers[{layerIndex}].Filters[{filterIndex}].Bias", new Matrix<double>(1, 1, filter.Bias));
                     }
                     break;
                 case FullyConnectedLayer conn:
@@ -383,7 +388,9 @@ public class ConvolutionalFeedforwardNetwork:
                 sb.Append(
                     layer switch {
                         ConvolutionLayer conv2d => $"{conv2d.FilterCount} filters of size {conv2d.Filters.FirstOrDefault()?.FirstOrDefault().Shape}",
+                        DepthwiseConvolutionLayer dconv2d => $"{dconv2d.Filter.Count} kernels of size {dconv2d.Filter?.FirstOrDefault().Shape}",
                         PoolingLayer pooling => $"Pooling with a size of {pooling.FilterHeight}x{pooling.FilterWidth}",
+                        LayerNorm norm => $"Normalize the inputs across the layer",
                         DropoutLayer drop => $"Dropout with probability {drop.DropoutRate} to reduce overfitting",
                         FlatteningLayer flat => $"Flatten multi-dimensional input to 1D",
                         FullyConnectedLayer dense => $"Fully connected layer of {dense.NeuronCount} neurons",
@@ -437,7 +444,9 @@ public class ConvolutionalFeedforwardNetwork:
                 sb.Append(
                     layer switch {
                         ConvolutionLayer conv2d => $"{conv2d.FilterCount} filters of size {conv2d.Filters.FirstOrDefault()?.FirstOrDefault().Shape}",
+                        DepthwiseConvolutionLayer dconv2d => $"{dconv2d.Filter.Count} kernels of size {dconv2d.Filter?.FirstOrDefault().Shape}",
                         PoolingLayer pooling => $"Pooling with a size of {pooling.FilterHeight}x{pooling.FilterWidth}",
+                        LayerNorm norm => $"Normalize the inputs across the layer",
                         DropoutLayer drop => $"Dropout with probability {drop.DropoutRate} to reduce overfitting",
                         FlatteningLayer flat => $"Flatten multi-dimensional input to 1D",
                         FullyConnectedLayer dense => $"Fully connected layer of {dense.NeuronCount} neurons",

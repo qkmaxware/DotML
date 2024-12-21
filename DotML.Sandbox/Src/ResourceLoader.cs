@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Reflection;
 using DotML;
 using DotML.Network;
@@ -63,23 +64,50 @@ public static class ResourceLoader {
         TrainingSet set = new TrainingSet(
             resources.SelectMany(
                 res => {
-                    using var stream = GetResourceStream(res);
-                    using var reader = new BinaryReader(stream);
-                    
                     List<TrainingPair> pairs = new List<TrainingPair>();
-                    while (stream.Position < stream.Length) {
-                        var category_index  = reader.ReadByte();
-                        var vector_size     = reader.ReadInt32();
-                        double[] input_vec  = new double[vector_size];
 
-                        for (var i = 0; i < vector_size; i++) {
-                            try {
-                                input_vec[i] = element_parser(reader);
-                            } catch {
-                                input_vec[i] = default(double);
+                    using var stream = GetResourceStream(res);
+                    if (res.EndsWith(".zip")) {
+                        using var archive = new ZipArchive(stream);
+                        foreach (var entry in archive.Entries) {
+                            using var entryStream = entry.Open();
+                            using var entryMemoryStream = new MemoryStream();
+                            entryStream.CopyTo(entryMemoryStream);
+                            entryMemoryStream.Seek(0, SeekOrigin.Begin);
+                            using var reader = new BinaryReader(entryMemoryStream); 
+
+                            while (entryMemoryStream.Position < entryMemoryStream.Length) {
+                                var category_index  = reader.ReadByte();
+                                var vector_size     = reader.ReadInt32();
+                                double[] input_vec  = new double[vector_size];
+
+                                for (var i = 0; i < vector_size; i++) {
+                                    try {
+                                        input_vec[i] = element_parser(reader);
+                                    } catch {
+                                        input_vec[i] = default(double);
+                                    }
+                                } 
+                                pairs.Add(new TrainingPair { Input = Vec<double>.Wrap(input_vec), Output = VectorFromLabelIndex(category_index, category_count, category_off, category_on) });
                             }
-                        } 
-                        pairs.Add(new TrainingPair { Input = Vec<double>.Wrap(input_vec), Output = VectorFromLabelIndex(category_index, category_count, category_off, category_on) });
+                        }
+                    } else {
+                        using var reader = new BinaryReader(stream);
+                
+                        while (stream.Position < stream.Length) {
+                            var category_index  = reader.ReadByte();
+                            var vector_size     = reader.ReadInt32();
+                            double[] input_vec  = new double[vector_size];
+
+                            for (var i = 0; i < vector_size; i++) {
+                                try {
+                                    input_vec[i] = element_parser(reader);
+                                } catch {
+                                    input_vec[i] = default(double);
+                                }
+                            } 
+                            pairs.Add(new TrainingPair { Input = Vec<double>.Wrap(input_vec), Output = VectorFromLabelIndex(category_index, category_count, category_off, category_on) });
+                        }
                     }
 
                     return pairs;
