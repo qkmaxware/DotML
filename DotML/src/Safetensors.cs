@@ -30,7 +30,7 @@ public interface ISafetensorable {
 /// <summary>
 /// Class to aid in the creation of safetensors files
 /// </summary>
-public class SafetensorBuilder {
+public class Safetensors {
     private HashSet<string> used_names = new HashSet<string>();
     private Dictionary<string, Matrix<Half>> matrices_f16 = new Dictionary<string, Matrix<Half>>();
     private Dictionary<string, Matrix<float>> matrices_f32 = new Dictionary<string, Matrix<float>>();
@@ -144,7 +144,7 @@ public class SafetensorBuilder {
     /// Read the tensors from the give file
     /// </summary>
     /// <param name="file">file pointer</param>
-    public static SafetensorBuilder ReadFromFile(FileInfo file) {
+    public static Safetensors ReadFromFile(FileInfo file) {
         using var writer = new BinaryReader(file.OpenRead());
         return ReadFrom(writer);
     }
@@ -153,7 +153,7 @@ public class SafetensorBuilder {
     /// Read the tensors from the give file
     /// </summary>
     /// <param name="path">file path</param>
-    public static SafetensorBuilder ReadFromFile(string path) {
+    public static Safetensors ReadFromFile(string path) {
         using var writer = new BinaryReader(File.Open(path, FileMode.Open));
         return ReadFrom(writer);
     }
@@ -166,11 +166,11 @@ public class SafetensorBuilder {
     /// <exception cref="NotSupportedException">thrown when a feature is not supported in this library</exception>
     /// <exception cref="FormatException">thrown when the safetensors format is not followed</exception>
     /// <exception cref="NullReferenceException">thrown when necessary information is missing</exception>
-    public static SafetensorBuilder ReadFrom(BinaryReader reader) {
+    public static Safetensors ReadFrom(BinaryReader reader) {
         var header_size = reader.ReadUInt64();
         var header_json = JsonSerializer.Deserialize<Dictionary<string, TensorInfo>>(System.Text.Encoding.UTF8.GetString(reader.ReadBytes((int)header_size)));
         
-        SafetensorBuilder sb = new SafetensorBuilder();
+        Safetensors sb = new Safetensors();
         var buffer_offset = reader.BaseStream.Position;
 
         if (header_json is not null) {

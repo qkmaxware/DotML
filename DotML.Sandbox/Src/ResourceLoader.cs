@@ -33,9 +33,9 @@ public static class ResourceLoader {
         return Reader.ReadToEnd();
     }
 
-    public static SafetensorBuilder LoadSafetensors(string resource) {
+    public static Safetensors LoadSafetensors(string resource) {
         using var Reader = new BinaryReader(GetResourceStream(resource));
-        return SafetensorBuilder.ReadFrom(Reader);
+        return Safetensors.ReadFrom(Reader);
     }
 
     public static TrainingSet LoadTrainingVectors(IFeatureExtractor<string> vectorizor, DataLabeller labeller, IEnumerable<string> resources) {

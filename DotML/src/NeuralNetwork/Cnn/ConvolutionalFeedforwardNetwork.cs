@@ -117,35 +117,12 @@ public class ConvolutionalFeedforwardNetwork:
     /// Load the weights of the network from the given safetensors
     /// </summary>
     /// <param name="sb">safetensors</param>
-    public void FromSafetensor(SafetensorBuilder sb) {
+    public void FromSafetensor(Safetensors sb) {
+        var reader = new LayerSafetensorReader(sb);
         for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
             var layer = this.GetLayer(layerIndex);
-            switch (layer) {
-                case ConvolutionLayer convo:  
-                    for (var filterIndex = 0; filterIndex < convo.FilterCount; filterIndex++) {
-                        var filter = convo.Filters[filterIndex];
-                        for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
-                            var key = $"Layers[{layerIndex}].Filters[{filterIndex}].Kernel[{kernelIndex}]";
-                            if (sb.ContainsKey(key)) {
-                                filter[kernelIndex] = sb.GetTensor<double>(key);
-                            }
-                        }
-                        var fbkey = $"Layers[{layerIndex}].Filters[{filterIndex}].Bias";
-                        if (sb.ContainsKey(fbkey)) {
-                            filter.Bias = sb.GetTensor<double>(fbkey)[0, 0];
-                        }
-                    }
-                    break;
-                case FullyConnectedLayer conn:
-                    var wkey = $"Layers[{layerIndex}].Weights";
-                    if (sb.ContainsKey(wkey)) {
-                        conn.Weights = sb.GetTensor<double>(wkey);
-                    }
-                    var bkey = $"Layers[{layerIndex}].Biases";
-                    if (sb.ContainsKey(bkey)) {
-                        conn.Biases = Vec<double>.Wrap(sb.GetTensor<double>(bkey).FlattenRows().ToArray());
-                    }
-                    break;
+            if (!layer.Visit(reader, layerIndex)) {
+                throw new ArgumentException($"Failed to load all tensors for layer {layerIndex}.");
             }
         }
     }
@@ -153,30 +130,17 @@ public class ConvolutionalFeedforwardNetwork:
     /// <summary>
     /// Output this network's configuration in the safetensor format
     /// </summary>
-    public SafetensorBuilder ToSafetensor() {
-        SafetensorBuilder sb = new SafetensorBuilder();
+    public Safetensors ToSafetensor() {
+        var writer = new LayerSafetensorWriter();
 
         for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
             var layer = this.GetLayer(layerIndex);
-            switch (layer) {
-                case ConvolutionLayer convo:  
-                    for (var filterIndex = 0; filterIndex < convo.FilterCount; filterIndex++) {
-                        var filter = convo.Filters[filterIndex];
-                        for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
-                            var kernel = filter[kernelIndex];
-                            sb.Add($"Layers[{layerIndex}].Filters[{filterIndex}].Kernel[{kernelIndex}]", kernel);
-                        }
-                        sb.Add($"Layers[{layerIndex}].Filters[{filterIndex}].Bias", new Matrix<double>(1, 1, filter.Bias));
-                    }
-                    break;
-                case FullyConnectedLayer conn:
-                    sb.Add($"Layers[{layerIndex}].Weights", conn.Weights);
-                    sb.Add($"Layers[{layerIndex}].Biases", conn.Biases);
-                    break;
+            if (!layer.Visit(writer, layerIndex)) {
+                throw new ArgumentException($"Failed to save all tensors for layer {layerIndex}.");
             }
         }
 
-        return sb;
+        return writer.ToSafetensors();
     }
 
     /// <summary>

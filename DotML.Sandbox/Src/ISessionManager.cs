@@ -70,7 +70,7 @@ public class CnnSingleCheckpointManager : ICheckpointManager<ConvolutionalFeedfo
     }
 
     public void RestoreFromCheckpoint(ConvolutionalFeedforwardNetwork target, Checkpoint checkpoint) {
-        SafetensorBuilder sb = SafetensorBuilder.ReadFromFile(checkpoint.Name);
+        Safetensors sb = Safetensors.ReadFromFile(checkpoint.Name);
         target.FromSafetensor(sb);
     }
 }

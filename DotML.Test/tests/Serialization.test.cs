@@ -11,11 +11,11 @@ public class SerializationTest {
         var key = "identity";
         var matrix = Matrix<double>.Identity(5);
 
-        SafetensorBuilder sb = new SafetensorBuilder();
+        Safetensors sb = new Safetensors();
         sb.Add(key, matrix);
         sb.WriteToFile(filename);
 
-        sb = SafetensorBuilder.ReadFromFile(filename);
+        sb = Safetensors.ReadFromFile(filename);
         Assert.AreEqual(1, sb.Keys().Count());
         Assert.AreEqual(true, sb.ContainsKey(key));
 

@@ -18,16 +18,16 @@ public interface IConvolutionalLayerVisitor {
 /// <summary>
 /// An object that can apply a different Visit method for each type of convolutional layer
 /// </summary>
-public interface IConvolutionalLayerVisitor<T> {
-    public T Visit(ConvolutionLayer layer);
-    public T Visit(DepthwiseConvolutionLayer layer);
-    public T Visit(PoolingLayer layer);
-    public T Visit(FlatteningLayer layer);
-    public T Visit(DropoutLayer layer);
-    public T Visit(LayerNorm layer);
-    public T Visit(FullyConnectedLayer layer);
-    public T Visit(ActivationLayer layer);
-    public T Visit(SoftmaxLayer layer);
+public interface IConvolutionalLayerVisitor<TOut> {
+    public TOut Visit(ConvolutionLayer layer);
+    public TOut Visit(DepthwiseConvolutionLayer layer);
+    public TOut Visit(PoolingLayer layer);
+    public TOut Visit(FlatteningLayer layer);
+    public TOut Visit(DropoutLayer layer);
+    public TOut Visit(LayerNorm layer);
+    public TOut Visit(FullyConnectedLayer layer);
+    public TOut Visit(ActivationLayer layer);
+    public TOut Visit(SoftmaxLayer layer);
 }
 
 /// <summary>

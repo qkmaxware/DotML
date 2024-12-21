@@ -8,6 +8,10 @@ using System.Diagnostics;
 public class Program {
 public static void Main() {
     var filename_root = $"{DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss")}.";
+    if (!Directory.Exists(filename_root + "reports")) {
+        Directory.CreateDirectory(filename_root + "reports");
+        filename_root = Path.Combine(filename_root + "reports", filename_root);
+    }
 
     #region Network
     const int IMG_WIDTH = 227;
@@ -18,28 +22,8 @@ public static void Main() {
         "apple", "banana", "orange",
     };
 
-    var network = new ConvolutionalFeedforwardNetwork(
-        new ConvolutionLayer     (input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)),
-        new ActivationLayer      (input_size: new Shape3D(96, 55, 55), LeakyReLU.Instance),
-        new LocalMaxPoolingLayer (input_size: new Shape3D(96, 55, 55), size: 3, stride: 2),
-        new ConvolutionLayer     (input_size: new Shape3D(96, 27, 27), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 96, 5)),
-        new ActivationLayer      (input_size: new Shape3D(256, 27, 27), LeakyReLU.Instance),
-        new LocalMaxPoolingLayer (input_size: new Shape3D(256, 27, 27), size: 3, stride: 2),
-        new ConvolutionLayer     (input_size: new Shape3D(256, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 256, 3)),
-        new ActivationLayer      (input_size: new Shape3D(384, 13, 13), LeakyReLU.Instance),
-        new ConvolutionLayer     (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(384, 384, 3)),
-        new ActivationLayer      (input_size: new Shape3D(384, 13, 13), LeakyReLU.Instance),
-        new ConvolutionLayer     (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 384, 3)),
-        new ActivationLayer      (input_size: new Shape3D(256, 13, 13), LeakyReLU.Instance),
-        new LocalMaxPoolingLayer (input_size: new Shape3D(256, 13, 13), size: 3, stride: 2),
-        new FullyConnectedLayer  (input_size: 9216, neurons: 4096),
-        new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), LeakyReLU.Instance),
-        new FullyConnectedLayer  (input_size: 4096, neurons: 4096),
-        new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), LeakyReLU.Instance),
-        new FullyConnectedLayer  (input_size: 4096, neurons: OUT_CLASSES),
-        new ActivationLayer      (input_size: new Shape3D(1, OUT_CLASSES, 1), LeakyReLU.Instance),
-        new SoftmaxLayer         (OUT_CLASSES)
-    );
+    var network = MobileNet.MakeV1(3);
+    
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
     Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
     for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
@@ -68,8 +52,8 @@ public static void Main() {
     #region Trainer
     DefaultValidationReport report = new DefaultValidationReport();
     var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
-        LearningRate = 0.01,
-        LearningRateOptimizer = new ConstantRate(),
+        LearningRate = 0.1,
+        LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CrossEntropy,
         NetworkInitializer = new HeInitialization(),
         BatchSize = 6,
@@ -109,7 +93,7 @@ public static void Main() {
             case "y":
             case "yes":
             case "true":
-                var tensors = SafetensorBuilder.ReadFromFile(check);
+                var tensors = Safetensors.ReadFromFile(check);
                 network.FromSafetensor(tensors);
                 break;
         }

@@ -114,7 +114,7 @@
     private bool loaded => training is null || testing is null;
     private static TrainingSet? training = null;
     private static TrainingSet? testing = null;
-    private static SafetensorBuilder? weights;
+    private static Safetensors? weights;
 
     static FruitRecognition(){
         // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
