@@ -52,7 +52,7 @@ public static void Main() {
     #region Trainer
     DefaultValidationReport report = new DefaultValidationReport();
     var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
-        LearningRate = 0.1,
+        LearningRate = 0.01,
         LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CrossEntropy,
         NetworkInitializer = new HeInitialization(),
@@ -173,16 +173,16 @@ public static void Main() {
         Console.SetCursorPosition(position.Left, position.Top);
         var status_char = ' ';
         if (min_loss.HasValue) {
-            if (report.MaxLoss < min_loss.Value) {
+            if (report.AverageLoss < min_loss.Value) {
                 Console.ForegroundColor = ConsoleColor.Green;
-                min_loss = report.MaxLoss;
+                min_loss = report.AverageLoss;
                 status_char = '+';
-            } else if (report.MaxLoss > min_loss.Value) {
+            } else if (report.AverageLoss > min_loss.Value) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 status_char = '-';
             }
         } else {
-            min_loss = report.MaxLoss;
+            min_loss = report.AverageLoss;
         }
         Console.Write($"{status_char} {report.TestsPassedCount}/{report.TestCount} passed, {elapsed} elapsed, {report.AverageLoss} loss, ");
         report_writer.WriteLine($"{session.CurrentEpoch}, {report.MinLoss}, {report.MaxLoss}, {report.AverageLoss}, {report.TestsPassedCount}, {report.TestsFailedCount}");

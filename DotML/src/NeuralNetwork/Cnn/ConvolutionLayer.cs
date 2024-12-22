@@ -173,11 +173,11 @@ public class ConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
         var filtersLength       = filters.Length;
         var output_list         = new Matrix<double>[filtersLength];
 
-        for (var filterIndex = 0; filterIndex < filtersLength; filterIndex++) {
+        Parallel.For(0, filtersLength, filterIndex => {
             var filter = filters[filterIndex];
-            var output = ConvolveParallel(inputs, filter);
+            var output = Convolve(inputs, filter);
             output_list[filterIndex] = output;
-        }
+        });
 
         return output_list;
     }

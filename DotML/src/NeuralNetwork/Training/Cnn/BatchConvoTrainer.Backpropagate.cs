@@ -218,7 +218,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var paddingRows         = layer.RowsPadding; 
         var paddingColumns      = layer.ColumnsPadding; 
 
-        for (var inputIndex = 0; inputIndex < length; inputIndex++) {
+        Parallel.For(0, length, inputIndex => {
             var input           = args.Inputs[inputIndex];
             var kernel          = layer.Filter[inputIndex];
             var kernelGradient  = new double[kernel.Rows, kernel.Columns];
@@ -249,7 +249,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
 
             // Save the kernel gradient
             gradients[inputIndex] = Matrix<double>.Wrap(kernelGradient);
-        }
+        });
 
         var inputErrors = DepthwiseTransposeConvolve(args.Inputs, args.Errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filter);
 
@@ -372,7 +372,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var inputErrors = new Matrix<double>[channels];
 
         // Process each channel
-        for (int i = 0; i < channels; i++) {
+        Parallel.For(0, channels, i => {
             var xHat = outputs[i];
             var input = inputs[i];
             var gamma = layer.Gammas[i];
@@ -384,10 +384,13 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             var mean = input.Average();
             var variance = input.Select(v => Math.Pow(v - mean, 2)).Average();
             var denom = Math.Sqrt(variance + epsilon);
-            var inputError = error.Hadamard(gamma);
-            Matrix<double>.TransformInplace(inputError, inputError, (v) => v / denom);
+            
+            // error * gamma * (x-u)/sqrt(variance^2 + e)
+            var inputError = error.Hadamard(gamma);                             // error * gamma
+            var imean = input.Transform(x => (x - mean) / denom);               // (x - mean) / sqrt(variance^2 + e)
+            Matrix<double>.HadamardInplace(inputError, inputError, imean);      // error * gamma * (x-u)/sqrt(variance^2 + e)
             inputErrors[i] = inputError;
-        }
+        });
 
         clip(gammaGradients, GradientClippingThresholdWeight);
         clip(betaGradients, GradientClippingThresholdWeight);
