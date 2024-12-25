@@ -22,7 +22,7 @@ public static void Main() {
         "apple", "banana", "orange",
     };
 
-    var network = MobileNet.MakeV1(3);
+    var network = MobileNet.MakeV1(3, activation: HyperbolicTangent.Instance);
     
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
     Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
@@ -52,8 +52,8 @@ public static void Main() {
     #region Trainer
     DefaultValidationReport report = new DefaultValidationReport();
     var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
-        LearningRate = 0.01,
-        LearningRateOptimizer = new AdamOptimizer(),
+        LearningRate = 0.1,
+        LearningRateOptimizer = new ConstantRate(),
         LossFunction = LossFunctions.CrossEntropy,
         NetworkInitializer = new HeInitialization(),
         BatchSize = 6,
@@ -66,8 +66,13 @@ public static void Main() {
         trainer_prop_writer.WriteLine("Trainer:");
         trainer_prop_writer.Write("    "); trainer_prop_writer.Write("Type"); trainer_prop_writer.Write(": "); trainer_prop_writer.WriteLine(trainer.GetType().Name);
         foreach (PropertyInfo property in trainer.GetType().GetProperties()) {
-            Console.Write("    "); Console.Write(property.Name); Console.Write(": "); Console.WriteLine(property.CanRead ? property.GetValue(trainer, null) : "n/a");
-            trainer_prop_writer.Write("    "); trainer_prop_writer.Write(property.Name); trainer_prop_writer.Write(": "); trainer_prop_writer.WriteLine(property.CanRead ? property.GetValue(trainer, null) : "n/a");
+            object? value = property.CanRead ? property.GetValue(trainer, null) : null;
+            if (value is LossFunction loss)
+                value = loss.Method.Name;
+            else 
+                value = value?.ToString() ?? "n/a";
+            Console.Write("    "); Console.Write(property.Name); Console.Write(": "); Console.WriteLine(value);
+            trainer_prop_writer.Write("    "); trainer_prop_writer.Write(property.Name); trainer_prop_writer.Write(": "); trainer_prop_writer.WriteLine(value);
         }
     }
     #endregion
