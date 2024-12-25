@@ -326,45 +326,14 @@ public class ConvolutionalFeedforwardNetwork:
     /// </summary>
     /// <returns>Markdown serialized string</returns>
     public string ToMarkdown() {
-        StringBuilder sb = new StringBuilder();
-        sb.Append('|'); sb.Append("Layer Type"); sb.Append('|'); sb.Append("Output Shape"); sb.Append('|'); sb.Append("Parameters"); sb.Append('|'); sb.Append("Description"); sb.Append('|'); sb.AppendLine();
-        sb.Append('|'); sb.Append("---"); sb.Append('|'); sb.Append("---"); sb.Append('|'); sb.Append("---"); sb.Append('|'); sb.Append("---"); sb.Append('|'); sb.AppendLine();
+        using StringWriter sb = new StringWriter();
 
-        sb.Append('|');
-            sb.Append("Input");
-        sb.Append('|');
-            sb.Append(this.InputShape);
-        sb.Append('|');
-            sb.Append(string.Empty);
-        sb.Append('|');
-            sb.Append("Input image/tensor");
-        sb.Append('|');
-            sb.AppendLine();
-
-        foreach (var layer in layers) {
-            sb.Append('|');
-                sb.Append(layer.GetType().Name);
-            sb.Append('|');
-                sb.Append(layer.OutputShape);
-            sb.Append('|');
-                sb.Append(layer.TrainableParameterCount());
-            sb.Append('|');
-                sb.Append(
-                    layer switch {
-                        ConvolutionLayer conv2d => $"{conv2d.FilterCount} filters of size {conv2d.Filters.FirstOrDefault()?.FirstOrDefault().Shape}",
-                        DepthwiseConvolutionLayer dconv2d => $"{dconv2d.Filter.Count} kernels of size {dconv2d.Filter?.FirstOrDefault().Shape}",
-                        PoolingLayer pooling => $"Pooling with a size of {pooling.FilterHeight}x{pooling.FilterWidth}",
-                        LayerNorm norm => $"Normalize the inputs across the layer",
-                        DropoutLayer drop => $"Dropout with probability {drop.DropoutRate} to reduce overfitting",
-                        FlatteningLayer flat => $"Flatten multi-dimensional input to 1D",
-                        FullyConnectedLayer dense => $"Fully connected layer of {dense.NeuronCount} neurons",
-                        ActivationLayer active => $"Apply {active.ActivationFunction?.GetType().Name} activation function to inputs",
-                        SoftmaxLayer softmax => $"Convert output to probability distribution over {softmax.OutputShape.Count} classes",
-                        _ => string.Empty,
-                    }
-                );
-            sb.Append('|');
-             sb.AppendLine();
+        var md = new LayerMarkdownWriter(sb);
+        for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
+            var layer = this.GetLayer(layerIndex);
+            if (!layer.Visit(md, layerIndex)) {
+                throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
+            }
         }
 
         return sb.ToString();
@@ -375,56 +344,16 @@ public class ConvolutionalFeedforwardNetwork:
     /// </summary>
     /// <returns>HTML serialized string</returns>
     public string ToHtml() {
-        StringBuilder sb = new StringBuilder();
-        sb.AppendLine("<table>");
-        sb.AppendLine("<thead>");
-        sb.AppendLine("<tr>");
-        sb.Append("<th>");sb.Append("Layer Type"); sb.Append("</th><th>"); sb.Append("Output Shape"); sb.Append("</th><th>"); sb.Append("Parameters"); sb.Append("</th><th>"); sb.Append("Description"); sb.AppendLine("</th>");
-        sb.AppendLine("</tr>");
-        sb.AppendLine("</thead>");
-        sb.AppendLine("<tbody>");
+        using StringWriter sb = new StringWriter();
 
-        sb.AppendLine("<tr>");
-        sb.Append("<td>");
-            sb.Append("Input");
-        sb.Append("</td><td>");
-            sb.Append(this.InputShape);
-        sb.Append("</td><td>");
-            sb.Append(string.Empty);
-        sb.Append("</td><td>");
-            sb.Append("Input image/tensor");
-        sb.Append("</td>");
-            sb.AppendLine("</tr>");
-
-        foreach (var layer in layers) {
-            sb.AppendLine("<tr>");
-            sb.Append("<td>");
-                sb.Append(layer.GetType().Name);
-            sb.Append("</td><td>");
-                sb.Append(layer.OutputShape);
-            sb.Append("</td><td>");
-                sb.Append(layer.TrainableParameterCount());
-            sb.Append("</td><td>");
-                sb.Append(
-                    layer switch {
-                        ConvolutionLayer conv2d => $"{conv2d.FilterCount} filters of size {conv2d.Filters.FirstOrDefault()?.FirstOrDefault().Shape}",
-                        DepthwiseConvolutionLayer dconv2d => $"{dconv2d.Filter.Count} kernels of size {dconv2d.Filter?.FirstOrDefault().Shape}",
-                        PoolingLayer pooling => $"Pooling with a size of {pooling.FilterHeight}x{pooling.FilterWidth}",
-                        LayerNorm norm => $"Normalize the inputs across the layer",
-                        DropoutLayer drop => $"Dropout with probability {drop.DropoutRate} to reduce overfitting",
-                        FlatteningLayer flat => $"Flatten multi-dimensional input to 1D",
-                        FullyConnectedLayer dense => $"Fully connected layer of {dense.NeuronCount} neurons",
-                        ActivationLayer active => $"Apply {active.ActivationFunction?.GetType().Name} activation function to inputs",
-                        SoftmaxLayer softmax => $"Convert output to probability distribution over {softmax.OutputShape.Count} classes",
-                        _ => string.Empty,
-                    }
-                );
-            sb.Append("</td>");
-            sb.AppendLine("</tr>");
+        var html = new LayerHtmlWriter(sb);
+        for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
+            var layer = this.GetLayer(layerIndex);
+            if (!layer.Visit(html, layerIndex)) {
+                throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
+            }
         }
 
-        sb.AppendLine("</tbody>");
-        sb.AppendLine("</table>");
         return sb.ToString();
     }
 }
