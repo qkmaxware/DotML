@@ -428,6 +428,15 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
+    /// Create a span over the entire vector
+    /// </summary>
+    /// <returns>span over the vector elements</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span<T> AsSpan() {
+        return this.values.AsSpan();
+    }
+
+    /// <summary>
     /// Shape the vector into multiple 3D matrices of the given sizes.
     /// </summary>
     /// <param name="shapes">Matrix sizes</param>

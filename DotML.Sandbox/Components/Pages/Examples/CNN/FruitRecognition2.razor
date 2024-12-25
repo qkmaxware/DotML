@@ -62,7 +62,7 @@
 
     */
     // https://github.com/danilojodas/MobileNet/blob/master/MobileNet.ipynb
-    private ConvolutionalFeedforwardNetwork network = MobileNet.MakeV1(OUT_CLASSES);
+    private ConvolutionalFeedforwardNetwork network = MobileNet.Make(MobileNet.Version.V1, OUT_CLASSES);
 
     private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
         LearningRate = 0.001,

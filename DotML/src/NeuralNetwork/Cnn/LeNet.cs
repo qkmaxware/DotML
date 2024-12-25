@@ -6,11 +6,37 @@ namespace DotML.Network;
 public static class LeNet {
 
     /// <summary>
+    /// Supported LeNet versions
+    /// </summary>
+    public enum Version {
+        V1 = 1,
+        /// <summary>
+        /// Latest supported version
+        /// </summary>
+        Latest = 1
+    }
+
+    /// <summary>
+    /// Construct a LeNet network
+    /// </summary>
+    /// <param name="version">network architecture version</param>
+    /// <param name="output_classes">number of output classifications</param>
+    /// <param name="activation">activation function</param>
+    /// <returns>network</returns>
+    /// <exception cref="ArgumentException">thrown when an unsupported version is supplied</exception>
+    public static ConvolutionalFeedforwardNetwork Make(Version version, int output_classes, ActivationFunction? activation = null) {
+        return version switch {
+            Version.V1 => MakeV1(output_classes, activation),
+            _ => throw new ArgumentException(nameof(version))
+        };
+    }
+
+    /// <summary>
     /// Construct a network using the LeNet architecture
     /// </summary>
     /// <param name="output_classes">number of output classifications</param>
     /// <returns>network</returns>
-    public static ConvolutionalFeedforwardNetwork Make(int output_classes, ActivationFunction? activation = null) {
+    private static ConvolutionalFeedforwardNetwork MakeV1(int output_classes, ActivationFunction? activation = null) {
         const int IMG_WIDTH = 32;
         const int IMG_HEIGHT = 32;
         const int IMG_CHANNELS = 1;

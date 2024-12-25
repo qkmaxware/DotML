@@ -788,6 +788,15 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         return str.ToString();
     }
 
+    /// <summary>
+    /// Create a span over the entire 2D matrix
+    /// </summary>
+    /// <returns>span over the matrix elements indexed in row-major order</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span<T> AsSpan() {
+        return MemoryMarshal.CreateSpan(ref values[0, 0], values.Length);
+    }
+
     public IEnumerator<T> GetEnumerator() {
         for (var row = 0; row < this.Rows; row++) {
             for (var col = 0; col < this.Columns; col++)

@@ -22,7 +22,7 @@ public static void Main() {
         "apple", "banana", "orange",
     };
 
-    var network = MobileNet.MakeV1(3, activation: HyperbolicTangent.Instance);
+    var network = MobileNet.Make(MobileNet.Version.V1, 3, activation: HyperbolicTangent.Instance);
     
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
     Console.Write("    "); Console.WriteLine("input: " + network.InputShape);

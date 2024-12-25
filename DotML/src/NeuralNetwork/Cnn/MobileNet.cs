@@ -5,7 +5,16 @@ namespace DotML.Network;
 /// </summary>
 public static class MobileNet {
 
-    // TODO customizable activation function
+    /// <summary>
+    /// Supported MobileNet versions
+    /// </summary>
+    public enum Version {
+        V1 = 1,
+        /// <summary>
+        /// Latest supported version
+        /// </summary>
+        Latest = 1
+    }
 
     private static IEnumerable<IConvolutionalFeedforwardNetworkLayer> DepthwiseBlock(Shape3D size, int stride, int kernel_size=3, Padding padding = Padding.Same, ActivationFunction? activation = null) {
         var first = new DepthwiseConvolutionLayer(input_size: size, padding: padding, stride: stride, filter: ConvolutionFilter.Make(1, size.Channels, kernel_size)[0]);
@@ -26,11 +35,26 @@ public static class MobileNet {
     }
 
     /// <summary>
+    /// Construct a MobileNet network
+    /// </summary>
+    /// <param name="version">network architecture version</param>
+    /// <param name="output_classes">number of output classifications</param>
+    /// <param name="activation">activation function</param>
+    /// <returns>network</returns>
+    /// <exception cref="ArgumentException">thrown when an unsupported version is supplied</exception>
+    public static ConvolutionalFeedforwardNetwork Make(Version version, int output_classes, ActivationFunction? activation = null) {
+        return version switch {
+            Version.V1 => MakeV1(output_classes, activation),
+            _ => throw new ArgumentException(nameof(version))
+        };
+    }
+
+    /// <summary>
     /// Construct a network using the MobileNet v1 architecture
     /// </summary>
     /// <param name="output_classes">number of output classifications</param>
     /// <returns>network</returns>
-    public static ConvolutionalFeedforwardNetwork MakeV1(int output_classes, ActivationFunction? activation = null) {
+    private static ConvolutionalFeedforwardNetwork MakeV1(int output_classes, ActivationFunction? activation = null) {
         const int IMG_WIDTH = 224;
         const int IMG_HEIGHT = 224;
         const int IMG_CHANNELS = 3;
