@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -12,7 +13,8 @@ namespace DotML;
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct Vec<T> 
     : IDistanceable<Vec<T>,T>,
-    IEnumerable<T>
+    IEnumerable<T>,
+    IEquatable<Vec<T>>
 where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 {
     private static T[] NONE = new T[0];
@@ -513,4 +515,20 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)values).GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => values.GetEnumerator();
+
+    public override bool Equals([NotNullWhen(true)] object? obj) {
+        if (obj is not Vec<T> other)
+            return false;
+        return Equals(other);
+    }
+
+    public override int GetHashCode() {
+        return HashCode.Combine(this.Dimensionality, this[0], this[this.Dimensionality - 1]);
+    }
+
+    public bool Equals(Vec<T> other) {
+        if (this.Dimensionality != other.Dimensionality)
+            return false;
+        return this.SequenceEqual(other);
+    }
 }

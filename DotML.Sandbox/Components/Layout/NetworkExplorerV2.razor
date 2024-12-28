@@ -65,7 +65,8 @@
             <label class="header">Data</label>
             <label>Training Data</label>
             <div style="text-align: right;">
-                <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download(TrainingData))>get</button>
+                <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download(TrainingData))>json</button>
+                <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_binary(TrainingData))>bin</button>
             </div>
             <div>
                 @if (TrainingData is not null) {
@@ -106,6 +107,7 @@
             <label>Validation Data</label>
             <div style="text-align: right;">
                 <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download(validation_data))>get</button>
+                <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_binary(validation_data))>bin</button>
             </div>
             <div>   
                 @if (validation_data is not null) {
@@ -146,29 +148,25 @@
         </div>
         <div id="Network State" class="col-sm" style="overflow-x: auto;">
             <label class="header">Network</label>
-            @if (Network is ISafetensorable safeable) {
-                <figure>
-                    <figcaption>Safetensors</figcaption>
-                    <div style="text-align: right;">
-                        <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_bytes(safeable.ToSafetensor(), "network.safetensors"))>get</button>
-                    </div>
-                    <p>Safetensors is a simple binary format for the storage of tensor data for safe distribution. Download all tensors related to this network by pressing the "get" button above.</p>
-                </figure>
-                <div class="divider"><hr></div>
-            }
-            @if (Network is IJsonizable jsonizable) {
-                <figure>
-                    <figcaption>JSON</figcaption>
-                    <div style="text-align: right;">
-                        <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_str(jsonizable.ToJsonOrDefault("null"), "network.json"))>get</button>
-                    </div>
-                    <p>JSON is a human readable/writeable interchange format. Download the JSON representation of this network by pressing the "get" button above.</p>
-                    <textarea readonly class="form-control" style="width: 100%; min-height: 12em;">
-                        @jsonizable.ToJsonOrDefault("null")
-                    </textarea>
-                </figure>
-                <div class="divider"><hr></div>
-            }
+            <figure>
+                <figcaption>Weights</figcaption>
+                <div style="text-align: right;">
+                    @if (Network is ISafetensorable safeable) {
+                        <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_bytes(safeable.ToSafetensor(), "network.safetensors"))>bin</button>
+                    }
+                    @if (Network is IJsonizable jsonizable) {
+                        <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_str(jsonizable.ToJsonOrDefault("null"), "network.json"))>json</button>
+                    }
+                </div>
+                @if (Network is ISafetensorable) {
+                    <p><b>Safetensors</b> is a simple binary format for the storage of tensor data for safe distribution. Download all tensors related to this network by pressing the "bin" button above.</p>
+                }
+                @if (Network is IJsonizable) {
+                    <p><b>JSON</b> is a human readable/writeable interchange format. Download the JSON representation of this network by pressing the "json" button above.</p>
+                }
+            </figure>
+            <div class="divider"><hr></div>
+            
             @if (NetworkVisualization is not null && Network is not null) {
                 <label>Network Digram</label>
                 @NetworkVisualization(Network)
@@ -179,7 +177,7 @@
             <figure style="overflow: auto;">
                 <figcaption>Loss vs Epoch</figcaption>
                 <div class="col" style="text-align: right;">
-                    <button type="button" class="btn" style="text-decoration: underline;" onclick="BlazorComponents.Files.download('loss-vs-epoch.svg', 'image/svg+xml', new TextEncoder().encode(document.getElementById('training-loss-graph').outerHTML));">get</button>
+                    <button type="button" class="btn" style="text-decoration: underline;" onclick="BlazorComponents.Files.download('loss-vs-epoch.svg', 'image/svg+xml', new TextEncoder().encode(document.getElementById('training-loss-graph').outerHTML));">svg</button>
                 </div>
                 <Plot Id="training-loss-graph" Data=loss_graph YAxisLabel="Loss" XAxisLabel="Epoch"></Plot>
                 <div class="row" style="margin-left: 0; margin-right: 0;">
@@ -195,7 +193,7 @@
                         <button type="button" class="btn" @onclick=@(() => evaluate_loss())>&#8635;</button>
                     </div>
                     <div class="col" style="text-align: right;">
-                        <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_validation(last_results, "validation.json"))>get</button>
+                        <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_validation(last_results, "validation.json"))>json</button>
                     </div>
                 </div>
                 <div class="row">
@@ -344,6 +342,14 @@
             return;
         var json = JsonSerializer.Serialize(data);
         await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "text/json", System.Text.Encoding.UTF8.GetBytes(json));
+    }
+    private async void download_binary(TrainingSet? data, string name = "vectors.bin") {
+        if (data is null)
+            return;
+        var stream = new MemoryStream();
+        var writer = new BinaryWriter(stream);
+        data.WriteTo(writer);
+        await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "application/octet-stream", stream.ToArray());
     }
 
     #region Playground

@@ -14,15 +14,9 @@ public static void Main() {
     }
 
     #region Network
-    const int IMG_WIDTH = 227;
-    const int IMG_HEIGHT = 227;
-    const int IMG_CHANNELS = 3;
-    const int OUT_CLASSES = 3;
-    string[] OUT_CLASS_NAMES = new string[OUT_CLASSES] {
-        "apple", "banana", "orange",
-    };
 
-    var network = MobileNet.Make(MobileNet.Version.V1, 3, activation: HyperbolicTangent.Instance);
+    var network = LeNet.Make(LeNet.Version.V5, output_classes: 28, img_width: 32, img_height: 32, activation: ReLU.Instance);
+        //MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: HyperbolicTangent.Instance);
     
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
     Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
@@ -52,14 +46,15 @@ public static void Main() {
     #region Trainer
     DefaultValidationReport report = new DefaultValidationReport();
     var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
-        LearningRate = 0.1,
-        LearningRateOptimizer = new ConstantRate(),
+        Epochs = 100,
+        LearningRate = 0.001,
+        LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CrossEntropy,
         NetworkInitializer = new HeInitialization(),
-        BatchSize = 6,
-        EnableGradientClipping = true,
+        BatchSize = 8,
+        EnableGradientClipping = false,
         ClippingThreshold = 5.0,
-        ValidationReport = report
+        ValidationReport = report,
     };
     Console.WriteLine("Trainer configured: " + trainer.GetType().Name);
     using (var trainer_prop_writer = new StreamWriter($"{filename_root}trainer.yaml")) {
@@ -78,8 +73,20 @@ public static void Main() {
     #endregion
 
     #region Data
-    var data = ReadData(OUT_CLASSES, 0.0, 1.0, (reader) => (reader.ReadByte() / 255.0));
-    Console.WriteLine($"Training vectors loaded: \"data.bin\"");
+    var training_data = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.bin").Select(f => new FileInfo(f)).OrderByDescending(f => f.CreationTime).ToArray();
+    if (training_data.Length <= 0) { 
+        throw new FileNotFoundException("Training vectors");
+    }
+    Console.WriteLine($"Select training data?");
+    for (var i = 0; i < training_data.Length; i++) {
+        Console.WriteLine($"    {i}: '{training_data[i].Name}'");
+    }
+    Console.Write("> "); 
+    var file = training_data[int.Parse(Console.ReadLine()?.ToLower() ?? "0")];
+    var data = ReadDataVectors(file.FullName);
+    if (data.Size == 0) 
+        throw new FormatException("Empty training set");
+    Console.WriteLine($"Training vectors loaded: \"{file.Name}\"");
     Console.Write("    "); Console.WriteLine($"Records: {data.Size}");
     Console.Write("    "); Console.WriteLine($"InputSize: {data[0].Input.Dimensionality}");
     Console.Write("    "); Console.WriteLine($"OutputSize: {data[0].Output.Dimensionality}");
@@ -160,7 +167,7 @@ public static void Main() {
     report_writer.Flush();
     while (has_next) {
         Console.Write("    ");
-        Console.Write($"Epoch{session.CurrentEpoch:000}: ");
+        Console.Write($"Epoch{session.CurrentEpoch + 1:000}: ");
         position = Console.GetCursorPosition();
 
         Console.Write('|');
@@ -192,10 +199,10 @@ public static void Main() {
         Console.Write($"{status_char} {report.TestsPassedCount}/{report.TestCount} passed, {elapsed} elapsed, {report.AverageLoss} loss, ");
         report_writer.WriteLine($"{session.CurrentEpoch}, {report.MinLoss}, {report.MaxLoss}, {report.AverageLoss}, {report.TestsPassedCount}, {report.TestsFailedCount}");
         report_writer.Flush();
-        Console.ForegroundColor = reset_colour;
         var epochfname = $"{filename_root}epoch-{session.CurrentEpoch}.safetensors";
         network.ToSafetensor().WriteToFile(epochfname);
         Console.WriteLine($"weights '{epochfname}'");
+        Console.ForegroundColor = reset_colour;
     }
     #endregion
 
@@ -215,8 +222,20 @@ private static Vec<double> VectorFromLabelIndex(int index, int classes, double o
     return Vec<double>.Wrap(values);
 }
 
-private static TrainingSet ReadData(int category_count, double category_off, double category_on, Func<BinaryReader, double> element_parser) {
-    using var stream = File.OpenRead("data.bin");
+
+private static TrainingSet ReadDataVectors(string path) {
+    TrainingSet set = new TrainingSet();
+
+    using var stream = File.OpenRead(path);
+    using var reader = new BinaryReader(stream);
+
+    set.AddFrom(reader);
+
+    return set;
+}
+
+private static TrainingSet ReadData(string path, int category_count, double category_off, double category_on, Func<BinaryReader, double> element_parser) {
+    using var stream = File.OpenRead(path);
     using var reader = new BinaryReader(stream);
                         
     List<TrainingPair> pairs = new List<TrainingPair>();

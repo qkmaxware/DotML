@@ -10,11 +10,26 @@ public static class LeNet {
     /// </summary>
     public enum Version {
         V1 = 1,
+        V5 = 5,
         /// <summary>
         /// Latest supported version
         /// </summary>
-        Latest = 1
+        Latest = 5
     }
+
+    /// <summary>
+    /// Typical width (in pixels) for an image processed by LeNet
+    /// </summary>
+    const int IMG_WIDTH = 28;
+    /// <summary>
+    /// Typical height (in pixels) for an image processed by LeNet
+    /// </summary>
+    const int IMG_HEIGHT = 28;
+    /// <summary>
+    /// Typical number of channels for an image processed by LeNet 
+    /// </summary>
+    const int IMG_CHANNELS = 1;
+
 
     /// <summary>
     /// Construct a LeNet network
@@ -24,65 +39,111 @@ public static class LeNet {
     /// <param name="activation">activation function</param>
     /// <returns>network</returns>
     /// <exception cref="ArgumentException">thrown when an unsupported version is supplied</exception>
-    public static ConvolutionalFeedforwardNetwork Make(Version version, int output_classes, ActivationFunction? activation = null) {
+    public static ConvolutionalFeedforwardNetwork Make(Version version, int output_classes, int img_width = IMG_WIDTH, int img_height = IMG_HEIGHT, ActivationFunction? activation = null) {
         return version switch {
-            Version.V1 => MakeV1(output_classes, activation),
+            Version.V1 => MakeV1(output_classes, img_width, img_height, activation),
+            Version.V5 => MakeV5(output_classes, img_width, img_height, activation),
             _ => throw new ArgumentException(nameof(version))
         };
     }
 
-    /// <summary>
-    /// Construct a network using the LeNet architecture
-    /// </summary>
-    /// <param name="output_classes">number of output classifications</param>
-    /// <returns>network</returns>
-    private static ConvolutionalFeedforwardNetwork MakeV1(int output_classes, ActivationFunction? activation = null) {
-        const int IMG_WIDTH = 32;
-        const int IMG_HEIGHT = 32;
-        const int IMG_CHANNELS = 1;
-
+    private static ConvolutionalFeedforwardNetwork MakeV1(int output_classes, int img_width, int img_height, ActivationFunction? activation) {
         activation = activation ?? ReLU.Instance;
 
         return new ConvolutionalFeedforwardNetwork(
             new ConvolutionLayer(
-                new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH),
+                new Shape3D(IMG_CHANNELS, img_height, img_width),
+                padding: Padding.Valid, 
+                stride: 1, 
+                filters: ConvolutionFilter.Make(12, 1, 5)
+            )
+            .Then(ishape => new ActivationLayer(ishape, activation))
+            .Then(ishape => 
+                new LocalAvgPoolingLayer(
+                    ishape,
+                    size: 2,
+                    stride: 2
+                )
+            )
+            .Then(ishape => 
+                new ConvolutionLayer(
+                    ishape,
+                    padding: Padding.Valid,
+                    stride: 1,
+                    filters: ConvolutionFilter.Make(8, 1, 5)
+                )
+            )
+            .Then(ishape => new ActivationLayer(ishape, activation))
+            .Then(ishape => 
+                new LocalAvgPoolingLayer(
+                    ishape,
+                    size: 2,
+                    stride: 2
+                )
+            )
+            .Then(ishape => 
+                new FullyConnectedLayer(
+                    ishape.Count,
+                    output_classes
+                )
+            )
+            .Then(ishape => new SoftmaxLayer(output_classes))
+        );
+    }
+
+    private static ConvolutionalFeedforwardNetwork MakeV5(int output_classes, int img_width, int img_height, ActivationFunction? activation) {
+        activation = activation ?? ReLU.Instance;
+
+        return new ConvolutionalFeedforwardNetwork(
+            new ConvolutionLayer(
+                new Shape3D(IMG_CHANNELS, img_height, img_width),
                 padding: Padding.Valid, 
                 stride: 1, 
                 filters: ConvolutionFilter.Make(6, 1, 5)
-            ),
-            new ActivationLayer(new Shape3D(6, 28, 28), activation),
-            new LocalAvgPoolingLayer (
-                new Shape3D(6, 28, 28),
-                size: 2, 
-                stride: 2
-            ),
-            new ConvolutionLayer(
-                new Shape3D(6, 14, 14),
-                padding: Padding.Valid, 
-                stride: 1, 
-                filters: ConvolutionFilter.Make(16, 6, 5)
-            ),
-            new ActivationLayer(new Shape3D(16, 10, 10), activation),
-            new LocalAvgPoolingLayer(
-                new Shape3D(16, 10, 10),
-                size: 2, 
-                stride: 2
-            ),
-            new FullyConnectedLayer(
-                input_size: 400, 
-                neurons: 120
-            ),
-            new ActivationLayer(new Shape3D(1, 120, 1), activation),
-            new FullyConnectedLayer(
-                input_size: 120, 
-                neurons: 84
-            ),
-            new ActivationLayer(new Shape3D(1, 84, 1), activation),
-            new FullyConnectedLayer(
-                input_size: 84, 
-                neurons: output_classes
-            ),
-            new SoftmaxLayer(output_classes)
+            )
+            .Then(ishape => new ActivationLayer(ishape, activation))
+            .Then(ishape => 
+                new LocalAvgPoolingLayer (
+                    ishape,
+                    size: 2, 
+                    stride: 2
+                )
+            ).Then(ishape => 
+                new ConvolutionLayer(
+                    ishape,
+                    padding: Padding.Valid, 
+                    stride: 1, 
+                    filters: ConvolutionFilter.Make(16, 6, 5)
+                )
+            )
+            .Then(ishape => new ActivationLayer(ishape, activation))
+            .Then(ishape => 
+                new LocalAvgPoolingLayer(
+                    ishape,
+                    size: 2, 
+                    stride: 2
+                )
+            ).Then(ishape =>
+                new FullyConnectedLayer(
+                    input_size: ishape.Count, 
+                    neurons: 120
+                )
+            )
+            .Then(ishape => new ActivationLayer(ishape, activation))
+            .Then(ishape => 
+                new FullyConnectedLayer(
+                    input_size: ishape.Count, 
+                    neurons: 84
+                )
+            )
+            .Then(ishape => new ActivationLayer(ishape, activation))
+            .Then(ishape => 
+                new FullyConnectedLayer(
+                    input_size: ishape.Count, 
+                    neurons: output_classes
+                )
+            )
+            .Then(ishape => new SoftmaxLayer(output_classes))
         );
     }
 

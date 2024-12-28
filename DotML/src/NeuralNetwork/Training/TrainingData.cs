@@ -215,4 +215,113 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
             startIndex += groupSize;
         }
     }
+
+    private enum VectorStorageType : byte {
+        U8 = 0b0001_0000,   U16 = 0b0001_0001,  U32 = 0b0001_0010,  U64 = 0b0001_0011,
+        I8 = 0b0010_0000,   I16 = 0b0010_0001,  I32 = 0b0010_0010,  I64 = 0b0010_0011,
+                            F16 = 0b0100_0001,  F32 = 0b0100_0010,  F64 = 0b0100_0011
+    }
+
+    /// <summary>
+    /// Add all vectors stored in binary format to this training data
+    /// </summary>
+    /// <param name="reader">reader containing binary data</param>
+    /// <exception cref="ArgumentException">thrown when vector data-type is unknown</exception>
+    public void AddFrom(BinaryReader reader) {
+        var type = (VectorStorageType)(reader.ReadByte());
+        var scaling = reader.ReadDouble();
+        var output_count = reader.ReadInt32();
+        var input_count = reader.ReadInt32();
+
+        // Outputs
+        var outputs = new List<Vec<double>>(output_count);
+        for (var i = 0; i < output_count; i++) {
+            var vec_size = reader.ReadInt32();
+            var data = new double[vec_size];
+            for (var j = 0; j < vec_size; j++) {
+                data[j] = type switch {
+                    VectorStorageType.U8  => (double)reader.ReadByte(),
+                    VectorStorageType.U16 => (double)reader.ReadUInt16(),
+                    VectorStorageType.U32 => (double)reader.ReadUInt32(),
+                    VectorStorageType.U64 => (double)reader.ReadUInt64(),
+
+                    VectorStorageType.I8  => (double)reader.ReadSByte(),
+                    VectorStorageType.I16 => (double)reader.ReadInt16(),
+                    VectorStorageType.I32 => (double)reader.ReadInt32(),
+                    VectorStorageType.I64 => (double)reader.ReadInt64(),
+
+                    VectorStorageType.F16 => (double)reader.ReadHalf(),
+                    VectorStorageType.F32 => (double)reader.ReadSingle(),
+                    VectorStorageType.F64 => (double)reader.ReadDouble(),
+
+                    _ => throw new ArgumentException(nameof(VectorStorageType))
+                } * scaling;
+            }
+            outputs.Add( Vec<double>.Wrap(data) );
+        }
+
+        for (var i = 0; i < input_count; i++) {
+            var output_index = reader.ReadInt32();
+            var vec_size = reader.ReadInt32();
+            var data = new double[vec_size];
+            for (var j = 0; j < vec_size; j++) {
+                data[j] = type switch {
+                    VectorStorageType.U8  => (double)reader.ReadByte(),
+                    VectorStorageType.U16 => (double)reader.ReadUInt16(),
+                    VectorStorageType.U32 => (double)reader.ReadUInt32(),
+                    VectorStorageType.U64 => (double)reader.ReadUInt64(),
+
+                    VectorStorageType.I8  => (double)reader.ReadSByte(),
+                    VectorStorageType.I16 => (double)reader.ReadInt16(),
+                    VectorStorageType.I32 => (double)reader.ReadInt32(),
+                    VectorStorageType.I64 => (double)reader.ReadInt64(),
+
+                    VectorStorageType.F16 => (double)reader.ReadHalf(),
+                    VectorStorageType.F32 => (double)reader.ReadSingle(),
+                    VectorStorageType.F64 => (double)reader.ReadDouble(),
+
+                    _ => throw new ArgumentException(nameof(VectorStorageType))
+                } * scaling;
+            }
+            var input = Vec<double>.Wrap(data);
+            var output = outputs[output_index];
+            this.Add(input, output);
+        }
+    }
+
+    /// <summary>
+    /// Dump all training data to a binary format
+    /// </summary>
+    /// <param name="writer">writer to dump vectors to</param>
+    public void WriteTo(BinaryWriter writer) {
+        // Compute number of unique outputs
+        var outputs = this.Select(pair => pair.Output).Distinct().ToArray();
+        // Compute number of unique inputs
+        // Compute vector "scaling" factor
+        const double scaling = 1.0; // Assume that scaling was already applied
+
+        // DATA_TYPE SCALING OUT_CLASSES, INPUT_CLASSES
+        writer.Write((byte)VectorStorageType.F64);  // Always write F64
+        writer.Write(scaling);                      // Set scaling factor
+        writer.Write(outputs.Length);               // Set output count
+        writer.Write(this.Size);                    // Set input count
+
+        // Outputs
+        foreach (var output in outputs) {
+            writer.Write(output.Dimensionality);
+            foreach (var element in output) {
+                writer.Write(element);
+            }
+        }
+
+        // Inputs
+        foreach (var pair in this) {
+            var output_index = Array.IndexOf(outputs, pair.Output);
+            writer.Write(output_index);
+            writer.Write(pair.Input.Dimensionality);
+            foreach (var element in pair.Input) {
+                writer.Write(element);
+            }
+        }
+    }
 }
