@@ -22,7 +22,7 @@ public static void Main() {
     Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
     for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
         var layer = network.GetLayer(layerIndex);
-        Console.Write("    "); Console.WriteLine("layer" + layerIndex + ": " + layer.OutputShape + " " + layer.GetType().Name);
+        Console.Write("    "); Console.WriteLine("layer" + layerIndex + ": " + layer.OutputShape + " " + layer.ToString());
     }
     if (network is IJsonizable json) {
         using (var writer = new StreamWriter($"{filename_root}network.json")) {
