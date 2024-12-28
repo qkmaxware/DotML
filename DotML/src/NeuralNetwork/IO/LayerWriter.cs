@@ -29,6 +29,7 @@ public class LayerWriter : IConvolutionalLayerVisitor<int, bool> {
 
     public bool Visit(ConvolutionLayer layer, int layerIndex) {
         if (layerIndex == 0) {
+            WriteHeader();
             WriteInputLayer(layer);
         }
         
