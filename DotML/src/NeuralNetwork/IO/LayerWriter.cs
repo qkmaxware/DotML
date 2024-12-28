@@ -3,12 +3,13 @@ namespace DotML.Network;
 /// <summary>
 /// Writer to encode layer information to a text format
 /// </summary>
-public class LayerWriter : IConvolutionalLayerVisitor<int, bool> {
+public class LayerWriter : IConvolutionalLayerVisitor<int, bool>, IDisposable {
 
     protected TextWriter sb;
 
     public LayerWriter(TextWriter writer) {
         this.sb = writer;
+        WriteHeader();
     }
 
     protected virtual void WriteHeader() {
@@ -29,7 +30,6 @@ public class LayerWriter : IConvolutionalLayerVisitor<int, bool> {
 
     public bool Visit(ConvolutionLayer layer, int layerIndex) {
         if (layerIndex == 0) {
-            WriteHeader();
             WriteInputLayer(layer);
         }
         
@@ -134,5 +134,9 @@ public class LayerWriter : IConvolutionalLayerVisitor<int, bool> {
             $"Convert output to probability distribution over {layer.OutputShape.Count} classes"
         );
         return true;
+    }
+
+    public void Dispose() {
+        WriteFooter();
     }
 }

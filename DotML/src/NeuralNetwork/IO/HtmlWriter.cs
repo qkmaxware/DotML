@@ -3,7 +3,7 @@ namespace DotML.Network;
 /// <summary>
 /// Writer to encode layer information and biases to an HTML file
 /// </summary>
-public class LayerHtmlWriter : LayerWriter{
+public class LayerHtmlWriter : LayerWriter { 
 
     public LayerHtmlWriter(TextWriter writer) : base(writer) { }
 

@@ -114,6 +114,11 @@ public class ConvolutionalFeedforwardNetwork:
     }
 
     /// <summary>
+    /// Network name, can be used to identify networks or their configuration
+    /// </summary>
+    private string? Name {get; set;}
+
+    /// <summary>
     /// Load the weights of the network from the given safetensors
     /// </summary>
     /// <param name="sb">safetensors</param>
@@ -328,11 +333,12 @@ public class ConvolutionalFeedforwardNetwork:
     public string ToMarkdown() {
         using StringWriter sb = new StringWriter();
 
-        var md = new LayerMarkdownWriter(sb);
-        for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
-            var layer = this.GetLayer(layerIndex);
-            if (!layer.Visit(md, layerIndex)) {
-                throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
+        using (var md = new LayerMarkdownWriter(sb)) {
+            for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
+                var layer = this.GetLayer(layerIndex);
+                if (!layer.Visit(md, layerIndex)) {
+                    throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
+                }
             }
         }
 
@@ -346,11 +352,12 @@ public class ConvolutionalFeedforwardNetwork:
     public string ToHtml() {
         using StringWriter sb = new StringWriter();
 
-        var html = new LayerHtmlWriter(sb);
-        for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
-            var layer = this.GetLayer(layerIndex);
-            if (!layer.Visit(html, layerIndex)) {
-                throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
+        using (var html = new LayerHtmlWriter(sb)) {
+            for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
+                var layer = this.GetLayer(layerIndex);
+                if (!layer.Visit(html, layerIndex)) {
+                    throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
+                }
             }
         }
 
