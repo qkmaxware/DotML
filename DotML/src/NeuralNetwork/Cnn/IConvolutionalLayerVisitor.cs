@@ -10,6 +10,7 @@ public interface IConvolutionalLayerVisitor {
     public void Visit(FlatteningLayer layer);
     public void Visit(DropoutLayer layer);
     public void Visit(LayerNorm layer);
+    public void Visit(BatchNorm layer);
     public void Visit(FullyConnectedLayer layer);
     public void Visit(ActivationLayer layer);
     public void Visit(SoftmaxLayer layer);
@@ -25,6 +26,7 @@ public interface IConvolutionalLayerVisitor<TOut> {
     public TOut Visit(FlatteningLayer layer);
     public TOut Visit(DropoutLayer layer);
     public TOut Visit(LayerNorm layer);
+    public TOut Visit(BatchNorm layer);
     public TOut Visit(FullyConnectedLayer layer);
     public TOut Visit(ActivationLayer layer);
     public TOut Visit(SoftmaxLayer layer);
@@ -40,6 +42,7 @@ public interface IConvolutionalLayerVisitor<TIn, TOut> {
     public TOut Visit(FlatteningLayer layer, TIn args);
     public TOut Visit(DropoutLayer layer, TIn args);
     public TOut Visit(LayerNorm layer, TIn args);
+    public TOut Visit(BatchNorm layer, TIn args);
     public TOut Visit(FullyConnectedLayer layer, TIn args);
     public TOut Visit(ActivationLayer layer, TIn args);
     public TOut Visit(SoftmaxLayer layer, TIn args);

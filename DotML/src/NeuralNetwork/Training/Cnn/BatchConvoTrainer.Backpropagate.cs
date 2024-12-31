@@ -9,8 +9,11 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
 
 public struct BackpropagationArgs {
     public Vec<double> TrueLabel;
+    public int BatchIndex;
     public int LayerIndex;
+    public BatchedFeatureSet<double> InputBatch;
     public FeatureSet<double> Inputs;
+    public BatchedFeatureSet<double> OutputBatch;
     public FeatureSet<double> Outputs;
     public Matrix<double>[] Errors;
 }
@@ -30,7 +33,7 @@ public class DepthwiseConvolutionGradients : Gradients {
     public Matrix<double>[]? KernelGradients;
 }
 
-public class LayerNormGradients : Gradients {
+public class NormalizationGradients : Gradients {
     public Matrix<double>[]? GammaGradients;
     public Matrix<double>[]? BetaGradients;
 }
@@ -397,7 +400,66 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
 
         return new BackpropagationReturns {
             Errors = inputErrors,
-            Gradient = new LayerNormGradients {
+            Gradient = new NormalizationGradients {
+                GammaGradients = gammaGradients,
+                BetaGradients = betaGradients
+            }
+        };
+    }
+
+    public BackpropagationReturns Visit(BatchNorm layer, BackpropagationArgs args) {
+        // Getting the inputs, outputs, and errors from the BackpropagationArgs
+        Matrix<double>[] inputs = (Matrix<double>[])args.Inputs;
+        Matrix<double>[] outputs = (Matrix<double>[])args.Outputs;
+        Matrix<double>[] errors = args.Errors;
+        var channels = inputs.Length;
+    
+        // Create gradients for gamma and beta
+        var gammaGradients = new Matrix<double>[channels];
+        var betaGradients = new Matrix<double>[channels];
+
+        // Output list for backpropagated errors
+        var inputErrors = new Matrix<double>[channels];
+
+        // Compute mean and variance across the whole batch per channel
+        var means = new double[args.InputBatch.Channels];
+        var variances = new double[args.InputBatch.Channels];
+
+        for (var channelIndex = 0; channelIndex < variances.Length; channelIndex++) {
+            var mean = args.InputBatch.SelectMany(featureSet => featureSet[channelIndex]).Average();
+            var variance = args.InputBatch.SelectMany(featureSet => featureSet[channelIndex]).Select(x => Math.Pow(x - mean, 2)).Average();
+
+            means[channelIndex] = mean;
+            variances[channelIndex] = variance;
+        }
+
+        // Process each channel
+        Parallel.For(0, channels, i => {
+            var xHat = outputs[i];
+            var input = inputs[i];
+            var gamma = layer.Gammas[i];
+            var error = errors[i];
+
+            gammaGradients[i] = error.Hadamard(xHat);
+            betaGradients[i] = error;
+
+            var mean = means[channels];
+            var variance = variances[channels];
+            var denom = Math.Sqrt(variance + epsilon);
+            
+            // error * gamma * (x-u)/sqrt(variance^2 + e)
+            var inputError = error.Hadamard(gamma);                             // error * gamma
+            var imean = input.Transform(x => (x - mean) / denom);               // (x - mean) / sqrt(variance^2 + e)
+            Matrix<double>.HadamardInplace(inputError, inputError, imean);      // error * gamma * (x-u)/sqrt(variance^2 + e)
+            inputErrors[i] = inputError;
+        });
+
+        clip(gammaGradients, GradientClippingThresholdWeight);
+        clip(betaGradients, GradientClippingThresholdWeight);
+
+        return new BackpropagationReturns {
+            Errors = inputErrors,
+            Gradient = new NormalizationGradients {
                 GammaGradients = gammaGradients,
                 BetaGradients = betaGradients
             }

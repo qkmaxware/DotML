@@ -51,6 +51,20 @@ public class LayerSafetensorWriter : IConvolutionalLayerVisitor<int, bool> {
         return true;
     }
 
+    public bool Visit(BatchNorm norm, int layerIndex) {
+        var gammas = norm.Gammas;
+        for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
+            var kernel = gammas[gammaIndex];
+            sb.Add($"Layers[{layerIndex}].Gamma[{gammaIndex}]", kernel);
+        }
+        var betas = norm.Betas;
+        for (var betaIndex = 0; betaIndex < betas.Length; betaIndex++) {
+            var kernel = betas[betaIndex];
+            sb.Add($"Layers[{layerIndex}].Beta[{betaIndex}]", kernel);
+        }
+        return true;
+    }
+
     public bool Visit(FullyConnectedLayer conn, int layerIndex) {
         sb.Add($"Layers[{layerIndex}].Weights", conn.Weights);
         sb.Add($"Layers[{layerIndex}].Biases", conn.Biases);

@@ -350,6 +350,20 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
 
             // Backwards pass
             using (var metric = PerformanceReport?.Begin(BackpropagationPerformanceKey)) {
+                // Roll up inputs/outputs into batched feature sets again in case they are needed by a backpropagation method
+                var input_batches = new BatchedFeatureSet<double>[Current.LayerCount];
+                var output_batches = new BatchedFeatureSet<double>[Current.LayerCount];
+                for (var layerIndex = 0; layerIndex < input_batches.Length; layerIndex++) {
+                    var infeatures = new FeatureSet<double>[batch_size];
+                    var outfeatures = new FeatureSet<double>[batch_size];
+                    for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
+                        infeatures[batchIndex] = this.batch_inputs[batchIndex][layerIndex];
+                        outfeatures[batchIndex] = this.batch_outputs[batchIndex][layerIndex];
+                    }
+                    input_batches[layerIndex] = new BatchedFeatureSet<double>(infeatures);
+                    output_batches[layerIndex] = new BatchedFeatureSet<double>(outfeatures);
+                }
+                // Do backpropagation steps
                 Parallel.For(0, batch_size, (batchIndex) => {
                     var currentPair = batch[batchIndex];
                     var expected = currentPair.Output;
@@ -362,10 +376,13 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
                     var errors = outputs[^1].Zip(@true).Select(x => x.First-x.Second).ToArray();
                     
                     var backprop_args = new BackpropagationArgs();
+                    backprop_args.BatchIndex = batchIndex;
                     backprop_args.Errors = errors;
                     backprop_args.TrueLabel = expected;
                     for (var layerIndex = Current.LayerCount - 1; layerIndex >= 0; layerIndex--) {
-                        backprop_args.Inputs = inputs[layerIndex];
+                        backprop_args.InputBatch = input_batches[layerIndex]; // Will be needed for backpropagation of BatchNorm (as we need to see ALL batched inputs to compute mean/variance)
+                        backprop_args.Inputs = inputs[layerIndex]; // theoretically this value is equivalent to InputBatch[batchIndex]
+                        backprop_args.OutputBatch = output_batches[layerIndex];
                         backprop_args.Outputs = outputs[layerIndex];
 
                         var layer = Current.GetLayer(layerIndex);
@@ -476,10 +493,10 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
                                     #pragma warning restore CS8602
                                 }
                                 break;
-                            case LayerNormGradients norm:
+                            case NormalizationGradients norm:
                                 {
                                     #pragma warning disable CS8602 
-                                    var all_batches = batch_gradients.Select(x => x[layerIndex]).OfType<LayerNormGradients>();
+                                    var all_batches = batch_gradients.Select(x => x[layerIndex]).OfType<NormalizationGradients>();
 
                                     var gamma_c = norm.GammaGradients?.Length ?? 0;
                                     var beta_c = norm.BetaGradients?.Length ?? 0;

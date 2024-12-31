@@ -68,6 +68,24 @@ public class LayerSafetensorReader : IConvolutionalLayerVisitor<int, bool> {
         return true;
     }
 
+    public bool Visit(BatchNorm norm, int layerIndex) {
+        var gammas = norm.Gammas;
+        for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
+            var key = $"Layers[{layerIndex}].Gamma[{gammaIndex}]";
+            if (sb.ContainsKey(key)) {
+                gammas[gammaIndex] = sb.GetTensor<double>(key);
+            }
+        }
+        var betas = norm.Betas;
+        for (var betaIndex = 0; betaIndex < betas.Length; betaIndex++) {
+            var key = $"Layers[{layerIndex}].Beta[{betaIndex}]";
+            if (sb.ContainsKey(key)) {
+                betas[betaIndex] = sb.GetTensor<double>(key);
+            }
+        }
+        return true;
+    }
+
     public bool Visit(FullyConnectedLayer conn, int layerIndex) {
         var wkey = $"Layers[{layerIndex}].Weights";
         if (sb.ContainsKey(wkey)) {

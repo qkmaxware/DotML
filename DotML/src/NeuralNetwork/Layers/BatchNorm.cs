@@ -80,19 +80,12 @@ public class BatchNorm : ConvolutionalFeedforwardNetworkLayer {
     }
 
     public override int TrainableParameterCount() {
-        // No trainable parameters
-        return 0;
+        return InputShape.Count * 2;
     }
 
-    public override void Visit(IConvolutionalLayerVisitor visitor) {
-        throw new NotImplementedException();
-    }
+    public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
 
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) {
-        throw new NotImplementedException();
-    }
+    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) => visitor.Visit(this);
 
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) {
-        throw new NotImplementedException();
-    }
+    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

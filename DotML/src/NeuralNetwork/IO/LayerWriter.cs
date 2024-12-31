@@ -100,6 +100,18 @@ public class LayerWriter : IConvolutionalLayerVisitor<int, bool>, IDisposable {
         return true;
     }
 
+    public bool Visit(BatchNorm layer, int layerIndex) {
+        if (layerIndex == 0) {
+            WriteInputLayer(layer);
+        }
+        
+        WriteLayerRow(
+            layer, 
+            $"Normalize the inputs across the entire batch"
+        );
+        return true;
+    }
+
     public bool Visit(FullyConnectedLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
