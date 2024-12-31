@@ -128,9 +128,9 @@ public abstract class LocalPoolingLayer : PoolingLayer {
     protected abstract double Accumulate(double current, double delta, int count);
     protected abstract double Aggregate(double current, int count);
 
-    public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) {
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
         // Each channel generates exactly 1 output
-        var channels = inputs.Length;
+        var channels = inputs.Channels;
         var pooled = new Matrix<double>[channels];
 
         var filterWidth = this.FilterWidth;
@@ -169,7 +169,7 @@ public abstract class LocalPoolingLayer : PoolingLayer {
             }
         }
 
-        return pooled;
+        return (FeatureSet<double>)pooled;
     }
 }
 

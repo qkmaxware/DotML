@@ -24,8 +24,8 @@ public class DropoutLayer : ConvolutionalFeedforwardNetworkLayer {
 
     private Random rng = new Random();
 
-    public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) { 
-        var channelCount = inputs.Length;
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) { 
+        var channelCount = inputs.Channels;
         var outputs = new Matrix<double>[channelCount];
 
         if (channelCount > 0) {
@@ -38,7 +38,7 @@ public class DropoutLayer : ConvolutionalFeedforwardNetworkLayer {
             }
         }
 
-        return outputs;
+        return (FeatureSet<double>)outputs;
     }
 
     public bool UseSharedMask {get; set;}

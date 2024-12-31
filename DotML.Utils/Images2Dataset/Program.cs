@@ -52,8 +52,15 @@ public class ImagePreprocessor {
         return vector;
     }
 
-    private static void WriteVector(byte category, byte[] vector, BinaryWriter writer) {
-        writer.Write(category);                     // 1 byte category
+    private static void WriteVector(byte[] vector, BinaryWriter writer) {
+        writer.Write(vector.Length);
+        for (var i = 0; i < vector.Length; i++) {
+            writer.Write(vector[i]);
+        }
+    }
+
+    private static void WriteVector(int category, byte[] vector, BinaryWriter writer) {
+        writer.Write(category);                     // 4 byte category
         writer.Write(vector.Length);                // 4 bytes vector length
         for (var i = 0; i < vector.Length; i++) {
             writer.Write(vector[i]);                // Vector bytes
@@ -114,6 +121,8 @@ public class ImagePreprocessor {
             Directory.CreateDirectory(Path.Combine("data", "images", "raw"));
             DirectoryInfo dir = new DirectoryInfo(Path.Combine("data", "images", "raw"));
             var categories = dir.GetDirectories();
+            var files_per_category = categories.Select(category => category.GetFiles()).ToArray();
+            var file_count = files_per_category.Select(x => x.Length).Sum();
             //var categories_vectors = categories.Select((cat, i) => MakeVector(i, categories)).ToArray(); // [-1,-1,...1,...-1,-1]
 
             Directory.CreateDirectory(Path.Combine("data", "images", "processed"));
@@ -145,13 +154,28 @@ public class ImagePreprocessor {
             //new Rotate(-6.0f, -2.0f, step: 2.0f).Named("rneg") ,
             //new Rotate(2.0f, 6.0f, step: 2.0f).Named("rpos") 
 
+            // Write binary header
+            binary.Write(0b0001_0000);                                         // U8 As per VectorStorageType in DotML\src\NeuralNetwork\Training\TrainingData.cs
+            binary.Write(1.0/255.0);                                           // Scaling from 0..255 to 0..1
+            binary.Write(categories.Length);                                   // Output count
+            binary.Write(file_count * transforms.Select(x => x.CreatedImageCount()).Sum()); // Input count
+
+            // Write output vectors
+            for (var i = 0; i < categories.Length; i++) {
+                var vector = new byte[categories.Length];
+                vector[i] = 255; // Write the max value here so it will get scaled to 1 when loaded
+                WriteVector(vector, binary);
+            }
+            binary.Flush();
+
+            // Write input/output vector pairs
             for (var i = 0; i < categories.Length; i++) {
                 if (i > byte.MaxValue) {
                     throw new ArgumentException("Too many categories for binary encoding of images");
                 }
-                var categoryIndex = (byte)i;
+                var categoryIndex = i;
                 var category = categories[i];
-                var files = category.GetFiles();
+                var files = files_per_category[i];
                 //var output_vec = categories_vectors[i];
 
                 Directory.CreateDirectory(Path.Combine("data", "images", "processed", category.Name));

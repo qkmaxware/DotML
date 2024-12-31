@@ -18,7 +18,7 @@ public class SoftmaxLayer : ConvolutionalFeedforwardNetworkLayer {
         this.OutputShape = new Shape3D(1, size, 1);
     }
 
-    public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) {
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
         // Treat all inputs values as a single vector, compute the softmax of this vector
         var sum = 0.0d;
         double[,] values = new double[size, 1];
@@ -34,7 +34,7 @@ public class SoftmaxLayer : ConvolutionalFeedforwardNetworkLayer {
             values[j, 0] = values[j, 0] / sum;
         }
 
-        return [ Matrix<double>.Wrap(values) ];
+        return new FeatureSet<double>( Matrix<double>.Wrap(values) );
     }
 
     public override void Initialize(IInitializer initializer) { /* No initialization needed */ }

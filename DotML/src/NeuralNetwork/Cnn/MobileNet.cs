@@ -43,10 +43,12 @@ public static class MobileNet {
     /// <returns>network</returns>
     /// <exception cref="ArgumentException">thrown when an unsupported version is supplied</exception>
     public static ConvolutionalFeedforwardNetwork Make(Version version, int output_classes, ActivationFunction? activation = null) {
-        return version switch {
+        var net = version switch {
             Version.V1 => MakeV1(output_classes, activation),
             _ => throw new ArgumentException(nameof(version))
         };
+        net.Name = "MobileNet";
+        return net;
     }
 
     /// <summary>

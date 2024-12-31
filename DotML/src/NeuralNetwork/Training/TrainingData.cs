@@ -216,6 +216,8 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
         }
     }
 
+    // Not super useful in this class, but necessary if other utility programs create training data dumps
+    // eg Images2Dataset using U8 for pixel values
     private enum VectorStorageType : byte {
         U8 = 0b0001_0000,   U16 = 0b0001_0001,  U32 = 0b0001_0010,  U64 = 0b0001_0011,
         I8 = 0b0010_0000,   I16 = 0b0010_0001,  I32 = 0b0010_0010,  I64 = 0b0010_0011,

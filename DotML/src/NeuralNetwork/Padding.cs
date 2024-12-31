@@ -13,3 +13,17 @@ public enum Padding {
     /// </summary>
     Valid
 }
+
+/// <summary>
+/// Convolution layer inverse padding option
+/// </summary>
+public enum Expansion {
+    /// <summary>
+    /// Image is kept the same size, result is not padded
+    /// </summary>
+    Same, 
+    /// <summary>
+    /// Image size is increased, result is padded
+    /// </summary>
+    Expand
+}

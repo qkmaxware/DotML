@@ -182,8 +182,8 @@ public class ConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
         return output_list;
     }
 
-    public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) {
-        var z = this.Convolve(inputs);
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
+        var z = (FeatureSet<double>)this.Convolve((Matrix<double>[])inputs);
         return z;
     }
 

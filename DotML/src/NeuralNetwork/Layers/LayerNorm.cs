@@ -32,8 +32,8 @@ public class LayerNorm : ConvolutionalFeedforwardNetworkLayer {
             Betas[i] = new Matrix<double>(input_size.Rows, input_size.Columns, 0.0);
     }
 
-    public override Matrix<double>[] EvaluateSync(Matrix<double>[] channels) {
-        var len = channels.Length;
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
+        var len = channels.Channels;
         Matrix<double>[] outputs = new Matrix<double>[len];
 
         for (var channel = 0; channel < len; channel++) {
@@ -54,7 +54,7 @@ public class LayerNorm : ConvolutionalFeedforwardNetworkLayer {
             outputs[channel] = output;                              
         }
 
-        return outputs;
+        return (FeatureSet<double>)outputs;
     }
 
     public override void Initialize(IInitializer initializer) { }

@@ -42,6 +42,34 @@ public class Safetensors {
     /// <returns>enumerable of keys</returns>
     public IEnumerable<string> Keys() { foreach (var key in used_names) { yield return key; }}
 
+    public Shape2D ShapeOf(string key) {
+        if (matrices_f16.TryGetValue(key, out Matrix<Half> mhalf)) {
+            return mhalf.Shape;
+        }
+        if (matrices_f32.TryGetValue(key, out Matrix<float> msingle)) {
+            return msingle.Shape;
+        }
+        if (matrices_f64.TryGetValue(key, out Matrix<double> mdouble)) {
+            return mdouble.Shape;
+        }
+
+        return new Shape2D();
+    }
+
+    public Type TypeOf(string key) {
+        if (matrices_f16.TryGetValue(key, out Matrix<Half> mhalf)) {
+            return typeof(Half);
+        }
+        if (matrices_f32.TryGetValue(key, out Matrix<float> msingle)) {
+            return typeof(float);
+        }
+        if (matrices_f64.TryGetValue(key, out Matrix<double> mdouble)) {
+            return typeof(double);
+        }
+
+        return typeof(object);
+    }
+
     /// <summary>
     /// Check if this safetensors set contains a tensor with the given name
     /// </summary>

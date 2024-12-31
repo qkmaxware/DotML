@@ -7,7 +7,8 @@ namespace DotML.Network;
 /// Base interface for all CNN layers
 /// </summary>
 public interface IConvolutionalFeedforwardNetworkLayer : ILayer {
-    public Matrix<double>[] EvaluateSync(Matrix<double>[] channels);
+    public FeatureSet<double> EvaluateSync(FeatureSet<double> features);
+    public BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features);
 
     public void Initialize(IInitializer initializer);
 
@@ -45,7 +46,15 @@ public abstract class ConvolutionalFeedforwardNetworkLayer : IConvolutionalFeedf
     /// </summary>
     /// <param name="channels">Input image represented in channels </param>
     /// <returns>output channel values</returns>
-    public abstract Matrix<double>[] EvaluateSync(Matrix<double>[] channels);
+    public abstract FeatureSet<double> EvaluateSync(FeatureSet<double> channels);
+
+    public virtual BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
+        var results = new FeatureSet<double>[features.Batches];
+        Parallel.For(0, results.Length, i => {
+            results[i] = EvaluateSync(features[i]);
+        });
+        return new BatchedFeatureSet<double>(results);
+    }
 
     public abstract void Visit(IConvolutionalLayerVisitor visitor);
     public abstract T Visit<T>(IConvolutionalLayerVisitor<T> visitor);

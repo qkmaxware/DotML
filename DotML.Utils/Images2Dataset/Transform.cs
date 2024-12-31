@@ -12,6 +12,7 @@ public abstract class Transform {
         return this;
     }
     public abstract IEnumerable<Bitmap> Apply(Bitmap original);
+    public abstract int CreatedImageCount();
 }
 
 public class Identity : Transform {
@@ -19,6 +20,8 @@ public class Identity : Transform {
         Bitmap duplicate = new Bitmap(original);
         yield return duplicate;
     }
+
+    public override int CreatedImageCount() => 1;
 }
 
 public class Scale : Transform {
@@ -73,6 +76,8 @@ public class Scale : Transform {
             yield return scaledBitmap;
         }
     }
+
+    public override int CreatedImageCount() => Scales.Length;
 }
 
 public class Rotate : Transform {
@@ -130,6 +135,8 @@ public class Rotate : Transform {
             yield return rotatedBitmap;
         }
     }
+
+    public override int CreatedImageCount() => Angles.Length;
 }
 
 public class Flip : Transform {
@@ -162,4 +169,6 @@ public class Flip : Transform {
             yield return scaledBitmap;
         }
     }
+
+    public override int CreatedImageCount() => (X ? 1 : 0) + (Y ? 1 : 0) + (XY ? 1 : 0);
 }

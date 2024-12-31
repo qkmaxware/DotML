@@ -44,21 +44,21 @@
             if (current is null || this.Network is null)
                 return;
 
-            var input = current.Input.Shape(
+            var input = new FeatureSet<double>(current.Input.Shape(
                 this.Network.InputShape
-            ).ToArray();
+            ).ToArray());
             var expected = current.Output;
 
             // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)
             this.inputs   = new Matrix<double>[this.Network.LayerCount][]; // The inputs to each layer
             this.outputs  = new Matrix<double>[this.Network.LayerCount][]; // The outputs from each layer
 
-            Matrix<double>[] layer_input = input;
+            FeatureSet<double> layer_input = input;
             for (var layerIndex = 0; layerIndex < this.Network.LayerCount; layerIndex++) {
-                inputs[layerIndex] = layer_input;
+                inputs[layerIndex] = (Matrix<double>[])layer_input;
                 var layer = this.Network.GetLayer(layerIndex);
                 var layer_output = layer.EvaluateSync(layer_input);
-                outputs[layerIndex] = layer_output;
+                outputs[layerIndex] = (Matrix<double>[])layer_output;
                 layer_input = layer_output;
             }
             var actual = layer_input;

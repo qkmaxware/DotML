@@ -24,8 +24,8 @@ public class ConvolutionalFFTest {
                 {0, 1, 1, 0, 0},
             },
         };
-        var outputs = layer.EvaluateSync(input);
-        Assert.AreEqual(1, outputs.Length);
+        var outputs = layer.EvaluateSync((FeatureSet<double>)input);
+        Assert.AreEqual(1, outputs.Channels);
         var output = outputs[0];
 
         Matrix<double> result = new double[,] {
@@ -63,8 +63,8 @@ public class ConvolutionalFFTest {
         var inputs = new Matrix<double>[] {
             input
         };
-        var outputs = layer.EvaluateSync(inputs);
-        Assert.AreEqual(1, outputs.Length);
+        var outputs = layer.EvaluateSync((FeatureSet<double>)inputs);
+        Assert.AreEqual(1, outputs.Channels);
         var output = outputs[0];
 
         Matrix<double> result = new double[,]{
@@ -95,8 +95,8 @@ public class ConvolutionalFFTest {
             {112, 100, 25, 12}
         };
 
-        var outputs = layer.EvaluateSync([input]);
-        Assert.AreEqual(1, outputs.Length);
+        var outputs = layer.EvaluateSync(new FeatureSet<double>(input));
+        Assert.AreEqual(1, outputs.Channels);
         var output = outputs[0];
 
         Matrix<double> result = new double[,] {
@@ -122,8 +122,8 @@ public class ConvolutionalFFTest {
             {112, 100, 25, 12}
         };
 
-        var outputs = layer.EvaluateSync([input]);
-        Assert.AreEqual(1, outputs.Length);
+        var outputs = layer.EvaluateSync(new FeatureSet<double>(input));
+        Assert.AreEqual(1, outputs.Channels);
         var output = outputs[0];
 
         Matrix<double> result = new double[,] {

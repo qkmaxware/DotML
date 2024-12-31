@@ -6,7 +6,6 @@ namespace DotML.Network;
 /// Generic interface for all neural network implementations
 /// </summary>
 public interface INeuralNetwork {
-
     /// <summary>
     /// The number of input values (size of input vector) allowed by this network.
     /// </summary>
@@ -35,6 +34,16 @@ public interface INeuralNetwork {
     /// <param name="input">vectorized input</param>
     /// <returns>vectorized network output</returns>
     public Vec<double> PredictSync(Vec<double> input);
+}
+
+/// <summary>
+/// Named neural network
+/// </summary>
+public interface INamedNetwork : INeuralNetwork {
+    /// <summary>
+    /// Network name
+    /// </summary>
+    public string? Name {get;}
 }
 
 /// <summary>

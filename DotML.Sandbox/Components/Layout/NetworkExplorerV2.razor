@@ -35,6 +35,9 @@
         <div style="width: calc(100% - 270px); flex-grow: 1; flex-shrink: 1;">
             <label><b>Trainer Options:</b></label>
             <div>
+                @if (Network is INamedNetwork named) {
+                    <text>Name: @named.Name, </text>
+                }
                 Parameter size: @(sizeof(double))bytes, Trainable parameters: @Network?.TrainableParameterCount(), Size on disk: @(((Network?.TrainableParameterCount() ?? 0) * sizeof(double) / 1e9).ToString("F4"))Gb
             </div>
             <div class="horizontal">
@@ -343,13 +346,15 @@
         var json = JsonSerializer.Serialize(data);
         await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "text/json", System.Text.Encoding.UTF8.GetBytes(json));
     }
-    private async void download_binary(TrainingSet? data, string name = "vectors.bin") {
+    private void download_binary(TrainingSet? data, string name = "vectors.bin") {
         if (data is null)
             return;
-        var stream = new MemoryStream();
-        var writer = new BinaryWriter(stream);
-        data.WriteTo(writer);
-        await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "application/octet-stream", stream.ToArray());
+        Task.Run(async () => {
+            var stream = new MemoryStream();
+            var writer = new BinaryWriter(stream);
+            data.WriteTo(writer);
+            await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "application/octet-stream", stream.ToArray());
+        });
     }
 
     #region Playground

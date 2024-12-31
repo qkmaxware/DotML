@@ -10,8 +10,8 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
 public struct BackpropagationArgs {
     public Vec<double> TrueLabel;
     public int LayerIndex;
-    public Matrix<double>[] Inputs;
-    public Matrix<double>[] Outputs;
+    public FeatureSet<double> Inputs;
+    public FeatureSet<double> Outputs;
     public Matrix<double>[] Errors;
 }
 public abstract class Gradients {}
@@ -111,7 +111,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         Parallel.For(0, layer.FilterCount, filterIndex => {
             var filter              = layer.Filters[filterIndex];                                                    
 
-            var gradient            = new Matrix<double>[args.Inputs.Length];
+            var gradient            = new Matrix<double>[args.Inputs.Channels];
             var error               = args.Errors[filterIndex];
             var rows                = error.Rows;
             var cols                = error.Columns;
@@ -119,7 +119,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             const int gradOut       = 1;
             var biasGradient        = 0.0;
 
-            for (var inputIndex = 0; inputIndex < args.Inputs.Length; inputIndex++) {
+            for (var inputIndex = 0; inputIndex < args.Inputs.Channels; inputIndex++) {
                 var input           = args.Inputs[inputIndex];
                 var kernel          = filter[inputIndex];
                 var kernelGradient  = new double[kernel.Rows, kernel.Columns];
@@ -158,7 +158,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             biasGradients[filterIndex] = biasGradient;
         });
 
-        var inputErrors = TransposeConvolve(args.Inputs, args.Errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filters);
+        var inputErrors = TransposeConvolve((Matrix<double>[])args.Inputs, args.Errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filters);
 
         return new BackpropagationReturns {
             Errors = inputErrors,
@@ -251,7 +251,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             gradients[inputIndex] = Matrix<double>.Wrap(kernelGradient);
         });
 
-        var inputErrors = DepthwiseTransposeConvolve(args.Inputs, args.Errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filter);
+        var inputErrors = DepthwiseTransposeConvolve((Matrix<double>[])args.Inputs, args.Errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filter);
 
         return new BackpropagationReturns {
             Errors = inputErrors,
@@ -267,7 +267,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var outputs = args.Outputs;
         var errors = args.Errors;
 
-        int batchSize = inputs.Length;
+        int batchSize = inputs.Channels;
         var inputErrors = new Matrix<double>[batchSize];
 
         var filterWidth = layer.FilterWidth;
@@ -359,8 +359,8 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
 
     public BackpropagationReturns Visit(LayerNorm layer, BackpropagationArgs args) {
         // Getting the inputs, outputs, and errors from the BackpropagationArgs
-        Matrix<double>[] inputs = args.Inputs;
-        Matrix<double>[] outputs = args.Outputs;
+        Matrix<double>[] inputs = (Matrix<double>[])args.Inputs;
+        Matrix<double>[] outputs = (Matrix<double>[])args.Outputs;
         Matrix<double>[] errors = args.Errors;
         var channels = inputs.Length;
     
@@ -408,7 +408,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var error = args.Errors[0];  
 
         Matrix<double>[] input_errors;
-        if (args.Inputs.Length == 1 && args.Inputs[0].Shape == error.Shape) {
+        if (args.Inputs.Channels == 1 && args.Inputs[0].Shape == error.Shape) {
             input_errors = [ error ];                                   // Same shape, no need to reshape
         } else {
             input_errors = error.Reshape(                               // Reshape to un-flatten error vector to match the input dimensions (in case next layer is not a fully connected layer)
@@ -449,7 +449,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             throw new ArithmeticException("Unable to reshape errors from fully connected layer to layer input dimensions during backpropagation.");
         }
         Matrix<double>[] input_errors;
-        if (args.Inputs.Length == 1 && args.Inputs[0].Shape == error_vec.Shape) {
+        if (args.Inputs.Channels == 1 && args.Inputs[0].Shape == error_vec.Shape) {
             input_errors = [ error_vec ];                                   // Same shape, no need to reshape
         } else {
             input_errors = error_vec.Reshape(                               // Reshape to un-flatten error vector to match the input dimensions (in case next layer is not a fully connected layer)
@@ -467,7 +467,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
     }
 
     public BackpropagationReturns Visit(ActivationLayer layer, BackpropagationArgs args) {
-        var input_channels = args.Inputs.Length;
+        var input_channels = args.Inputs.Channels;
         var input_gradients = new Matrix<double>[input_channels];
         var output_gradients = args.Errors;
 

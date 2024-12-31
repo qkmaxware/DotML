@@ -1,0 +1,17 @@
+#keys {
+    max-height: 60dvh;
+    overflow-y: auto;
+    width: 25%;
+}
+
+#matrix {
+    width: calc(100% - 26%);
+}
+
+.table {
+    text-align: center;
+}
+
+.table tr th:first-child {
+    border-right: 1px solid black;
+}

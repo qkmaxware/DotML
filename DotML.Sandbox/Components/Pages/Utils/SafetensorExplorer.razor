@@ -1,0 +1,141 @@
+@page "/util/safetensor-explorer"
+
+@inject IJSRuntime js
+
+<h3>Input File</h3>
+@if (load_exception is not null) {
+<div class="alert alert-danger" role="alert" style="margin-top: 12px; margin-bottom: 12px;">
+    @load_exception
+</div>
+}
+<label>Path: <small>use ctrl+right-click and "Copy as path" to get your file's path</small></label>
+<input class="form-control" @bind=file_path>
+<div style="text-align: center;" class="p-4">
+    <button class="btn btn-primary" style="width:50%;" @onclick=load_file>load</button>
+</div>
+
+<hr>
+
+<div class="p-4">
+@if (tensors is not null) {
+<div class="alert alert-primary" style="margin-top: 12px; margin-bottom: 12px;">
+    <b>Loaded: </b> @loaded_path
+</div>
+<div class="row">
+    <div id="keys">
+        <h3 style="text-align:center;">Keys</h3>
+        <ol>
+        @foreach (var key in tensors.Keys()) {
+            var self = key;
+            <li>
+                <button class="btn" style="text-align: left;" @onclick=@(() => show_matrix(self))>
+                    @key
+                    <br>
+                    <small>@tensors.TypeOf(key)</small> <small>@tensors.ShapeOf(key)</small>
+                </button>
+            </li>
+        }
+        </ol>
+    </div>
+    <div id="matrix">
+        <h3 style="text-align:center;">Tensor '@displayed_key' <button class="btn" @onclick=compute_statistics>statistics</button></h3>
+        @if (displayed.HasValue) {
+        <div style="width: 100%; overflow-x: auto; white-space: nowrap;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        @for (var c = 0; c < displayed.Value.Columns; c++) {
+                            <th scope="col">@c</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var r = 0; r < displayed.Value.Rows; r++) {
+                        <tr>
+                            <th scope="row">@r</th>
+                            @for (var c = 0; c < displayed.Value.Columns; c++) {
+                                <td>@displayed.Value[r,c]</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        }
+    </div>
+</div>
+}
+</div>
+
+@code {
+
+    private Exception? load_exception;
+    private Safetensors? tensors;
+
+    private string? file_path;
+    private string? loaded_path;
+    private void load_file() {
+        tensors = null;
+        load_exception = null;
+        displayed = null;
+        displayed_key = string.Empty;
+
+        var path = file_path;
+        if (path is null)
+            return;
+
+        if (path.StartsWith("\"") && path.EndsWith("\"")) {
+            path = path.Substring(1, path.Length - 2);
+        }
+
+        try {
+            using var stream = File.OpenRead(path);
+            using var reader = new BinaryReader(stream);
+
+            tensors = Safetensors.ReadFrom(reader);
+
+            loaded_path = path;
+        } catch (Exception ex) {
+            this.load_exception = ex;
+            tensors = null;
+        }
+    }
+
+    private Matrix<double>? displayed;
+    private string? displayed_key;
+    private void show_matrix(string key) {
+        if (tensors is null)
+            return;
+
+        try {
+            var matrix = tensors.GetTensor<double>(key);
+            displayed = matrix;
+            displayed_key = key;
+        } catch {
+            displayed = null;
+        }
+    }
+
+    private async void compute_statistics () {
+        if (!displayed.HasValue || js is null)
+            return ;
+
+        var values = displayed.Value.Order().ToArray();
+        if (values.Length < 1)
+            return;
+        var mean = values.Sum() / values.Length;
+        var median = 0.0;
+        if (values.Length % 2 != 0) {
+            median = values[values.Length / 2];
+        }
+        else {
+            median = (values[(values.Length - 1) / 2] + values[values.Length / 2]) / 2.0;
+        }
+        var variance = values.Select(x => (x - mean)*(x-mean)).Sum() / values.Length;
+        var std_deviation = Math.Sqrt(variance);
+
+        await js.InvokeVoidAsync("alert", $"min:             {values[0]}\nmax:             {values[^1]}\nmean:            {mean}\nmedian:         {median}\nvariance:        {variance}\nstd deviation: {std_deviation}");
+    }
+
+}

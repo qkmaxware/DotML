@@ -67,7 +67,7 @@ public class PerformanceTest {
             new SoftmaxLayer         (OUT_CLASSES)
         );
 
-        var _result = alexNet.PredictSync(img);
+        var _result = alexNet.PredictSync((FeatureSet<double>)img);
     }
 
     [TestMethod]
@@ -75,7 +75,7 @@ public class PerformanceTest {
         Matrix<double>[] img = [new Matrix<double>(IMG_HEIGHT, IMG_WIDTH), new Matrix<double>(IMG_HEIGHT, IMG_WIDTH), new Matrix<double>(IMG_HEIGHT, IMG_WIDTH)];
         var layer = new ConvolutionLayer        (input_size: new Shape3D(3, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11));
 
-        var _result = layer.EvaluateSync(img);
+        var _result = layer.EvaluateSync((FeatureSet<double>)img);
     }
 
     [TestMethod]
@@ -83,7 +83,7 @@ public class PerformanceTest {
         var img = Enumerable.Range(0, 96).Select(x => new Matrix<double>(IMG_HEIGHT, IMG_WIDTH)).ToArray();
         var layer = new LocalMaxPoolingLayer    (new Shape3D(), size: 3, stride: 2);
 
-        var _result = layer.EvaluateSync(img);
+        var _result = layer.EvaluateSync((FeatureSet<double>)img);
     }
 
     [TestMethod]
@@ -91,7 +91,7 @@ public class PerformanceTest {
         var matrix = new Matrix<double>(9216,1);
         var layer = new FullyConnectedLayer     (9216, 4096);
 
-        var _result = layer.EvaluateSync([matrix]);
+        var _result = layer.EvaluateSync(new FeatureSet<double>(matrix));
     }
 
     [TestMethod]
@@ -99,7 +99,7 @@ public class PerformanceTest {
         var matrix = new Matrix<double>(1024,1024);
         var layer = new ActivationLayer(matrix.Shape, HyperbolicTangent.Instance);
 
-        var _result = layer.EvaluateSync([matrix]);
+        var _result = layer.EvaluateSync(new FeatureSet<double>(matrix));
     }
 
 }

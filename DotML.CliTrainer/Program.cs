@@ -44,7 +44,8 @@ public static void Main() {
     #endregion
 
     #region Trainer
-    DefaultValidationReport report = new DefaultValidationReport();
+    var validation_report = new DefaultValidationReport();
+    var performance_report = new DefaultPerformanceReport();
     var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
         Epochs = 100,
         LearningRate = 0.001,
@@ -54,7 +55,8 @@ public static void Main() {
         BatchSize = 8,
         EnableGradientClipping = false,
         ClippingThreshold = 5.0,
-        ValidationReport = report,
+        ValidationReport = validation_report,
+        PerformanceReport = performance_report
     };
     Console.WriteLine("Trainer configured: " + trainer.GetType().Name);
     using (var trainer_prop_writer = new StreamWriter($"{filename_root}trainer.yaml")) {
@@ -165,6 +167,7 @@ public static void Main() {
     using var report_writer = new StreamWriter(filename);
     report_writer.WriteLine("epoch, min-loss, max-loss, average-loss, tests-passed, tests-failed");
     report_writer.Flush();
+    
     while (has_next) {
         Console.Write("    ");
         Console.Write($"Epoch{session.CurrentEpoch + 1:000}: ");
@@ -185,24 +188,35 @@ public static void Main() {
         Console.SetCursorPosition(position.Left, position.Top);
         var status_char = ' ';
         if (min_loss.HasValue) {
-            if (report.AverageLoss < min_loss.Value) {
+            if (validation_report.AverageLoss < min_loss.Value) {
                 Console.ForegroundColor = ConsoleColor.Green;
-                min_loss = report.AverageLoss;
+                min_loss = validation_report.AverageLoss;
                 status_char = '+';
-            } else if (report.AverageLoss > min_loss.Value) {
+            } else if (validation_report.AverageLoss > min_loss.Value) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 status_char = '-';
             }
         } else {
-            min_loss = report.AverageLoss;
+            min_loss = validation_report.AverageLoss;
         }
-        Console.Write($"{status_char} {report.TestsPassedCount}/{report.TestCount} passed, {elapsed} elapsed, {report.AverageLoss} loss, ");
-        report_writer.WriteLine($"{session.CurrentEpoch}, {report.MinLoss}, {report.MaxLoss}, {report.AverageLoss}, {report.TestsPassedCount}, {report.TestsFailedCount}");
+        Console.Write($"{status_char} {validation_report.TestsPassedCount}/{validation_report.TestCount} passed, {elapsed} elapsed, {validation_report.AverageLoss} loss, ");
+        report_writer.WriteLine($"{session.CurrentEpoch}, {validation_report.MinLoss}, {validation_report.MaxLoss}, {validation_report.AverageLoss}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}");
         report_writer.Flush();
         var epochfname = $"{filename_root}epoch-{session.CurrentEpoch}.safetensors";
         network.ToSafetensor().WriteToFile(epochfname);
         Console.WriteLine($"weights '{epochfname}'");
         Console.ForegroundColor = reset_colour;
+
+        // Emit performance metrics, always re-write and not append (unlike the validation report)
+        if (performance_report is not null) {
+            using (var performance_writer = new StreamWriter($"{filename_root}benchmark.csv")) {
+                performance_writer.WriteLine("benchmark, min-time (s), max-time (s), average-time (s), total-time (s), sample-size");
+                
+                foreach (var metric in performance_report.Benchmarks.OrderBy(x => x.Name)) {
+                    performance_writer.WriteLine($"{metric.Name}, {metric.Min.TotalSeconds}, {metric.Max.TotalSeconds}, {metric.Average.TotalSeconds}, {metric.Sum.TotalSeconds}, {metric.Count}");
+                }
+            }
+        }
     }
     #endregion
 

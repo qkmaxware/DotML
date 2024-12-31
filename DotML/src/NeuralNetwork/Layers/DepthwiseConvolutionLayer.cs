@@ -115,8 +115,8 @@ public class DepthwiseConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
         return Matrix<double>.Wrap(output);
     }
 
-    public override Matrix<double>[] EvaluateSync(Matrix<double>[] channels) {
-        var len = channels.Length;
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
+        var len = channels.Channels;
         var outputs = new Matrix<double>[len];
 
         Parallel.For(0, len, i => {
@@ -126,7 +126,7 @@ public class DepthwiseConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
             outputs[i] = Convolve(channel, kernel);
         });
 
-        return outputs;
+        return (FeatureSet<double>)outputs;
     }
 
     public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);

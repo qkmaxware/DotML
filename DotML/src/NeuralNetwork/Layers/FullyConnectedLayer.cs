@@ -135,13 +135,13 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
         return channels.Select(c => c.Size).Sum() == inputs;
     }
 
-    public override Matrix<double>[] EvaluateSync(Matrix<double>[] inputs) {
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
         // input is a 2D matrix processed from prior layers like a pooling layer
-        var x = inputs.Length == 1 && inputs[0].IsColumn ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
+        var x = inputs.Channels == 1 && inputs[0].IsColumn ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
         //var x = Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray()); 
         var mul  = Weights * x; 
         AddMatVecInplace(mul, mul, bias_values);
-        return [ mul ]; 
+        return new FeatureSet<double>(mul); 
         //var biased = mul + Matrix<double>.Column(bias_values); 
         //var activated = this.ActivationFunction.Invoke(biased);
         //return [ activated ];

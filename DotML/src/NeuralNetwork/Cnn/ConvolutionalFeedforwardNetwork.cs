@@ -10,6 +10,7 @@ namespace DotML.Network;
 /// Base class representing a convolutional neural network (CNN)
 /// </summary>
 public class ConvolutionalFeedforwardNetwork: 
+    INamedNetwork,
     ILayeredNeuralNetwork<IConvolutionalFeedforwardNetworkLayer>, 
     IDiagrammable, ISafetensorable, IMarkdownable, IHtmlable
 {
@@ -80,11 +81,11 @@ public class ConvolutionalFeedforwardNetwork:
         }
     }
 
-    public Vec<double> PredictSync(Matrix<double>[] values) {
+    public Vec<double> PredictSync(FeatureSet<double> values) {
         var ishape = this.InputShape;
 
-        if (values.Length != ishape.Channels) {
-            throw new ArgumentException($"Invalid number of channels for input. Expected {ishape.Channels}, got {values.Length}.");
+        if (values.Channels != ishape.Channels) {
+            throw new ArgumentException($"Invalid number of channels for input. Expected {ishape.Channels}, got {values.Channels}.");
         }
         foreach (var matrix in values) {
             if (matrix.Columns != ishape.Columns)
@@ -93,11 +94,11 @@ public class ConvolutionalFeedforwardNetwork:
                 throw new ArgumentException($"Invalid channel height. Expected {ishape.Rows}, got {matrix.Rows}.");
         }
 
-        Matrix<double>[] input = values;
+        FeatureSet<double> input = values;
         var layer_index = 0;
         foreach (var layer in this.layers) {
-            if (!layer.DoesShapeMatchInputShape(input))
-                throw new ArithmeticException($"Input of shape {input.Length}x{input.FirstOrDefault().Rows}x{input.FirstOrDefault().Columns} is incompatible with layer {layer_index} input's of shape {layer.InputShape}.");
+            if (!layer.DoesShapeMatchInputShape((Matrix<double>[])input))
+                throw new ArithmeticException($"Input of shape {input.Channels}x{input.FirstOrDefault().Rows}x{input.FirstOrDefault().Columns} is incompatible with layer {layer_index} input's of shape {layer.InputShape}.");
             input = layer.EvaluateSync(input);
             layer_index++;
         }
@@ -106,17 +107,17 @@ public class ConvolutionalFeedforwardNetwork:
 
     public Vec<double> PredictSync(Vec<double> input) {
         var ishape = this.InputShape;
-        return PredictSync(input.Shape(
+        return PredictSync((FeatureSet<double>)(input.Shape(
             new Shape2D(ishape.Rows, ishape.Columns), 
                 ishape.Channels
-            ).ToArray()
+            ).ToArray())
         ); 
     }
 
     /// <summary>
     /// Network name, can be used to identify networks or their configuration
     /// </summary>
-    private string? Name {get; set;}
+    public string? Name {get; set;}
 
     /// <summary>
     /// Load the weights of the network from the given safetensors

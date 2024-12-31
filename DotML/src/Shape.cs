@@ -12,6 +12,65 @@ namespace DotML;
 /// <summary>
 /// 3d or tensor shape
 /// </summary>
+public struct Shape4D {
+    public readonly int Batches;
+    public readonly int Channels;
+    /// <summary>
+    ///  Number of rows
+    /// </summary>
+    public readonly int Rows; 
+    /// <summary>
+    /// Number of columns
+    /// </summary>
+    public readonly int Columns;
+    /// <summary>
+    /// Total number of tensor elements contained in the shape
+    /// </summary>
+    public readonly int Count => Channels * Rows * Columns;
+
+    public Shape4D() {}
+
+    public Shape4D(int batches, int channel, int rows, int columns) {
+        this.Batches = batches;
+        this.Channels = channel;
+        this.Rows = rows;
+        this.Columns = columns;
+    }
+
+    public static bool operator == (Shape4D a, Shape4D b) {
+        return a.Batches == b.Batches && a.Channels == b.Channels && a.Rows == b.Rows && a.Columns == b.Columns;
+    }
+    public static bool operator != (Shape4D a, Shape4D b) {
+        return a.Batches != b.Batches || a.Channels != b.Channels || a.Rows != b.Rows || a.Columns != b.Columns;
+    }
+    public override bool Equals([NotNullWhen(true)] object? obj) {
+        return obj is Shape4D s && this.Batches == s.Batches && this.Columns == s.Columns && this.Rows == s.Rows && this.Columns == s.Columns;
+    }
+    public override int GetHashCode() {
+        return HashCode.Combine(this.Batches, this.Channels, this.Rows, this.Columns);
+    }
+
+    public static implicit operator Shape4D((int, int, int, int) tuple) {
+        return new Shape4D(tuple.Item1, tuple.Item2, tuple.Item3, tuple.Item4);
+    }
+
+    public static implicit operator Shape3D[](Shape4D shape) {
+        return Enumerable.Range(0, shape.Channels).Select(x => new Shape3D(shape.Channels, shape.Rows, shape.Columns)).ToArray();
+    }
+
+    public void Deconstruct(out int batches, out int channels, out int rows, out int columns) {
+        batches = this.Batches;
+        channels = this.Channels;
+        rows = this.Rows;
+        columns = this.Columns;
+    }
+
+    public override string ToString() => $"{Batches}x{Channels}x{Rows}x{Columns}";
+}
+
+/// <summary>
+/// 3d or tensor shape
+/// </summary>
 public struct Shape3D {
     public readonly int Channels;
     /// <summary>

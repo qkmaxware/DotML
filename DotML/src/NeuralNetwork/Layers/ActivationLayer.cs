@@ -21,13 +21,13 @@ public class ActivationLayer : ConvolutionalFeedforwardNetworkLayer {
 
     public override int TrainableParameterCount() => 0;
 
-    public override Matrix<double>[] EvaluateSync(Matrix<double>[] channels) {
-        var len = channels.Length;
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
+        var len = channels.Channels;
         Matrix<double>[] outputs = new Matrix<double>[len];
         Parallel.For(0, len, i => {
             outputs[i] = channels[i].Transform(ActivationFunction.Invoke);
         });
-        return outputs;
+        return (FeatureSet<double>)outputs;
     }
 
     public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
