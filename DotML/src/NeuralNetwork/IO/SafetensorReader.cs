@@ -69,6 +69,15 @@ public class LayerSafetensorReader : IConvolutionalLayerVisitor<int, bool> {
     }
 
     public bool Visit(BatchNorm norm, int layerIndex) {
+        var mean_key = $"Layers[{layerIndex}].Means";
+        if (sb.ContainsKey(mean_key)) {
+            norm.RunningMean = Vec<double>.Wrap(sb.GetTensor<double>(mean_key).FlattenRows().ToArray());
+        }
+        var variance_key = $"Layers[{layerIndex}].Variance";
+        if (sb.ContainsKey(variance_key)) {
+            norm.RunningVariance = Vec<double>.Wrap(sb.GetTensor<double>(variance_key).FlattenRows().ToArray());
+        }
+        
         var gammas = norm.Gammas;
         for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
             var key = $"Layers[{layerIndex}].Gamma[{gammaIndex}]";

@@ -42,6 +42,12 @@ public abstract class ConvolutionalFeedforwardNetworkLayer : IConvolutionalFeedf
     public abstract int TrainableParameterCount();
 
     /// <summary>
+    /// Number of un-trainable parameters in this layer
+    /// </summary>
+    /// <returns>Number of un-trainable parameters</returns>
+    public virtual int UnTrainableParameterCount() => 0;
+
+    /// <summary>
     /// Evaluate the output of the layer when applied to the given input image
     /// </summary>
     /// <param name="channels">Input image represented in channels </param>

@@ -10,5 +10,5 @@
 | Fully Connected (Dense) Layer | Apply fully connected weights and biases | Tested & Working |
 | Pooling Layer (max/avg) | Apply feature pooling | Tested & Working |
 | Softmax Layer | Apply softmax activation function (only use as last layer with cross-entropy loss) | Tested & Working |
-| Batch Normalization | | WIP |
-| Layer Normalization | | WIP |
+| Batch Normalization | Perform normalization across all batches | WIP |
+| Layer Normalization | Perform normalization across the layer | WIP |

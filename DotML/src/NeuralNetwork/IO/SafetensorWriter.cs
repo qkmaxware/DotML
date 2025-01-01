@@ -52,6 +52,8 @@ public class LayerSafetensorWriter : IConvolutionalLayerVisitor<int, bool> {
     }
 
     public bool Visit(BatchNorm norm, int layerIndex) {
+        sb.Add($"Layers[{layerIndex}].Means", norm.RunningMean);
+        sb.Add($"Layers[{layerIndex}].Variance", norm.RunningVariance);
         var gammas = norm.Gammas;
         for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
             var kernel = gammas[gammaIndex];

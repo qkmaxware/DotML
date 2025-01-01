@@ -13,6 +13,8 @@ public class DropoutLayer : ConvolutionalFeedforwardNetworkLayer {
     public double DropoutRate {get; init;}
     public double KeepRate => 1 - DropoutRate;
 
+    public DropoutLayer(Shape3D input_size) : this(input_size, 0.1) {}
+    
     public DropoutLayer(Shape3D input_size, double dropoutRate) {
         this.InputShape = input_size;
         this.OutputShape = input_size;

@@ -19,6 +19,12 @@ public interface ILayer {
     /// </summary>
     /// <returns>Number of trainable parameters</returns>
     public int TrainableParameterCount();
+
+    /// <summary>
+    /// Number of un-trainable parameters in this layer
+    /// </summary>
+    /// <returns>Number of un-trainable parameters</returns>
+    public int UnTrainableParameterCount();
 }
 
 public interface ILayerWithNeurons : ILayer {

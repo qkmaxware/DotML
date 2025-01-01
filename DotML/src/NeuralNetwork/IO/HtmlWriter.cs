@@ -11,7 +11,7 @@ public class LayerHtmlWriter : LayerWriter {
         sb.WriteLine("<table>");
         sb.WriteLine("<thead>");
         sb.WriteLine("<tr>");
-        sb.Write("<th>");sb.Write("Layer Type"); sb.Write("</th><th>"); sb.Write("Output Shape"); sb.Write("</th><th>"); sb.Write("Parameters"); sb.Write("</th><th>"); sb.Write("Description"); sb.WriteLine("</th>");
+        sb.Write("<th>");sb.Write("Layer Type"); sb.Write("</th><th>"); sb.Write("Output Shape"); sb.Write("</th><th>"); sb.Write("Trainable Parameters"); sb.Write("</th><th>"); sb.Write("Un-trainable Parameters"); sb.Write("</th><th>"); sb.Write("Description"); sb.WriteLine("</th>");
         sb.WriteLine("</tr>");
         sb.WriteLine("</thead>");
         sb.WriteLine("<tbody>");
@@ -24,16 +24,18 @@ public class LayerHtmlWriter : LayerWriter {
 
     protected override void WriteInputLayer(IConvolutionalFeedforwardNetworkLayer first) {
         sb.WriteLine("<tr>");
-        sb.Write("<td>");
-            sb.Write("Input");
-        sb.Write("</td><td>");
-            sb.Write(first.InputShape);
-        sb.Write("</td><td>");
-            sb.Write(string.Empty);
-        sb.Write("</td><td>");
-            sb.Write("Input image/tensor");
-        sb.Write("</td>");
-            sb.WriteLine("</tr>");
+            sb.Write("<td>");
+                sb.Write("Input");
+            sb.Write("</td><td>");
+                sb.Write(first.InputShape);
+            sb.Write("</td><td>");
+                sb.Write(string.Empty);
+            sb.Write("</td><td>");
+                sb.Write(string.Empty);
+            sb.Write("</td><td>");
+                sb.Write("Input image/tensor");
+            sb.Write("</td>");
+        sb.WriteLine("</tr>");
     }
 
     protected override void WriteLayerRow(IConvolutionalFeedforwardNetworkLayer layer, string description) {
@@ -44,6 +46,8 @@ public class LayerHtmlWriter : LayerWriter {
             sb.Write(layer.OutputShape);
         sb.Write("</td><td>");
             sb.Write(layer.TrainableParameterCount());
+        sb.Write("</td><td>");
+            sb.Write(layer.UnTrainableParameterCount());
         sb.Write("</td><td>");
             sb.Write(description);
         sb.Write("</td>");

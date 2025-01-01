@@ -184,6 +184,12 @@ public class NeuronLayer : ILayerWithNeurons, ILayerWithVectorOutput {
     public int TrainableParameterCount() => InputShape.Count * OutputShape.Count + OutputShape.Count; // Weights + Biases
 
     /// <summary>
+    /// Number of un-trainable parameters in this layer
+    /// </summary>
+    /// <returns>Number of un-trainable parameters</returns>
+    public int UnTrainableParameterCount() => 0;
+
+    /// <summary>
     /// Get a reference to a specific neuron
     /// </summary>
     /// <param name="index">neuron index</param>

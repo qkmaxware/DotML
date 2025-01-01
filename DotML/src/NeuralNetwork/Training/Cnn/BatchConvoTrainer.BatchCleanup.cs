@@ -25,7 +25,9 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
 
         public void Visit(LayerNorm layer) {}
 
-        public void Visit(BatchNorm layer) {}
+        public void Visit(BatchNorm layer) {
+            layer.IsTrainingMode = false;
+        }
 
         public void Visit(FullyConnectedLayer layer) { }
 

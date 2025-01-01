@@ -8,7 +8,7 @@ public class LayerMarkdownWriter : LayerWriter{
     public LayerMarkdownWriter(TextWriter writer) : base(writer) { }
 
     protected override void WriteHeader() {
-        sb.Write('|'); sb.Write("Layer Type"); sb.Write('|'); sb.Write("Output Shape"); sb.Write('|'); sb.Write("Parameters"); sb.Write('|'); sb.Write("Description"); sb.Write('|'); sb.WriteLine();
+        sb.Write('|'); sb.Write("Layer Type"); sb.Write('|'); sb.Write("Output Shape"); sb.Write('|'); sb.Write("Trainable Parameters"); sb.Write('|'); sb.Write("Un-trainable Parameters"); sb.Write('|'); sb.Write("Description"); sb.Write('|'); sb.WriteLine();
         sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.WriteLine();
     }
 
@@ -24,6 +24,8 @@ public class LayerMarkdownWriter : LayerWriter{
         sb.Write('|');
             sb.Write(string.Empty);
         sb.Write('|');
+            sb.Write(string.Empty);
+        sb.Write('|');
             sb.Write("Input image/tensor");
         sb.Write('|');
             sb.WriteLine();
@@ -36,6 +38,8 @@ public class LayerMarkdownWriter : LayerWriter{
             sb.Write(layer.OutputShape);
         sb.Write('|');
             sb.Write(layer.TrainableParameterCount());
+        sb.Write('|');
+            sb.Write(layer.UnTrainableParameterCount());
         sb.Write('|');
             sb.Write(description);
         sb.Write('|');

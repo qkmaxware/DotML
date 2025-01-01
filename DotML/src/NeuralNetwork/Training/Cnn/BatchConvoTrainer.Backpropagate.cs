@@ -425,33 +425,58 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var means = new double[args.InputBatch.Channels];
         var variances = new double[args.InputBatch.Channels];
 
-        for (var channelIndex = 0; channelIndex < variances.Length; channelIndex++) {
-            var mean = args.InputBatch.SelectMany(featureSet => featureSet[channelIndex]).Average();
-            var variance = args.InputBatch.SelectMany(featureSet => featureSet[channelIndex]).Select(x => Math.Pow(x - mean, 2)).Average();
+        if (args.InputBatch.Batches < 2) {
+            means = (double[])layer.RunningMean;
+            variances = (double[])layer.RunningVariance;
+        } 
+        else {
+            for (var channelIndex = 0; channelIndex < variances.Length; channelIndex++) {
+                double sum = 0.0;
+                double sumSq = 0.0;
+                int count = 0;
 
-            means[channelIndex] = mean;
-            variances[channelIndex] = variance;
+                foreach (var featureSet in args.InputBatch) {
+                    var matrix = featureSet[channelIndex];
+                    var rows = matrix.Rows;
+                    var cols = matrix.Columns;
+                    for (int i = 0; i < rows; i++) {
+                        for (int j = 0; j < cols; j++) {
+                            double value = matrix[i, j];
+                            sum += value;
+                            sumSq += value * value;
+                            count++;
+                        }
+                    }
+                }
+
+                count = Math.Max(count, 1); // Avoid division by zero
+                double mean = sum / count;
+                double variance = (sumSq / count) - (mean * mean);
+
+                means[channelIndex] = mean;
+                variances[channelIndex] = variance;
+            }
         }
 
         // Process each channel
-        Parallel.For(0, channels, i => {
-            var xHat = outputs[i];
-            var input = inputs[i];
-            var gamma = layer.Gammas[i];
-            var error = errors[i];
+        Parallel.For(0, channels, channelIndex => {
+            var xHat = outputs[channelIndex];
+            var input = inputs[channelIndex];
+            var gamma = layer.Gammas[channelIndex];
+            var error = errors[channelIndex];
 
-            gammaGradients[i] = error.Hadamard(xHat);
-            betaGradients[i] = error;
+            gammaGradients[channelIndex] = error.Hadamard(xHat);
+            betaGradients[channelIndex] = error;
 
-            var mean = means[channels];
-            var variance = variances[channels];
+            var mean = means[channelIndex];
+            var variance = variances[channelIndex];
             var denom = Math.Sqrt(variance + epsilon);
             
             // error * gamma * (x-u)/sqrt(variance^2 + e)
             var inputError = error.Hadamard(gamma);                             // error * gamma
             var imean = input.Transform(x => (x - mean) / denom);               // (x - mean) / sqrt(variance^2 + e)
             Matrix<double>.HadamardInplace(inputError, inputError, imean);      // error * gamma * (x-u)/sqrt(variance^2 + e)
-            inputErrors[i] = inputError;
+            inputErrors[channelIndex] = inputError;
         });
 
         clip(gammaGradients, GradientClippingThresholdWeight);
