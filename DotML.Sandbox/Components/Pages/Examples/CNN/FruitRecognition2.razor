@@ -62,14 +62,7 @@
 
     */
     // https://github.com/danilojodas/MobileNet/blob/master/MobileNet.ipynb
-    private ConvolutionalFeedforwardNetwork network = LeNet.Make(
-        LeNet.Version.V5, 
-        output_classes: OUT_CLASSES,
-        img_channels: IMG_CHANNELS,
-        img_width: IMG_WIDTH,
-        img_height: IMG_HEIGHT,
-        activation: ReLU.Instance
-    ); //MobileNet.Make(MobileNet.Version.V1, OUT_CLASSES);
+    private ConvolutionalFeedforwardNetwork network = MobileNet.Make(MobileNet.Version.V1, OUT_CLASSES);
 
     private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
         LearningRate = 0.001,
@@ -77,7 +70,8 @@
         LossFunction = LossFunctions.CrossEntropy,
         NetworkInitializer = new HeInitialization(),
         BatchSize = 6,
-        EnableGradientClipping = true
+        EnableGradientClipping = true,
+        ValidationReport = new DefaultValidationReportWithBreakdown()
     };
 
     private static TrainingSet? training = null;
@@ -87,6 +81,14 @@
     static FruitRecognition2(){
         // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
         training = ResourceLoader.LoadBinaryVectors(["data/Fruits/fruits.augmented.224x224.zip"], OUT_CLASSES, 0.0, 1.0, (reader) => vectorize(reader.ReadByte()));
+        /*int max_apple   = 3;
+        int max_orange  = 3;
+        int max_banana  = 3;
+        training = training.SplitWhen(
+            (args) => args.Set.Size < max_apple && args.Value.Output[0] == 1.0,
+            (args) => args.Set.Size < max_banana && args.Value.Output[1] == 1.0,
+            (args) => args.Set.Size < max_orange && args.Value.Output[2] == 1.0
+        ).Aggregate((set_a, set_b) => new TrainingSet(set_a, set_b));*/
         testing = training; 
 
         //weights = ResourceLoader.LoadSafetensors("data/Fruits/fruitrecognizer.tanh.safetensors");

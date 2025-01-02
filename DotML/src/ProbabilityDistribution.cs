@@ -24,6 +24,16 @@ public struct ProbabilityDistribution
     }
 
     /// <summary>
+    /// Maximum recorded probability
+    /// </summary>
+    public double MaxProbability => values is null || values.Length < 1 ? 0 : values.Max();
+
+    /// <summary>
+    /// Minimum recorded probability
+    /// </summary>
+    public double MinProbability => values is null || values.Length < 1 ? 0 : values.Min();
+
+    /// <summary>
     /// Get the label for a particular category
     /// </summary>
     /// <returns>category label or nothing if there is no label</returns>

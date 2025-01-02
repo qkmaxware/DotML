@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Dynamic;
 
 namespace DotML.Network.Training;
 
@@ -164,10 +165,31 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
         this.data = [..data];
     }
 
+    /// <summary>
+    /// Add a pair to the training set
+    /// </summary>
+    /// <param name="pair">training pair</param>
     public void Add(TrainingPair pair) => data.Add(pair);
+
+    /// <summary>
+    /// Add an input/output pair to the training set
+    /// </summary>
+    /// <param name="input">training pair input</param>
+    /// <param name="output">training pair output</param>
     public void Add(Vec<double> input, Vec<double> output) => data.Add(new TrainingPair{ Input = input, Output = output});
+    
+    /// <summary>
+    /// Add a range of training pairs to the training set
+    /// </summary>
+    /// <param name="items">training pairs</param>
     public void AddRange(IEnumerable<TrainingPair> items) => data.AddRange(items);
 
+    /// <summary>
+    /// Get a particular training pair from the set
+    /// </summary>
+    /// <param name="index">index of the pair</param>
+    /// <returns>training pair</returns>
+    /// <exception cref="IndexOutOfRangeException">Thrown when the index is out of range</exception>
     public TrainingPair this[int index] {
         get {
             if (index < 0 || index >= data.Count) {
@@ -176,6 +198,10 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
             return this.data[index];
         }
     }
+
+    /// <summary>
+    /// Number of elements in the training set
+    /// </summary>
     public int Size => this.data.Count;
 
     /// <summary>
@@ -204,16 +230,84 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// Split the data into groups as evenly distributed as possible
     /// </summary>
     /// <param name="groupCount">number of groups</param>
-    /// <returns>groups</returns>
-    public IEnumerable<IEnumerable<TrainingPair>> SplitEvenly(int groupCount) {
+    /// <returns>group of training sets</returns>
+    public IEnumerable<TrainingSet> SplitEvenly(int groupCount) {
         int totalCount = this.Size;
         int groupSize = (int)(Math.Ceiling((double)totalCount / (double)groupCount));
 
         int startIndex = 0;
         for (int i = 0; i < groupCount; i++) {
-            yield return this.Skip(startIndex).Take(groupSize);
+            yield return new TrainingSet(this.Skip(startIndex).Take(groupSize));
             startIndex += groupSize;
         }
+    }
+
+    /// <summary>
+    /// Split the data into multiple groups with elements from the group being determined by the conditions
+    /// </summary>
+    /// <param name="conditions">group conditions</param>
+    /// <returns>group of training sets</returns>
+    public IEnumerable<TrainingSet> SplitWhen(params Predicate<(TrainingSet Set, TrainingPair Value)>[] conditions) {
+        TrainingSet[] sets = new TrainingSet[conditions.Length];
+        for(var i = 0; i < sets.Length; i++)
+            sets[i] = new TrainingSet();
+
+        foreach (var pair in this.data) {
+            for (var i = 0; i < conditions.Length; i++) {
+                var condition = conditions[i];
+                var set = sets[i];
+                if (condition((set, pair))) {
+                    set.Add(pair);
+                    break;
+                }
+            }
+        }
+        
+        foreach (var set in sets)
+            yield return set;
+    }
+
+    private static Random rng = new Random();
+    /// <summary>
+    /// Split the data into multiple groups based on a flex system. 
+    /// Flex 1, 1 would be a 50/50 split because each would contain 1 element out of a total span of 1+1 = 2 elements.
+    /// 
+    /// Common flex values: 
+    /// - (1, 1) = 50%/50%
+    /// - (1, 2) = 33%/66%
+    /// - (1, 3) = 25%/75%
+    /// </summary>
+    /// <param name="flex">list of flex probabilities</param>
+    /// <returns>group of training sets</returns>
+    public IEnumerable<TrainingSet> SplitProbabilistically(params int[] flex) {
+        for (var i = 0; i < flex.Length; i++) {
+            if (flex[i] <= 0)
+                throw new ArgumentException("Flex values must be greater than 0");
+        }
+
+        TrainingSet[] sets = new TrainingSet[flex.Length];
+        for(var i = 0; i < sets.Length; i++)
+            sets[i] = new TrainingSet();
+
+        var sum = flex.Sum();
+
+        foreach (var pair in this.data) {
+            var r = rng.Next();
+            var current_probability = 0.0;
+            var set_index = 0;
+
+            foreach (var ratio in flex) {
+                current_probability += (double)ratio / (double)sum;
+                if (r < current_probability) {
+                    sets[set_index].Add(pair);
+                    break;
+                }
+                set_index++;
+            }
+        }
+
+        foreach (var set in sets)
+            yield return set;
     }
 
     // Not super useful in this class, but necessary if other utility programs create training data dumps

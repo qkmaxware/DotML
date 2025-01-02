@@ -4,16 +4,23 @@
             <th></th>
             <th>Letter</th>
             <th>Probability</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
     @{
         var max = Output.IndexOfMaxValue();
         var distribution = new ProbabilityDistribution(Output, ClassNames);
+        var maxprob = distribution.MaxProbability; 
+        var minprob = distribution.MinProbability; 
         foreach (var prob in distribution.EnumerateProbabilities()) {
+            var prob_bar = (prob.Probability - minprob) / (maxprob - minprob);
             <tr>
                 <td>@if(max == prob.Index){<text>&checkmark;</text>}</td>
                 <td>@prob.Label</td>
+                <td>
+                    <progress style="width: 100%" value="@(prob_bar * 100)" min="0" max="100"></progress>
+                </td>
                 <td>@((prob.Probability * 100).ToString("F3"))%</td>
             </tr>
         }
