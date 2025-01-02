@@ -292,7 +292,7 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
         var sum = flex.Sum();
 
         foreach (var pair in this.data) {
-            var r = rng.Next();
+            var r = rng.NextDouble();
             var current_probability = 0.0;
             var set_index = 0;
 
