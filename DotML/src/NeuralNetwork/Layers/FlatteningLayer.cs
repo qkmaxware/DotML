@@ -5,7 +5,7 @@ using DotML.Network.Initialization;
 namespace DotML.Network;
 
 /// <summary>
-/// Layer which flattens inputs into a column vector 
+/// Layer which flattens inputs into a column vector (not-necessary as FullConnectedLayer will auto-flatten)
 /// </summary>
 [Untested()]
 public class FlatteningLayer : ConvolutionalFeedforwardNetworkLayer {

@@ -9,7 +9,6 @@ namespace DotML.Network;
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
 [Untested]
-[WorkInProgress]
 public class BatchNorm : ConvolutionalFeedforwardNetworkLayer {
 
     private double running_mean_momentum = 0.9;
