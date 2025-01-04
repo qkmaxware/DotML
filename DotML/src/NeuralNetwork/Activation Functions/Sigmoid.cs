@@ -3,6 +3,9 @@ namespace DotML.Network;
 /// <summary>
 /// Sigmoid activation function
 /// </summary>
+/// <remarks>
+/// Sigmoid(x) = 1 / (1 + e^-x)
+/// </remarks>
 public class Sigmoid : ActivationFunction {
     public static readonly ActivationFunction Instance = new Sigmoid();
 

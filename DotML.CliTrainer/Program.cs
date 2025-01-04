@@ -15,8 +15,7 @@ public static void Main() {
 
     #region Network
 
-    var network = LeNet.Make(LeNet.Version.V5, output_classes: 28, img_width: 32, img_height: 32, activation: ReLU.Instance);
-        //MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: HyperbolicTangent.Instance);
+    var network = MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: HyperbolicTangent.Instance);
     
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
     Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
@@ -48,13 +47,14 @@ public static void Main() {
     var performance_report = new DefaultPerformanceReport();
     var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
         Epochs = 100,
-        LearningRate = 0.001,
+        LearningRate = 0.1,
         LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CrossEntropy,
         NetworkInitializer = new HeInitialization(),
         BatchSize = 8,
-        EnableGradientClipping = false,
-        ClippingThreshold = 5.0,
+        EnableGradientClipping = true,
+        ClippingThresholdSynapses = 10,
+        ClippingThresholdBiases = 5.0,
         ValidationReport = validation_report,
         PerformanceReport = performance_report
     };
@@ -86,17 +86,25 @@ public static void Main() {
     Console.Write("> "); 
     var file = training_data[int.Parse(Console.ReadLine()?.ToLower() ?? "0")];
     var data = ReadDataVectors(file.FullName);
+    var all_data_count = (double)data.Size;
     if (data.Size == 0) 
         throw new FormatException("Empty training set");
+    var validation = data;
     Console.WriteLine($"Training vectors loaded: \"{file.Name}\"");
-    Console.Write("    "); Console.WriteLine($"Records: {data.Size}");
+    Console.Write("    "); Console.WriteLine($"Records: {all_data_count}");
     Console.Write("    "); Console.WriteLine($"InputSize: {data[0].Input.Dimensionality}");
     Console.Write("    "); Console.WriteLine($"OutputSize: {data[0].Output.Dimensionality}");
+
+    var elems = data.SplitProbabilistically(3, 1).ToArray();
+    data = elems[0];            // Train on 3/4 of the data
+    validation = elems[1];      // Validate against 1/4 of the data
+    Console.Write("    "); Console.WriteLine($"TrainingPercent: {data.Size} ({(data.Size / all_data_count) * 100}%)");
+    Console.Write("    "); Console.WriteLine($"ValidationPercent: {validation.Size} ({(validation.Size / all_data_count) * 100}%)");
     #endregion
 
     #region Training Steps
     var position = Console.GetCursorPosition();
-    var session = trainer.EnumerateTraining(network, data.SampleRandomly(), data.SampleSequentially());
+    var session = trainer.EnumerateTraining(network, data.SampleRandomly(), validation.SampleSequentially());
     session.Reset();
     var checkpoints = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.safetensors").Select(f => new FileInfo(f)).OrderByDescending(f => f.CreationTime).ToArray();
     if (checkpoints.Length > 0) {

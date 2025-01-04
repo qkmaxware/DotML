@@ -3,6 +3,9 @@ namespace DotML.Network;
 /// <summary>
 /// Rectified linear unit activation function
 /// </summary>
+/// <remarks>
+/// ReLU(x) = max(0, x)
+/// </remarks>
 public class ReLU : ActivationFunction {
     public static readonly ActivationFunction Instance = new ReLU();
 

@@ -3,6 +3,9 @@ namespace DotML.Network;
 /// <summary>
 /// Binary step activation function
 /// </summary>
+/// <remarks>
+/// Step(x) = 1 if x > 0 else 0
+/// </remarks>
 public class BinaryStep : ActivationFunction {
     public static readonly ActivationFunction Instance = new BinaryStep();
 

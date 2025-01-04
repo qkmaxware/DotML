@@ -3,6 +3,9 @@ namespace DotML.Network;
 /// <summary>
 /// Parametric rectified linear unit activation function
 /// </summary>
+/// <remarks>
+/// PReLU(x) = a * x if x < 0 else x
+/// </remarks>
 public class PReLU : ActivationFunction {
     //          Preferred      , Uncommon
     // Commonly 0.01, 0.05, 0.1, 0.3, 0.5

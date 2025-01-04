@@ -3,6 +3,9 @@ namespace DotML.Network;
 /// <summary>
 /// Hyperbolic tangent activation function
 /// </summary>
+/// <remarks>
+/// TanH(x) = (e^(X) - e^(-X)) / (e^(X) + e^(-X))
+/// </remarks>
 public class HyperbolicTangent : ActivationFunction {
     public static readonly ActivationFunction Instance = new HyperbolicTangent();
 

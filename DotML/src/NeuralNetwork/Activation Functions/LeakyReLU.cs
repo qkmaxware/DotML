@@ -3,6 +3,9 @@ namespace DotML.Network;
 /// <summary>
 /// Leaky rectified linear unit activation function
 /// </summary>
+/// <remarks>
+/// LeakyReLU(x) = 0.01 * x if x < 0 else x
+/// </remarks>
 public class LeakyReLU : ActivationFunction {
 
     public static readonly ActivationFunction Instance = new LeakyReLU();

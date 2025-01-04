@@ -3,6 +3,9 @@ namespace DotML.Network;
 /// <summary>
 /// Exponential rectified linear unit activation function
 /// </summary>
+/// <remarks>
+/// ELU(x) = a * (e^x - 1) if x < 0 else x
+/// </remarks>
 public class ExponentialLU : ActivationFunction {
     public double Alpha {get; init;}
 
