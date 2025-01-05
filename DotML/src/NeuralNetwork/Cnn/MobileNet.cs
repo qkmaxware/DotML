@@ -66,7 +66,7 @@ public static class MobileNet {
         return new ConvolutionalFeedforwardNetwork(
             // Input layer & first convolution
             new ConvolutionLayer(input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Same, stride: 2, filters: ConvolutionFilter.Make(32, 3, 3))
-            .Then((size) => new LayerNorm(input_size: size))
+            .Then((size) => new BatchNorm(input_size: size))
             .Then((size) => new ActivationLayer(input_size: size, activation: activation))
             // First depthwise separable convolution block
             .Then((size) => DepthwiseBlock(size, stride: 1, kernel_size: 3, activation: activation))

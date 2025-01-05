@@ -30,7 +30,12 @@ private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutiona
         this.LearningRateOptimizer = optimizer;
     } 
 
-    //private HashSet<int> used_params = new HashSet<int>();
+    private HashSet<int> used_params = new HashSet<int>();
+    public bool IsTrackingUsedParameters {get; private set;} = false;
+    public void TrackUsedParameters(bool track) {
+        IsTrackingUsedParameters = track;
+        used_params.Clear();
+    }
     //if (used_params.Contains(parameterIndex))
             //throw new Exception("Bad parameter index " + parameterIndex);
         //used_params.Add(parameterIndex);
@@ -39,6 +44,13 @@ private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutiona
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private double gradient_update(int updateTimestep, double learningRate, double prevWeight, double gradient, int parameterIndex) {
+        // Verify the parameter has not been used this iteration already
+        if (IsTrackingUsedParameters) {
+            if (used_params.Contains(parameterIndex))
+                throw new Exception("Parameter " + parameterIndex + " has already been used this iteration");
+            used_params.Add(parameterIndex);
+        }
+
         var regularized_grad = gradient + Regularization.Invoke(prevWeight);
         var optimized_grad = LearningRateOptimizer.GetParameterUpdate(updateTimestep, learningRate, regularized_grad, parameterIndex);
         return optimized_grad;

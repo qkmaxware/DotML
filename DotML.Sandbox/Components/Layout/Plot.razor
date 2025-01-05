@@ -1,7 +1,9 @@
+@using System.Drawing
+
 <svg id="@Id" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 @(GraphWidth + 2 * XOffset) @(GraphHeight + 2 * YOffset + 30)">
     <g id="axes" stroke="gray" fill="gray" text-anchor="end">
         <g id="y-axis">
-            @if (Data is not null && Data.Any()) {
+            @if (SeriesData is not null && SeriesData.Any()) {
             <g id="ticks">
                 <text x="40" y="@(YOffset + 15)">@(getRangeMax().ToString("F2"))</text>
                 @*<text x="40" y="@(GraphMidpoint + YOffset)">@(getRangeMid().ToString("F3"))</text>*@
@@ -19,25 +21,62 @@
     </g>
 
     <g id="series">
-        @if (Data is not null && Data.Any()) {
-        <polyline id="trend" stroke="@(StrokeColour)" fill="none" points="@PointList(Data)"/>
-        <g id="points">
-            @foreach(var point in Data) {
-                <circle cx="@(XPoint(point.X))" cy="@(YPoint(point.Y))" r="4" fill="@FillColour">
-                    <title>(@(XAxisLabel ?? "x"): @point.X.ToString("F8"), @(YAxisLabel ?? "y"): @point.Y.ToString("F8"))</title>
-                </circle>
+        @if (this.SeriesData is not null && this.SeriesData.Any()) {
+        var series_index = 0;
+        var rmax = getRangeMax();
+        var rmin = getRangeMin();
+        @foreach (var series in this.SeriesData) {
+        <g id="series-@(series_index)-@(series.Name)">
+            @if (series.Data is not null && series.Data.Any()) {
+                @if (series.ShowStroke) {
+                <polyline id="trend" stroke="@(hex(series.StrokeColour))" fill="none" points="@PointList(series.Data)"/>
+                }
+                @if (series.ShowPoints) {
+                <g id="points">
+                    @foreach(var point in series.Data) {
+                        @if (point.Y <= rmax && point.Y >= rmin) {
+                        <circle cx="@(XPoint(point.X))" cy="@(YPoint(point.Y))" r="4" fill="@(hex(series.PointColour))">
+                            <title>(@(XAxisLabel ?? "x"): @point.X.ToString("F8"), @(YAxisLabel ?? "y"): @point.Y.ToString("F8"))</title>
+                        </circle>
+                        }
+                    }
+                </g>
+                }
             }
         </g>
+        series_index++;
+        }
         }
     </g>
 </svg>
 
 @code {
+
+    public class Series {
+        public string? Name {get; set;}
+        public IEnumerable<(double X, double Y)>? Data {get; set;}
+        public bool ShowStroke {get; set;} = true;
+        public Color StrokeColour {get; set;} = Color.Black;
+        public bool ShowPoints {get; set;} = false;
+        public Color PointColour {get; set;} = Color.Black;
+    }
+
     [Parameter] public string? Id {get; set;}
-    [Parameter] public string StrokeColour {get; set;} = "black";
-    [Parameter] public string FillColour {get; set;} = "royalblue";
-    [Parameter] public IEnumerable<(double X, double Y)>? Data {get; set;}
-     
+    [Parameter] public IEnumerable<(double X, double Y)>? Data {
+        get => SeriesData?.First().Data;
+        set => SeriesData = [
+            new Series{
+                Name = "Series 1",
+                Data = value,
+                ShowStroke = true,
+                StrokeColour = Color.Black,
+                ShowPoints = true,
+                PointColour = Color.RoyalBlue
+            }
+        ];
+    }
+
+    [Parameter] public IEnumerable<Series>? SeriesData {get; set;}
 
     [Parameter] public double GraphHeight {get; set;} = 300.0;
     [Parameter] public double GraphWidth {get; set;} = 500.0;
@@ -48,6 +87,8 @@
     [Parameter] public string? YAxisLabel {get; set;} = null;
     [Parameter] public Range? XAxis {get; set;} = null;
     [Parameter] public string? XAxisLabel {get; set;} = null;
+
+    private string hex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
 
     /// <summary>
     /// Represents a range of values
@@ -62,7 +103,7 @@
         /// </summary>
         public double Max {get; private set;}
         /// <summary>
-        /// Range midpoint
+        /// Maximum value range endpoint
         /// </summary>
         public double Midpoint => Min + ((Max - Min) / 2.0);
         /// <summary>
@@ -76,12 +117,12 @@
         }
     }
 
-    private double getRangeMax()  => YAxis.HasValue ? YAxis.Value.Max : (Data is null ? 0 : Data.Select((ser) => ser.Y).Max());
-    private double getRangeMin()  => YAxis.HasValue ? YAxis.Value.Min : (Data is null ? 0 : Data.Select((ser) => ser.Y).Min());
+    private double getRangeMax()  => YAxis.HasValue ? YAxis.Value.Max : (SeriesData is null || !SeriesData.Any() ? 0 : SeriesData.Select(series => series.Data is null || !series.Data.Any() ? 0 : series.Data?.Select(data => data.Y)?.Max() ?? 0).Max());
+    private double getRangeMin()  => YAxis.HasValue ? YAxis.Value.Min : (SeriesData is null || !SeriesData.Any() ? 0 : SeriesData.Select(series => series.Data is null || !series.Data.Any() ? 0 : series.Data?.Select(data => data.Y)?.Min() ?? 0).Min());
     private double getRangeMid()  => YAxis.HasValue ? YAxis.Value.Midpoint : (getRangeMin() + (getRangeMax() - getRangeMin())/2);
     private double getRangeLen()  => YAxis.HasValue ? YAxis.Value.Length : (getRangeMax() - getRangeMin());
-    private double getDomainMax() => XAxis.HasValue ? XAxis.Value.Max : (Data is null ? 0 : Data.Select((ser) => ser.X).Max());
-    private double getDomainMin() => XAxis.HasValue ? XAxis.Value.Min : (Data is null ? 0 : Data.Select((ser) => ser.X).Min());
+    private double getDomainMax() => XAxis.HasValue ? XAxis.Value.Max : (SeriesData is null || !SeriesData.Any() ? 0 : SeriesData.Select(series => series.Data is null || !series.Data.Any() ? 0 : series.Data?.Select(data => data.X)?.Max() ?? 0).Max());
+    private double getDomainMin() => XAxis.HasValue ? XAxis.Value.Min : (SeriesData is null || !SeriesData.Any() ? 0 : SeriesData.Select(series => series.Data is null || !series.Data.Any() ? 0 : series.Data?.Select(data => data.X)?.Min() ?? 0).Min());
     private double getDomainLen() => getDomainMax() - getDomainMin();
 
     private double GraphMidpoint => GraphHeight / 2;

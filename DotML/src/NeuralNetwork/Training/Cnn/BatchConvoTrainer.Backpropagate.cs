@@ -17,25 +17,92 @@ public struct BackpropagationArgs {
     public FeatureSet<double> Outputs;
     public Matrix<double>[] Errors;
 }
-public abstract class Gradients {}
+
+public abstract class Gradients {
+    public abstract void AverageOf(IEnumerable<Gradients?> batchGradients);
+}
 
 public class FullyConnectedGradients : Gradients {
     public Matrix<double> WeightGradients;
     public Vec<double> BiasGradients;
+
+    public override void AverageOf(IEnumerable<Gradients?> batchGradients) {
+        var all_fc_batches = batchGradients.OfType<FullyConnectedGradients>();
+        var WeightGradients = Matrix<double>.Average(all_fc_batches.Select(fcg => fcg.WeightGradients));
+        var BiasGradients = Vec<double>.Average(all_fc_batches.Select(fcg => fcg.BiasGradients));
+        
+        this.WeightGradients = WeightGradients;
+        this.BiasGradients = BiasGradients;
+    }
 }
 
 public class ConvolutionGradients : Gradients {
     public Matrix<double>[][]? FilterKernelGradients;
     public double[]? BiasGradients;
+
+    public override void AverageOf(IEnumerable<Gradients?> batchGradients) {
+        var filters = FilterKernelGradients?.Length ?? 0;
+        var all_c_batches = batchGradients.OfType<ConvolutionGradients>();
+        var new_filter_kernel_gradients = new Matrix<double>[filters][];
+        for (var filterIndex = 0; filterIndex < filters; filterIndex++) {
+            var kernels = FilterKernelGradients?[filterIndex]?.Length ?? 0;
+            var kernel_grads = new Matrix<double>[kernels];
+
+            for (var kernelIndex = 0; kernelIndex < kernels; kernelIndex++) {
+                kernel_grads[kernelIndex] = Matrix<double>.Average(all_c_batches.Select(c => c.FilterKernelGradients is null ? new Matrix<double>() : c.FilterKernelGradients[filterIndex][kernelIndex]));
+            }
+
+            new_filter_kernel_gradients[filterIndex] = kernel_grads;
+        }
+
+        this.FilterKernelGradients = new_filter_kernel_gradients;
+        this.BiasGradients = (double[])Vec<double>.Average(all_c_batches.Select(c => c.BiasGradients is null ? new Vec<double>() : Vec<double>.Wrap(c.BiasGradients)));   
+    }
 }
 
 public class DepthwiseConvolutionGradients : Gradients {
     public Matrix<double>[]? KernelGradients;
+
+    public override void AverageOf(IEnumerable<Gradients?> batchGradients) {
+        var kernels = KernelGradients?.Length ?? 0;
+        var kernel_grads = new Matrix<double>[kernels];
+        var all_batches = batchGradients.OfType<DepthwiseConvolutionGradients>();
+        for (var i = 0; i < kernels; i++) {
+            kernel_grads[i] = Matrix<double>.Average(all_batches.Select(c => c.KernelGradients is null ? new Matrix<double>() : c.KernelGradients[i]));
+        }
+
+        this.KernelGradients = kernel_grads;
+    }
 }
 
 public class NormalizationGradients : Gradients {
     public Matrix<double>[]? GammaGradients;
     public Matrix<double>[]? BetaGradients;
+
+    public override void AverageOf(IEnumerable<Gradients?> batchGradients) {
+        var all_batches = batchGradients.OfType<NormalizationGradients>();
+
+        var gamma_c = GammaGradients?.Length ?? 0;
+        var beta_c = BetaGradients?.Length ?? 0;
+
+        var new_gammas = new Matrix<double>[gamma_c];
+        for (var i = 0; i < gamma_c; i++) {
+            new_gammas[i] = Matrix<double>.Average(all_batches.Select(
+                batch_elem => batch_elem.GammaGradients is null ? new Matrix<double>() : batch_elem.GammaGradients[i]
+            ));
+        }
+        
+        var new_betas = new Matrix<double>[beta_c];
+        for (var i = 0; i < gamma_c; i++) {
+            new_betas[i] = Matrix<double>.Average(all_batches.Select(
+                batch_elem => batch_elem.BetaGradients is null ? new Matrix<double>() : batch_elem.BetaGradients[i]
+            ));
+        }
+
+        
+        this.GammaGradients = new_gammas;
+        this.BetaGradients = new_betas;
+    }
 }
 
 public struct BackpropagationReturns {
@@ -460,6 +527,38 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
 
         // Process each channel
         Parallel.For(0, channels, channelIndex => {
+            // https://en.wikipedia.org/wiki/Batch_normalization#:~:text=the%20current%20layer.-,Backpropagation,-%5Bedit%5D
+            /*var output = outputs[channelIndex];
+            var input = inputs[channelIndex];
+            var gamma = layer.Gammas[channelIndex];
+            var beta = layer.Betas[channelIndex];
+            var error = errors[channelIndex];
+            var mean = means[channelIndex];
+            var variance = variances[channelIndex];
+            var xHat = (output - beta).ElementWise(gamma, (y, g) => y / g); // Undo shift/scaling of the output
+            var batch_size = 1; // At this present time, there is no batch (backpropagation is handled solo)
+
+            // {\displaystyle {\frac {\partial l}{\partial {\hat {x}}_{i}^{(k)}}}={\frac {\partial l}{\partial y_{i}^{(k)}}}\gamma ^{(k)}},
+            // dl_dxHat = dl_dy * gamma; 
+            var loss_wrt_xhat = error.Hadamard(gamma);
+
+            var loss_wrt_gamma = //sum over batch error.Hadamard(xHat);
+            var loss_wrt_beta = //sum over batch error;
+
+            var loss_wrt_variance = new Matrix<double>(gamma.Rows, gamma.Columns);
+            for (var i = 0; i < batch_size; i++) {
+                var temp_term = input.Transform(x => x - mean);
+                Matrix<double>.HadamardInplace(temp_term, error, temp_term); // error * (x - mean)
+                Matrix<double>.ElementWiseInplace(temp_term, temp_term, gamma, (lhs, g) => {
+                    return lhs * (-g / (2 * Math.Pow(variance + epsilon, 3.0/2.0)));
+                });
+                Matrix<double>.AddInplace(loss_wrt_variance, loss_wrt_variance, temp_term);
+            }
+            var loss_wrt_mean = ;
+
+            Matrix<double>.TransformInplace(loss_wrt_xhat, loss_wrt_xhat, (v) => v / Math.Sqrt(variance + epsilon));
+            var loss_wrt_input = loss_wrt_xhat + loss_wrt_variance + loss_wrt_mean;  */
+
             var xHat = outputs[channelIndex];
             var input = inputs[channelIndex];
             var gamma = layer.Gammas[channelIndex];

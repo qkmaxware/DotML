@@ -1,11 +1,9 @@
 namespace DotML.Network;
 
 /// <summary>
-/// Rectified linear unit activation function
+/// <para>Rectified linear unit activation function</para>
+/// <para>ReLU(x) = max(0, x)</para>>
 /// </summary>
-/// <remarks>
-/// ReLU(x) = max(0, x)
-/// </remarks>
 public class ReLU : ActivationFunction {
     public static readonly ActivationFunction Instance = new ReLU();
 
@@ -26,5 +24,25 @@ public class ReLU : ActivationFunction {
     /// <returns>derivative result</returns>
     public override double InvokeDerivative(double x) {
         return x <= 0 ? 0 : 1;
+    }
+
+    public override string ToHtml() {
+        return 
+$@"<math>
+    <mtext>f(x) = </mtext>
+    <mrow>
+        <mo>{{</mo>
+        <mtable>
+            <mtr>
+                <mtd>0</mtd>
+                <mtd>if x &lt; 0</mtd>
+            </mtr>
+            <mtr>
+                <mtd>x</mtd>
+                <mtd>if x &gt; 0</mtd>
+            </mtr>
+        </mtable>
+    </mrow>
+</math>";
     }
 }

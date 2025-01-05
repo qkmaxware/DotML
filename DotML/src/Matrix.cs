@@ -732,6 +732,24 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ElementWiseInplace(Matrix<T> target, Matrix<T> a, Matrix<T> b, Func<T, T, T> mapping) {
+        if (a.Rows != b.Rows || a.Columns != b.Columns)
+            throw new ArithmeticException("Incompatible dimensions for element-wise multiplication");
+
+        int rows = a.Rows;
+        int cols = a.Columns;
+        var result = (T[,])target;
+
+        if (target.Rows != rows || target.Columns != cols) {
+            throw new ArithmeticException("Incompatible dimensions for storing element-wise multiplication result");
+        }
+
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                result[i, j] = mapping(a[i, j], b[i, j]);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void AddInplace(Matrix<T> target, Matrix<T> a, Matrix<T> b) {
         if (a.Rows != b.Rows || a.Columns != b.Columns)
             throw new ArithmeticException("Incompatible dimensions for matrix addition");
@@ -795,6 +813,15 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Span<T> AsSpan() {
         return MemoryMarshal.CreateSpan(ref values[0, 0], values.Length);
+    }
+
+    /// <summary>
+    /// Get the underlying array of values
+    /// </summary>
+    /// <returns>underlying array of elements indexed in row-major order</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T[,] AsArray() {
+        return this.values;
     }
 
     public IEnumerator<T> GetEnumerator() {

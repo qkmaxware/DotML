@@ -1,11 +1,9 @@
 namespace DotML.Network;
 
 /// <summary>
-/// Hyperbolic tangent activation function
+/// <para>Hyperbolic tangent activation function</para>
+/// <para>TanH(x) = (e^(X) - e^(-X)) / (e^(X) + e^(-X))</para>
 /// </summary>
-/// <remarks>
-/// TanH(x) = (e^(X) - e^(-X)) / (e^(X) + e^(-X))
-/// </remarks>
 public class HyperbolicTangent : ActivationFunction {
     public static readonly ActivationFunction Instance = new HyperbolicTangent();
 
@@ -38,5 +36,24 @@ public class HyperbolicTangent : ActivationFunction {
         // Derivative using Invoke(x) as input already
         var y = Invoke(x);
         return 1 - y*y;
+    }
+
+    public override string ToHtml() {
+        return 
+$@"<math>
+    <mtext>f(x) = </mtext>
+    <mfrac>
+        <mrow>
+            <msup><mi>e</mi><mn>x</mn></msup>
+            <mo>-</mo>
+            <msup><mi>e</mi><mn>-x</mn></msup>
+        </mrow>
+        <mrow>
+            <msup><mi>e</mi><mn>x</mn></msup>
+            <mo>+</mo>
+            <msup><mi>e</mi><mn>-x</mn></msup>
+        </mrow>
+    </mfrac>
+</math>";
     }
 }

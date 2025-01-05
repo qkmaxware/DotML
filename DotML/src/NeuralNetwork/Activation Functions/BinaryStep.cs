@@ -1,11 +1,9 @@
 namespace DotML.Network;
 
 /// <summary>
-/// Binary step activation function
+/// <para>Binary step activation function</para>
+/// <para>Step(x) = 1 if x > 0 else 0</para>
 /// </summary>
-/// <remarks>
-/// Step(x) = 1 if x > 0 else 0
-/// </remarks>
 public class BinaryStep : ActivationFunction {
     public static readonly ActivationFunction Instance = new BinaryStep();
 
@@ -26,5 +24,25 @@ public class BinaryStep : ActivationFunction {
     /// <returns>derivative result</returns>
     public override double InvokeDerivative(double x) {
         return 0;
+    }
+
+    public override string ToHtml() {
+        return 
+$@"<math>
+    <mtext>f(x) = </mtext>
+    <mrow>
+        <mo>{{</mo>
+        <mtable>
+            <mtr>
+                <mtd>0</mtd>
+                <mtd>if x &lt; 0</mtd>
+            </mtr>
+            <mtr>
+                <mtd>1</mtd>
+                <mtd>if x &gt; 0</mtd>
+            </mtr>
+        </mtable>
+    </mrow>
+</math>";
     }
 }

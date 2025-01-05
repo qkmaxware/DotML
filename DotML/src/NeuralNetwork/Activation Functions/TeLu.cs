@@ -1,11 +1,9 @@
 namespace DotML.Network;
 
 /// <summary>
-/// Hyperbolic tangent linear unit activation function
+/// <para>Hyperbolic tangent linear unit activation function</para>
+/// <para>TeLU(x) = x * tanh(e^x)</para>
 /// </summary>
-/// <remarks>
-/// TeLU(x) = x * tanh(e^x)
-/// </remarks>
 public class TeLU : ActivationFunction {
     public static readonly ActivationFunction Instance = new TeLU();
 
@@ -29,5 +27,13 @@ public class TeLU : ActivationFunction {
         var ex = Math.Exp(x);
         var sec = 1.0 / Math.Cosh(ex); // sech(ex)
         return Math.Tanh(ex) + ex * x * sec * sec;
+    }
+
+    public override string ToHtml() {
+        return 
+$@"<math>
+    <mtext>f(x) = </mtext>
+    <mrow><mtext>x tanh(</mtext><msup><mi>e</mi><mn>x</mn></msup><mtext>)</mtext></mrow>
+</math>";
     }
 }

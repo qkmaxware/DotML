@@ -439,6 +439,15 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
+    /// Get the underlying array of values
+    /// </summary>
+    /// <returns>underlying array of elements</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T[] AsArray() {
+        return this.values;
+    }
+
+    /// <summary>
     /// Shape the vector into multiple 3D matrices of the given sizes.
     /// </summary>
     /// <param name="shapes">Matrix sizes</param>

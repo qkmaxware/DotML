@@ -1,11 +1,9 @@
 namespace DotML.Network;
 
 /// <summary>
-/// Identity activation function
+/// <para>Identity activation function</para>
+/// <para>Identity(x) = x</para>
 /// </summary>
-/// <remarks>
-/// Identity(x) = x
-/// </remarks>
 public class Identity : ActivationFunction {
     public static readonly ActivationFunction Instance = new Identity();
 
@@ -26,5 +24,12 @@ public class Identity : ActivationFunction {
     /// <returns>derivative result</returns>
     public override double InvokeDerivative(double x) {
         return 1;
+    }
+
+    public override string ToHtml() {
+        return 
+$@"<math>
+    <mtext>f(x) = x</mtext>
+</math>";
     }
 }

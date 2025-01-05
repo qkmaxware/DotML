@@ -4,7 +4,7 @@ namespace DotML.Network;
 /// Neuron activation function
 /// <see href="https://en.wikipedia.org/wiki/Activation_function"/>
 /// </summary>
-public abstract class ActivationFunction {
+public abstract class ActivationFunction : IHtmlable {
     /// <summary>
     /// Invoke the activation function with the given input
     /// </summary>
@@ -33,5 +33,17 @@ public abstract class ActivationFunction {
     /// <returns>function result</returns>
     public virtual Matrix<double> InvokeDerivative(Matrix<double> xs) => xs.Transform(x => InvokeDerivative(x));
     
+    /// <summary>
+    /// Activation function as HTML MathML
+    /// </summary>
+    /// <returns>HTML string</returns>
+    public virtual string ToHtml() {
+        return
+$@"<math>
+    <mtext>f(x) = </mtext>
+    <mtext>{ToString()}(x)</mtext>
+</math>";
+    }
+
     public override string ToString() => GetType().Name;
 }

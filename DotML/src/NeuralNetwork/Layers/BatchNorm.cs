@@ -53,66 +53,6 @@ public class BatchNorm : ConvolutionalFeedforwardNetworkLayer {
         return EvaluateSync(new BatchedFeatureSet<double>(channels))[0];
     }
 
-    /*
-    public override BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
-    int batchSize = features.Length;
-    int channels = features[0].Length;
-    int rows = features[0][0].Rows;
-    int cols = features[0][0].Columns;
-
-    // Compute mean and variance across the whole batch for each channel
-    var means = new double[channels];
-    var variances = new double[channels];
-
-    The two formulas for variance calculation are indeed mathematically equivalent. 
-    You can use either method to compute the variance. 
-    The second method, using the sum of squares, is often preferred in numerical computations for its stability and efficiency.
-    
-    for (var channelIndex = 0; channelIndex < channels; channelIndex++) {
-        double sum = 0.0;
-        double sumSq = 0.0;
-        int count = 0;
-
-        foreach (var featureSet in features) {
-            var matrix = featureSet[channelIndex];
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    double value = matrix[i, j];
-                    sum += value;
-                    sumSq += value * value;
-                    count++;
-                }
-            }
-        }
-
-        double mean = sum / count;
-        double variance = (sumSq / count) - (mean * mean);
-
-        means[channelIndex] = mean;
-        variances[channelIndex] = variance;
-    }
-
-    // Normalize, scale, and shift
-    var normalized = new BatchedFeatureSet<double>(
-        features.Select(featureSet => {
-            return new FeatureSet<double>(
-                featureSet.Select((matrix, channelIndex) => {
-                    var mean = means[channelIndex];
-                    var variance = variances[channelIndex];
-
-                    var normalizedMatrix = matrix.Transform(x => (x - mean) / Math.Sqrt(variance + 1e-8));
-                    var scaledAndShiftedMatrix = normalizedMatrix.Transform((x, i, j) => Gammas[channelIndex][i, j] * x + Betas[channelIndex][i, j]);
-
-                    return scaledAndShiftedMatrix;
-                }).ToArray()
-            );
-        }).ToArray()
-    );
-
-    return normalized;
-}
-    */
-
     public bool IsTrainingMode {get; set;} = false;
     public bool IsInferenceMode {get => !IsTrainingMode; set => IsTrainingMode = !value; }
 
@@ -126,7 +66,7 @@ public class BatchNorm : ConvolutionalFeedforwardNetworkLayer {
             means = (double[])this.RunningMean;
             variances = (double[])this.RunningVariance;
         } else {
-            for (var channelIndex = 0; channelIndex < variances.Length; channelIndex++) {
+            Parallel.For(0, variances.Length, (channelIndex) => {
                 double sum = 0.0;
                 double sumSq = 0.0;
                 int count = 0;
@@ -155,32 +95,31 @@ public class BatchNorm : ConvolutionalFeedforwardNetworkLayer {
                 // Perform running mean/variance computation
                 ((double[])RunningMean)[channelIndex] = running_mean_momentum * mean + (1 - running_mean_momentum) * RunningMean[channelIndex];
                 ((double[])RunningVariance)[channelIndex] = running_variance_momentum * variance + (1 - running_variance_momentum) * RunningVariance[channelIndex];
-            }
+            });
         }
 
         // When run with a batch size of > 1
-        var normalized = new BatchedFeatureSet<double>(
-            features.Select(featureSet => {
-                return 
-                new FeatureSet<double>(
-                    featureSet.Select((matrix, channelIndex) => {
-                        // Compute mean and variance for the channel
-                        var mean = means[channelIndex];
-                        var variance = variances[channelIndex];
+        var results = new FeatureSet<double>[features.Batches];
+        Parallel.For(0, features.Batches, (batchIndex) => {
+            var featureSet = features[batchIndex];
+            results[batchIndex] = new FeatureSet<double>(
+                featureSet.Select((matrix, channelIndex) => {
+                    // Compute mean and variance for the channel
+                    var mean = means[channelIndex];
+                    var variance = variances[channelIndex];
 
-                        // Normalize the channel using mean and variance
-                        var normalizedMatrix = matrix.Transform(x => (x - mean)  / Math.Sqrt(variance + 1e-8));
+                    // Normalize the channel using mean and variance
+                    var normalizedMatrix = matrix.Transform(x => (x - mean)  / Math.Sqrt(variance + 1e-8));
 
-                        // Apply scaling (gamma) and shifting (beta)
-                        Matrix<double>.HadamardInplace(normalizedMatrix, normalizedMatrix, Gammas[channelIndex]);  // output = output .* gamma
-                        Matrix<double>.AddInplace(normalizedMatrix, normalizedMatrix, Betas[channelIndex]);        // output = output + beta
+                    // Apply scaling (gamma) and shifting (beta)
+                    Matrix<double>.HadamardInplace(normalizedMatrix, normalizedMatrix, Gammas[channelIndex]);  // output = output .* gamma
+                    Matrix<double>.AddInplace(normalizedMatrix, normalizedMatrix, Betas[channelIndex]);        // output = output + beta
 
-                        return normalizedMatrix;
-                    }).ToArray()
-                );
-            }).ToArray()
-        );
-        return normalized;
+                    return normalizedMatrix;
+                }).ToArray()
+            );
+        });
+        return new BatchedFeatureSet<double>(results);
     }
 
     public override void Initialize(IInitializer initializer) {

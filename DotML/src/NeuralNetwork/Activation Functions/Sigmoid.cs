@@ -1,11 +1,9 @@
 namespace DotML.Network;
 
 /// <summary>
-/// Sigmoid activation function
+/// <para>Sigmoid activation function</para>
+/// <para>Sigmoid(x) = 1 / (1 + e^-x)</para>
 /// </summary>
-/// <remarks>
-/// Sigmoid(x) = 1 / (1 + e^-x)
-/// </remarks>
 public class Sigmoid : ActivationFunction {
     public static readonly ActivationFunction Instance = new Sigmoid();
 
@@ -29,5 +27,22 @@ public class Sigmoid : ActivationFunction {
         // Derivative using Invoke(x) as input already
         var y = Invoke(x);
         return y * (1.0 - y); 
+    }
+
+    public override string ToHtml() {
+        return 
+$@"<math>
+    <mtext>f(x) = </mtext>
+    <mfrac>
+        <mrow>
+            <mtext>x</mtext>
+        </mrow>
+        <mrow>
+            <mtext>1</mtext>
+            <mo>+</mo>
+            <msup><mi>e</mi><mn>-x</mn></msup>
+        </mrow>
+    </mfrac>
+</math>";
     }
 }

@@ -395,131 +395,20 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
                     }
                 });
             }
-
-            // For forward pass for batch
-            /*Parallel.For(0, batch.Count, (batchIndex) => {
-                var currentPair = batch[batchIndex];
-                var input = new FeatureSet<double>(currentPair.Input.Shape(
-                    Current.InputShape
-                ).ToArray());
-                var expected = currentPair.Output; // TODO Output of a FULLY CONNECTED LAYER SHOULDtm BE A COLUMN MATRIX THIS IS NOT GUARANTEED TO BE THE CASE IF THE NETWORK DOESN'T USE THEM
-
-                var inputs = this.batch_inputs[batchIndex];
-                var outputs = this.batch_outputs[batchIndex];
-                var layer_gradients = this.batch_gradients[batchIndex];
-
-                // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)
-                using (var metric = PerformanceReport?.Begin(FeedforwardPerformanceKey)) {
-                    FeatureSet<double> layer_input = input;
-                    for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
-                        inputs[layerIndex] = layer_input;
-                        var layer = Current.GetLayer(layerIndex);
-                        var layer_output = layer.EvaluateSync(layer_input);
-                        outputs[layerIndex] = layer_output;
-                        layer_input = layer_output;
-                    }
-                    var actual = layer_input;
-                }
-
-                // Backwards pass
-                using (var metric = PerformanceReport?.Begin(BackpropagationPerformanceKey)) {
-                    var @true = expected.Shape(outputs[^1].Select(x => x.Shape).ToArray());
-                    var errors = outputs[^1].Zip(@true).Select(x => x.First-x.Second).ToArray();
-                    //var errors = outputs[^1][0] - expected;
-                    var backprop_args = new BackpropagationArgs();
-                    backprop_args.Errors = errors;
-                    backprop_args.TrueLabel = expected;
-                    for (var layerIndex = Current.LayerCount - 1; layerIndex >= 0; layerIndex--) {
-                        backprop_args.Inputs = inputs[layerIndex];
-                        backprop_args.Outputs = outputs[layerIndex];
-
-                        var layer = Current.GetLayer(layerIndex);
-                        backprop_args.LayerIndex = layerIndex;
-                        var returns = layer.Visit<BackpropagationArgs, BackpropagationReturns>(this.backpropagationActions, backprop_args); // Backpropagation is different for each layer kind, leverage polymorphism
-                        // TODO maybe store additional details like gradients here for us to apply updates in the next step
-                        layer_gradients[layerIndex] = returns.Gradient;
-                        backprop_args.Errors = returns.Errors;
-                    }
-                }
-            });*/
-
+            
             // Update weights
             using (var metric = PerformanceReport?.Begin(WeightUpdatePerformanceKey)) {
                 var update_args = new LayerUpdateArgs();
                 update_args.UpdateTimestep = CurrentUpdateTimestep;
                 update_args.ParameterOffset = 0;
-                //used_params.Clear();
+                this.layerUpdateActions.TrackUsedParameters(true); // TODO only do this in DEBUG mode
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                     // Average gradients across batch
-                    Gradients? avgGradient = batch_gradients[0][layerIndex];
-                    if (batch_size > 0) {
-                        switch (avgGradient) {
-                            case ConvolutionGradients convo:
-                                #pragma warning disable CS8602 
-                                #pragma warning disable CS8604
-                                var filters = convo.FilterKernelGradients?.Length ?? 0;
-                                var all_c_batches = batch_gradients.Select(x => x[layerIndex]).OfType<ConvolutionGradients>();
-                                var new_filter_kernel_gradients = new Matrix<double>[filters][];
-                                for (var filterIndex = 0; filterIndex < filters; filterIndex++) {
-                                    var kernels = convo.FilterKernelGradients?[filterIndex]?.Length ?? 0;
-                                    var kernel_grads = new Matrix<double>[kernels];
-
-                                    for (var kernelIndex = 0; kernelIndex < kernels; kernelIndex++) {
-                                        kernel_grads[kernelIndex] = Matrix<double>.Average(all_c_batches.Select(c => c.FilterKernelGradients[filterIndex][kernelIndex]));
-                                    }
-
-                                    new_filter_kernel_gradients[filterIndex] = kernel_grads;
-                                }
-                                convo.FilterKernelGradients = new_filter_kernel_gradients;
-                                convo.BiasGradients = (double[])Vec<double>.Average(all_c_batches.Select(c => Vec<double>.Wrap(c.BiasGradients)));
-                                #pragma warning restore CS8602
-                                #pragma warning restore CS8604
-                                break;
-                            case FullyConnectedGradients connect:
-                                var all_fc_batches = batch_gradients.Select(x => x[layerIndex]).OfType<FullyConnectedGradients>();
-                                connect.WeightGradients = Matrix<double>.Average(all_fc_batches.Select(fcg => fcg.WeightGradients));
-                                connect.BiasGradients = Vec<double>.Average(all_fc_batches.Select(fcg => fcg.BiasGradients));
-                                break;
-                            case DepthwiseConvolutionGradients depth:
-                                {
-                                    #pragma warning disable CS8602 
-                                    var kernels = depth.KernelGradients?.Length ?? 0;
-                                    var kernel_grads = new Matrix<double>[kernels];
-                                    var all_batches = batch_gradients.Select(x => x[layerIndex]).OfType<DepthwiseConvolutionGradients>();
-                                    for (var i = 0; i < kernels; i++) {
-                                        kernel_grads[i] = Matrix<double>.Average(all_batches.Select(c => c.KernelGradients[i]));
-                                    }
-                                    depth.KernelGradients = kernel_grads;
-                                    #pragma warning restore CS8602
-                                }
-                                break;
-                            case NormalizationGradients norm:
-                                {
-                                    #pragma warning disable CS8602 
-                                    var all_batches = batch_gradients.Select(x => x[layerIndex]).OfType<NormalizationGradients>();
-
-                                    var gamma_c = norm.GammaGradients?.Length ?? 0;
-                                    var beta_c = norm.BetaGradients?.Length ?? 0;
-
-                                    var new_gammas = new Matrix<double>[gamma_c];
-                                    for (var i = 0; i < gamma_c; i++) {
-                                        new_gammas[i] = Matrix<double>.Average(all_batches.Select(
-                                            batch_elem => batch_elem.GammaGradients[i]
-                                        ));
-                                    }
-                                    norm.GammaGradients = new_gammas;
-                                    
-                                    var new_betas = new Matrix<double>[beta_c];
-                                    for (var i = 0; i < gamma_c; i++) {
-                                        new_betas[i] = Matrix<double>.Average(all_batches.Select(
-                                            batch_elem => batch_elem.BetaGradients[i]
-                                        ));
-                                    }
-                                    norm.BetaGradients = new_betas;
-                                    #pragma warning restore CS8602
-                                }
-                                break;
-                        }
+                    Gradients? avgGradient = batch_gradients[0][layerIndex]; // Assume first gradient is the average
+                    if (batch_size > 1 && avgGradient != null) {
+                        // Make the first gradient the average of all gradients in the batch
+                        var gradients_for_layer = batch_gradients.Select(x => x[layerIndex]);
+                        avgGradient.AverageOf(gradients_for_layer); 
                     }
 
                     // Perform update

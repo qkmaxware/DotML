@@ -1,11 +1,9 @@
 namespace DotML.Network;
 
 /// <summary>
-/// Leaky rectified linear unit activation function
+/// <para>Leaky rectified linear unit activation function</para>
+/// <para>LeakyReLU(x) = 0.01 * x if x &lt; 0 else x</para>
 /// </summary>
-/// <remarks>
-/// LeakyReLU(x) = 0.01 * x if x < 0 else x
-/// </remarks>
 public class LeakyReLU : ActivationFunction {
 
     public static readonly ActivationFunction Instance = new LeakyReLU();
@@ -16,5 +14,25 @@ public class LeakyReLU : ActivationFunction {
 
     public override double InvokeDerivative(double x) {
         return x <= 0 ? 0.01 : 1;
+    }
+
+    public override string ToHtml() {
+        return 
+$@"<math>
+    <mtext>f(x) = </mtext>
+    <mrow>
+        <mo>{{</mo>
+        <mtable>
+            <mtr>
+                <mtd>0.01 x</mtd>
+                <mtd>if x &lt; 0</mtd>
+            </mtr>
+            <mtr>
+                <mtd>x</mtd>
+                <mtd>if x &gt; 0</mtd>
+            </mtr>
+        </mtable>
+    </mrow>
+</math>";
     }
 }

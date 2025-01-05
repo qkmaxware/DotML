@@ -15,7 +15,7 @@ public static void Main() {
 
     #region Network
 
-    var network = MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: HyperbolicTangent.Instance);
+    var network = MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: TeLU.Instance);
     
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
     Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
@@ -47,12 +47,12 @@ public static void Main() {
     var performance_report = new DefaultPerformanceReport();
     var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
         Epochs = 100,
-        LearningRate = 0.1,
+        LearningRate = 0.001,
         LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CrossEntropy,
         NetworkInitializer = new HeInitialization(),
         BatchSize = 8,
-        EnableGradientClipping = true,
+        EnableGradientClipping = false,
         ClippingThresholdSynapses = 10,
         ClippingThresholdBiases = 5.0,
         ValidationReport = validation_report,
