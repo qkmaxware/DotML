@@ -170,8 +170,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
     public BackpropagationReturns Visit(ConvolutionLayer layer, BackpropagationArgs args) {
         var batch_size = args.InputBatch.Batches;
         var input_gradients = new FeatureSet<double>[batch_size];
-        var filter_gradients = new Matrix<double>[batch_size][][];
-        var bias_gradients = new double[batch_size][];
+        var batch_gradients = new Gradients[batch_size];
 
         // Compute gradients
         Parallel.For(0, batch_size, (batchIndex) => {
@@ -181,8 +180,10 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             var paddingColumns      = layer.ColumnsPadding; 
             var inputs              = args.InputBatch[batchIndex];
             var errors              = args.OutputErrors[batchIndex];
-            filter_gradients[batchIndex] = filterGradients;
-            bias_gradients[batchIndex] = biasGradients;
+            batch_gradients[batchIndex] = new ConvolutionGradients {
+                FilterKernelGradients = filterGradients,
+                BiasGradients = biasGradients
+            };
 
             // Loop through each filter and compute gradients
             Parallel.For(0, layer.FilterCount, filterIndex => {
@@ -240,40 +241,13 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         });
 
         // Average gradients
-        var final_filter_gradients = new Matrix<double>[layer.FilterCount][];
-        for (var f = 0; f < layer.FilterCount; f++) {
-            var filter              = layer.Filters[f]; 
-            var grads               = new Matrix<double>[filter.Count];
-            final_filter_gradients[f] = grads;
-            for (var k = 0; k < filter.Count; k++) {
-                var kernel = new Matrix<double>(filter.Height, filter.Width);
-                for (var r = 0; r < filter.Width; r++) {
-                    for (var c = 0; c < filter.Height; c++) {
-                        for (var b = 0; b < batch_size; b++) {
-                            kernel.AsArray()[r, c] += filter_gradients[b][f][k][r, c];
-                        }
-                        kernel.AsArray()[r,c] /= Math.Max(1, batch_size);
-                    }
-                }
-                grads[k] = kernel;
-            }
-        }
-
-
-        var final_bias_gradients = new double[bias_gradients[0].Length];
-        for (var i = 0; i < final_bias_gradients.Length; i++) {
-            for (var b = 0; b < batch_size; b++)
-                final_bias_gradients[i] += bias_gradients[b][i];
-            final_bias_gradients[i] /= Math.Max(1, batch_size);
-        }
+        var grad = batch_gradients.Length > 0 ? batch_gradients[0] : null;
+        grad?.AverageOf(batch_gradients);
 
         // Return results
         return new BackpropagationReturns {
             InputErrors = new BatchedFeatureSet<double>(input_gradients),
-            Gradient = new ConvolutionGradients {
-                FilterKernelGradients = final_filter_gradients,
-                BiasGradients = final_bias_gradients,
-            }
+            Gradient = grad
         };
         /*// Initialize extra storage
         var filterGradients = new Matrix<double>[layer.FilterCount][];
@@ -387,53 +361,64 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
     }
 
     public BackpropagationReturns Visit(DepthwiseConvolutionLayer layer, BackpropagationArgs args) {
-        throw new NotImplementedException();
-        /*var length              = layer.Filter.Count;
-        var gradients           = new Matrix<double>[length];
-        var paddingRows         = layer.RowsPadding; 
-        var paddingColumns      = layer.ColumnsPadding; 
+        var batched_gradients = new Gradients[args.InputBatch.Batches];
+        var input_errors = new FeatureSet<double>[args.InputBatch.Batches]; 
 
-        Parallel.For(0, length, inputIndex => {
-            var input           = args.Inputs[inputIndex];
-            var kernel          = layer.Filter[inputIndex];
-            var kernelGradient  = new double[kernel.Rows, kernel.Columns];
-            var error           = args.Errors[inputIndex];
-            var rows            = error.Rows;
-            var cols            = error.Columns;
+        Parallel.For(0, args.InputBatch.Batches, batchIndex => {
+            var inputs              = args.InputBatch[batchIndex];
+            var errors              = args.OutputErrors[batchIndex];
+            var length              = layer.Filter.Count;
+            var gradients           = new Matrix<double>[length];
+            var paddingRows         = layer.RowsPadding; 
+            var paddingColumns      = layer.ColumnsPadding; 
 
-            // Slide the kernel over the error map computing the correlation
-            for (int outY = 0; outY < rows; outY++) {
-                var startY = outY * layer.StrideY - paddingRows;
-                for (int outX = 0; outX < cols; outX++) {
-                    var startX = outX * layer.StrideX - paddingColumns;
-                    var pixel_error = error[outY, outX];
-                    var errorContribution = pixel_error;
+            Parallel.For(0, length, inputIndex => {
+                var input           = inputs[inputIndex];
+                var kernel          = layer.Filter[inputIndex];
+                var kernelGradient  = new double[kernel.Rows, kernel.Columns];
+                var error           = errors[inputIndex];
+                var rows            = error.Rows;
+                var cols            = error.Columns;
 
-                    for (var ky = 0; ky < kernel.Rows; ky++) {
-                        var inY = startY + ky;
-                        for (var kx = 0; kx < kernel.Columns; kx++) {
-                            var inX = startX + kx;
+                // Slide the kernel over the error map computing the correlation
+                for (int outY = 0; outY < rows; outY++) {
+                    var startY = outY * layer.StrideY - paddingRows;
+                    for (int outX = 0; outX < cols; outX++) {
+                        var startX = outX * layer.StrideX - paddingColumns;
+                        var pixel_error = error[outY, outX];
+                        var errorContribution = pixel_error;
 
-                            if (inY >= 0 && inY < input.Rows && inX >= 0 && inX < input.Columns) {
-                                kernelGradient[ky, kx] += errorContribution * input[inY, inX];
+                        for (var ky = 0; ky < kernel.Rows; ky++) {
+                            var inY = startY + ky;
+                            for (var kx = 0; kx < kernel.Columns; kx++) {
+                                var inX = startX + kx;
+
+                                if (inY >= 0 && inY < input.Rows && inX >= 0 && inX < input.Columns) {
+                                    kernelGradient[ky, kx] += errorContribution * input[inY, inX];
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // Save the kernel gradient
-            gradients[inputIndex] = Matrix<double>.Wrap(kernelGradient);
-        });
+                // Save the kernel gradient
+                gradients[inputIndex] = Matrix<double>.Wrap(kernelGradient);
+            });
 
-        var inputErrors = DepthwiseTransposeConvolve((Matrix<double>[])args.Inputs, args.Errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filter);
-
-        return new BackpropagationReturns {
-            InputErrors = inputErrors,
-            Gradient = new DepthwiseConvolutionGradients {
+            batched_gradients[batchIndex] = new DepthwiseConvolutionGradients {
                 KernelGradients = gradients
-            }
-        };*/
+            };
+
+            var inputErrors = DepthwiseTransposeConvolve((Matrix<double>[])inputs, (Matrix<double>[])errors, layer.StrideX, layer.StrideY, paddingRows, paddingColumns, layer.Filter);
+            input_errors[batchIndex] = new FeatureSet<double>(inputErrors);
+        });
+        
+        var grad = batched_gradients.Length > 0 ? batched_gradients[0] : null;
+        grad?.AverageOf(batched_gradients);
+        return new BackpropagationReturns {
+            InputErrors = new BatchedFeatureSet<double>(input_errors),
+            Gradient = grad
+        };
     }
 
     public BackpropagationReturns Visit(PoolingLayer layer, BackpropagationArgs args) {
@@ -594,7 +579,6 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
     }
 
     public BackpropagationReturns Visit(BatchNorm layer, BackpropagationArgs args) {
-        throw new NotImplementedException();
 
         // Terminology
         // x    is input
@@ -606,6 +590,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         // o2   is the variance
 
         var batches  = args.OutputErrors.Batches;
+        var one_over_batches = 1.0 / batches;
         var channels = args.OutputErrors.Channels;
         var channel_width = args.OutputErrors.Columns;
         var channel_height = args.OutputErrors.Rows;
@@ -619,7 +604,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
             variances = (double[])layer.RunningVariance;
         } 
         else {
-            for (var channelIndex = 0; channelIndex < variances.Length; channelIndex++) {
+            Parallel.For(0, variances.Length, channelIndex => {
                 double sum = 0.0;
                 double sumSq = 0.0;
                 int count = 0;
@@ -644,9 +629,17 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
 
                 means[channelIndex] = mean;
                 variances[channelIndex] = variance;
-            }
+            });
         }
 
+        var gamma_gradients = new Matrix<double>[channels];
+        var beta_gradients = new Matrix<double>[channels];
+        var input_gradients = new Matrix<double>[batches][];
+        for (var batch = 0; batch < batches; batch++) {
+            input_gradients[batch] = new Matrix<double>[channels];
+        }
+
+        // Derivations from https://en.wikipedia.org/wiki/Batch_normalization#:~:text=the%20current%20layer.-,Backpropagation,-%5Bedit%5D
         Parallel.For(0, channels, k => {
             var gamma = layer.Gammas[k];
             var beta = layer.Betas[k];
@@ -658,6 +651,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
                 var loss_wrt_y_k = args.OutputErrors[batch][k];
                 Matrix<double>.AddInplace(loss_wrt_b, loss_wrt_b, loss_wrt_y_k);
             }
+            beta_gradients[k] = loss_wrt_b;
 
             // Gradient of L with respect to Gamma
             // SUM (dl/dy(k) * xHat) where xHat = (y - b) / g
@@ -671,21 +665,87 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
                 Matrix<double>.HadamardInplace(loss_wrt_y_times_xHat, loss_wrt_y_k, xhat_k);
                 Matrix<double>.AddInplace(loss_wrt_g, loss_wrt_g, loss_wrt_y_times_xHat);
             }
+            gamma_gradients[k] = loss_wrt_g;
 
             // Gradient of L with respect to xHat
-            // dL/dxHat = dL/dy * gamma how does this get modified to multi-dimensional input IE a 3D tensor
-            // 
+            var loss_wrt_xhats = new Matrix<double>[batches];
+            for (var batch = 0; batch < batches; batch++) {
+                var loss_wrt_y_k = args.OutputErrors[batch][k];
+                loss_wrt_xhats[batch] = loss_wrt_y_k.Hadamard(gamma);
+            }
 
-            // Gradient of L with respect to x
             var mean = means[k]; // Mean of the channel over the whole batch
             var variance = variances[k]; // Variance of the channel over the whole batch
             var std = Math.Sqrt(variance + epsilon);
             var scale = 1.0 / std;
 
+            // Gradient of L with respect to variance
+            var loss_wrt_variance = new Matrix<double>(channel_height, channel_width);
+            var std_three_halves_times_two = -Math.Pow(variance + epsilon, 3.0 / 2.0) * 2.0;
+            var one_over_std_three_halves_times_two = 1.0 / std_three_halves_times_two;
+            for (var batch = 0; batch < batches; batch++) {
+                var loss_wrt_y_k = args.OutputErrors[batch][k];
+                var x_k = args.InputBatch[batch][k];
+
+                // Term 1
+                var x_minus_mean = x_k.Transform(x => x - mean);
+                var x_minus_mean_times_loss = x_minus_mean;
+                Matrix<double>.HadamardInplace(x_minus_mean_times_loss, loss_wrt_y_k, x_minus_mean);
+
+                // Term 2
+                var term1_times_term2 = x_minus_mean_times_loss;
+                Matrix<double>.ElementWiseInplace(term1_times_term2,x_minus_mean_times_loss, gamma, (lhs, g) => {
+                    return lhs * (g * one_over_std_three_halves_times_two);
+                });
+            }
+
+            // Gradient of L with respect to mean
+            var loss_wrt_mean = new Matrix<double>(channel_height, channel_width);
+            var loss_wrt_mean_term1 = new Matrix<double>(channel_height, channel_width);
+            var loss_wrt_mean_term2 = new Matrix<double>(channel_height, channel_width);
+            for (var batch = 0; batch < batches; batch++) {
+                var loss_wrt_y_k = args.OutputErrors[batch][k];
+                var x_k = args.InputBatch[batch][k];
             
+                // Add term 1
+                Matrix<double>.ElementWiseInplace(loss_wrt_mean_term1, loss_wrt_y_k, gamma, (y, g) => y * -g * scale);
+                Matrix<double>.AddInplace(loss_wrt_mean, loss_wrt_mean, loss_wrt_mean_term1);
+
+                // Add term 2
+                Matrix<double>.ElementWiseInplace(loss_wrt_mean_term2, loss_wrt_variance, x_k, (v, x) => v * one_over_batches * -2.0 * (x - mean));
+                Matrix<double>.AddInplace(loss_wrt_mean, loss_wrt_mean, loss_wrt_mean_term2);
+            }
+
+            // Gradient of L with respect to x
+            for (var batch = 0; batch < batches; batch++) {
+                var x = args.InputBatch[batch][k];
+                var loss_wrt_xHat = loss_wrt_xhats[batch];
+                var loss_wrt_x = new Matrix<double>(x.Rows, x.Columns);
+
+                // Add term 1 (dL/dxHat * scale)
+                Matrix<double>.ElementWiseInplace(loss_wrt_x, loss_wrt_x, loss_wrt_xHat, (_, v) => v * scale);
+
+                // Add term 2 (dl/dV * 2 * (x - mean) / M)
+                var temp1 = loss_wrt_variance.ElementWise(x, (v, x) => v * 2 * (x - mean) * one_over_batches);
+                Matrix<double>.AddInplace(loss_wrt_x, loss_wrt_x, temp1);
+
+                // Add term 3 (dl/du * 1/M)
+                Matrix<double>.ElementWiseInplace(loss_wrt_x, loss_wrt_x, loss_wrt_mean, (old, u) => old + u * one_over_batches);
+
+                // Save result
+                input_gradients[batch][k] = loss_wrt_x;
+            }
 
         });
-        
+
+        return new BackpropagationReturns {
+            InputErrors = new BatchedFeatureSet<double>(input_gradients.Select(x => new FeatureSet<double>(x)).ToArray()),
+            Gradient = new NormalizationGradients {
+                GammaGradients = gamma_gradients,
+                BetaGradients = beta_gradients
+            }
+        };
+
         /*
         // Getting the inputs, outputs, and errors from the BackpropagationArgs
         Matrix<double>[] inputs = (Matrix<double>[])args.Inputs;
