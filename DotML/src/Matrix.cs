@@ -335,6 +335,40 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         return new Matrix<T>(values, shared: false);
     }
 
+    /// <summary>
+    /// Create a vector by aggregating the values across all rows into a single row vector
+    /// </summary>
+    /// <param name="aggregator">aggregation function</param>
+    /// <returns>aggregated vector</returns>
+    public Vec<T> AggregateOverRows(Func<T, T, T> aggregator) {
+        T[] result = new T[this.Columns];
+        for (var col = 0; col < this.Columns; col++) {
+            T aggregate = T.Zero;
+            for (var row = 0; row < this.Rows; row++) {
+                aggregate = aggregator(aggregate, this[row, col]);
+            }
+            result[col] = aggregate;
+        }
+        return Vec<T>.Wrap(result);
+    }
+
+    /// <summary>
+    /// Create a vector by aggregating the values across all columns into a single column vector
+    /// </summary>
+    /// <param name="aggregator">aggregation function</param>
+    /// <returns>aggregated vector</returns>
+    public Vec<T> AggregateOverColumns(Func<T, T, T> aggregator) {
+        T[] result = new T[this.Rows];
+        for (var row = 0; row < this.Rows; row++) {
+            T aggregate = T.Zero;
+            for (var col = 0; col < this.Columns; col++) {
+                aggregate = aggregator(aggregate, this[row, col]);
+            }
+            result[row] = aggregate;
+        }
+        return Vec<T>.Wrap(result);
+    }
+
     // TODO below this point I need to clarify the difference between Rows/Columns and value_rows, value_columns
 
     /// <summary>

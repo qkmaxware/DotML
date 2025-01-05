@@ -188,7 +188,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
 
         this.batch_inputs   = new FeatureSet<double>[this.BatchSize][]; // The inputs to each layer
         this.batch_outputs  = new FeatureSet<double>[this.BatchSize][]; // The outputs from each layer
-        this.batch_gradients = new Gradients?[this.BatchSize][];
+        this.layer_gradients = new Gradients?[Current.LayerCount];
 
         this.MaxEpochs = Math.Max(0, epochs);
 
@@ -211,7 +211,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
     private int num_batches;
     FeatureSet<double>[][] batch_inputs;
     FeatureSet<double>[][] batch_outputs;
-    Gradients?[][] batch_gradients;
+    Gradients?[] layer_gradients;
 
     private int count_training_items() {
         int count = 0;
@@ -235,12 +235,11 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
         this.batch.Clear(); this.batch.EnsureCapacity(this.BatchSize);
         this.batch_inputs   = new FeatureSet<double>[this.BatchSize][]; // The inputs to each layer
         this.batch_outputs  = new FeatureSet<double>[this.BatchSize][]; // The outputs from each layer
-        this.batch_gradients = new Gradients?[this.BatchSize][];
+        this.layer_gradients = new Gradients?[Current.LayerCount];
 
         for (var b = 0; b < this.BatchSize; b++) {
             this.batch_inputs[b] = new FeatureSet<double>[Current.LayerCount];
             this.batch_outputs[b] = new FeatureSet<double>[Current.LayerCount];
-            this.batch_gradients[b] = new Gradients?[Current.LayerCount];
         }
     }
 
@@ -363,37 +362,35 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
                     input_batches[layerIndex] = new BatchedFeatureSet<double>(infeatures);
                     output_batches[layerIndex] = new BatchedFeatureSet<double>(outfeatures);
                 }
-                // Do backpropagation steps
-                Parallel.For(0, batch_size, (batchIndex) => {
-                    var currentPair = batch[batchIndex];
+                // Setup initial backpropagation arguments
+                var backprop_args = new BackpropagationArgs();
+                backprop_args.BatchTrueLabels = new Vec<double>[batch_size];
+                FeatureSet<double>[] output_errors = new FeatureSet<double>[batch_size];
+                for (var b = 0; b < batch_size; b++) {
+                    var currentPair = batch[b];
                     var expected = currentPair.Output;
+                    backprop_args.BatchTrueLabels[b] = expected;
 
-                    var inputs = this.batch_inputs[batchIndex];
-                    var outputs = this.batch_outputs[batchIndex];
-                    var layer_gradients = this.batch_gradients[batchIndex];
-
+                    var outputs = this.batch_outputs[b];
                     var @true = expected.Shape(outputs[^1].Select(x => x.Shape).ToArray());
                     var errors = outputs[^1].Zip(@true).Select(x => x.First-x.Second).ToArray();
-                    
-                    var backprop_args = new BackpropagationArgs();
-                    backprop_args.BatchIndex = batchIndex;
-                    backprop_args.Errors = errors;
-                    backprop_args.TrueLabel = expected;
-                    for (var layerIndex = Current.LayerCount - 1; layerIndex >= 0; layerIndex--) {
-                        backprop_args.InputBatch = input_batches[layerIndex]; // Will be needed for backpropagation of BatchNorm (as we need to see ALL batched inputs to compute mean/variance)
-                        backprop_args.Inputs = inputs[layerIndex]; // theoretically this value is equivalent to InputBatch[batchIndex]
-                        backprop_args.OutputBatch = output_batches[layerIndex];
-                        backprop_args.Outputs = outputs[layerIndex];
 
-                        var layer = Current.GetLayer(layerIndex);
-                        backprop_args.LayerIndex = layerIndex;
-                        //using (var backpropLayerMetric = PerformanceReport?.Begin(BackpropagationPerformanceKey + "/" + layerIndex)) {
-                            var returns = layer.Visit(this.backpropagationActions, backprop_args); // Backpropagation is different for each layer kind, leverage polymorphism
-                            layer_gradients[layerIndex] = returns.Gradient;
-                            backprop_args.Errors = returns.Errors;
-                        //}
-                    }
-                });
+                    output_errors[b] = new FeatureSet<double>(errors);
+                }
+                backprop_args.OutputErrors = new BatchedFeatureSet<double>(output_errors);
+
+                // Do backwards pass through the layers
+                for (var layerIndex = Current.LayerCount - 1; layerIndex >= 0; layerIndex--) {
+                    backprop_args.InputBatch = input_batches[layerIndex]; // Will be needed for backpropagation of BatchNorm (as we need to see ALL batched inputs to compute mean/variance)
+                    backprop_args.OutputBatch = output_batches[layerIndex];
+                    
+                    var layer = Current.GetLayer(layerIndex);
+                    backprop_args.LayerIndex = layerIndex;
+                    var returns = layer.Visit(this.backpropagationActions, backprop_args); // Backpropagation is different for each layer kind, leverage polymorphism
+                    
+                    layer_gradients[layerIndex] = returns.Gradient;
+                    backprop_args.OutputErrors = returns.InputErrors;
+                }
             }
             
             // Update weights
@@ -404,12 +401,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
                 this.layerUpdateActions.TrackUsedParameters(true); // TODO only do this in DEBUG mode
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                     // Average gradients across batch
-                    Gradients? avgGradient = batch_gradients[0][layerIndex]; // Assume first gradient is the average
-                    if (batch_size > 1 && avgGradient != null) {
-                        // Make the first gradient the average of all gradients in the batch
-                        var gradients_for_layer = batch_gradients.Select(x => x[layerIndex]);
-                        avgGradient.AverageOf(gradients_for_layer); 
-                    }
+                    Gradients? avgGradient = layer_gradients[layerIndex];
 
                     // Perform update
                     update_args.Gradients = avgGradient;
