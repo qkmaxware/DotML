@@ -1,6 +1,6 @@
 namespace DotML.Network;
 
-[WorkInProgress]
-public class ResidualConnection : AdditionSkipConnection {
+//[WorkInProgress]
+//public class ResidualConnection : AdditionSkipConnection {
 
-}
+//}

@@ -10,10 +10,16 @@ using System.Text.Json.Serialization;
 namespace DotML;
 
 /// <summary>
-/// 3d or tensor shape
+/// 4d or tensor shape
 /// </summary>
 public struct Shape4D {
+    /// <summary>
+    /// Number of batches
+    /// </summary>
     public readonly int Batches;
+    /// <summary>
+    /// Number of channels
+    /// </summary>
     public readonly int Channels;
     /// <summary>
     ///  Number of rows
@@ -72,6 +78,9 @@ public struct Shape4D {
 /// 3d or tensor shape
 /// </summary>
 public struct Shape3D {
+    /// <summary>
+    /// Number of channels
+    /// </summary>
     public readonly int Channels;
     /// <summary>
     ///  Number of rows

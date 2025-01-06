@@ -1,5 +1,5 @@
 namespace DotML.Network;
 
-public abstract class ConcatenationSkipConnection : SkipConnection {
+//public abstract class ConcatenationSkipConnection : SkipConnection {
 
-}
+//}
