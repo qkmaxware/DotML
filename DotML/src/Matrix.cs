@@ -340,10 +340,10 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary>
     /// <param name="aggregator">aggregation function</param>
     /// <returns>aggregated vector</returns>
-    public Vec<T> AggregateOverRows(Func<T, T, T> aggregator) {
+    public Vec<T> AggregateOverRows(Func<T, T, T> aggregator, T initial) {
         T[] result = new T[this.Columns];
         for (var col = 0; col < this.Columns; col++) {
-            T aggregate = T.Zero;
+            T aggregate = initial;
             for (var row = 0; row < this.Rows; row++) {
                 aggregate = aggregator(aggregate, this[row, col]);
             }
@@ -357,10 +357,10 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary>
     /// <param name="aggregator">aggregation function</param>
     /// <returns>aggregated vector</returns>
-    public Vec<T> AggregateOverColumns(Func<T, T, T> aggregator) {
+    public Vec<T> AggregateOverColumns(Func<T, T, T> aggregator, T initial) {
         T[] result = new T[this.Rows];
         for (var row = 0; row < this.Rows; row++) {
-            T aggregate = T.Zero;
+            T aggregate = initial;
             for (var col = 0; col < this.Columns; col++) {
                 aggregate = aggregator(aggregate, this[row, col]);
             }
@@ -630,6 +630,47 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
     public static Matrix<T> operator * (Matrix<T> a, Matrix<T> b) {
         return MatrixHelper<T>.MultiplyInParallel(a, b); // I hate that this is the fastest. Seems like it works great in a single threaded app. Will have to see how it works in multi-threaded apps where threads are not as readily available.
+    }
+
+    /// <summary>
+    /// Matrix matrix multiplication
+    /// </summary>
+    /// <param name="b">RHS matrix</param>
+    /// <returns>matrix</returns>
+    /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Matrix<T> MultiplyWith(Matrix<T> b) => this * b;
+    
+    /// <summary>
+    /// Multiply the transpose of this matrix with another
+    /// </summary>
+    /// <param name="b">RHS matrix</param>
+    /// <returns>this transposed times RHS</returns>
+    /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Matrix<T> MultiplyTransposedWith(Matrix<T> b) {
+        var a = this;
+        var this_T_rows = a.Columns;
+        var this_T_columns = a.Rows;
+        
+        if (this_T_columns != b.Rows)
+            throw new ArithmeticException($"Incompatible dimensions for matrix multiplication {this_T_rows}x{this_T_columns} · {b.Rows}x{b.Columns}");
+
+        int rows = this_T_rows;
+        int cols = b.Columns;
+        int innerDim = this_T_columns;
+
+        T[,] result = new T[rows, cols];
+        Parallel.For(0, rows, i => {
+            for (int j = 0; j < cols; j++) {
+                T sum = T.Zero;            
+                for (int k = 0; k < innerDim; k++) {
+                    sum += a[k, i] * b[k, j];
+                }
+                result[i, j] = sum;
+            }
+        });
+        return Matrix<T>.Wrap(result);
     }
 
     /// <summary>

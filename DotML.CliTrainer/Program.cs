@@ -15,7 +15,7 @@ public static void Main() {
 
     #region Network
 
-    var network = MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: TeLU.Instance);
+    var network = MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: ReLU.Instance);
     
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
     Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
@@ -173,7 +173,7 @@ public static void Main() {
     var filename = $"{filename_root}training-report.csv";
     Console.WriteLine($"Training started: \"{filename}\"");
     using var report_writer = new StreamWriter(filename);
-    report_writer.WriteLine("epoch, min-loss, max-loss, average-loss, tests-passed, tests-failed");
+    report_writer.WriteLine("epoch, validation-min-loss, validation-max-loss, validation-average-loss, validation-tests-passed, validation-tests-failed, training-min-loss, training-max-loss, training-average-loss, training-tests-passed, training-tests-failed");
     report_writer.Flush();
     
     while (has_next) {
@@ -192,6 +192,53 @@ public static void Main() {
         timer.Stop();
         var elapsed = timer.Elapsed;
 
+        var data_fitting_max = 0.0; var data_fitting_min = 0.0; var data_fitting_avg = 0.0;
+        var samples_fit = 0; var samples_unfit = 0;
+        {
+            var data_iterator = data.SampleSequentially();
+            var sum_error = 0d; var count = 0;
+            var max_error = double.MinValue;
+            var min_error = double.MaxValue;
+            var all_less_threshold = true;
+            while (data_iterator.MoveNext()) {
+                var input = data_iterator.Current.Input;
+                var @true = data_iterator.Current.Output; 
+                var predicted = network.PredictSync(input);
+                
+                var loss = trainer.LossFunction(predicted, @true);
+                sum_error += loss;
+                max_error = Math.Max(max_error, loss);
+                min_error = Math.Min(min_error, loss);
+                var passed = loss < trainer.EarlyStopAccuracy;
+                if (passed)
+                    samples_fit++;
+                else
+                    samples_unfit++;
+                all_less_threshold &= passed;
+                count++;
+
+                Console.SetCursorPosition(position.Left, position.Top);
+                Console.Write('|');
+                var percent = (float)(count - 1)/(float)data.Size;
+                for (float i = 0; i <= 1.0; i += progress_bar_step) {
+                    if (i <= percent)
+                        Console.Write('-');
+                    else
+                        Console.Write(' ');
+                }
+                Console.Write('|');
+                Console.Write(count);
+                Console.Write('/');
+                Console.Write(data.Size);
+                Console.Write(" checked");
+            }
+            var avg_error = sum_error / Math.Max(1, count);
+
+            data_fitting_max = max_error;
+            data_fitting_min = min_error;
+            data_fitting_avg = avg_error;
+        }
+
         // Last report
         Console.SetCursorPosition(position.Left, position.Top);
         var status_char = ' ';
@@ -208,7 +255,7 @@ public static void Main() {
             min_loss = validation_report.AverageLoss;
         }
         Console.Write($"{status_char} {validation_report.TestsPassedCount}/{validation_report.TestCount} passed, {elapsed} elapsed, {validation_report.AverageLoss} loss, ");
-        report_writer.WriteLine($"{session.CurrentEpoch}, {validation_report.MinLoss}, {validation_report.MaxLoss}, {validation_report.AverageLoss}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}");
+        report_writer.WriteLine($"{session.CurrentEpoch}, {validation_report.MinLoss}, {validation_report.MaxLoss}, {validation_report.AverageLoss}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}, {data_fitting_min}, {data_fitting_max}, {data_fitting_avg}, {samples_fit}, {samples_unfit}");
         report_writer.Flush();
         var epochfname = $"{filename_root}epoch-{session.CurrentEpoch}.safetensors";
         network.ToSafetensor().WriteToFile(epochfname);

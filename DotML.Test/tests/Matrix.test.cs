@@ -193,6 +193,33 @@ public class BasicMatrix {
     }
 
     [TestMethod]
+    public void TestCompatibleMultiplyTransposed() {
+        // Arrange: Define two matrices to multiply
+        Matrix<double> A = new double[,] {
+            { 1, 2 },
+            { 3, 4 }
+        };
+
+        Matrix<double> B = new double[,] {
+            { 5, 6 },
+            { 7, 8 }
+        };
+
+        // Expected result of A * B
+        Matrix<double> expected = A.Transpose() * B;
+
+        // Act: Multiply matrices A and B
+        var result = A.MultiplyTransposedWith(B);
+
+        // Assert: Verify the result matches the expected output
+        Assert.AreEqual(expected.Rows, result.Rows);
+        Assert.AreEqual(expected.Columns, result.Columns);
+        foreach (var pair in expected.Zip(result)) {
+            Assert.AreEqual(pair.First, pair.Second, 0.01);
+        }
+    }
+
+    [TestMethod]
     public void TestIncompatibleMultiply() {
         // Arrange: Define two incompatible matrices
         Matrix<double> A = new double[,] {

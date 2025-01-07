@@ -596,41 +596,7 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         var channel_height = args.OutputErrors.Rows;
 
         // Compute mean and variance across the whole batch per channel
-        var means = new double[args.InputBatch.Channels];
-        var variances = new double[args.InputBatch.Channels];
-
-        if (args.InputBatch.Batches < 2) {
-            means = (double[])layer.RunningMean;
-            variances = (double[])layer.RunningVariance;
-        } 
-        else {
-            Parallel.For(0, variances.Length, channelIndex => {
-                double sum = 0.0;
-                double sumSq = 0.0;
-                int count = 0;
-
-                foreach (var featureSet in args.InputBatch) {
-                    var matrix = featureSet[channelIndex];
-                    var rows = matrix.Rows;
-                    var cols = matrix.Columns;
-                    for (int i = 0; i < rows; i++) {
-                        for (int j = 0; j < cols; j++) {
-                            double value = matrix[i, j];
-                            sum += value;
-                            sumSq += value * value;
-                            count++;
-                        }
-                    }
-                }
-
-                count = Math.Max(count, 1); // Avoid division by zero
-                double mean = sum / count;
-                double variance = (sumSq / count) - (mean * mean);
-
-                means[channelIndex] = mean;
-                variances[channelIndex] = variance;
-            });
-        }
+        layer.ComputeMeansAndVariances(args.InputBatch, out var means, out var variances);
 
         var gamma_gradients = new Matrix<double>[channels];
         var beta_gradients = new Matrix<double>[channels];
@@ -922,12 +888,13 @@ public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolut
         // Need this to be of size: Neurons
         // Delta.Rows
         // Neurons x Batches => Neurons = Delta.Rows
-        var bias_gradients = delta.AggregateOverColumns((agg, next) => agg + next); // Each column is a batch 
+        var bias_gradients = delta.AggregateOverColumns((agg, next) => agg + next, initial: 0.0); // Each column is a batch 
 
         // Need this to be of size: Batches x Input Features | Input Features x Batches (transposed)
         // WeightsT * Delta
         // Input Features x Neurons * Neurons x Batches => Input Features x Batches
-        var input_gradients = layer.Weights.Transpose() * delta; // Input Features x Neurons * Neurons x Batches => Input Features x Batches
+        // equivalent to layer.Weights.Transpose() * delta // using the method below removes the need to allocate a temp matrix
+        var input_gradients = layer.Weights.MultiplyTransposedWith(delta); // Input Features x Neurons * Neurons x Batches => Input Features x Batches
 
         // TODO reshape input_error. Each input feature is a column
         // Each batch must have it's input errors have the same channel/row/column dimensions

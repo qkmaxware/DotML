@@ -56,16 +56,13 @@ public class BatchNorm : ConvolutionalFeedforwardNetworkLayer {
     public bool IsTrainingMode {get; set;} = false;
     public bool IsInferenceMode {get => !IsTrainingMode; set => IsTrainingMode = !value; }
 
-    public override BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
-        // Basically this is used only when training
-        // Compute mean and variance across the whole batch per channel
-        double[] means = new double[features.Channels];
-        double[] variances = new double[features.Channels];
-
+    public void ComputeMeansAndVariances(BatchedFeatureSet<double> features, out double[] mean_vec, out double[] variance_vec) {
         if (IsInferenceMode || features.Batches < 2) {
-            means = (double[])this.RunningMean;
-            variances = (double[])this.RunningVariance;
+            mean_vec = (double[])this.RunningMean;
+            variance_vec = (double[])this.RunningVariance;
         } else {
+            var means = new double[features.Channels];
+            var variances = new double[features.Channels];
             Parallel.For(0, variances.Length, (channelIndex) => {
                 double sum = 0.0;
                 double sumSq = 0.0;
@@ -91,11 +88,26 @@ public class BatchNorm : ConvolutionalFeedforwardNetworkLayer {
 
                 means[channelIndex] = mean;
                 variances[channelIndex] = variance;
+            });
 
-                // Perform running mean/variance computation
+            mean_vec = means;
+            variance_vec = variances;
+        }
+    }
+
+    public override BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
+        // Compute mean and variance across the whole batch per channel
+        this.ComputeMeansAndVariances(features, out var means, out var variances);
+
+        // Perform running mean/variance computation
+        if (this.IsTrainingMode && features.Batches > 2) {
+            for (var channelIndex = 0; channelIndex < variances.Length; channelIndex++) {
+                var mean = means[channelIndex];
+                var variance = variances[channelIndex];
+                
                 ((double[])RunningMean)[channelIndex] = running_mean_momentum * mean + (1 - running_mean_momentum) * RunningMean[channelIndex];
                 ((double[])RunningVariance)[channelIndex] = running_variance_momentum * variance + (1 - running_variance_momentum) * RunningVariance[channelIndex];
-            });
+            }
         }
 
         // When run with a batch size of > 1
