@@ -5,7 +5,7 @@ using DotML.Network.Initialization;
 
 namespace DotML.Network.Training;
 
-public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
+public partial class BatchTrainerEnumerator<TNetwork> {
 
 public struct LayerUpdateArgs {
     public int ParameterOffset;
@@ -18,7 +18,7 @@ public struct LayerUpdateReturns {
 }
 
 private LayerUpdateActions layerUpdateActions {get; init;}
-private class LayerUpdateActions: IConvolutionalLayerVisitor<BatchedConvolutionalBackpropagationEnumerator<TNetwork>.LayerUpdateArgs, BatchedConvolutionalBackpropagationEnumerator<TNetwork>.LayerUpdateReturns> {
+private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>.LayerUpdateArgs, BatchTrainerEnumerator<TNetwork>.LayerUpdateReturns> {
 
     public double LearningRate {get; init;}
     public RegularizationFunction Regularization {get; init;}

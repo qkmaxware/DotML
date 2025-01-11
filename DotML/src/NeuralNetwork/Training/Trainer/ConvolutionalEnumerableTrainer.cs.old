@@ -12,7 +12,7 @@ namespace DotML.Network.Training;
 /// <typeparam name="TNetwork">type of network to train (convolutional network)</typeparam>
 public class ConvolutionalEnumerableBackpropagationTrainer<TNetwork>
     : IEnumerableTrainer<TNetwork>
-where TNetwork : ConvolutionalFeedforwardNetwork
+where TNetwork : FeedforwardNetwork
 {
     /// <summary>
     /// Number of epochs (default: 250)
@@ -107,9 +107,9 @@ where TNetwork : ConvolutionalFeedforwardNetwork
 #region Enumerator
 public class ConvolutionalBackpropagationEnumerator<TNetwork> 
     : IEpochEnumerator<TNetwork>,
-    IConvolutionalLayerVisitor<ConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationArgs, ConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationReturns>, 
-    IConvolutionalLayerVisitor<ConvolutionalBackpropagationEnumerator<TNetwork>.LayerUpdateArgs, ConvolutionalBackpropagationEnumerator<TNetwork>.LayerUpdateReturns>
-    where TNetwork : ConvolutionalFeedforwardNetwork
+    ILayerVisitor<ConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationArgs, ConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationReturns>, 
+    ILayerVisitor<ConvolutionalBackpropagationEnumerator<TNetwork>.LayerUpdateArgs, ConvolutionalBackpropagationEnumerator<TNetwork>.LayerUpdateReturns>
+    where TNetwork : FeedforwardNetwork
 {
     public int CurrentEpoch {get; private set;}
     private int CurrentUpdateTimestep;
@@ -243,7 +243,7 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
 
             try {
 
-            // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)
+            // Forward pass (simulated, duplicate of FeedforwardNetwork.PredictSync with some additional tracking)
             Matrix<double>[] layer_input = input;
             for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                 inputs[layerIndex] = layer_input;

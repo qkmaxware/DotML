@@ -3,7 +3,7 @@
 @using DotML.Network
 @using DotML.Network.Training
 
-<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=@network Trainer=@trainer TrainingData=@training ValidationData=@testing>
+<NetworkExplorerV2 @ref=explorer TNetwork=FeedforwardNetwork Network=@network Trainer=@trainer TrainingData=@training ValidationData=@testing>
     <Input>
         <div class="row" style="text-align: center;">
             <div class="col-sm-6">
@@ -58,13 +58,13 @@
 </NetworkExplorerV2>
 
 @code {
-    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+    private NetworkExplorerV2<FeedforwardNetwork>? explorer;
     const int IMG_WIDTH = 2;
     const int IMG_HEIGHT = 1;
     const int IMG_CHANNELS = 1;
     const int OUT_CLASSES = 1;
 
-    private ConvolutionalFeedforwardNetwork network = new ConvolutionalFeedforwardNetwork(
+    private FeedforwardNetwork network = new FeedforwardNetwork(
         [
             // 2 - 2 - 1
             new FullyConnectedLayer(
@@ -79,7 +79,7 @@
             new ActivationLayer(new Shape3D(1, OUT_CLASSES, 1), HyperbolicTangent.Instance)
         ]
     );
-    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>();
+    private EnumerableBatchTrainer<FeedforwardNetwork> trainer = new EnumerableBatchTrainer<FeedforwardNetwork>();
 
     private bool loaded => training is null || testing is null;
     private static TrainingSet? training = null;

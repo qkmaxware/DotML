@@ -6,7 +6,7 @@ namespace DotML.Network;
 /// <summary>
 /// Base interface for all CNN layers
 /// </summary>
-public interface IConvolutionalFeedforwardNetworkLayer : ILayer {
+public interface IFeedforwardNetworkLayer : ILayer {
     public FeatureSet<double> EvaluateSync(FeatureSet<double> features);
     public BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features);
 
@@ -14,15 +14,15 @@ public interface IConvolutionalFeedforwardNetworkLayer : ILayer {
 
     public bool DoesShapeMatchInputShape(Matrix<double>[] channels);
 
-    public void Visit(IConvolutionalLayerVisitor visitor);
-    public T Visit<T>(IConvolutionalLayerVisitor<T> visitor);
-    public TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args);
+    public void Visit(ILayerVisitor visitor);
+    public T Visit<T>(ILayerVisitor<T> visitor);
+    public TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args);
 }
 
 /// <summary>
 /// Base class for all layers for a CNN
 /// </summary>
-public abstract class ConvolutionalFeedforwardNetworkLayer : IConvolutionalFeedforwardNetworkLayer {
+public abstract class FeedforwardNetworkLayer : IFeedforwardNetworkLayer {
     public virtual Shape3D InputShape {get; protected set;}
     public virtual Shape3D OutputShape {get; protected set;}
 
@@ -62,19 +62,19 @@ public abstract class ConvolutionalFeedforwardNetworkLayer : IConvolutionalFeedf
         return new BatchedFeatureSet<double>(results);
     }
 
-    public abstract void Visit(IConvolutionalLayerVisitor visitor);
-    public abstract T Visit<T>(IConvolutionalLayerVisitor<T> visitor);
-    public abstract TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args);
+    public abstract void Visit(ILayerVisitor visitor);
+    public abstract T Visit<T>(ILayerVisitor<T> visitor);
+    public abstract TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args);
 
-    public LayerSequencer Then(Func<Shape3D, IConvolutionalFeedforwardNetworkLayer> constructor) {
+    public LayerSequencer Then(Func<Shape3D, IFeedforwardNetworkLayer> constructor) {
         var seq = new LayerSequencer(this);
         return seq.Then(constructor);
     }
 }
 
-public class LayerSequencer : IEnumerable<IConvolutionalFeedforwardNetworkLayer> {
+public class LayerSequencer : IEnumerable<IFeedforwardNetworkLayer> {
     private Shape3D ishape;
-    private List<IConvolutionalFeedforwardNetworkLayer> layers = new List<IConvolutionalFeedforwardNetworkLayer>();
+    private List<IFeedforwardNetworkLayer> layers = new List<IFeedforwardNetworkLayer>();
 
     public Shape3D InputShape => layers.Count > 0 ? layers[0].InputShape : ishape;
     public Shape3D OutputShape => layers.Count > 0 ? layers[^1].OutputShape : ishape;
@@ -83,20 +83,20 @@ public class LayerSequencer : IEnumerable<IConvolutionalFeedforwardNetworkLayer>
         this.ishape = input_size;
     } 
 
-    public LayerSequencer(IConvolutionalFeedforwardNetworkLayer first) {
+    public LayerSequencer(IFeedforwardNetworkLayer first) {
         this.layers.Add(first);
     }
 
-    public LayerSequencer Then(Func<Shape3D, IConvolutionalFeedforwardNetworkLayer> constructor) {
+    public LayerSequencer Then(Func<Shape3D, IFeedforwardNetworkLayer> constructor) {
         this.layers.Add(constructor(OutputShape));
         return this;
     }
 
-    public LayerSequencer Then(Func<Shape3D, IEnumerable<IConvolutionalFeedforwardNetworkLayer>> generator) {
+    public LayerSequencer Then(Func<Shape3D, IEnumerable<IFeedforwardNetworkLayer>> generator) {
         this.layers.AddRange(generator(OutputShape));
         return this;
     }
 
-    public IEnumerator<IConvolutionalFeedforwardNetworkLayer> GetEnumerator() => layers.GetEnumerator();
+    public IEnumerator<IFeedforwardNetworkLayer> GetEnumerator() => layers.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => layers.GetEnumerator();
 }

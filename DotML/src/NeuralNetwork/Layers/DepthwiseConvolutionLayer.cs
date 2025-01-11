@@ -10,7 +10,7 @@ namespace DotML.Network;
 /// <see href="https://towardsdatascience.com/understanding-depthwise-separable-convolutions-and-the-efficiency-of-mobilenets-6de3d6b62503"/>
 /// </summary>
 [Untested()]
-public class DepthwiseConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
+public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
     
     /// <summary>
     /// The filter to apply to the input channels
@@ -129,7 +129,7 @@ public class DepthwiseConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
         return (FeatureSet<double>)outputs;
     }
 
-    public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

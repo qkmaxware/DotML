@@ -3,8 +3,8 @@ using System.Runtime.CompilerServices;
 namespace DotML.Network.Training;
 
 public class SimpleConvNetTrainer : 
-    IConvolutionalLayerVisitor<SimpleConvNetTrainer.BackpropagationArgs, SimpleConvNetTrainer.BackpropagationReturns>, 
-    IConvolutionalLayerVisitor<SimpleConvNetTrainer.WeightUpdateArgs, SimpleConvNetTrainer.WeightUpdateReturns>
+    ILayerVisitor<SimpleConvNetTrainer.BackpropagationArgs, SimpleConvNetTrainer.BackpropagationReturns>, 
+    ILayerVisitor<SimpleConvNetTrainer.WeightUpdateArgs, SimpleConvNetTrainer.WeightUpdateReturns>
 {
 
     private readonly int epochs = 500;
@@ -14,7 +14,7 @@ public class SimpleConvNetTrainer :
         this.learningRate = learningRate;
     }
 
-    public void Train(ConvolutionalFeedforwardNetwork network, IEnumerator<TrainingPair> training, IEnumerator<TrainingPair> validation) {
+    public void Train(FeedforwardNetwork network, IEnumerator<TrainingPair> training, IEnumerator<TrainingPair> validation) {
         Matrix<double>[][] inputs   = new Matrix<double>[network.LayerCount][]; // The inputs to each layer
         Matrix<double>[][] outputs  = new Matrix<double>[network.LayerCount][]; // The outputs from each layer
         // TODO gradients
@@ -32,7 +32,7 @@ public class SimpleConvNetTrainer :
                 ).ToArray();
                 var expected = training.Current.Output.ToColumnMatrix();
 
-                // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)
+                // Forward pass (simulated, duplicate of FeedforwardNetwork.PredictSync with some additional tracking)
                 Matrix<double>[] layer_input = input;
                 for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
                     inputs[layerIndex] = layer_input;

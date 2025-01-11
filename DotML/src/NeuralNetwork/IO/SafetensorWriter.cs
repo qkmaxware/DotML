@@ -3,7 +3,7 @@ namespace DotML.Network;
 /// <summary>
 /// Writer to encode layer weights and biases to a safetensor file
 /// </summary>
-public class LayerSafetensorWriter : IConvolutionalLayerVisitor<int, bool> {
+public class LayerSafetensorWriter : ILayerVisitor<int, bool> {
 
     private Safetensors sb = new Safetensors();
 

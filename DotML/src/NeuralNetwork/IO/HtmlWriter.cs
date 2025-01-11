@@ -22,7 +22,7 @@ public class LayerHtmlWriter : LayerWriter {
         sb.WriteLine("</table>");
     }
 
-    protected override void WriteInputLayer(IConvolutionalFeedforwardNetworkLayer first) {
+    protected override void WriteInputLayer(IFeedforwardNetworkLayer first) {
         sb.WriteLine("<tr>");
             sb.Write("<td>");
                 sb.Write("Input");
@@ -38,7 +38,7 @@ public class LayerHtmlWriter : LayerWriter {
         sb.WriteLine("</tr>");
     }
 
-    protected override void WriteLayerRow(IConvolutionalFeedforwardNetworkLayer layer, string description) {
+    protected override void WriteLayerRow(IFeedforwardNetworkLayer layer, string description) {
         sb.WriteLine("<tr>");
         sb.Write("<td>");
             sb.Write(layer.GetType().Name);

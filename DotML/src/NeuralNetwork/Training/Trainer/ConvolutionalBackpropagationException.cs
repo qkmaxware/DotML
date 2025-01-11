@@ -8,9 +8,9 @@ public class ConvolutionalBackpropagationException : System.ArithmeticException 
     /// <summary>
     /// The network being trained
     /// </summary>
-    public ConvolutionalFeedforwardNetwork Network {get; init;} 
+    public FeedforwardNetwork Network {get; init;} 
 
-    public ConvolutionalBackpropagationException(ConvolutionalFeedforwardNetwork network, Exception inner) : base("An exception ocurred during backpropagation training", inner) {
+    public ConvolutionalBackpropagationException(FeedforwardNetwork network, Exception inner) : base("An exception ocurred during backpropagation training", inner) {
         this.Network = network;
     }
 

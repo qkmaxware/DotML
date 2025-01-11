@@ -5,7 +5,7 @@ using DotML.Network.Initialization;
 
 namespace DotML.Network.Training;
 
-public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
+public partial class BatchTrainerEnumerator<TNetwork> {
 
 public struct BackpropagationArgs {
     public Vec<double>[] BatchTrueLabels;
@@ -112,7 +112,7 @@ public double GradientClippingThresholdWeight => backpropagationActions.Gradient
 public double GradientClippingThresholdBias => backpropagationActions.GradientClippingThresholdBias;
 
 private BackpropagationActions backpropagationActions {get; init;}
-public class BackpropagationActions : IConvolutionalLayerVisitor<BatchedConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationArgs, BatchedConvolutionalBackpropagationEnumerator<TNetwork>.BackpropagationReturns> {
+public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetwork>.BackpropagationArgs, BatchTrainerEnumerator<TNetwork>.BackpropagationReturns> {
 
     public BackpropagationActions(bool useClipping, double weightThreshold, double biasThreshold) {
         this.UseGradientClipping = useClipping;

@@ -3,7 +3,7 @@ namespace DotML.Network;
 /// <summary>
 /// Writer to encode layer information to a text format
 /// </summary>
-public class LayerWriter : IConvolutionalLayerVisitor<int, bool>, IDisposable {
+public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
 
     protected TextWriter sb;
 
@@ -20,11 +20,11 @@ public class LayerWriter : IConvolutionalLayerVisitor<int, bool>, IDisposable {
         
     }
 
-    protected virtual void WriteInputLayer(IConvolutionalFeedforwardNetworkLayer first) {
+    protected virtual void WriteInputLayer(IFeedforwardNetworkLayer first) {
         
     }
 
-    protected virtual void WriteLayerRow(IConvolutionalFeedforwardNetworkLayer layer, string description) {
+    protected virtual void WriteLayerRow(IFeedforwardNetworkLayer layer, string description) {
         
     }
 

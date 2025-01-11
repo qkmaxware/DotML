@@ -45,7 +45,7 @@ public static void Main() {
     #region Trainer
     var validation_report = new DefaultValidationReport();
     var performance_report = new DefaultPerformanceReport();
-    var trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
+    var trainer = new EnumerableBatchTrainer<FeedforwardNetwork> {
         Epochs = 100,
         LearningRate = 0.001,
         LearningRateOptimizer = new AdamOptimizer(),

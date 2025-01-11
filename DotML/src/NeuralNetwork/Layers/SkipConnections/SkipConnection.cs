@@ -4,7 +4,7 @@ using DotML.Network.Initialization;
 namespace DotML.Network;
 
 [WorkInProgress]
-public abstract class SkipConnection : ConvolutionalFeedforwardNetworkLayer {
+public abstract class SkipConnection : FeedforwardNetworkLayer {
 
     /// <summary>
     /// The capture source where the skip connection draws it's features from

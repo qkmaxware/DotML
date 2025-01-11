@@ -4,10 +4,10 @@ using DotML.Network.Initialization;
 namespace DotML.Network;
 
 /// <summary>
-/// Softmax output layer for a ConvolutionalFeedforwardNetwork
+/// Softmax output layer for a FeedforwardNetwork
 /// <see href="https://en.wikipedia.org/wiki/Softmax_function"/>
 /// </summary>
-public class SoftmaxLayer : ConvolutionalFeedforwardNetworkLayer {
+public class SoftmaxLayer : FeedforwardNetworkLayer {
 
     private int size;
 
@@ -45,15 +45,15 @@ public class SoftmaxLayer : ConvolutionalFeedforwardNetworkLayer {
     /// <returns>Number of trainable parameters</returns>
     public override int TrainableParameterCount() => 0;
 
-    public override void Visit(IConvolutionalLayerVisitor visitor) {
+    public override void Visit(ILayerVisitor visitor) {
         visitor.Visit(this);
     }
 
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) {
+    public override T Visit<T>(ILayerVisitor<T> visitor) {
         return visitor.Visit(this);
     }
 
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) {
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) {
         return visitor.Visit(this, args);
     }
 }

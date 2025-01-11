@@ -13,7 +13,7 @@ public class PerformanceTest {
 
     [TestMethod]
     public void TestAlexNexConstruction() {
-        ConvolutionalFeedforwardNetwork alexNet = new ConvolutionalFeedforwardNetwork(
+        FeedforwardNetwork alexNet = new FeedforwardNetwork(
             new ConvolutionLayer     (input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)),
             new ActivationLayer      (input_size: new Shape3D(96, 55, 55),  activation: HyperbolicTangent.Instance),
             new LocalMaxPoolingLayer (input_size: new Shape3D(96, 55, 55), size: 3, stride: 2),
@@ -44,7 +44,7 @@ public class PerformanceTest {
     public void TestAlexNetFF() {
         Matrix<double>[] img = [new Matrix<double>(IMG_HEIGHT, IMG_WIDTH), new Matrix<double>(IMG_HEIGHT, IMG_WIDTH), new Matrix<double>(IMG_HEIGHT, IMG_WIDTH)];
 
-        ConvolutionalFeedforwardNetwork alexNet = new ConvolutionalFeedforwardNetwork(
+        FeedforwardNetwork alexNet = new FeedforwardNetwork(
             new ConvolutionLayer     (input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Valid, stride: 4, filters: ConvolutionFilter.Make(96, 3, 11)),
             new ActivationLayer      (input_size: new Shape3D(96, 55, 55), HyperbolicTangent.Instance),
             new LocalMaxPoolingLayer (input_size: new Shape3D(96, 55, 55), size: 3, stride: 2),

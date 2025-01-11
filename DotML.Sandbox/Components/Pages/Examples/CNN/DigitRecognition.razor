@@ -4,7 +4,7 @@
 @using DotML.Network.Training
 @using Qkmaxware.Media.Image
 
-<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing>
+<NetworkExplorerV2 @ref=explorer TNetwork=FeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing>
     <Input>
         <p>Draw a digit into the panel below (0-9).</p>
         <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
@@ -36,9 +36,9 @@
     private static string[] OUT_CLASS_NAMES = [
         "0", "1", "2", "3", "4", "5", "6",  "7", "8", "9"
     ];
-    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+    private NetworkExplorerV2<FeedforwardNetwork>? explorer;
 
-    private ConvolutionalFeedforwardNetwork leNet = new ConvolutionalFeedforwardNetwork(
+    private FeedforwardNetwork leNet = new FeedforwardNetwork(
         [
             new ConvolutionLayer(
                 new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH),
@@ -84,7 +84,7 @@
             new SoftmaxLayer(OUT_CLASSES)
         ]
     );
-    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>(){
+    private EnumerableBatchTrainer<FeedforwardNetwork> trainer = new EnumerableBatchTrainer<FeedforwardNetwork>(){
         LossFunction = LossFunctions.CrossEntropy
     };
 

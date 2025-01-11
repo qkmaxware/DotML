@@ -8,7 +8,7 @@ namespace DotML.Network;
 /// Apply a convolution using the given kernel/filter
 /// <see href="https://en.wikipedia.org/wiki/Convolutional_layer"/>
 /// </summary>
-public class ConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
+public class ConvolutionLayer : FeedforwardNetworkLayer {
     private ConvolutionFilter[] filters;
     public ReadOnlyCollection<ConvolutionFilter> Filters {get; init;}
     public Padding Padding {get; init;}
@@ -187,7 +187,7 @@ public class ConvolutionLayer : ConvolutionalFeedforwardNetworkLayer {
         return z;
     }
 
-    public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

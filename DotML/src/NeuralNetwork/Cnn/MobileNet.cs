@@ -20,14 +20,14 @@ public static class MobileNet {
     const int IMG_HEIGHT = 224;
     const int IMG_CHANNELS = 3;
 
-    private static IEnumerable<IConvolutionalFeedforwardNetworkLayer> DepthwiseBlock(Shape3D size, int stride, int kernel_size=3, Padding padding = Padding.Same, ActivationFunction? activation = null) {
+    private static IEnumerable<IFeedforwardNetworkLayer> DepthwiseBlock(Shape3D size, int stride, int kernel_size=3, Padding padding = Padding.Same, ActivationFunction? activation = null) {
         var first = new DepthwiseConvolutionLayer(input_size: size, padding: padding, stride: stride, filter: ConvolutionFilter.Make(1, size.Channels, kernel_size)[0]);
         yield return first;
         yield return new BatchNorm(input_size: first.OutputShape);
         yield return new ActivationLayer(input_size: first.OutputShape, activation: activation ?? ReLU.Instance);
     }
 
-    private static IEnumerable<IConvolutionalFeedforwardNetworkLayer> PointwiseBlock(Shape3D size, int filter_count, int kernel_size = 1, int stride=1, Padding padding = Padding.Same, bool dropout = false, double dropout_percent = 0.1, ActivationFunction? activation = null) {
+    private static IEnumerable<IFeedforwardNetworkLayer> PointwiseBlock(Shape3D size, int filter_count, int kernel_size = 1, int stride=1, Padding padding = Padding.Same, bool dropout = false, double dropout_percent = 0.1, ActivationFunction? activation = null) {
         var first = new ConvolutionLayer(input_size: size, padding: padding, stride: stride, filters: ConvolutionFilter.Make(filter_count, size.Channels, kernel_size));
         yield return first;
         yield return new BatchNorm(input_size: first.OutputShape);
@@ -46,7 +46,7 @@ public static class MobileNet {
     /// <param name="activation">activation function</param>
     /// <returns>network</returns>
     /// <exception cref="ArgumentException">thrown when an unsupported version is supplied</exception>
-    public static ConvolutionalFeedforwardNetwork Make(Version version, int output_classes, ActivationFunction? activation = null) {
+    public static FeedforwardNetwork Make(Version version, int output_classes, ActivationFunction? activation = null) {
         var net = version switch {
             Version.V1 => MakeV1(output_classes, activation),
             _ => throw new ArgumentException(nameof(version))
@@ -60,10 +60,10 @@ public static class MobileNet {
     /// </summary>
     /// <param name="output_classes">number of output classifications</param>
     /// <returns>network</returns>
-    private static ConvolutionalFeedforwardNetwork MakeV1(int output_classes, ActivationFunction? activation = null) {
+    private static FeedforwardNetwork MakeV1(int output_classes, ActivationFunction? activation = null) {
         activation = activation ?? ReLU.Instance;
 
-        return new ConvolutionalFeedforwardNetwork(
+        return new FeedforwardNetwork(
             // Input layer & first convolution
             new ConvolutionLayer(input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Same, stride: 2, filters: ConvolutionFilter.Make(32, 3, 3))
             .Then((size) => new BatchNorm(input_size: size))

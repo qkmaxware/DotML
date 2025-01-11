@@ -7,7 +7,7 @@ namespace DotML.Network;
 /// Apply pooling to reduce the size of the image data
 /// <see href="https://en.wikipedia.org/wiki/Pooling_layer"/>
 /// </summary>
-public abstract class PoolingLayer : ConvolutionalFeedforwardNetworkLayer {
+public abstract class PoolingLayer : FeedforwardNetworkLayer {
     /// <summary>
     /// Size of the filter horizontally
     /// </summary>
@@ -81,9 +81,9 @@ public abstract class PoolingLayer : ConvolutionalFeedforwardNetworkLayer {
     /// <returns>Number of trainable parameters</returns>
     public override int TrainableParameterCount() => 0;
 
-    public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }
 
 public abstract class LocalPoolingLayer : PoolingLayer {

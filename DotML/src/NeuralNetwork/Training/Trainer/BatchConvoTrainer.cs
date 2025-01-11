@@ -10,9 +10,9 @@ namespace DotML.Network.Training;
 /// Simple Neural Network trainer based on backpropagation
 /// </summary>
 /// <typeparam name="TNetwork">type of network to train (convolutional network)</typeparam>
-public class BatchedConvolutionalEnumerableBackpropagationTrainer<TNetwork>
+public class EnumerableBatchTrainer<TNetwork>
     : IEnumerableTrainer<TNetwork>
-where TNetwork : ConvolutionalFeedforwardNetwork
+where TNetwork : FeedforwardNetwork
 {
     /// <summary>
     /// Number of epochs (default: 250)
@@ -97,7 +97,7 @@ where TNetwork : ConvolutionalFeedforwardNetwork
     public int BatchSize {get; set;} = 1;
 
     public IEpochEnumerator<TNetwork> EnumerateTraining(TNetwork network, IEnumerator<TrainingPair> dataset, IEnumerator<TrainingPair> validation) {
-        return new BatchedConvolutionalBackpropagationEnumerator<TNetwork>(
+        return new BatchTrainerEnumerator<TNetwork>(
             network,
             dataset,
             validation,
@@ -129,9 +129,9 @@ where TNetwork : ConvolutionalFeedforwardNetwork
 #endregion
 
 #region Enumerator
-public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> 
+public partial class BatchTrainerEnumerator<TNetwork> 
     : IEpochEnumerator<TNetwork>
-    where TNetwork : ConvolutionalFeedforwardNetwork
+    where TNetwork : FeedforwardNetwork
 {
     public int CurrentEpoch {get; private set;}
     private int CurrentUpdateTimestep;
@@ -157,7 +157,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
 
     public ILearningRateOptimizer LearningRateOptimizer => layerUpdateActions.LearningRateOptimizer;
 
-    public BatchedConvolutionalBackpropagationEnumerator(
+    public BatchTrainerEnumerator(
         TNetwork network,
         IEnumerator<TrainingPair> training,
         IEnumerator<TrainingPair> validation,
@@ -323,7 +323,7 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork>
                 )).ToArray()
             );
 
-            // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)
+            // Forward pass (simulated, duplicate of FeedforwardNetwork.PredictSync with some additional tracking)
             using (var metric = PerformanceReport?.Begin(FeedforwardPerformanceKey)) {
                 BatchedFeatureSet<double> layer_input = batch_features;
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {

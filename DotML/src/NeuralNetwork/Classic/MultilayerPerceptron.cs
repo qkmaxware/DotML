@@ -11,9 +11,9 @@ public static class MultilayerPerceptron {
     /// <param name="input_size">input size (neurons)</param>
     /// <param name="layer_sizes">neurons for hidden/output layer</param>
     /// <returns>network</returns>
-    public static ConvolutionalFeedforwardNetwork Make(ActivationFunction? activation, int input_size, params int[] layer_sizes) {
+    public static FeedforwardNetwork Make(ActivationFunction? activation, int input_size, params int[] layer_sizes) {
         if (layer_sizes.Length < 1)
-            return new ConvolutionalFeedforwardNetwork();
+            return new FeedforwardNetwork();
 
         // EG 2->2->1 should be a network with 2 actual layer objects the first with (2, 2) the second is (2, 1)
 
@@ -32,6 +32,6 @@ public static class MultilayerPerceptron {
             }
         }
 
-        return new ConvolutionalFeedforwardNetwork(set);
+        return new FeedforwardNetwork(set);
     }
 }

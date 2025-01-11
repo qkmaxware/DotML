@@ -4,7 +4,7 @@
 @using DotML.Network.Training
 @using Qkmaxware.Media.Image
 
-<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing UseDefaultEval=false>
+<NetworkExplorerV2 @ref=explorer TNetwork=FeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing UseDefaultEval=false>
     <Input>
         <PaintApp @ref=input ImgWidth=@(IMG_WIDTH * CHAR_COUNT) ImgHeight=IMG_HEIGHT></PaintApp>
     </Input>
@@ -65,10 +65,10 @@
         "J", "K", "L", "M", "N", "O", "P", "Q", "R", 
         "S", "T", "U", "V", "W", "X", "Y", "Z", "!", "?"
     };
-    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+    private NetworkExplorerV2<FeedforwardNetwork>? explorer;
     private PaintApp? input;
 
-    private ConvolutionalFeedforwardNetwork leNet = new ConvolutionalFeedforwardNetwork(
+    private FeedforwardNetwork leNet = new FeedforwardNetwork(
         [
             new ConvolutionLayer(
                 new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH),
@@ -114,7 +114,7 @@
             new SoftmaxLayer(OUT_CLASSES)
         ]
     );
-    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>(){
+    private EnumerableBatchTrainer<FeedforwardNetwork> trainer = new EnumerableBatchTrainer<FeedforwardNetwork>(){
         LearningRate = 0.001,
         LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CrossEntropy,

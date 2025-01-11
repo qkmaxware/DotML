@@ -9,7 +9,7 @@ namespace DotML.Network;
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
 [Untested()]
-public class LayerNorm : ConvolutionalFeedforwardNetworkLayer {
+public class LayerNorm : FeedforwardNetworkLayer {
 
     /// <summary>
     /// Normalization scaling factor
@@ -63,7 +63,7 @@ public class LayerNorm : ConvolutionalFeedforwardNetworkLayer {
         return InputShape.Count * 2;
     }
 
-    public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

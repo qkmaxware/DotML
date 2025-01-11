@@ -8,7 +8,7 @@ namespace DotML.Network;
 /// Layer which flattens inputs into a column vector (not-necessary as FullConnectedLayer will auto-flatten)
 /// </summary>
 [Untested()]
-public class FlatteningLayer : ConvolutionalFeedforwardNetworkLayer {
+public class FlatteningLayer : FeedforwardNetworkLayer {
     public override void Initialize(IInitializer initializer) { }
     public override int TrainableParameterCount() => 0;
 
@@ -23,7 +23,7 @@ public class FlatteningLayer : ConvolutionalFeedforwardNetworkLayer {
         return new FeatureSet<double>(x);
     }
 
-     public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

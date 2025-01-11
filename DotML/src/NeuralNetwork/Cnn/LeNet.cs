@@ -39,7 +39,7 @@ public static class LeNet {
     /// <param name="activation">activation function</param>
     /// <returns>network</returns>
     /// <exception cref="ArgumentException">thrown when an unsupported version is supplied</exception>
-    public static ConvolutionalFeedforwardNetwork Make(Version version, int output_classes, int img_channels = IMG_CHANNELS, int img_width = IMG_WIDTH, int img_height = IMG_HEIGHT, ActivationFunction? activation = null) {
+    public static FeedforwardNetwork Make(Version version, int output_classes, int img_channels = IMG_CHANNELS, int img_width = IMG_WIDTH, int img_height = IMG_HEIGHT, ActivationFunction? activation = null) {
         var net = version switch {
             Version.V1 => MakeV1(output_classes, img_channels, img_width, img_height, activation),
             Version.V5 => MakeV5(output_classes, img_channels, img_width, img_height, activation),
@@ -49,10 +49,10 @@ public static class LeNet {
         return net;
     }
 
-    private static ConvolutionalFeedforwardNetwork MakeV1(int output_classes, int img_channels, int img_width, int img_height, ActivationFunction? activation) {
+    private static FeedforwardNetwork MakeV1(int output_classes, int img_channels, int img_width, int img_height, ActivationFunction? activation) {
         activation = activation ?? ReLU.Instance;
 
-        return new ConvolutionalFeedforwardNetwork(
+        return new FeedforwardNetwork(
             new ConvolutionLayer(
                 new Shape3D(img_channels, img_height, img_width),
                 padding: Padding.Valid, 
@@ -93,7 +93,7 @@ public static class LeNet {
         );
     }
 
-    private static ConvolutionalFeedforwardNetwork MakeV5(int output_classes, int img_channels, int img_width, int img_height, ActivationFunction? activation) {
+    private static FeedforwardNetwork MakeV5(int output_classes, int img_channels, int img_width, int img_height, ActivationFunction? activation) {
         activation                  = activation ?? ReLU.Instance;
 
         double scalingFactor        = Math.Max(1, (img_width * img_height) / (double)(IMG_WIDTH * IMG_HEIGHT));
@@ -101,7 +101,7 @@ public static class LeNet {
         int fullyConnectedNeurons1  = Math.Max(120, (int)(120 * scalingFactor));
         int fullyConnectedNeurons2  = Math.Max(84, (int)(84 * scalingFactor));
 
-        return new ConvolutionalFeedforwardNetwork(
+        return new FeedforwardNetwork(
             new ConvolutionLayer(
                 new Shape3D(img_channels, img_height, img_width),
                 padding: Padding.Valid, 

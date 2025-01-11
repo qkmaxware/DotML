@@ -5,7 +5,7 @@
 @using DotML.Network.Initialization
 @using Qkmaxware.Media.Image
 
-<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=network Trainer=trainer TrainingData=training ValidationData=testing>
+<NetworkExplorerV2 @ref=explorer TNetwork=FeedforwardNetwork Network=network Trainer=trainer TrainingData=training ValidationData=testing>
     <Input>
         <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
     </Input>
@@ -33,7 +33,7 @@
 </NetworkExplorerV2>
 
 @code {
-    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+    private NetworkExplorerV2<FeedforwardNetwork>? explorer;
 
     const int IMG_WIDTH = 224;
     const int IMG_HEIGHT = 224;
@@ -62,9 +62,9 @@
 
     */
     // https://github.com/danilojodas/MobileNet/blob/master/MobileNet.ipynb
-    private ConvolutionalFeedforwardNetwork network = MobileNet.Make(MobileNet.Version.V1, OUT_CLASSES);
+    private FeedforwardNetwork network = MobileNet.Make(MobileNet.Version.V1, OUT_CLASSES);
 
-    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> {
+    private EnumerableBatchTrainer<FeedforwardNetwork> trainer = new EnumerableBatchTrainer<FeedforwardNetwork> {
         LearningRate = 0.001,
         LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CrossEntropy,

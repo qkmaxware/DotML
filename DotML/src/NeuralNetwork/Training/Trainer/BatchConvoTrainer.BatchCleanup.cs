@@ -5,10 +5,10 @@ using DotML.Network.Initialization;
 
 namespace DotML.Network.Training;
 
-public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
+public partial class BatchTrainerEnumerator<TNetwork> {
 
-    private readonly BatchInitializer batchInitializer = new BatchInitializer();
-    private class BatchInitializer : IConvolutionalLayerVisitor {
+    private readonly BatchCleanup batchCleanup = new BatchCleanup();
+    private class BatchCleanup : ILayerVisitor {
         public void Visit(ConvolutionLayer layer) { }
 
         public void Visit(DepthwiseConvolutionLayer layer) { }
@@ -18,15 +18,15 @@ public partial class BatchedConvolutionalBackpropagationEnumerator<TNetwork> {
         public void Visit(FlatteningLayer layer) { }
 
         public void Visit(DropoutLayer layer) {
-            // Tell the layer to share the same mask across each batch item. Generate a new mask for this batch.
-            layer.UseSharedMask = true;
+            // Stop using a shared mask
+            layer.UseSharedMask = false;
             layer.ClearSharedMask();
         }
 
         public void Visit(LayerNorm layer) {}
 
         public void Visit(BatchNorm layer) {
-            layer.IsTrainingMode = true;
+            layer.IsTrainingMode = false;
         }
 
         public void Visit(FullyConnectedLayer layer) { }

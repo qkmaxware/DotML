@@ -42,7 +42,7 @@
 }
 
 @code {
-    [Parameter] public ConvolutionalFeedforwardNetwork? Network {get; set;} = null;
+    [Parameter] public FeedforwardNetwork? Network {get; set;} = null;
     [Parameter] public Vec<double>? Input {get; set;}
     [Parameter] public int ValueScale {get; set;} = 1;
     [Parameter] public RenderFragment? Header {get; set;}
@@ -63,7 +63,7 @@
                 this.Network.InputShape
             ).ToArray());
 
-            // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)
+            // Forward pass (simulated, duplicate of FeedforwardNetwork.PredictSync with some additional tracking)
             this.inputs   = new Matrix<double>[this.Network.LayerCount][]; // The inputs to each layer
             this.outputs  = new Matrix<double>[this.Network.LayerCount][]; // The outputs from each layer
 

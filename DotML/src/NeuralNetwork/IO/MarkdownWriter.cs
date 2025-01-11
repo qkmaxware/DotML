@@ -16,7 +16,7 @@ public class LayerMarkdownWriter : LayerWriter{
         // Do nothing
     }
 
-    protected override void WriteInputLayer(IConvolutionalFeedforwardNetworkLayer first) {
+    protected override void WriteInputLayer(IFeedforwardNetworkLayer first) {
         sb.Write('|');
             sb.Write("Input");
         sb.Write('|');
@@ -31,7 +31,7 @@ public class LayerMarkdownWriter : LayerWriter{
             sb.WriteLine();
     }
 
-    protected override void WriteLayerRow(IConvolutionalFeedforwardNetworkLayer layer, string description) {
+    protected override void WriteLayerRow(IFeedforwardNetworkLayer layer, string description) {
         sb.Write('|');
             sb.Write(layer.GetType().Name);
         sb.Write('|');

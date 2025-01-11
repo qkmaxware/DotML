@@ -1,60 +1,69 @@
+using System.Collections;
+
 namespace DotML.Network;
 
 /// <summary>
 /// A single filter for a use in a ConvolutionLayer
 /// </summary>
-public class ConvolutionFilter : List<Matrix<double>> {
+public class ConvolutionFilter : IEnumerable<Matrix<double>> {
+
+    private Matrix<double>[] kernels;
+
+    /// <summary>
+    /// Shape of the filter
+    /// </summary>
+    public Shape3D Shape => new Shape3D(Count, Height, Width);
+
+    /// <summary>
+    /// Number of kernels in this filter
+    /// </summary>
+    public int Count => kernels.Length;
+
     /// <summary>
     /// Filter bias value
     /// </summary>
     public double Bias {get; set;}
 
     /// <summary>
+    /// Get or set a kernel value, dimensions must match filter size
+    /// </summary>
+    /// <param name="index">kernel index</param>
+    /// <returns>kernel matrix</returns>
+    /// <exception cref="ArgumentException">Thrown when kernel dimensions are mismatched</exception>
+    public Matrix<double> this[int index] {
+        get => kernels[index];
+        set {
+            if (value.Rows != this.Height || value.Columns != this.Width)
+                throw new ArgumentException("Invalid kernel dimensions for filter");
+            kernels[index] = value;
+        }
+    }
+
+    /// <summary>
     /// Width of the filter, max column count of all kernels
     /// </summary>
     public int Width {
-        get {
-            var max = 0;
-            for (var i = 0; i < this.Count; i++) {
-                var val = this[i].Columns;
-                if (val > max)
-                    max = val;
-            }
-            return max;
-        }
+        get; private set;
     }
 
     /// <summary>
     /// Height of the filter, max row count of all kernels
     /// </summary>
     public int Height {
-        get {
-            var max = 0;
-            for (var i = 0; i < this.Count; i++) {
-                var val = this[i].Rows;
-                if (val > max)
-                    max = val;
-            }
-            return max;
-        }
+        get; private set;
     }
 
-    /// <summary>
-    /// Create a filter with no kernels
-    /// </summary>
-    public ConvolutionFilter() { }
-
-    /// <summary>
-    /// Create a filter with no kernels, but with a preset kernel capacity
-    /// </summary>
-    /// <param name="capacity">number of kernels expected</param>
-    public ConvolutionFilter(int capacity) : base(capacity) { }
     
     /// <summary>
     /// Create a filter from the given kernels
     /// </summary>
     /// <param name="kernels">kernels</param>
-    public ConvolutionFilter(params Matrix<double>[] kernels) : base(kernels) {}
+    public ConvolutionFilter(params Matrix<double>[] kernels) {
+        this.Width = kernels.Select(x => x.Columns).Max();
+        this.Height = kernels.Select(x => x.Rows).Max();
+
+        this.kernels = kernels;
+    }
 
     /// <summary>
     /// Make a bunch of filters with the given number of kernels per filter and kernel size
@@ -79,4 +88,11 @@ public class ConvolutionFilter : List<Matrix<double>> {
         return objs;
     }
 
+    public IEnumerator<Matrix<double>> GetEnumerator() {
+        return ((IEnumerable<Matrix<double>>)kernels).GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() {
+        return kernels.GetEnumerator();
+    }
 }

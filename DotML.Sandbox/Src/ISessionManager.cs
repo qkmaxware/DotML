@@ -37,9 +37,9 @@ public class NullCheckpointManager<T> : ICheckpointManager<T> {
 }
 
 /// <summary>
-/// Basic checkpoint manager for ConvolutionalFeedforwardNetworks which only saves/loads from a single checkpoint
+/// Basic checkpoint manager for FeedforwardNetworks which only saves/loads from a single checkpoint
 /// </summary>
-public class CnnSingleCheckpointManager : ICheckpointManager<ConvolutionalFeedforwardNetwork> {
+public class CnnSingleCheckpointManager : ICheckpointManager<FeedforwardNetwork> {
 
     private string session_key;
     private string filename;
@@ -54,7 +54,7 @@ public class CnnSingleCheckpointManager : ICheckpointManager<ConvolutionalFeedfo
             File.Delete(filename);
     }
 
-    public Checkpoint CreateCheckpoint(ConvolutionalFeedforwardNetwork target) {
+    public Checkpoint CreateCheckpoint(FeedforwardNetwork target) {
         var now = DateTime.Now;
 
         using var writer = new BinaryWriter(File.Open(filename, FileMode.Create));
@@ -69,7 +69,7 @@ public class CnnSingleCheckpointManager : ICheckpointManager<ConvolutionalFeedfo
         }
     }
 
-    public void RestoreFromCheckpoint(ConvolutionalFeedforwardNetwork target, Checkpoint checkpoint) {
+    public void RestoreFromCheckpoint(FeedforwardNetwork target, Checkpoint checkpoint) {
         Safetensors sb = Safetensors.ReadFromFile(checkpoint.Name);
         target.FromSafetensor(sb);
     }

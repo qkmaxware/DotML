@@ -14,7 +14,7 @@ namespace DotML.Network;
 */
 
 [WorkInProgress]
-public class InputCapture : ConvolutionalFeedforwardNetworkLayer {
+public class InputCapture : FeedforwardNetworkLayer {
 
     public BatchedFeatureSet<double>? CapturedInput;
 
@@ -41,15 +41,15 @@ public class InputCapture : ConvolutionalFeedforwardNetworkLayer {
         throw new NotImplementedException();
     }
 
-    public override void Visit(IConvolutionalLayerVisitor visitor) {
+    public override void Visit(ILayerVisitor visitor) {
         throw new NotImplementedException();
     }
 
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) {
+    public override T Visit<T>(ILayerVisitor<T> visitor) {
         throw new NotImplementedException();
     }
 
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) {
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) {
         throw new NotImplementedException();
     }
 }

@@ -10,7 +10,7 @@
 </CnnDataVisualizer>
 
 @code {
-    [Parameter] public ConvolutionalFeedforwardNetwork? Network {get; set;} = null;
+    [Parameter] public FeedforwardNetwork? Network {get; set;} = null;
     [Parameter] public TrainingSet? Data {get; set;} = null;
     [Parameter] public int ValueScale {get; set;} = 1;
 
@@ -49,7 +49,7 @@
             ).ToArray());
             var expected = current.Output;
 
-            // Forward pass (simulated, duplicate of ConvolutionalFeedforwardNetwork.PredictSync with some additional tracking)
+            // Forward pass (simulated, duplicate of FeedforwardNetwork.PredictSync with some additional tracking)
             this.inputs   = new Matrix<double>[this.Network.LayerCount][]; // The inputs to each layer
             this.outputs  = new Matrix<double>[this.Network.LayerCount][]; // The outputs from each layer
 

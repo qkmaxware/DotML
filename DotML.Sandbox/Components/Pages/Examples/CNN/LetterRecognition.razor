@@ -4,7 +4,7 @@
 @using DotML.Network.Training
 @using Qkmaxware.Media.Image
 
-<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing>
+<NetworkExplorerV2 @ref=explorer TNetwork=FeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing>
     <Input>
         <p>Draw a letter into the panel below (a-z) or punctuation mark (!,?). Capital letters only!</p>
         <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
@@ -38,9 +38,9 @@
         "J", "K", "L", "M", "N", "O", "P", "Q", "R", 
         "S", "T", "U", "V", "W", "X", "Y", "Z", "!", "?" 
     };
-    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+    private NetworkExplorerV2<FeedforwardNetwork>? explorer;
 
-    private ConvolutionalFeedforwardNetwork leNet = new ConvolutionalFeedforwardNetwork(
+    private FeedforwardNetwork leNet = new FeedforwardNetwork(
         [
             new ConvolutionLayer(
                 new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH),
@@ -86,7 +86,7 @@
             new SoftmaxLayer(OUT_CLASSES)
         ]
     );
-    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>(){
+    private EnumerableBatchTrainer<FeedforwardNetwork> trainer = new EnumerableBatchTrainer<FeedforwardNetwork>(){
         LossFunction = LossFunctions.CrossEntropy,
         BatchSize = 8
     };

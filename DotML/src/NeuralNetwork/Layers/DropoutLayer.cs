@@ -9,7 +9,7 @@ namespace DotML.Network;
 /// <see href="https://en.wikipedia.org/wiki/Dilution_(neural_networks)"/>
 /// </summary>
 [Untested()]
-public class DropoutLayer : ConvolutionalFeedforwardNetworkLayer {
+public class DropoutLayer : FeedforwardNetworkLayer {
     public double DropoutRate {get; init;}
     public double KeepRate => 1 - DropoutRate;
 
@@ -68,8 +68,8 @@ public class DropoutLayer : ConvolutionalFeedforwardNetworkLayer {
         }
     }
 
-     public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 
 }

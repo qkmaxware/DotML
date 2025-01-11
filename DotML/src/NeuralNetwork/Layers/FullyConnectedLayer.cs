@@ -7,7 +7,7 @@ namespace DotML.Network;
 /// <summary>
 /// Fully connected layer which flattens it's inputs before processing and returns a column vector from the output neurons
 /// </summary>
-public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerWithNeurons {
+public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
 
     private int inputs;
     private int outputs;
@@ -115,9 +115,9 @@ public class FullyConnectedLayer : ConvolutionalFeedforwardNetworkLayer, ILayerW
         }
     }
 
-    public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void AddMatVecInplace(Matrix<double> target, Matrix<double> a, Vec<double> b) {

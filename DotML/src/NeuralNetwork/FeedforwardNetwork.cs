@@ -9,12 +9,12 @@ namespace DotML.Network;
 /// <summary>
 /// Base class representing a convolutional neural network (CNN)
 /// </summary>
-public class ConvolutionalFeedforwardNetwork: 
+public class FeedforwardNetwork: 
     INamedNetwork,
-    ILayeredNeuralNetwork<IConvolutionalFeedforwardNetworkLayer>, 
+    ILayeredNeuralNetwork<IFeedforwardNetworkLayer>, 
     IDiagrammable, ISafetensorable, IMarkdownable, IHtmlable
 {
-    private List<IConvolutionalFeedforwardNetworkLayer> layers = new List<IConvolutionalFeedforwardNetworkLayer>();
+    private List<IFeedforwardNetworkLayer> layers = new List<IFeedforwardNetworkLayer>();
 
     /// <summary>
     /// Number of layers
@@ -33,27 +33,27 @@ public class ConvolutionalFeedforwardNetwork:
     /// Reference to the first layer in the network
     /// </summary>
     /// <returns>layer</returns>
-    public IConvolutionalFeedforwardNetworkLayer GetFirstLayer() => layers[0];
+    public IFeedforwardNetworkLayer GetFirstLayer() => layers[0];
 
     /// <summary>
     /// Get a specific layer by index
     /// </summary>
     /// <param name="index">index of layer</param>
     /// <returns>layer</returns>
-    public IConvolutionalFeedforwardNetworkLayer GetLayer(int index) => layers[index];
+    public IFeedforwardNetworkLayer GetLayer(int index) => layers[index];
 
     /// <summary>
     /// Reference to the output layer of the network
     /// </summary>
     /// <returns>layer</returns>
-    public IConvolutionalFeedforwardNetworkLayer GetOutputLayer() => layers[^1];
+    public IFeedforwardNetworkLayer GetOutputLayer() => layers[^1];
 
 
-    public ConvolutionalFeedforwardNetwork(params IConvolutionalFeedforwardNetworkLayer[] layers) {
+    public FeedforwardNetwork(params IFeedforwardNetworkLayer[] layers) {
         this.layers.AddRange(layers);
     }
 
-    public ConvolutionalFeedforwardNetwork(IEnumerable<IConvolutionalFeedforwardNetworkLayer> layers) {
+    public FeedforwardNetwork(IEnumerable<IFeedforwardNetworkLayer> layers) {
         this.layers.AddRange(layers);
     }
 

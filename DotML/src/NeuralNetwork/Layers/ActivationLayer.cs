@@ -4,10 +4,10 @@ using DotML.Network.Initialization;
 namespace DotML.Network;
 
 /// <summary>
-/// Activation layer for a ConvolutionalFeedforwardNetwork
+/// Activation layer for a FeedforwardNetwork
 /// <see href="https://en.wikipedia.org/wiki/Activation_function"/>
 /// </summary>
-public class ActivationLayer : ConvolutionalFeedforwardNetworkLayer {
+public class ActivationLayer : FeedforwardNetworkLayer {
 
     public ActivationFunction ActivationFunction {get; init;}
 
@@ -30,9 +30,9 @@ public class ActivationLayer : ConvolutionalFeedforwardNetworkLayer {
         return (FeatureSet<double>)outputs;
     }
 
-    public override void Visit(IConvolutionalLayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(IConvolutionalLayerVisitor<T> visitor) =>visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(IConvolutionalLayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerVisitor<T> visitor) =>visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 
     public override string ToString() {
         return base.ToString() + "(" + ActivationFunction.ToString() + ")";
