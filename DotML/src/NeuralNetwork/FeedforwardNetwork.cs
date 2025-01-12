@@ -81,28 +81,33 @@ public class FeedforwardNetwork:
         }
     }
 
-    public Vec<double> PredictSync(FeatureSet<double> values) {
+    public BatchedFeatureSet<double> PredictSync(BatchedFeatureSet<double> values) {
         var ishape = this.InputShape;
 
         if (values.Channels != ishape.Channels) {
             throw new ArgumentException($"Invalid number of channels for input. Expected {ishape.Channels}, got {values.Channels}.");
         }
-        foreach (var matrix in values) {
-            if (matrix.Columns != ishape.Columns)
-                throw new ArgumentException($"Invalid channel width. Expected {ishape.Columns}, got {matrix.Columns}.");
-            if (matrix.Rows != ishape.Rows)
-                throw new ArgumentException($"Invalid channel height. Expected {ishape.Rows}, got {matrix.Rows}.");
-        }
-
-        FeatureSet<double> input = values;
+        if (values.Columns != ishape.Columns)
+            throw new ArgumentException($"Invalid channel width. Expected {ishape.Columns}, got {values.Columns}.");
+        if (values.Rows != ishape.Rows)
+            throw new ArgumentException($"Invalid channel height. Expected {ishape.Rows}, got {values.Rows}.");
+    
+        BatchedFeatureSet<double> input = values;
+        ishape = new Shape3D(input.Channels, input.Rows, input.Columns);
         var layer_index = 0;
         foreach (var layer in this.layers) {
-            if (!layer.DoesShapeMatchInputShape((Matrix<double>[])input))
-                throw new ArithmeticException($"Input of shape {input.Channels}x{input.FirstOrDefault().Rows}x{input.FirstOrDefault().Columns} is incompatible with layer {layer_index} input's of shape {layer.InputShape}.");
+            if (!layer.DoesShapeMatchInputShape(ishape))
+                throw new ArithmeticException($"Input of shape {input.Channels}x{ishape.Rows}x{ishape.Columns} is incompatible with layer {layer_index} input's of shape {layer.InputShape}.");
             input = layer.EvaluateSync(input);
+            ishape = new Shape3D(input.Channels, input.Rows, input.Columns);
             layer_index++;
         }
-        return Vec<double>.Wrap(input[0].FlattenRows().ToArray());
+        return input;
+    }
+
+    public Vec<double> PredictSync(FeatureSet<double> values) {
+        var output = PredictSync(new BatchedFeatureSet<double>(values));
+        return Vec<double>.Wrap(output[0][0].FlattenRows().ToArray());
     }
 
     public Vec<double> PredictSync(Vec<double> input) {

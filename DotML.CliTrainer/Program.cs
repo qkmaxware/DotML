@@ -7,17 +7,45 @@ using System.Diagnostics;
 
 public class Program {
 public static void Main() {
-    var filename_root = $"{DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss")}.";
-    if (!Directory.Exists(filename_root + "reports")) {
-        Directory.CreateDirectory(filename_root + "reports");
-        filename_root = Path.Combine(filename_root + "reports", filename_root);
+    var now = DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss");
+    var dir_root = now + ".reports";
+    if (!Directory.Exists(dir_root)) {
+        Directory.CreateDirectory(dir_root);
     }
+    var filename_root = dir_root + Path.PathSeparator;
 
     #region Network
 
-    var network = MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: ReLU.Instance);
+    var network = new FeedforwardNetwork(
+        new ConvolutionLayer(new Shape3D(3, 32, 32), Padding.Same, filters: ConvolutionFilter.Make(32, 3, 3))
+        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
+        .Then(ishape => new LocalMaxPoolingLayer(ishape, 2))
+
+        .Then(ishape => new ConvolutionLayer(ishape, Padding.Same, filters: ConvolutionFilter.Make(64, ishape.Channels, 3)))
+        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
+        .Then(ishape => new LocalMaxPoolingLayer(ishape, 2))
+
+        .Then(ishape => new ConvolutionLayer(ishape, Padding.Same, filters: ConvolutionFilter.Make(128, ishape.Channels, 3)))
+        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
+        .Then(ishape => new LocalMaxPoolingLayer(ishape, 2))
+
+        .Then(ishape => new FullyConnectedLayer(ishape.Count, 512))
+        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
+        //.Then(ishape => new DropoutLayer(ishape))
+
+        .Then(ishape => new FullyConnectedLayer(ishape.Count, 256))
+        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
+        //.Then(ishape => new DropoutLayer(ishape))
+
+        .Then(ishape => new FullyConnectedLayer(ishape.Count, 10))
+        .Then(ishape => new SoftmaxLayer(ishape.Count))
+    );
+    //MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: ReLU.Instance);
     
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
+    if (network is INamedNetwork named) {
+        Console.Write("    "); Console.WriteLine("architecture: " + named.Name);
+    }
     Console.Write("    "); Console.WriteLine("input: " + network.InputShape);
     for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
         var layer = network.GetLayer(layerIndex);
@@ -51,7 +79,7 @@ public static void Main() {
         LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CrossEntropy,
         NetworkInitializer = new HeInitialization(),
-        BatchSize = 8,
+        BatchSize = 10,
         EnableGradientClipping = false,
         ClippingThresholdSynapses = 10,
         ClippingThresholdBiases = 5.0,
@@ -59,7 +87,7 @@ public static void Main() {
         PerformanceReport = performance_report
     };
     Console.WriteLine("Trainer configured: " + trainer.GetType().Name);
-    using (var trainer_prop_writer = new StreamWriter($"{filename_root}trainer.yaml")) {
+    using (var trainer_prop_writer = new StreamWriter($"{filename_root}trainer.conf.yaml")) {
         trainer_prop_writer.WriteLine("Trainer:");
         trainer_prop_writer.Write("    "); trainer_prop_writer.Write("Type"); trainer_prop_writer.Write(": "); trainer_prop_writer.WriteLine(trainer.GetType().Name);
         foreach (PropertyInfo property in trainer.GetType().GetProperties()) {
@@ -85,19 +113,22 @@ public static void Main() {
     }
     Console.Write("> "); 
     var file = training_data[int.Parse(Console.ReadLine()?.ToLower() ?? "0")];
-    var data = ReadDataVectors(file.FullName);
+    // TODO don't make this a thing where I have to toggle between the two via code, make it based on smart file analysis. 
+    //var data = ReadSerializedTrainingSet(file.FullName);
+    var data = ReadClassifiedBinaryVectors(file.FullName, 10, 0.0, 1.0, (b) => b.ReadByte() / 255.0, fixed_vector_size: 1024 * 3);
     var all_data_count = (double)data.Size;
     if (data.Size == 0) 
         throw new FormatException("Empty training set");
-    var validation = data;
     Console.WriteLine($"Training vectors loaded: \"{file.Name}\"");
     Console.Write("    "); Console.WriteLine($"Records: {all_data_count}");
     Console.Write("    "); Console.WriteLine($"InputSize: {data[0].Input.Dimensionality}");
     Console.Write("    "); Console.WriteLine($"OutputSize: {data[0].Output.Dimensionality}");
 
-    var elems = data.SplitProbabilistically(3, 1).ToArray();
+    var elems = data.SplitProbabilistically(3, 1).ToArray(); // new TrainingSet[]{data, data};
     data = elems[0];            // Train on 3/4 of the data
-    validation = elems[1];      // Validate against 1/4 of the data
+    var validation = elems[1];  // Validate against 1/4 of the data
+    if (validation.Size == 0)
+        validation = data;
     Console.Write("    "); Console.WriteLine($"TrainingPercent: {data.Size} ({(data.Size / all_data_count) * 100}%)");
     Console.Write("    "); Console.WriteLine($"ValidationPercent: {validation.Size} ({(validation.Size / all_data_count) * 100}%)");
     #endregion
@@ -135,7 +166,7 @@ public static void Main() {
         Console.Write(batch + 1);
         Console.Write('/');
         Console.Write(batchCount);
-        Console.Write(" batches");
+        Console.Write(" batches trained");
     };
     session.OnValidationStart += (epoch, maxEpoch) => {
         Console.SetCursorPosition(position.Left, position.Top);
@@ -147,7 +178,7 @@ public static void Main() {
         Console.Write(0);
         Console.Write('/');
         Console.Write(data.Size);
-        Console.Write(" validated");
+        Console.Write(" validated      ");
     };
     session.OnValidated += (epoch, maxEpoch, index, accuracy) => {
         Console.SetCursorPosition(position.Left, position.Top);
@@ -163,7 +194,7 @@ public static void Main() {
         Console.Write(index + 1);
         Console.Write('/');
         Console.Write(data.Size);
-        Console.Write(" validated");
+        Console.Write(" validated      ");
     };
     
     double? min_loss = null;
@@ -200,23 +231,39 @@ public static void Main() {
             var max_error = double.MinValue;
             var min_error = double.MaxValue;
             var all_less_threshold = true;
-            while (data_iterator.MoveNext()) {
-                var input = data_iterator.Current.Input;
-                var @true = data_iterator.Current.Output; 
-                var predicted = network.PredictSync(input);
-                
-                var loss = trainer.LossFunction(predicted, @true);
-                sum_error += loss;
-                max_error = Math.Max(max_error, loss);
-                min_error = Math.Min(min_error, loss);
-                var passed = loss < trainer.EarlyStopAccuracy;
-                if (passed)
-                    samples_fit++;
-                else
-                    samples_unfit++;
-                all_less_threshold &= passed;
-                count++;
+            List<(FeatureSet<double> In, Vec<double> Out)> batch = new List<(FeatureSet<double>, Vec<double>)>();
+            var concurrency_level = trainer.BatchSize; // or Environment.ProcessorCount
+            while (data_iterator.MoveNext() && batch.Count < concurrency_level) {
+                var pair = data_iterator.Current;
+                var input = new FeatureSet<double>(pair.Input.Shape(network.InputShape).ToArray());
+                var output = pair.Output;
+                batch.Add((input, output));
+            }
+            var batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.In).ToArray());
 
+            while (batch.Count > 0) {
+                // Perform Feed-Forward
+                var batch_predicted = network.PredictSync(batch_input);
+
+                // Measure loss across batch
+                for (var batchIndex = 0; batchIndex < batch_input.Batches; batchIndex++) {
+                    var @true = batch[batchIndex].Out;
+                    var predicted =  Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
+                    
+                    var loss = trainer.LossFunction(predicted, @true);
+                    sum_error += loss;
+                    max_error = Math.Max(max_error, loss);
+                    min_error = Math.Min(min_error, loss);
+                    var passed = loss < trainer.EarlyStopAccuracy;
+                    if (passed)
+                        samples_fit++;
+                    else
+                        samples_unfit++;
+                    all_less_threshold &= passed;
+                    count++;
+                }
+
+                // Update UI
                 Console.SetCursorPosition(position.Left, position.Top);
                 Console.Write('|');
                 var percent = (float)(count - 1)/(float)data.Size;
@@ -230,7 +277,17 @@ public static void Main() {
                 Console.Write(count);
                 Console.Write('/');
                 Console.Write(data.Size);
-                Console.Write(" checked");
+                Console.Write(" fitting checked");
+
+                // Compute next batch
+                batch.Clear();
+                while (data_iterator.MoveNext() && batch.Count < concurrency_level) {
+                    var pair = data_iterator.Current;
+                    var input = new FeatureSet<double>(pair.Input.Shape(network.InputShape).ToArray());
+                    var output = pair.Output;
+                    batch.Add((input, output));
+                }
+                batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.In).ToArray());
             }
             var avg_error = sum_error / Math.Max(1, count);
 
@@ -254,17 +311,17 @@ public static void Main() {
         } else {
             min_loss = validation_report.AverageLoss;
         }
-        Console.Write($"{status_char} {validation_report.TestsPassedCount}/{validation_report.TestCount} passed, {elapsed} elapsed, {validation_report.AverageLoss} loss, ");
+        Console.Write($"{status_char} {validation_report.TestsPassedCount}/{validation_report.TestCount} passed, {elapsed} elapsed, {validation_report.AverageLoss} validation, {data_fitting_avg} fitting, ");
         report_writer.WriteLine($"{session.CurrentEpoch}, {validation_report.MinLoss}, {validation_report.MaxLoss}, {validation_report.AverageLoss}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}, {data_fitting_min}, {data_fitting_max}, {data_fitting_avg}, {samples_fit}, {samples_unfit}");
         report_writer.Flush();
         var epochfname = $"{filename_root}epoch-{session.CurrentEpoch}.safetensors";
         network.ToSafetensor().WriteToFile(epochfname);
-        Console.WriteLine($"weights '{epochfname}'");
+        Console.WriteLine($"weights 'epoch-{session.CurrentEpoch}.safetensors'");
         Console.ForegroundColor = reset_colour;
 
         // Emit performance metrics, always re-write and not append (unlike the validation report)
         if (performance_report is not null) {
-            using (var performance_writer = new StreamWriter($"{filename_root}benchmark.csv")) {
+            using (var performance_writer = new StreamWriter($"{filename_root}timings.csv")) {
                 performance_writer.WriteLine("benchmark, min-time (s), max-time (s), average-time (s), total-time (s), sample-size");
                 
                 foreach (var metric in performance_report.Benchmarks.OrderBy(x => x.Name)) {
@@ -277,7 +334,7 @@ public static void Main() {
 
     #region Save
     var weights = network.ToSafetensor();
-    weights.WriteToFile($"{filename_root}weights.safetensors");
+    weights.WriteToFile($"{filename_root}final_weights.safetensors");
     #endregion
 }
 
@@ -292,7 +349,7 @@ private static Vec<double> VectorFromLabelIndex(int index, int classes, double o
 }
 
 
-private static TrainingSet ReadDataVectors(string path) {
+private static TrainingSet ReadSerializedTrainingSet(string path) {
     TrainingSet set = new TrainingSet();
 
     using var stream = File.OpenRead(path);
@@ -303,14 +360,14 @@ private static TrainingSet ReadDataVectors(string path) {
     return set;
 }
 
-private static TrainingSet ReadData(string path, int category_count, double category_off, double category_on, Func<BinaryReader, double> element_parser) {
+private static TrainingSet ReadClassifiedBinaryVectors(string path, int category_count, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
     using var stream = File.OpenRead(path);
     using var reader = new BinaryReader(stream);
                         
     List<TrainingPair> pairs = new List<TrainingPair>();
     while (stream.Position < stream.Length) {
         var category_index  = reader.ReadByte();
-        var vector_size     = reader.ReadInt32();
+        var vector_size     = fixed_vector_size.HasValue ? fixed_vector_size.Value : reader.ReadInt32();
         double[] input_vec  = new double[vector_size];
 
         for (var i = 0; i < vector_size; i++) {

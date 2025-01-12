@@ -13,11 +13,11 @@
 
 <nav class="bg-dark text-light">
     <div class="tab @(state == State.Playground ? "bg-info" : string.Empty)" @onclick=@(() => state = State.Playground)>Play</div>
-    @if (true || TrainingData is not null) {
+    @if (TrainingData is not null) {
     <div class="tab @(state == State.Training ? "bg-info" : string.Empty)" @onclick=@(() => state = State.Training)>Train</div>
     }
 </nav>
-@if(state == State.Training ) {
+@if(state == State.Training) {
 <nav id="Training Controls" class="p-4 navbar navbar-inverse text-light bg-secondary">
     <div style="width: 100%; display:block flex; align-items: stretch;">
         <div style="text-align: center; width: 270px; flex-grow: 0; flex-shrink: 0;">

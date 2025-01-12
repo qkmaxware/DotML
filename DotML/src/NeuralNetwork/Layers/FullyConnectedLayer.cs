@@ -131,8 +131,8 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         }
     }
 
-    public override bool DoesShapeMatchInputShape(Matrix<double>[] channels) {
-        return channels.Select(c => c.Size).Sum() == inputs;
+    public override bool DoesShapeMatchInputShape(Shape3D shape) {
+        return shape.Count == inputs;
     }
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {

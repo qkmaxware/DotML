@@ -257,11 +257,53 @@ public partial class BatchTrainerEnumerator<TNetwork>
         if (EnableEarlyStop) {
             ValidationReport?.Reset();
             OnValidationStart(this.CurrentEpoch, this.MaxEpochs);
-            validation.Reset();
             var sum_error = 0d; var count = 0;
             var max_error = double.MinValue;
             var all_less_threshold = true;
-            while (validation.MoveNext()) {
+
+            List<(FeatureSet<double> In, Vec<double> Out)> batch = new List<(FeatureSet<double>, Vec<double>)>();
+            var concurrency_level = this.BatchSize; // or Environment.ProcessorCount
+            validation.Reset();
+            while (validation.MoveNext() && batch.Count < concurrency_level) {
+                var pair = validation.Current;
+                var input = new FeatureSet<double>(pair.Input.Shape(Current.InputShape).ToArray());
+                var output = pair.Output;
+                batch.Add((input, output));
+            }
+            var batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.In).ToArray());
+
+            while (batch.Count > 0) {
+                // Perform Feed-Forward
+                var batch_predicted = Current.PredictSync(batch_input);
+
+                // Measure loss across batch
+                for (var batchIndex = 0; batchIndex < batch_input.Batches; batchIndex++) {
+                    var input = Vec<double>.Wrap(batch_input[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
+                    var @true = batch[batchIndex].Out;
+                    var predicted =  Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
+                    
+                    var loss = LossFunction(predicted, @true);
+                    sum_error += loss;
+                    max_error = Math.Max(max_error, loss);
+                    var passed = loss < EarlyStopThreshold;
+                    all_less_threshold &= passed;
+                    OnValidated(this.CurrentEpoch, this.MaxEpochs, count, loss);
+                    count++;
+                    ValidationReport?.Append(input, @true, predicted, passed, loss);
+                }
+
+                // Compute next batch
+                batch.Clear();
+                while (validation.MoveNext() && batch.Count < concurrency_level) {
+                    var pair = validation.Current;
+                    var input = new FeatureSet<double>(pair.Input.Shape(Current.InputShape).ToArray());
+                    var output = pair.Output;
+                    batch.Add((input, output));
+                }
+                batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.In).ToArray());
+            }
+
+            /*while (validation.MoveNext()) {
                 var input = validation.Current.Input;
                 var @true = validation.Current.Output; 
                 var predicted = Current.PredictSync(input);
@@ -274,7 +316,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
                 OnValidated(this.CurrentEpoch, this.MaxEpochs, count, loss);
                 count++;
                 ValidationReport?.Append(input, @true, predicted, passed, loss);
-            }
+            }*/
             if (double.IsNaN(sum_error)) {
                 throw new ArithmeticException("NaN detected during output evaluation.");
             }

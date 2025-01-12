@@ -62,6 +62,7 @@
     }
 
     [Parameter] public string? Id {get; set;}
+    #pragma warning disable BL0007
     [Parameter] public IEnumerable<(double X, double Y)>? Data {
         get => SeriesData?.First().Data;
         set => SeriesData = [
@@ -75,6 +76,7 @@
             }
         ];
     }
+    #pragma warning restore BL0007
 
     [Parameter] public IEnumerable<Series>? SeriesData {get; set;}
 

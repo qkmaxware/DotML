@@ -16,8 +16,9 @@ public static class ResourceLoader {
         var assembly = Assembly.GetExecutingAssembly();
         var resource_str = "DotML.Sandbox." + resource.Replace(' ', '_').Replace('/', '.');
         var Stream = assembly.GetManifestResourceStream(resource_str);
-        if (Stream is null)
-            throw new FileNotFoundException(resource_str);
+        if (Stream is null) {
+            throw new FileNotFoundException(resource_str, new AggregateException("Did you mean?", assembly.GetManifestResourceNames().Select(x => new FieldAccessException(x))));
+        }
         return Stream;
     }
 

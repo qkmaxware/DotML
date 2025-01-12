@@ -32,29 +32,55 @@ public class LayerNorm : FeedforwardNetworkLayer {
             Betas[i] = new Matrix<double>(input_size.Rows, input_size.Columns, 0.0);
     }
 
+    public void ComputeMeansAndVariances(FeatureSet<double> features, out double[] mean_vec, out double[] variance_vec) {
+        var len = features.Channels;
+
+        var local_means = new double[len];
+        var local_variances = new double[len];
+
+        for (var i = 0; i < len; i++) {
+            var neurons = features[i];
+
+            var local_mean = neurons.Average();
+            var local_variance = neurons.Select(v => Math.Pow(v - local_mean, 2)).Average();
+
+            local_means[i] = local_mean;
+            local_variances[i] = local_variance;
+        }
+
+        mean_vec = local_means;
+        variance_vec = local_variances;
+    }
+
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
         var len = channels.Channels;
         Matrix<double>[] outputs = new Matrix<double>[len];
 
+        // Compute the mean and variance across all inputs 
+        ComputeMeansAndVariances(channels, out double[] means, out double[] variances);
+
+        // Perform the normalization for each feature
         for (var channel = 0; channel < len; channel++) {
+            // Get feature at channel
             Matrix<double> features = channels[channel];
 
-            // Compute mean and variance for the channel
-            var mean = features.Average();
-            var variance = features.Select(v => Math.Pow(v - mean, 2)).Average();
+            // Get mean, variance as computed
+            var mean = means[channel];
+            var variance = variances[channel];
+            var sqrt = 1.0 / Math.Sqrt(variance + 1e-8);
 
             // Normalize the channel using mean and variance
-            var output = features.Transform(v => (v - mean) / Math.Sqrt(variance + 1e-8));
+            var output = features.Transform(v => (v - mean) * sqrt);
 
             // Apply scaling (gamma) and shifting (beta)
-            Matrix<double>.HadamardInplace(output, output, Gammas[channel]);  // output = output .* gamma
-            Matrix<double>.AddInplace(output, output, Betas[channel]);        // output = output + beta
+            Matrix<double>.HadamardInplace(output, output, Gammas[channel]);    // output = output .* gamma
+            Matrix<double>.AddInplace(output, output, Betas[channel]);          // output = output + beta
 
             // Save results
             outputs[channel] = output;                              
         }
 
-        return (FeatureSet<double>)outputs;
+        return new FeatureSet<double>(outputs);
     }
 
     public override void Initialize(IInitializer initializer) { }

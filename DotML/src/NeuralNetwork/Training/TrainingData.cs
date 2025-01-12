@@ -281,8 +281,8 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// <returns>group of training sets</returns>
     public IEnumerable<TrainingSet> SplitProbabilistically(params int[] flex) {
         for (var i = 0; i < flex.Length; i++) {
-            if (flex[i] <= 0)
-                throw new ArgumentException("Flex values must be greater than 0");
+            if (flex[i] < 0)
+                throw new ArgumentException("Flex values must be greater than or equal to 0");
         }
 
         TrainingSet[] sets = new TrainingSet[flex.Length];
