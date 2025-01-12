@@ -16,7 +16,7 @@ namespace DotML;
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct Matrix<T> 
-: IEnumerable<T>
+: IEnumerable<T>, ITensorLike<T>
 where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 {
     private static T[,] NONE = new T[0,0];
@@ -53,6 +53,17 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary> 
     [JsonIgnore] public bool IsSquare => this.Rows == this.Columns;
 
+    public int Dimensions => 2;
+    public int GetDimension(int index) => index switch {
+        0 => Rows,
+        1 => Columns,
+        _ => 1
+    };
+    public T GetElementAt(params int[] indices) {
+        if (indices.Length != 2)
+            throw new IndexOutOfRangeException();
+        return this[indices[0], indices[1]];
+    }
 
     /// <summary>
     /// Create an empty 0x0 matrix

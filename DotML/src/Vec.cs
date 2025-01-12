@@ -14,11 +14,23 @@ namespace DotML;
 public struct Vec<T> 
     : IDistanceable<Vec<T>,T>,
     IEnumerable<T>,
-    IEquatable<Vec<T>>
+    IEquatable<Vec<T>>,
+    ITensorLike<T>
 where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 {
     private static T[] NONE = new T[0];
     private T[] values; // Literally just a pointer to an array... so size of struct is just int or nint.
+
+    public int Dimensions => 1;
+    public int GetDimension(int index) => index switch {
+        0 => Dimensionality,
+        _ => 1
+    };
+    public T GetElementAt(params int[] indices) {
+        if (indices.Length != 1)
+            throw new IndexOutOfRangeException();
+        return this[indices[0]];
+    }
 
     /// <summary>
     /// Create an empty vector
