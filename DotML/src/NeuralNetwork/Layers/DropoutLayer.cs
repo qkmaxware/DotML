@@ -22,6 +22,19 @@ public class DropoutLayer : FeedforwardNetworkLayer {
     }
 
     public override void Initialize(IInitializer initializer) { }
+
+    protected override void OnTrainingBegin() {
+        // Start using a shared mask
+        this.UseSharedMask = true;
+        this.ClearSharedMask();
+    }
+
+    protected override void OnTrainingEnd() {
+        // Stop using a shared mask
+        this.UseSharedMask = false;
+        this.ClearSharedMask();
+    }
+
     public override int TrainableParameterCount() => 0;
 
     private Random rng = new Random();

@@ -142,7 +142,7 @@ public abstract class LocalPoolingLayer : PoolingLayer {
         var outputWidth = this.OutputShape.Columns;
         var outputHeight = this.OutputShape.Rows;
 
-        for (var channel = 0; channel < channels; channel++) {
+        Parallel.For(0, channels, channel => {
             var input = inputs[channel];
 
             var result = new Matrix<double>(outputWidth, outputHeight);
@@ -167,7 +167,7 @@ public abstract class LocalPoolingLayer : PoolingLayer {
                     data[row, col] = Aggregate(accumulator, count);
                 }
             }
-        }
+        });
 
         return (FeatureSet<double>)pooled;
     }

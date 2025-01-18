@@ -49,7 +49,11 @@ public static class AlexNet {
     private static FeedforwardNetwork MakeV1(int output_classes, int img_channels, int img_width, int img_height, ActivationFunction? activation) {
         activation = activation ?? ReLU.Instance;
 
+        double scalingFactor = Math.Max(1, (img_width * img_height) / (double)(IMG_WIDTH * IMG_HEIGHT));
+        var neurons = Math.Min(4096, (int)(4096 * scalingFactor));
+
         return new FeedforwardNetwork(
+            // Convo 1
             new ConvolutionLayer(
                 new Shape3D(img_channels, img_height, img_width),
                 padding: Padding.Valid, 
@@ -58,6 +62,7 @@ public static class AlexNet {
             )
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new LocalMaxPoolingLayer(ishape, stride: 2, size: 3))
+            // Convo 2
             .Then(ishape => new ConvolutionLayer(
                 ishape,
                 padding: Padding.Same, 
@@ -66,6 +71,7 @@ public static class AlexNet {
             ))
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new LocalMaxPoolingLayer(ishape, stride: 2, size: 3))
+            // Set of 3 Convo
             .Then(ishape => new ConvolutionLayer(
                 ishape,
                 padding: Padding.Same, 
@@ -89,9 +95,9 @@ public static class AlexNet {
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new LocalMaxPoolingLayer(ishape, stride: 2, size: 3))
             // Flattening
-            .Then(ishape => new FullyConnectedLayer(ishape.Count, 4096))
+            .Then(ishape => new FullyConnectedLayer(ishape.Count, neurons))
             .Then(ishape => new ActivationLayer(ishape, activation))
-            .Then(ishape => new FullyConnectedLayer(ishape.Count, 4096))
+            .Then(ishape => new FullyConnectedLayer(ishape.Count, neurons))
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new FullyConnectedLayer(ishape.Count, output_classes))
             .Then(ishape => new SoftmaxLayer(ishape.Count))

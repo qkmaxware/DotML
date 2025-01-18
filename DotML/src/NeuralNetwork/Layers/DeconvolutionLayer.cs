@@ -110,7 +110,9 @@ public class DeconvolutionLayer : FeedforwardNetworkLayer {
         var channel_count = OutputShape.Channels;
         var outputs = new Matrix<double>[channel_count];
 
-        Parallel.For(0, channel_count, channel => {
+        Parallel.For(0, channel_count, (int channel) => {
+            var input = channels[channel];
+            var kernel = filters[channel];
             outputs[channel] = TransposeConvolve(channels[channel], channel);
         });
 

@@ -84,8 +84,10 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="index">dimension index</param>
     /// <returns>element or zero</returns>
     public T this[int index] {
-        get => index >= 0 && index < values.Length ? values[index] : T.Zero;
-        //set => values[index] = value;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => values[index];
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => values[index] = value;
     }
 
     /// <summary>

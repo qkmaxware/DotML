@@ -2,6 +2,7 @@
 *.csv
 *.safetensors
 *.md
+*.json
 *.yaml
 *.xlsx
 *.txt

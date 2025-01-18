@@ -76,106 +76,14 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
     /// <returns>Number of trainable parameters</returns>
     public override int TrainableParameterCount() => Filters.Select(filter => filter.Select(kernel => kernel.Rows * kernel.Columns).Sum()).Sum() + FilterCount;
 
-    public Matrix<double> ConvolveParallel(Matrix<double>[] inputs, ConvolutionFilter filter) {
-        // Compute output size taking into account padding & stride                                     // Same
-        var filterRows          = this.filterRows;                                                        // 3
-        var filterColumns       = this.filterColumns;                                                         // 3
-        var paddingRows         = this.RowsPadding;                   // 1 
-        var paddingColumns      = this.ColumnsPadding;                // 1
-        var outputRows          = this.OutputShape.Rows;             // 32 (good)
-        var outputColumns       = this.OutputShape.Columns;    // 32 (good)
-        var inputLength         = inputs.Length;
-        var stridex             = this.StrideX;
-        var stridey             = this.StrideY;
-
-        // Allocate output
-        var output = new double[outputRows, outputColumns];
-
-        // Slide over output
-        Parallel.For(0, outputRows * outputColumns, outIndex => {
-            var outY = outIndex / outputColumns;
-            var outX = outIndex % outputColumns;
-            var startY = outY * stridey - paddingRows;
-
-            var total_sum = 0.0;
-            var startX = outX * stridex - paddingColumns;
-
-            for (var inputIndex = 0; inputIndex < inputLength; inputIndex++) {
-                var input   = inputs[inputIndex];
-                var kernel  = filter[inputIndex];
-
-                // Compute value by applying the kernel to the input region associated with this output
-                for (int ky = 0; ky < filterRows; ky++) {
-                    var inY = startY + ky;
-                    for (int kx = 0; kx < filterColumns; kx++) {
-                        var inX = startX + kx;
-                        
-                        total_sum += input[inY, inX] * kernel[ky, kx];
-                    }
-                }
-            }
-
-            // Set the ouput position's value
-            output[outY, outX] = total_sum + filter.Bias; //Missed this?
-        });
-
-        // Exit
-        return Matrix<double>.Wrap(output);
-    }
-
-    public Matrix<double> Convolve(Matrix<double>[] inputs, ConvolutionFilter filter) {
-        // Compute output size taking into account padding & stride                                     // Same
-        var filterRows          = this.filterRows;                                                        // 3
-        var filterColumns       = this.filterColumns;                                                         // 3
-        var paddingRows         = this.RowsPadding;                   // 1 
-        var paddingColumns      = this.ColumnsPadding;                // 1
-        var outputRows          = this.OutputShape.Rows;             // 32 (good)
-        var outputColumns       = this.OutputShape.Columns;    // 32 (good)
-        var inputLength         = inputs.Length;
-        var stridex             = this.StrideX;
-        var stridey             = this.StrideY;
-
-        // Allocate output
-        var output = new double[outputRows, outputColumns];
-
-        // Slide over output
-        for (var outY = 0; outY < outputRows; outY++) {
-            var startY = outY * stridey - paddingRows;
-            for (var outX = 0; outX < outputColumns; outX++) {
-                var total_sum = 0.0;
-                var startX = outX * stridex - paddingColumns;
-
-                for (var inputIndex = 0; inputIndex < inputLength; inputIndex++) {
-                    var input   = inputs[inputIndex];
-                    var kernel  = filter[inputIndex];
-
-                    // Compute value by applying the kernel to the input region associated with this output
-                    for (int ky = 0; ky < filterRows; ky++) {
-                        var inY = startY + ky;
-                        for (int kx = 0; kx < filterColumns; kx++) {
-                            var inX = startX + kx;
-                            
-                            total_sum += input[inY, inX] * kernel[ky, kx];
-                        }
-                    }
-                }
-
-                // Set the output position's value
-                output[outY, outX] = total_sum + filter.Bias; //Missed this?
-            }
-        }
-
-        // Exit
-        return Matrix<double>.Wrap(output);
-    }
-
-    public Matrix<double>[] Convolve(Matrix<double>[] inputs) {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Matrix<double>[] Convolve(Matrix<double>[] inputs) {
         var filtersLength       = filters.Length;
         var output_list         = new Matrix<double>[filtersLength];
 
         Parallel.For(0, filtersLength, filterIndex => {
             var filter = filters[filterIndex];
-            var output = Convolve(inputs, filter);
+            var output = Matrix<double>.ConvolveAll(inputs, filter, StrideX, StrideY, ColumnsPadding, RowsPadding);
             output_list[filterIndex] = output;
         });
 
@@ -183,8 +91,7 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
     }
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
-        var z = (FeatureSet<double>)this.Convolve((Matrix<double>[])inputs);
-        return z;
+        return new FeatureSet<double>(this.Convolve((Matrix<double>[])inputs));
     }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);

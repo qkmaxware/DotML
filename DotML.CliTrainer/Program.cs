@@ -12,34 +12,11 @@ public static void Main() {
     if (!Directory.Exists(dir_root)) {
         Directory.CreateDirectory(dir_root);
     }
-    var filename_root = dir_root + Path.PathSeparator;
+    var filename_root = dir_root + Path.DirectorySeparatorChar;
 
     #region Network
 
-    var network = new FeedforwardNetwork(
-        new ConvolutionLayer(new Shape3D(3, 32, 32), Padding.Same, filters: ConvolutionFilter.Make(32, 3, 3))
-        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
-        .Then(ishape => new LocalMaxPoolingLayer(ishape, 2))
-
-        .Then(ishape => new ConvolutionLayer(ishape, Padding.Same, filters: ConvolutionFilter.Make(64, ishape.Channels, 3)))
-        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
-        .Then(ishape => new LocalMaxPoolingLayer(ishape, 2))
-
-        .Then(ishape => new ConvolutionLayer(ishape, Padding.Same, filters: ConvolutionFilter.Make(128, ishape.Channels, 3)))
-        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
-        .Then(ishape => new LocalMaxPoolingLayer(ishape, 2))
-
-        .Then(ishape => new FullyConnectedLayer(ishape.Count, 512))
-        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
-        //.Then(ishape => new DropoutLayer(ishape))
-
-        .Then(ishape => new FullyConnectedLayer(ishape.Count, 256))
-        .Then(ishape => new ActivationLayer(ishape, TeLU.Instance))
-        //.Then(ishape => new DropoutLayer(ishape))
-
-        .Then(ishape => new FullyConnectedLayer(ishape.Count, 10))
-        .Then(ishape => new SoftmaxLayer(ishape.Count))
-    );
+    var network = LeNet.Make(LeNet.Version.V5, output_classes: 10, img_channels: 3, img_width: 32, img_height: 32, activation: TeLU.Instance);
     //MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: ReLU.Instance);
     
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
@@ -51,13 +28,13 @@ public static void Main() {
         var layer = network.GetLayer(layerIndex);
         Console.Write("    "); Console.WriteLine("layer" + layerIndex + ": " + layer.OutputShape + " " + layer.ToString());
     }
-    if (network is IJsonizable json) {
-        using (var writer = new StreamWriter($"{filename_root}network.json")) {
-            writer.Write(json.ToJson());
-        }
-    } else if (network is IMarkdownable md) {
+    if (network is IMarkdownable md) {
         using (var writer = new StreamWriter($"{filename_root}network.md")) {
             writer.Write(md.ToMarkdown());
+        }
+    } else if (network is IJsonizable json) {
+        using (var writer = new StreamWriter($"{filename_root}network.json")) {
+            writer.Write(json.ToJson());
         }
     } else if (network is IHtmlable html) {
         using (var writer = new StreamWriter($"{filename_root}network.html")) {
@@ -204,9 +181,10 @@ public static void Main() {
     var filename = $"{filename_root}training-report.csv";
     Console.WriteLine($"Training started: \"{filename}\"");
     using var report_writer = new StreamWriter(filename);
-    report_writer.WriteLine("epoch, validation-min-loss, validation-max-loss, validation-average-loss, validation-tests-passed, validation-tests-failed, training-min-loss, training-max-loss, training-average-loss, training-tests-passed, training-tests-failed");
+    report_writer.WriteLine("epoch, validation-min-loss, validation-max-loss, validation-average-loss, validation-accuracy, validation-precision, validation-recall, validation-f1, validation-tests-passed, validation-tests-failed, training-min-loss, training-max-loss, training-average-loss, training-accuracy, training-precision, training-recall, training-f1, training-tests-passed, training-tests-failed");
     report_writer.Flush();
-    
+
+    var fitness_report = new DefaultValidationReport();
     while (has_next) {
         Console.Write("    ");
         Console.Write($"Epoch{session.CurrentEpoch + 1:000}: ");
@@ -223,23 +201,19 @@ public static void Main() {
         timer.Stop();
         var elapsed = timer.Elapsed;
 
-        var data_fitting_max = 0.0; var data_fitting_min = 0.0; var data_fitting_avg = 0.0;
-        var samples_fit = 0; var samples_unfit = 0;
         {
-            var data_iterator = data.SampleSequentially();
-            var sum_error = 0d; var count = 0;
+            var data_iterator = data.SampleSequentially(); var count = 0;
             var max_error = double.MinValue;
-            var min_error = double.MaxValue;
             var all_less_threshold = true;
-            List<(FeatureSet<double> In, Vec<double> Out)> batch = new List<(FeatureSet<double>, Vec<double>)>();
+            fitness_report.Reset();
+            List<(FeatureSet<double> InMatrix, Vec<double> In, Vec<double> Out)> batch = new List<(FeatureSet<double> InMatrix, Vec<double> In, Vec<double> Out)>();
             var concurrency_level = trainer.BatchSize; // or Environment.ProcessorCount
             while (data_iterator.MoveNext() && batch.Count < concurrency_level) {
                 var pair = data_iterator.Current;
                 var input = new FeatureSet<double>(pair.Input.Shape(network.InputShape).ToArray());
-                var output = pair.Output;
-                batch.Add((input, output));
+                batch.Add((input, pair.Input, pair.Output));
             }
-            var batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.In).ToArray());
+            var batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.InMatrix).ToArray());
 
             while (batch.Count > 0) {
                 // Perform Feed-Forward
@@ -247,20 +221,16 @@ public static void Main() {
 
                 // Measure loss across batch
                 for (var batchIndex = 0; batchIndex < batch_input.Batches; batchIndex++) {
+                    var input = batch[batchIndex].In;
                     var @true = batch[batchIndex].Out;
                     var predicted =  Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
                     
                     var loss = trainer.LossFunction(predicted, @true);
-                    sum_error += loss;
                     max_error = Math.Max(max_error, loss);
-                    min_error = Math.Min(min_error, loss);
                     var passed = loss < trainer.EarlyStopAccuracy;
-                    if (passed)
-                        samples_fit++;
-                    else
-                        samples_unfit++;
                     all_less_threshold &= passed;
-                    count++;
+                    fitness_report.Append(input, @true, predicted, passed, loss);
+                    count ++;
                 }
 
                 // Update UI
@@ -284,16 +254,10 @@ public static void Main() {
                 while (data_iterator.MoveNext() && batch.Count < concurrency_level) {
                     var pair = data_iterator.Current;
                     var input = new FeatureSet<double>(pair.Input.Shape(network.InputShape).ToArray());
-                    var output = pair.Output;
-                    batch.Add((input, output));
+                    batch.Add((input, pair.Input, pair.Output));
                 }
-                batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.In).ToArray());
+                batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.InMatrix).ToArray());
             }
-            var avg_error = sum_error / Math.Max(1, count);
-
-            data_fitting_max = max_error;
-            data_fitting_min = min_error;
-            data_fitting_avg = avg_error;
         }
 
         // Last report
@@ -311,8 +275,9 @@ public static void Main() {
         } else {
             min_loss = validation_report.AverageLoss;
         }
-        Console.Write($"{status_char} {validation_report.TestsPassedCount}/{validation_report.TestCount} passed, {elapsed} elapsed, {validation_report.AverageLoss} validation, {data_fitting_avg} fitting, ");
-        report_writer.WriteLine($"{session.CurrentEpoch}, {validation_report.MinLoss}, {validation_report.MaxLoss}, {validation_report.AverageLoss}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}, {data_fitting_min}, {data_fitting_max}, {data_fitting_avg}, {samples_fit}, {samples_unfit}");
+        Console.Write($"{status_char} {validation_report.TestsPassedCount}/{validation_report.TestCount} passed, {elapsed} elapsed, {validation_report.AverageLoss} validation, {fitness_report.AverageLoss} fitting, ");
+        
+        report_writer.WriteLine($"{session.CurrentEpoch}, {validation_report.MinLoss}, {validation_report.MaxLoss}, {validation_report.AverageLoss}, {validation_report.Accuracy}, {validation_report.Precision}, {validation_report.Recall}, {validation_report.F1Score}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}, {fitness_report.MinLoss}, {fitness_report.MaxLoss}, {fitness_report.AverageLoss}, {fitness_report.Accuracy}, {fitness_report.Precision}, {fitness_report.Recall}, {fitness_report.F1Score}, {fitness_report.TestsPassedCount}, {fitness_report.TestsFailedCount}");
         report_writer.Flush();
         var epochfname = $"{filename_root}epoch-{session.CurrentEpoch}.safetensors";
         network.ToSafetensor().WriteToFile(epochfname);

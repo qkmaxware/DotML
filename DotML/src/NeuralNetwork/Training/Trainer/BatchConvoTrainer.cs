@@ -66,6 +66,15 @@ where TNetwork : FeedforwardNetwork
     }
     private double _earlyStopAccuracy = 0.1;
 
+    private int _earlyStopPatience = 1;
+    /// <summary>
+    /// The number of epochs in a row where the early stop condition has been met before early stop is triggered (default: 1)
+    /// </summary>
+    public int EarlyStopPatience {
+        get => _earlyStopPatience;
+        set => _earlyStopAccuracy = Math.Max(1, value); // Always have at least 1 
+    }
+
     /// <summary>
     /// The loss function used in network accuracy evaluation (default: MSE)
     /// </summary>
@@ -105,6 +114,7 @@ where TNetwork : FeedforwardNetwork
 
             earlyStop:              this.EarlyStop,
             earlyStopThreshold:     this.EarlyStopAccuracy,
+            earlyStopPatience:      this.EarlyStopPatience,
             lossFunction:           this.LossFunction,
             validationReport:       this.ValidationReport,
             performanceReport:      this.PerformanceReport,
@@ -150,6 +160,8 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
     public bool EnableEarlyStop {get; private set;}
     public double EarlyStopThreshold {get; private set;}
+    public int EarlyStopPatience {get; private set;}
+    private int _patience_count = 0;
     public LossFunction LossFunction {get; private set;}
     public RegularizationFunction Regularization => layerUpdateActions.Regularization;
 
@@ -165,6 +177,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
         bool earlyStop,
         double earlyStopThreshold,
+        int earlyStopPatience,
         LossFunction lossFunction,
         IValidationReport? validationReport,
         IPerformanceReport? performanceReport,
@@ -198,6 +211,9 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this.PerformanceReport = performanceReport;
         this.LossFunction = lossFunction;
         this.NetworkInitializer = networkInitializer;
+
+        this.EarlyStopPatience = Math.Max(1, earlyStopPatience);
+        this._patience_count = this.EarlyStopPatience;
 
         this.backpropagationActions = new BackpropagationActions(useClipping, clipThresholdWeight, clipThresholdBias);
         this.layerUpdateActions = new LayerUpdateActions(Math.Abs(learningRate), regularization, optimizer);
@@ -237,6 +253,8 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this.batch_outputs  = new FeatureSet<double>[this.BatchSize][]; // The outputs from each layer
         this.layer_gradients = new Gradients?[Current.LayerCount];
 
+        this._patience_count = this.EarlyStopPatience;
+
         for (var b = 0; b < this.BatchSize; b++) {
             this.batch_inputs[b] = new FeatureSet<double>[Current.LayerCount];
             this.batch_outputs[b] = new FeatureSet<double>[Current.LayerCount];
@@ -252,7 +270,16 @@ public partial class BatchTrainerEnumerator<TNetwork>
         TrainingStep();
         OnEpochEnd(this.CurrentEpoch, this.MaxEpochs);
 
-        // TODO early STOP
+        bool stopEarly = ValidateStep();
+
+        CurrentEpoch += 1;
+        var epochs_finished = CurrentEpoch >= MaxEpochs;
+        
+        var is_done = epochs_finished || stopEarly;
+        return !is_done;
+    }
+
+    private bool ValidateStep() {
         bool stopEarly = false;
         if (EnableEarlyStop) {
             ValidationReport?.Reset();
@@ -303,35 +330,22 @@ public partial class BatchTrainerEnumerator<TNetwork>
                 batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.In).ToArray());
             }
 
-            /*while (validation.MoveNext()) {
-                var input = validation.Current.Input;
-                var @true = validation.Current.Output; 
-                var predicted = Current.PredictSync(input);
-                
-                var loss = LossFunction(predicted, @true);
-                sum_error += loss;
-                max_error = Math.Max(max_error, loss);
-                var passed = loss < EarlyStopThreshold;
-                all_less_threshold &= passed;
-                OnValidated(this.CurrentEpoch, this.MaxEpochs, count, loss);
-                count++;
-                ValidationReport?.Append(input, @true, predicted, passed, loss);
-            }*/
             if (double.IsNaN(sum_error)) {
-                throw new ArithmeticException("NaN detected during output evaluation.");
+                throw new ArithmeticException("NaN detected during validation.");
             }
             var avg_error = sum_error / Math.Max(1, count);
             if (max_error <= EarlyStopThreshold) {
-                stopEarly = true;
+                // Decrement the patience count
+                _patience_count --;
+                if (_patience_count <= 0)
+                    stopEarly = true;
+            } else {
+                // Reset the early stop patience
+                _patience_count = this.EarlyStopPatience;
             }
             OnValidationEnd(this.CurrentEpoch, this.MaxEpochs, max_error);
         }
-
-        CurrentEpoch += 1;
-        var epochs_finished = CurrentEpoch >= MaxEpochs;
-        
-        var is_done = epochs_finished || stopEarly;
-        return !is_done;
+        return stopEarly;
     }
 
     const string FeedforwardPerformanceKey = "Feed Forward";
@@ -356,7 +370,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
             // Init layers for batch
             for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
-                Current.GetLayer(layerIndex).Visit(this.batchInitializer);
+                Current.GetLayer(layerIndex).BeginTraining();
             }
 
             var batch_features = new BatchedFeatureSet<double>(
@@ -440,7 +454,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
                 var update_args = new LayerUpdateArgs();
                 update_args.UpdateTimestep = CurrentUpdateTimestep;
                 update_args.ParameterOffset = 0;
-                this.layerUpdateActions.TrackUsedParameters(true); // TODO only do this in DEBUG mode
+                this.layerUpdateActions.TrackUsedParameters(false); // TODO only do this in DEBUG mode
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                     // Average gradients across batch
                     Gradients? avgGradient = layer_gradients[layerIndex];
@@ -458,7 +472,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
             // Cleanup layers for batch
             for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
-                Current.GetLayer(layerIndex).Visit(this.batchCleanup);
+                Current.GetLayer(layerIndex).EndTraining();
             }
 
             // Compute next batch

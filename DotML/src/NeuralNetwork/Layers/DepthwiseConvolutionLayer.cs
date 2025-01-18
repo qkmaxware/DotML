@@ -123,7 +123,8 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
             var channel = channels[i];
             var kernel = Filter[i];
 
-            outputs[i] = Convolve(channel, kernel);
+            outputs[i] = channel.Convolve(kernel, StrideX, StrideY, ColumnsPadding, RowsPadding);
+            //outputs[i] = Convolve(channel, kernel);
         });
 
         return (FeatureSet<double>)outputs;

@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using DotML;
 using DotML.Network;
-using static DotML.Network.Training.BatchedConvolutionalBackpropagationEnumerator<DotML.Network.ConvolutionalFeedforwardNetwork>;
+using static DotML.Network.Training.BatchTrainerEnumerator<DotML.Network.FeedforwardNetwork>;
 
 [TestClass]
 public class TempTests {
@@ -214,7 +214,7 @@ public class TempTests {
 
         var temp_layer = new ConvolutionLayer(input_matrix.Shape, Padding.Same, filters);
 
-        var results = TransposeConvolve2(temp_layer, new DotML.Network.Training.BatchedConvolutionalBackpropagationEnumerator<ConvolutionalFeedforwardNetwork>.BackpropagationArgs {
+        var results = TransposeConvolve2(temp_layer, new DotML.Network.Training.BatchTrainerEnumerator<FeedforwardNetwork>.BackpropagationArgs {
             InputBatch = input,
             OutputBatch = output,
             OutputErrors = output,
@@ -351,7 +351,7 @@ public class TempTests {
 
         var temp_layer = new DepthwiseConvolutionLayer(input_matrix.Shape, Padding.Same, filter);
 
-        var results = DepthwiseTransposeConvolve2(temp_layer, new DotML.Network.Training.BatchedConvolutionalBackpropagationEnumerator<ConvolutionalFeedforwardNetwork>.BackpropagationArgs {
+        var results = DepthwiseTransposeConvolve2(temp_layer, new DotML.Network.Training.BatchTrainerEnumerator<FeedforwardNetwork>.BackpropagationArgs {
             InputBatch = input,
             OutputBatch = output,
             OutputErrors = output,

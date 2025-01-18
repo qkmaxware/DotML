@@ -5,7 +5,7 @@
 @using DotML.Network.Training
 @using Qkmaxware.Media.Image
 
-<NetworkExplorerV2 @ref=explorer TNetwork=ConvolutionalFeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing>
+<NetworkExplorerV2 @ref=explorer TNetwork=FeedforwardNetwork Network=@leNet Trainer=@trainer TrainingData=@training ValidationData=@testing>
     <Input>
         <p>Draw a digit into the panel below (0-9).</p>
         <PaintApp OnChange=@((pixels) => { context.Value = vectorize(pixels); explorer?.RefreshState(); }) ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
@@ -42,10 +42,10 @@
     private static string[] OUT_CLASS_NAMES = [
         "Airplane", "Automobile", "Bird", "Cat", "Deer", "Dog", "Frog",  "Horse", "Ship", "Truck"
     ];
-    private NetworkExplorerV2<ConvolutionalFeedforwardNetwork>? explorer;
+    private NetworkExplorerV2<FeedforwardNetwork>? explorer;
 
-    private ConvolutionalFeedforwardNetwork leNet =  LeNet.Make(LeNet.Version.V5, output_classes: 10, img_channels: 3, img_width: 32, img_height: 32, activation: ReLU.Instance);
-    private BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork> trainer = new BatchedConvolutionalEnumerableBackpropagationTrainer<ConvolutionalFeedforwardNetwork>(){
+    private FeedforwardNetwork leNet = LeNet.Make(LeNet.Version.V5, output_classes: 10, img_channels: 3, img_width: 32, img_height: 32, activation: TeLU.Instance);
+    private EnumerableBatchTrainer<FeedforwardNetwork> trainer = new EnumerableBatchTrainer<FeedforwardNetwork>(){
         Epochs = 100,
         LearningRate = 0.001,
         LearningRateOptimizer = new AdamOptimizer(),
@@ -67,7 +67,7 @@
 
     static Cifar10(){
         // Load the training vectors. 32x32 images with a single pixel per image 0->255 range. Rescale them between 0.0 and 1.0.
-        weights = ResourceLoader.LoadSafetensors("data/cifar/_10/cifar10.lenet.relu.safetensors");
+        weights = ResourceLoader.LoadSafetensors("data/cifar/_10/cifar10.telu.safetensors");
     }
 
     protected override void OnInitialized() {

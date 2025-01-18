@@ -12,7 +12,7 @@ namespace DotML.Network;
 public class FeedforwardNetwork: 
     INamedNetwork,
     ILayeredNeuralNetwork<IFeedforwardNetworkLayer>, 
-    IDiagrammable, ISafetensorable, IMarkdownable, IHtmlable
+    IDiagrammable, ISafetensorable, IMarkdownable, IHtmlable, IJsonizable
 {
     private List<IFeedforwardNetworkLayer> layers = new List<IFeedforwardNetworkLayer>();
 
@@ -363,6 +363,21 @@ public class FeedforwardNetwork:
                 var layer = this.GetLayer(layerIndex);
                 if (!layer.Visit(html, layerIndex)) {
                     throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
+                }
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    public string ToJson() {
+        using StringWriter sb = new StringWriter();
+
+        using (var html = new NetworkJsonSerializer(sb)) {
+            for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
+                var layer = this.GetLayer(layerIndex);
+                if (!layer.Visit(html, layerIndex)) {
+                    throw new ArgumentException($"Failed to jsonize information for layer {layerIndex}.");
                 }
             }
         }

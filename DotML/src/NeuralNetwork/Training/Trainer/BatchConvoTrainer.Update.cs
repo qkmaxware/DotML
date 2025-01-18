@@ -36,19 +36,18 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
         IsTrackingUsedParameters = track;
         used_params.Clear();
     }
-    //if (used_params.Contains(parameterIndex))
-            //throw new Exception("Bad parameter index " + parameterIndex);
-        //used_params.Add(parameterIndex);
-        //vf = beta * vi + (1.0 - beta) * grad;
-        // W(t) = W(t-1) + alpha * vf;
+    //vf = beta * vi + (1.0 - beta) * grad;
+    // W(t) = W(t-1) + alpha * vf;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private double gradient_update(int updateTimestep, double learningRate, double prevWeight, double gradient, int parameterIndex) {
         // Verify the parameter has not been used this iteration already
         if (IsTrackingUsedParameters) {
-            if (used_params.Contains(parameterIndex))
-                throw new Exception("Parameter " + parameterIndex + " has already been used this iteration");
-            used_params.Add(parameterIndex);
+            lock(used_params) {
+                if (used_params.Contains(parameterIndex))
+                    throw new Exception("Parameter " + parameterIndex + " has already been used this iteration");
+                used_params.Add(parameterIndex);
+            }
         }
 
         var regularized_grad = gradient + Regularization.Invoke(prevWeight);

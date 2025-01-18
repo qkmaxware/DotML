@@ -108,16 +108,16 @@ public class BasicMatrix {
             { 4, 5, 6}
         };
 
-        var row0 = A.ExtractRow(0);
-        var row1 = A.ExtractRow(1);
+        var row0 = A.ExtractRowVector(0);
+        var row1 = A.ExtractRowVector(1);
         Assert.AreEqual(3, row0.Dimensionality);
         Assert.AreEqual(3, row1.Dimensionality);
         Assert.AreEqual(1, row0[0]); Assert.AreEqual(2, row0[1]); Assert.AreEqual(3, row0[2]);
         Assert.AreEqual(4, row1[0]); Assert.AreEqual(5, row1[1]); Assert.AreEqual(6, row1[2]);
 
-        var col0 = A.ExtractColumn(0);
-        var col1 = A.ExtractColumn(1);
-        var col2 = A.ExtractColumn(2);
+        var col0 = A.ExtractColumnVector(0);
+        var col1 = A.ExtractColumnVector(1);
+        var col2 = A.ExtractColumnVector(2);
         Assert.AreEqual(2, col0.Dimensionality);
         Assert.AreEqual(2, col1.Dimensionality);
         Assert.AreEqual(2, col2.Dimensionality);
@@ -187,6 +187,35 @@ public class BasicMatrix {
         // Assert: Verify the result matches the expected output
         Assert.AreEqual(expected.Rows, result.Rows);
         Assert.AreEqual(expected.Columns, result.Columns);
+        foreach (var pair in expected.Zip(result)) {
+            Assert.AreEqual(pair.First, pair.Second, 0.01);
+        }
+    }
+
+    [TestMethod]
+    public void TestCompatibleMultiplyVector() {
+        // Arrange: Define two matrices to multiply
+        Matrix<double> A = new double[,] {
+            { 1, 2 },
+            { 3, 4 }
+        };
+
+        Vec<double> B = new double[] {
+            5,
+            6 
+        };
+
+        // Expected result of A * B
+        Vec<double> expected = new double[] {
+            17,
+            39
+        };
+
+        // Act: Multiply matrices A and B
+        var result = A * B;
+
+        // Assert: Verify the result matches the expected output
+        Assert.AreEqual(expected.Dimensionality, result.Dimensionality);
         foreach (var pair in expected.Zip(result)) {
             Assert.AreEqual(pair.First, pair.Second, 0.01);
         }

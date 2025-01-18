@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Text.Json.Serialization;
 using DotML.Network.Initialization;
 
 namespace DotML.Network;
@@ -19,10 +20,12 @@ public class BatchNorm : FeedforwardNetworkLayer {
     /// <summary>
     /// Normalization scaling factor
     /// </summary>
+    [JsonIgnore]
     public Matrix<double>[] Gammas {get; set;}
     /// <summary>
     /// Normalization shifting offset
     /// </summary>
+    [JsonIgnore]
     public Matrix<double>[] Betas {get; set;}
 
     public BatchNorm(Shape3D input_size, double mean_momentum = 0.9, double variance_momentum = 0.9) {
@@ -53,11 +56,8 @@ public class BatchNorm : FeedforwardNetworkLayer {
         return EvaluateSync(new BatchedFeatureSet<double>(channels))[0];
     }
 
-    public bool IsTrainingMode {get; set;} = false;
-    public bool IsInferenceMode {get => !IsTrainingMode; set => IsTrainingMode = !value; }
-
     public void ComputeMeansAndVariances(BatchedFeatureSet<double> features, out double[] mean_vec, out double[] variance_vec) {
-        if (IsInferenceMode || features.Batches < 2) {
+        if (IsInference || features.Batches < 2) {
             mean_vec = (double[])this.RunningMean;
             variance_vec = (double[])this.RunningVariance;
         } else {
@@ -100,7 +100,7 @@ public class BatchNorm : FeedforwardNetworkLayer {
         this.ComputeMeansAndVariances(features, out var means, out var variances);
 
         // Perform running mean/variance computation
-        if (this.IsTrainingMode && features.Batches > 2) {
+        if (this.IsInference && features.Batches > 2) {
             for (var channelIndex = 0; channelIndex < variances.Length; channelIndex++) {
                 var mean = means[channelIndex];
                 var variance = variances[channelIndex];

@@ -9,10 +9,10 @@ namespace DotML.Network;
 /// </summary>
 public class SoftmaxLayer : FeedforwardNetworkLayer {
 
-    private int size;
+    public int Size {get; init;}
 
     public SoftmaxLayer(int size) {
-        this.size = size;
+        this.Size = size;
 
         this.InputShape = new Shape3D(1, size, 1);
         this.OutputShape = new Shape3D(1, size, 1);
@@ -21,7 +21,7 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
         // Treat all inputs values as a single vector, compute the softmax of this vector
         var sum = 0.0d;
-        double[,] values = new double[size, 1];
+        double[,] values = new double[Size, 1];
         var i = 0;
         foreach (var input in inputs) {
             foreach (var item in input) {
@@ -30,7 +30,7 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
                 sum += exp_i;
             }
         }
-        for (var j = 0; j < size; j++) {
+        for (var j = 0; j < Size; j++) {
             values[j, 0] = values[j, 0] / sum;
         }
 

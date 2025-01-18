@@ -10,6 +10,9 @@ public interface IFeedforwardNetworkLayer : ILayer {
     public FeatureSet<double> EvaluateSync(FeatureSet<double> features);
     public BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features);
 
+    public void BeginTraining();
+    public void EndTraining();
+
     public void Initialize(IInitializer initializer);
 
     public bool DoesShapeMatchInputShape(Shape3D shape);
@@ -32,6 +35,20 @@ public abstract class FeedforwardNetworkLayer : IFeedforwardNetworkLayer {
             && InputShape.Columns == shape.Columns
         ;
     }
+
+    public bool IsTraining {get; private set;}
+    public bool IsInference => !IsTraining;
+
+    public void BeginTraining() {
+        IsTraining = true;
+        OnTrainingBegin();
+    }
+    public void EndTraining() {
+        IsTraining = false;
+        OnTrainingEnd();
+    }
+    protected virtual void OnTrainingBegin() {}
+    protected virtual void OnTrainingEnd() {}
 
     public abstract void Initialize(IInitializer initializer);
 

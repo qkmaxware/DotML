@@ -44,54 +44,29 @@ public class DefaultValidationReport : IValidationReport {
     public double MinLoss => min_loss;
     public double AverageLoss => sum_loss / test_all_count;
 
-    // TODO more validation metrics
-    /*
-        Accuracy: Good for balanced datasets but may be misleading for imbalanced ones.
-        Precision: Focuses on minimizing false positives.
-        Recall: Focuses on minimizing false negatives.
-        F1 Score: A balanced metric that considers both precision and recall.
-    */
+    public int TruePositives {get; private set;}
+    public int TrueNegatives {get; private set;}
+    public int FalsePositives {get; private set;}
+    public int FalseNegatives {get; private set;}
+
     /// <summary>
     /// Accuracy is the proportion of correctly predicted instances (both true positives and true negatives) to the total instances in the dataset.
     /// </summary>
-    //public double Accuracy => true_positives + true_negatives / test_all_count;
+    public double Accuracy => TruePositives + TrueNegatives / test_all_count;
     /// <summary>
     /// Precision measures the proportion of correctly predicted positive instances (true positives) out of all the instances that were predicted as positive.
     /// </summary>
-    //public double Precision => true_positives / (true_positives + false_positives);
+    public double Precision => TruePositives / (TruePositives + FalsePositives);
     /// <summary>
     /// Recall measures the proportion of correctly predicted positive instances (true positives) out of all the actual positive instances.
     /// </summary>
-    //public double Recall => true_positives / (true_positives + false_negatives);
+    public double Recall => TruePositives / (TruePositives + FalseNegatives);
     /// <summary>
     /// The F1 score is the harmonic mean of precision and recall. It provides a single score that balances both the concerns of precision and recall, especially when you need a balance between the two. It ranges from 0 to 1, where 1 is the best value.
     /// </summary>
-    //public double F1Score => 2 * (Precision * Recall) / (Precision + Recall);
+    public double F1Score => 2 * (Precision * Recall) / (Precision + Recall);
 
-    /*
-2. Deriving TP, FP, TN, FN from Output
-To compute these values, you need to compare the predicted output of your model with the true output. The approach depends on whether you're dealing with discrete class labels or probabilities:
-
-a. For Discrete Class Labels (e.g., 0 or 1)
-If your model outputs discrete class labels (e.g., 0 or 1), you can directly compare the predicted output with the true output.
-For each data point, you check:
-If the predicted class equals the true class (i.e., both are 1 or both are 0), it contributes to either TP or TN.
-If the predicted class is 1 and the true class is 0, it contributes to FP.
-If the predicted class is 0 and the true class is 1, it contributes to FN.
-Example:
-
-Predicted	Actual	TP	FP	TN	FN
-1	        1	    1	0	0	0
-0	        1	    0	0	1	1
-1	        0	    0	1	0	0
-0	        0	    0	0	1	0
-b. For Probability Outputs
-If your model outputs probabilities (e.g., the probability that a sample belongs to the positive class), you need to threshold the probabilities to decide the predicted class. A common threshold is 0.5, meaning:
-
-If the predicted probability is greater than or equal to 0.5, classify the sample as positive (1).
-If the predicted probability is less than 0.5, classify the sample as negative (0).
-Once you threshold the probabilities, you can apply the same logic as in the discrete class labels case to calculate TP, FP, TN, and FN.
-    */
+    public double TrueProbabilityThreshold {get; set;} = 0.5;
 
     public virtual void Reset() {
         this.test_all_count = 0;
@@ -101,6 +76,11 @@ Once you threshold the probabilities, you can apply the same logic as in the dis
         this.sum_loss = 0;
         this.min_loss = 0;
         this.max_loss = 0;
+
+        this.TruePositives = 0;
+        this.FalsePositives = 0;
+        this.TrueNegatives = 0;
+        this.FalseNegatives = 0;
     }
 
     public virtual void Append(Vec<double> input, Vec<double> expected, Vec<double> predicted, bool testPassed, double loss) {
@@ -115,6 +95,34 @@ Once you threshold the probabilities, you can apply the same logic as in the dis
             test_passed_count++;
         else 
             test_failed_count++;
+
+        // Compute true positives, false positives, true negatives, and false negatives
+        // This assumes the outputs are probability distributions, which tbf they usually are
+        var class_belonging_to = predicted.IndexOfMaxValue();  // Class label (index)
+        var predicted_positive = Math.Clamp(predicted[class_belonging_to], 0.0, 1.0) > TrueProbabilityThreshold;
+
+        var class_suppose_to = expected.IndexOfMaxValue(); // Class label (index)
+        var actual_positive = Math.Clamp(expected[class_suppose_to], 0.0, 1.0) > TrueProbabilityThreshold;
+  
+        if (class_belonging_to == class_suppose_to) {
+            // Predicted and actual class are the same, so it's either TP or TN
+            if (predicted_positive) {
+                // True Positive (correctly predicted as positive)
+                this.TruePositives++;
+            } else {
+                // True Negative (correctly predicted as negative)
+                this.TrueNegatives++;
+            }
+        } else {
+            // Predicted class is different from actual class, so it's either FP or FN
+            if (predicted_positive) {
+                // False Positive (predicted positive, but actual is negative)
+                this.FalsePositives++;
+            } else {
+                // False Negative (predicted negative, but actual is positive)
+                this.FalseNegatives++;
+            }
+        }
     }
 
 }

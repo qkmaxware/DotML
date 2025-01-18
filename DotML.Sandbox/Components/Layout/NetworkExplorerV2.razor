@@ -152,7 +152,6 @@
         <div id="Network State" class="col-sm" style="overflow-x: auto;">
             <label class="header">Network</label>
             <figure>
-                <figcaption>Weights</figcaption>
                 <div style="text-align: right;">
                     @if (Network is ISafetensorable safeable) {
                         <button type="button" class="btn" style="text-decoration: underline;" @onclick=@(() => download_bytes(safeable.ToSafetensor(), "network.safetensors"))>bin</button>

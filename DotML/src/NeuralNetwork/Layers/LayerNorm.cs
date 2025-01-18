@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Text.Json.Serialization;
 using DotML.Network.Initialization;
 
 namespace DotML.Network;
@@ -14,11 +15,11 @@ public class LayerNorm : FeedforwardNetworkLayer {
     /// <summary>
     /// Normalization scaling factor
     /// </summary>
-    public Matrix<double>[] Gammas {get; set;}
+    [JsonIgnore] public Matrix<double>[] Gammas {get; set;}
     /// <summary>
     /// Normalization shifting offset
     /// </summary>
-    public Matrix<double>[] Betas {get; set;}
+    [JsonIgnore] public Matrix<double>[] Betas {get; set;}
 
     public LayerNorm(Shape3D input_size) {
         this.InputShape = input_size;

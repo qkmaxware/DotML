@@ -16,19 +16,19 @@ public struct Shape4D {
     /// <summary>
     /// Number of batches
     /// </summary>
-    public readonly int Batches;
+    public readonly int Batches {get;}
     /// <summary>
     /// Number of channels
     /// </summary>
-    public readonly int Channels;
+    public readonly int Channels {get;}
     /// <summary>
     ///  Number of rows
     /// </summary>
-    public readonly int Rows; 
+    public readonly int Rows {get;}
     /// <summary>
     /// Number of columns
     /// </summary>
-    public readonly int Columns;
+    public readonly int Columns {get;}
     /// <summary>
     /// Total number of tensor elements contained in the shape
     /// </summary>
@@ -81,15 +81,15 @@ public struct Shape3D {
     /// <summary>
     /// Number of channels
     /// </summary>
-    public readonly int Channels;
+    public readonly int Channels {get;}
     /// <summary>
     ///  Number of rows
     /// </summary>
-    public readonly int Rows; 
+    public readonly int Rows {get;} 
     /// <summary>
     /// Number of columns
     /// </summary>
-    public readonly int Columns;
+    public readonly int Columns {get;}
     /// <summary>
     /// Total number of tensor elements contained in the shape
     /// </summary>
@@ -140,11 +140,11 @@ public struct Shape2D {
     /// <summary>
     ///  Number of rows
     /// </summary>
-    public readonly int Rows;
+    public readonly int Rows {get;}
     /// <summary>
     /// Number of columns
     /// </summary>
-    public readonly int Columns;
+    public readonly int Columns {get;}
 
     public Shape2D() {}
 

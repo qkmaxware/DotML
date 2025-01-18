@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 using DotML.Network.Initialization;
 
 namespace DotML.Network;
@@ -13,7 +14,8 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
     private int outputs;
     private int neuronc;
     public int NeuronCount=> neuronc;
- 
+    
+    [JsonIgnore]
     public Matrix<double> Weights {
         get => Matrix<double>.Wrap(weight_values);
         set {
@@ -21,6 +23,8 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         }
     }
     private double[,] weight_values;
+
+    [JsonIgnore]
     public Vec<double> Biases {
         get => Vec<double>.Wrap(bias_values);
         set {
@@ -126,9 +130,31 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         if (rows != target.Rows) {
             throw new ArithmeticException("Incompatible dimensions for storing results of matrix/vector addition");
         }
-        for (var row = 0; row < rows; row++) {
-            result[row, 0] = a[row, 0] + b[row];
-        }
+        ParallelUtils.ForX(0, rows, (job) => {
+            result[job.X, 0] = a[job.X, 0] + b[job.X];
+        });
+    }
+
+    // On Average, this is slightly faster than the old method but does the same thing (if I didn't copy-paste it wrong) will have to test this haha
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Matrix<double> MultiplyMatrixVectorAndAddVector(Matrix<double> a, Matrix<double> b, Vec<double> c) {
+        // Remember that B is a vector
+        //if (a.Columns != b.Rows || b.Columns != 1 || a.Rows != c.Dimensionality)
+            //throw new ArithmeticException($"Incompatible dimensions for matrix multiplication {a.Rows}x{a.Columns} · {b.Rows}x{b.Columns} + {c.Dimensionality}x1");
+
+        int rows = a.Rows;
+        int cols = b.Columns; // aka 1
+        int innerDim = a.Columns;
+
+        double[,] result = new double[rows, cols];
+        ParallelUtils.ForX(0, rows, (job) => {
+            double sum = 0.0;     
+            for (int j = 0; j < innerDim; j++) {
+                sum += a[job.X, j] * b[j, 0];
+            }
+            result[job.X, 0] = sum + c[job.X];
+        });
+        return Matrix<double>.Wrap(result);
     }
 
     public override bool DoesShapeMatchInputShape(Shape3D shape) {
@@ -139,9 +165,10 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         // input is a 2D matrix processed from prior layers like a pooling layer
         var x = inputs.Channels == 1 && inputs[0].IsColumn ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
         //var x = Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray()); 
-        var mul  = Weights * x; 
-        AddMatVecInplace(mul, mul, bias_values);
-        return new FeatureSet<double>(mul); 
+        //var mul  = Weights * x; 
+        //AddMatVecInplace(mul, mul, bias_values);
+        //return new FeatureSet<double>(mul); 
+        return new FeatureSet<double>(MultiplyMatrixVectorAndAddVector(Weights, x, bias_values));
         //var biased = mul + Matrix<double>.Column(bias_values); 
         //var activated = this.ActivationFunction.Invoke(biased);
         //return [ activated ];
