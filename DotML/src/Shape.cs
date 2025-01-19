@@ -60,8 +60,10 @@ public struct Shape4D {
         return new Shape4D(tuple.Item1, tuple.Item2, tuple.Item3, tuple.Item4);
     }
 
-    public static implicit operator Shape3D[](Shape4D shape) {
-        return Enumerable.Range(0, shape.Channels).Select(x => new Shape3D(shape.Channels, shape.Rows, shape.Columns)).ToArray();
+    public IEnumerable<Shape3D> EnumerateSubshapes() {
+        var subshape = new Shape3D(this.Channels, this.Rows, this.Columns);
+        for (var i = 0; i < this.Batches; i++)
+            yield return subshape;
     }
 
     public void Deconstruct(out int batches, out int channels, out int rows, out int columns) {
@@ -120,8 +122,10 @@ public struct Shape3D {
         return new Shape3D(tuple.Item1, tuple.Item2, tuple.Item3);
     }
 
-    public static implicit operator Shape2D[](Shape3D shape) {
-        return Enumerable.Range(0, shape.Channels).Select(x => new Shape2D(shape.Rows, shape.Columns)).ToArray();
+    public IEnumerable<Shape2D> EnumerateSubshapes() {
+        var shape2d = new Shape2D(this.Rows, this.Columns);
+        for (var i = 0; i < this.Channels; i++)
+            yield return shape2d;
     }
 
     public void Deconstruct(out int channels, out int rows, out int columns) {

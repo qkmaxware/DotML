@@ -427,9 +427,9 @@ public partial class BatchTrainerEnumerator<TNetwork>
                     var expected = currentPair.Output;
                     backprop_args.BatchTrueLabels[b] = expected;
 
-                    var outputs = this.batch_outputs[b];
-                    var @true = expected.Shape(outputs[^1].Select(x => x.Shape).ToArray());
-                    var errors = outputs[^1].Zip(@true).Select(x => x.First-x.Second).ToArray();
+                    var predicted = output_batches[^1][b];                                      // The outputs of the last layer for batch 'b'
+                    var @true = expected.Shape(predicted.Shape);                                // Make the expected vector match the output shape
+                    var errors = predicted.Zip(@true).Select(x => x.First-x.Second).ToArray();  // predicted - expected
 
                     output_errors[b] = new FeatureSet<double>(errors);
                 }

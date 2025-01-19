@@ -462,11 +462,18 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
-    /// Shape the vector into multiple 3D matrices of the given sizes.
+    /// Shape the vector into multiple 2D matrices of the given sizes.
     /// </summary>
     /// <param name="shapes">Matrix sizes</param>
     /// <returns>matrices</returns>
     public IEnumerable<Matrix<T>> Shape(params Shape2D[] shapes) => Shape((IEnumerable<Shape2D>)shapes);
+
+    /// <summary>
+    /// Shape the vector into multiple 2D matrices of the given size.
+    /// </summary>
+    /// <param name="shape">3D Matrix shape</param>
+    /// <returns>matrices</returns>
+    public IEnumerable<Matrix<T>> Shape(Shape3D shape) => Shape(shape.EnumerateSubshapes());
 
     /// <summary>
     /// Shape the vector into multiple 3D matrices of the given sizes.
