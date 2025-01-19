@@ -72,7 +72,7 @@ where TNetwork : FeedforwardNetwork
     /// </summary>
     public int EarlyStopPatience {
         get => _earlyStopPatience;
-        set => _earlyStopAccuracy = Math.Max(1, value); // Always have at least 1 
+        set => _earlyStopPatience = Math.Max(1, value); // Always have at least 1 
     }
 
     /// <summary>

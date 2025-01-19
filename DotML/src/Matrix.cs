@@ -543,7 +543,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         T[] result = new T[this.Rows];
         var columns = this.Columns;
         var src = this;
-        ParallelUtils.ForX(0, this.Columns, (job) => {
+        ParallelUtils.ForX(0, this.Rows, (job) => {
             T aggregate = initial;
             for (var col = 0; col < columns; col++) {
                 aggregate = aggregator(aggregate, src[job.X, col]);

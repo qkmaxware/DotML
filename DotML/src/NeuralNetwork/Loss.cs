@@ -20,7 +20,7 @@ public static class LossFunctions {
     /// <returns>Mean squared error</returns>
     public static double MeanSquaredError(Vec<double> predicted, Vec<double> @true) {
         double mse = 0.0;
-        var N = Math.Max(predicted.Dimensionality, @true.Dimensionality);
+        var N = Math.Min(predicted.Dimensionality, @true.Dimensionality);
 
         for (var i = 0; i < N; i++) {
             var to_square = (predicted[i] - @true[i]);
@@ -31,6 +31,24 @@ public static class LossFunctions {
     }
 
     /// <summary>
+    /// Mean squared error (RMSE) loss function
+    /// </summary>
+    /// <param name="predicted">The predicted value, such as the result from a network</param>
+    /// <param name="true">The true value, such as the result from a training set</param>
+    /// <returns>Mean squared error</returns>
+    public static double RootMeanSquaredError(Vec<double> predicted, Vec<double> @true) {
+        double mse = 0.0;
+        var N = Math.Min(predicted.Dimensionality, @true.Dimensionality);
+
+        for (var i = 0; i < N; i++) {
+            var to_square = (predicted[i] - @true[i]);
+            mse += to_square * to_square;
+        }
+
+        return Math.Sqrt(mse/N);
+    }
+
+    /// <summary>
     /// Mean absolute error (MAE) loss function
     /// </summary>
     /// <param name="predicted">The predicted value, such as the result from a network</param>
@@ -38,7 +56,7 @@ public static class LossFunctions {
     /// <returns>Mean absolute error</returns>
     public static double MeanAbsoluteError(Vec<double> predicted, Vec<double> @true) {
         double mae = 0.0;
-        var N = Math.Max(predicted.Dimensionality, @true.Dimensionality);
+        var N = Math.Min(predicted.Dimensionality, @true.Dimensionality);
 
         for (var i = 0; i < N; i++) {
             mae += Math.Abs(predicted[i] - @true[i]);
@@ -59,11 +77,12 @@ public static class LossFunctions {
 
         // -SUM(exp_i * log(actual_i))
         var sum = 0.0;
-        var m = Math.Max(predicted.Dimensionality, @true.Dimensionality);
-        for (var i = 0; i < m; i++) {
+        var M = Math.Min(predicted.Dimensionality, @true.Dimensionality); // Each dimension is a class
+        for (var i = 0; i < M; i++) { 
+            // @true is a class label, predicted is the predicted probability
             sum += @true[i] * Math.Log(Math.Max(predicted[i], 1e-8));
         }
-        return -(1.0/m)*sum;
+        return -(1.0/M)*sum;
     }
 
     private static bool IsLikelyAProbability(Vec<double> predicted) {
