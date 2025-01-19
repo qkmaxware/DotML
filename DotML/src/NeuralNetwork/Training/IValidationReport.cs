@@ -52,19 +52,19 @@ public class DefaultValidationReport : IValidationReport {
     /// <summary>
     /// Accuracy is the proportion of correctly predicted instances (both true positives and true negatives) to the total instances in the dataset.
     /// </summary>
-    public double Accuracy => (TruePositives + TrueNegatives) / test_all_count;
+    public double Accuracy => ((double)(TruePositives + TrueNegatives)) / ((double)test_all_count);
     /// <summary>
     /// Precision measures the proportion of correctly predicted positive instances (true positives) out of all the instances that were predicted as positive.
     /// </summary>
-    public double Precision => TruePositives / (TruePositives + FalsePositives);
+    public double Precision => ((double)TruePositives) / ((double)(TruePositives + FalsePositives));
     /// <summary>
     /// Recall measures the proportion of correctly predicted positive instances (true positives) out of all the actual positive instances.
     /// </summary>
-    public double Recall => TruePositives / (TruePositives + FalseNegatives);
+    public double Recall => ((double)TruePositives) / ((double)(TruePositives + FalseNegatives));
     /// <summary>
     /// The F1 score is the harmonic mean of precision and recall. It provides a single score that balances both the concerns of precision and recall, especially when you need a balance between the two. It ranges from 0 to 1, where 1 is the best value.
     /// </summary>
-    public double F1Score => 2 * (Precision * Recall) / (Precision + Recall);
+    public double F1Score => 2.0 * (Precision * Recall) / (Precision + Recall);
 
     public double TrueProbabilityThreshold {get; set;} = 0.5;
 
