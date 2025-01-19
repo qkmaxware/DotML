@@ -5,7 +5,7 @@ namespace DotML.Network.Training;
 
 public interface IBenchmarkClock : IDisposable { }
 
-public interface IPerformanceReport {
+public interface IProfilingReport {
     public IBenchmarkClock? Begin(string uid);
 }
 
@@ -57,7 +57,7 @@ public class Benchmark {
 }
 
 
-public class DefaultPerformanceReport : IPerformanceReport {
+public class DefaultProfilingReport : IProfilingReport {
 
     ConcurrentDictionary<string, Benchmark> benchmarks = new ConcurrentDictionary<string, Benchmark>(); 
 

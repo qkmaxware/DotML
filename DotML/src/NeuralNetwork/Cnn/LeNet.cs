@@ -45,7 +45,7 @@ public static class LeNet {
             Version.V5 => MakeV5(output_classes, img_channels, img_width, img_height, activation),
             _ => throw new ArgumentException(nameof(version))
         };
-        net.Name = "LeNet";
+        net.Name = "LeNet-v" + ((int)version);
         return net;
     }
 

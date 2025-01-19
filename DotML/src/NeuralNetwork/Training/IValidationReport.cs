@@ -52,7 +52,7 @@ public class DefaultValidationReport : IValidationReport {
     /// <summary>
     /// Accuracy is the proportion of correctly predicted instances (both true positives and true negatives) to the total instances in the dataset.
     /// </summary>
-    public double Accuracy => TruePositives + TrueNegatives / test_all_count;
+    public double Accuracy => (TruePositives + TrueNegatives) / test_all_count;
     /// <summary>
     /// Precision measures the proportion of correctly predicted positive instances (true positives) out of all the instances that were predicted as positive.
     /// </summary>

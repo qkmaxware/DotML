@@ -49,7 +49,7 @@ public static void Main() {
 
     #region Trainer
     var validation_report = new DefaultValidationReport();
-    var performance_report = new DefaultPerformanceReport();
+    var performance_report = new DefaultProfilingReport();
     var trainer = new EnumerableBatchTrainer<FeedforwardNetwork> {
         Epochs = 100,
         LearningRate = 0.001,
@@ -61,7 +61,7 @@ public static void Main() {
         ClippingThresholdSynapses = 10,
         ClippingThresholdBiases = 5.0,
         ValidationReport = validation_report,
-        PerformanceReport = performance_report
+        Profiler = performance_report
     };
     Console.WriteLine("Trainer configured: " + trainer.GetType().Name);
     using (var trainer_prop_writer = new StreamWriter($"{filename_root}trainer.conf.yaml")) {
@@ -154,13 +154,13 @@ public static void Main() {
         Console.Write('|');
         Console.Write(0);
         Console.Write('/');
-        Console.Write(data.Size);
+        Console.Write(validation.Size);
         Console.Write(" validated      ");
     };
     session.OnValidated += (epoch, maxEpoch, index, accuracy) => {
         Console.SetCursorPosition(position.Left, position.Top);
         Console.Write('|');
-        var percent = (float)index/(float)data.Size;
+        var percent = (float)index/(float)validation.Size;
         for (float i = 0; i <= 1.0; i += progress_bar_step) {
             if (i <= percent)
                 Console.Write('-');
@@ -170,7 +170,7 @@ public static void Main() {
         Console.Write('|');
         Console.Write(index + 1);
         Console.Write('/');
-        Console.Write(data.Size);
+        Console.Write(validation.Size);
         Console.Write(" validated      ");
     };
     

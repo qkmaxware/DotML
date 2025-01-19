@@ -15,91 +15,25 @@ public struct BackpropagationArgs {
     public BatchedFeatureSet<double> OutputErrors;
 }
 
-public abstract class Gradients {
-    public abstract void AverageOf(IEnumerable<Gradients?> batchGradients);
-}
+public abstract class Gradients { }
 
 public class FullyConnectedGradients : Gradients {
     public Matrix<double> WeightGradients;
     public Vec<double> BiasGradients;
-
-    public override void AverageOf(IEnumerable<Gradients?> batchGradients) {
-        var all_fc_batches = batchGradients.OfType<FullyConnectedGradients>();
-        var WeightGradients = Matrix<double>.Average(all_fc_batches.Select(fcg => fcg.WeightGradients));
-        var BiasGradients = Vec<double>.Average(all_fc_batches.Select(fcg => fcg.BiasGradients));
-        
-        this.WeightGradients = WeightGradients;
-        this.BiasGradients = BiasGradients;
-    }
 }
 
 public class ConvolutionGradients : Gradients {
     public Matrix<double>[][]? FilterKernelGradients;
     public double[]? BiasGradients;
-
-    public override void AverageOf(IEnumerable<Gradients?> batchGradients) {
-        var filters = FilterKernelGradients?.Length ?? 0;
-        var all_c_batches = batchGradients.OfType<ConvolutionGradients>();
-        var new_filter_kernel_gradients = new Matrix<double>[filters][];
-        for (var filterIndex = 0; filterIndex < filters; filterIndex++) {
-            var kernels = FilterKernelGradients?[filterIndex]?.Length ?? 0;
-            var kernel_grads = new Matrix<double>[kernels];
-
-            for (var kernelIndex = 0; kernelIndex < kernels; kernelIndex++) {
-                kernel_grads[kernelIndex] = Matrix<double>.Average(all_c_batches.Select(c => c.FilterKernelGradients is null ? new Matrix<double>() : c.FilterKernelGradients[filterIndex][kernelIndex]));
-            }
-
-            new_filter_kernel_gradients[filterIndex] = kernel_grads;
-        }
-
-        this.FilterKernelGradients = new_filter_kernel_gradients;
-        this.BiasGradients = (double[])Vec<double>.Average(all_c_batches.Select(c => c.BiasGradients is null ? new Vec<double>() : Vec<double>.Wrap(c.BiasGradients)));   
-    }
 }
 
 public class DepthwiseConvolutionGradients : Gradients {
     public Matrix<double>[]? KernelGradients;
-
-    public override void AverageOf(IEnumerable<Gradients?> batchGradients) {
-        var kernels = KernelGradients?.Length ?? 0;
-        var kernel_grads = new Matrix<double>[kernels];
-        var all_batches = batchGradients.OfType<DepthwiseConvolutionGradients>();
-        for (var i = 0; i < kernels; i++) {
-            kernel_grads[i] = Matrix<double>.Average(all_batches.Select(c => c.KernelGradients is null ? new Matrix<double>() : c.KernelGradients[i]));
-        }
-
-        this.KernelGradients = kernel_grads;
-    }
 }
 
 public class NormalizationGradients : Gradients {
     public Matrix<double>[]? GammaGradients;
     public Matrix<double>[]? BetaGradients;
-
-    public override void AverageOf(IEnumerable<Gradients?> batchGradients) {
-        var all_batches = batchGradients.OfType<NormalizationGradients>();
-
-        var gamma_c = GammaGradients?.Length ?? 0;
-        var beta_c = BetaGradients?.Length ?? 0;
-
-        var new_gammas = new Matrix<double>[gamma_c];
-        for (var i = 0; i < gamma_c; i++) {
-            new_gammas[i] = Matrix<double>.Average(all_batches.Select(
-                batch_elem => batch_elem.GammaGradients is null ? new Matrix<double>() : batch_elem.GammaGradients[i]
-            ));
-        }
-        
-        var new_betas = new Matrix<double>[beta_c];
-        for (var i = 0; i < gamma_c; i++) {
-            new_betas[i] = Matrix<double>.Average(all_batches.Select(
-                batch_elem => batch_elem.BetaGradients is null ? new Matrix<double>() : batch_elem.BetaGradients[i]
-            ));
-        }
-
-        
-        this.GammaGradients = new_gammas;
-        this.BetaGradients = new_betas;
-    }
 }
 
 public struct BackpropagationReturns {
@@ -231,7 +165,6 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 for (var batchIndex = 0; batchIndex < batch_count; batchIndex++) {
                     gradient += args.OutputErrors[batchIndex][filterIndex].Sum(); // Sum over the rows and columns
                 }
-                clip(ref gradient, GradientClippingThresholdBias);
                 bias_gradients[filterIndex] = gradient;
             //}
         });
@@ -815,7 +748,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 input_errors = error.AsArray();                             // Same shape, no need to reshape
             } else {
                 input_errors = error[0].Reshape(                            // Reshape to un-flatten error vector to match the input dimensions (in case next layer is not a fully connected layer)
-                    input.Select(x => x.Shape).ToArray())
+                    input.Select(x => x.Shape))
                 .ToArray();
             } 
 
@@ -884,17 +817,20 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
 
             for (var shapeIndex = 0; shapeIndex < shapes.Length; shapeIndex++) {
                 var shape = shapes[shapeIndex];
-                var mtx = new Matrix<double>(shape.Rows, shape.Columns);
-                for (int row = 0; row < mtx.Rows; row++) {
-                    for (int col = 0; col < mtx.Columns; col++) {
-                        if (index < mtx.Size)
-                            mtx.AsArray()[row, col] = input_gradients[index++, batch];
+                var rows = shape.Rows;
+                var cols = shape.Columns;
+                var mtx = new double[shape.Rows, shape.Columns];
+                for (int row = 0; row < rows; row++) {
+                    for (int col = 0; col < cols; col++) {
+                        if (index < mtx.Length)
+                            mtx[row, col] = input_gradients[index++, batch];
                         else 
-                            mtx.AsArray()[row, col] = 0.0;
+                            mtx[row, col] = 0.0;
                     }
                 }
-                clip(mtx, GradientClippingThresholdWeight);
-                features[shapeIndex] = mtx;
+                var result = Matrix<double>.Wrap(mtx);
+                clip(result, GradientClippingThresholdWeight);
+                features[shapeIndex] = result;
             }
             shaped_input_gradients[batch] = new FeatureSet<double>(features);
         }

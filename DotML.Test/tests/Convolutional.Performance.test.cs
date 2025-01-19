@@ -79,6 +79,22 @@ public class PerformanceTest {
     }
 
     [TestMethod]
+    public void TestConvolutionViaConvoLayerFF() {
+        Matrix<double>[] img = [new Matrix<double>(IMG_HEIGHT, IMG_WIDTH)];
+        var layer = new ConvolutionLayer        (input_size: new Shape3D(3, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(1, 1, 3));
+
+        var _result = layer.EvaluateSync((FeatureSet<double>)img);
+    }
+
+    [TestMethod]
+    public void TestConvolutionViaFFT() {
+        Matrix<double>[] img = [new Matrix<double>(IMG_HEIGHT, IMG_WIDTH)];
+        var layer = new ConvolutionLayer        (input_size: new Shape3D(3, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(1, 1, 3));
+
+        var fft_output = CooleyTukey.ConvolveFFT(img[0], layer.Filters[0][0], layer.StrideX, layer.StrideY, layer.ColumnsPadding, layer.RowsPadding);
+    }
+
+    [TestMethod]
     public void TestAlexNetPoolLayerFF() {
         var img = Enumerable.Range(0, 96).Select(x => new Matrix<double>(IMG_HEIGHT, IMG_WIDTH)).ToArray();
         var layer = new LocalMaxPoolingLayer    (new Shape3D(), size: 3, stride: 2);
@@ -92,6 +108,12 @@ public class PerformanceTest {
         var layer = new FullyConnectedLayer     (9216, 4096);
 
         var _result = layer.EvaluateSync(new FeatureSet<double>(matrix));
+    }
+
+    [TestMethod]
+    public void TestAlexNetReshapeFF() {
+        var matrix = new Matrix<double>(9216,1);
+        matrix.Reshape(Enumerable.Range(0, 256).Select(x => new Shape2D(6, 6)).ToArray());
     }
 
     [TestMethod]

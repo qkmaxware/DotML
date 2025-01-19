@@ -9,7 +9,7 @@ public class LayerMarkdownWriter : LayerWriter{
 
     protected override void WriteHeader() {
         sb.Write('|'); sb.Write("Layer Type"); sb.Write('|'); sb.Write("Output Shape"); sb.Write('|'); sb.Write("Trainable Parameters"); sb.Write('|'); sb.Write("Un-trainable Parameters"); sb.Write('|'); sb.Write("Description"); sb.Write('|'); sb.WriteLine();
-        sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.WriteLine();
+        sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.Write("---"); sb.Write('|'); sb.WriteLine();
     }
 
     protected override void WriteFooter() {

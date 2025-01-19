@@ -5,6 +5,13 @@ using static DotML.Network.Training.BatchTrainerEnumerator<DotML.Network.Feedfor
 
 [TestClass]
 public class TempTests {
+    [TestMethod]
+    public void DumpNetwork() {
+        var network = VGGNet.Make(VGGNet.Version.VGG16, 3);
+
+        using var writer = new StreamWriter(network.Name + ".md");
+        writer.Write(network.ToMarkdown());
+    }
     /*
     // dx = dy_0 * w'
         var (batch_count, channel_count, input_height, input_width) = args.InputBatch.Shape;

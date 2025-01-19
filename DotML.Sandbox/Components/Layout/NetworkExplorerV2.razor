@@ -38,7 +38,10 @@
                 @if (Network is INamedNetwork named && !string.IsNullOrEmpty(named.Name)) {
                     <text>Name: @named.Name, </text>
                 }
-                Parameter size: @(sizeof(double))bytes, Trainable parameters: @Network?.TrainableParameterCount(), Size on disk: @(((Network?.TrainableParameterCount() ?? 0.0) * sizeof(double) / 1e9).ToString("F4"))Gb
+                Parameter size: @(sizeof(double))bytes, Trainable parameters: @Network?.TrainableParameterCount()
+                @if (Network is IHasStorage stored){
+                    <text>, Size on disk: @stored.StorageSize()</text>
+                }
             </div>
             <div class="horizontal">
                 @if (Trainer is not null) {

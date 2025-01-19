@@ -88,7 +88,7 @@ where TNetwork : FeedforwardNetwork
     /// <summary>
     /// Gets or sets a place to report training run-time performance results to (default: null)
     /// </summary>
-    public IPerformanceReport? PerformanceReport {get; set;} = null;
+    public IProfilingReport? Profiler {get; set;} = null;
 
     /// <summary>
     /// Regularization function (default: NoRegularization)
@@ -117,7 +117,7 @@ where TNetwork : FeedforwardNetwork
             earlyStopPatience:      this.EarlyStopPatience,
             lossFunction:           this.LossFunction,
             validationReport:       this.ValidationReport,
-            performanceReport:      this.PerformanceReport,
+            performanceReport:      this.Profiler,
             regularization:         this.Regularization,
 
             networkInitializer:     this.NetworkInitializer,
@@ -150,7 +150,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
     public int BatchSize {get; init;}
 
     public IValidationReport? ValidationReport {get; set;}
-    public IPerformanceReport? PerformanceReport {get; set;}
+    public IProfilingReport? Profiler {get; set;}
 
     public TNetwork Current {get; private set;}
     object IEnumerator.Current => Current;
@@ -180,7 +180,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
         int earlyStopPatience,
         LossFunction lossFunction,
         IValidationReport? validationReport,
-        IPerformanceReport? performanceReport,
+        IProfilingReport? performanceReport,
         RegularizationFunction regularization,
 
         IInitializer networkInitializer,
@@ -208,7 +208,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this.EnableEarlyStop = earlyStop;
         this.EarlyStopThreshold = earlyStopThreshold;
         this.ValidationReport = validationReport;
-        this.PerformanceReport = performanceReport;
+        this.Profiler = performanceReport;
         this.LossFunction = lossFunction;
         this.NetworkInitializer = networkInitializer;
 
@@ -380,7 +380,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
             );
 
             // Forward pass (simulated, duplicate of FeedforwardNetwork.PredictSync with some additional tracking)
-            using (var metric = PerformanceReport?.Begin(FeedforwardPerformanceKey)) {
+            using (var metric = Profiler?.Begin(FeedforwardPerformanceKey)) {
                 BatchedFeatureSet<double> layer_input = batch_features;
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                     // Store input to this layer (less than ideal to have a loop here)
@@ -404,7 +404,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
             }
 
             // Backwards pass
-            using (var metric = PerformanceReport?.Begin(BackpropagationPerformanceKey)) {
+            using (var metric = Profiler?.Begin(BackpropagationPerformanceKey)) {
                 // Roll up inputs/outputs into batched feature sets again in case they are needed by a backpropagation method
                 var input_batches = new BatchedFeatureSet<double>[Current.LayerCount];
                 var output_batches = new BatchedFeatureSet<double>[Current.LayerCount];
@@ -450,7 +450,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
             }
             
             // Update weights
-            using (var metric = PerformanceReport?.Begin(WeightUpdatePerformanceKey)) {
+            using (var metric = Profiler?.Begin(WeightUpdatePerformanceKey)) {
                 var update_args = new LayerUpdateArgs();
                 update_args.UpdateTimestep = CurrentUpdateTimestep;
                 update_args.ParameterOffset = 0;

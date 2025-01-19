@@ -440,55 +440,6 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 
         return result;
     }
-    /// <summary>
-    /// Perform a convolution of this matrix by performing a convolution and summation with all provided kernels
-    /// </summary>
-    /// <param name="kernels">kernels</param>
-    /// <param name="strideX">stride across the x-axis (columns)</param>
-    /// <param name="strideY">stride across the y-axis (rows)</param>
-    /// <param name="paddingX">horizontal padding of this matrix</param>
-    /// <param name="paddingY">vertical padding of this matrix</param>
-    /// <returns>convolution of this matrix with all kernels</returns>
-    public Matrix<T> ConvolveAll(IEnumerable<Matrix<T>> kernels, int strideX = 1, int strideY = 1, int paddingX = 0, int paddingY = 0) {
-        var filterRows          = kernels.First().Rows;   
-        var filterColumns       = kernels.First().Columns;  
-        var paddingRows         = paddingY;
-        var paddingColumns      = paddingX;  
-
-        var input               = this;
-        var inputRows           = input.Rows;
-        var inputColumns        = input.Columns;
-
-        // Same math as in ConvolutionLayer.cs for output shape
-        var outputRows          = (inputRows - filterRows + 2 * paddingRows) / strideY + 1; 
-        var outputColumns       = (inputColumns - filterColumns + 2 * paddingColumns) / strideX + 1;  
-
-        var result              = new Matrix<T>(outputRows, outputColumns, T.Zero);
-        var result_array        = result.AsArray();
-        foreach (var kernel in kernels) {
-            ParallelUtils.ForEach(result, (job) => {
-                var startY = job.Y * strideY - paddingRows;
-                var startX = job.X * strideX - paddingColumns;
-
-                var total_sum = T.Zero;
-                for (int ky = 0; ky < filterRows; ky++) {
-                    var inY = startY + ky;
-                    if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
-
-                    for (int kx = 0; kx < filterColumns; kx++) {
-                        var inX = startX + kx;
-                        if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
-                        
-                        total_sum += input[inY, inX] * kernel[ky, kx];
-                    }
-                }
-
-                result_array[job.Row, job.Column] += total_sum;
-            });
-        }
-
-        return result;
-    }
 
     /// <summary>
     /// Perform a convolution of all input matrices with their paired kernel and summing the results
@@ -500,7 +451,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="paddingX">horizontal padding of this matrix</param>
     /// <param name="paddingY">vertical padding of this matrix</param>
     /// <returns>convolution of all input matrices with their matching kernel</returns>
-    public static Matrix<T> ConvolveAll(IEnumerable<Matrix<T>> inputs, IEnumerable<Matrix<T>> kernels, int strideX = 1, int strideY = 1, int paddingX = 0, int paddingY = 0) {
+    public static Matrix<T> ConvolveEach(IEnumerable<Matrix<T>> inputs, IEnumerable<Matrix<T>> kernels, int strideX = 1, int strideY = 1, int paddingX = 0, int paddingY = 0, T? bias = default(T)) {
         var first_kernel        = kernels.First();
         var filterRows          = first_kernel.Rows;   
         var filterColumns       = first_kernel.Columns;  
@@ -515,7 +466,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         var outputRows          = (inputRows - filterRows + 2 * paddingRows) / strideY + 1; 
         var outputColumns       = (inputColumns - filterColumns + 2 * paddingColumns) / strideX + 1;  
 
-        var result              = new Matrix<T>(outputRows, outputColumns, T.Zero);
+        var result              = new Matrix<T>(outputRows, outputColumns, bias ?? T.Zero);
         var result_array        = result.AsArray();
         foreach (var (input, kernel) in inputs.Zip(kernels)) {
             ParallelUtils.ForEach(result, (job) => {
@@ -669,20 +620,38 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary>
     /// <param name="shapes">list of shapes</param>
     /// <returns>matrices</returns>
-    public IEnumerable<Matrix<T>> Reshape(params Shape2D[] shapes) {
-        var index = 0;
+    public IEnumerable<Matrix<T>> Reshape(params Shape2D[] shapes) => Reshape((IEnumerable<Shape2D>)shapes);
+
+    /// <summary>
+    /// Reshape the elements of this matrix into one or more matrices of a different shape.
+    /// </summary>
+    /// <param name="shapes">list of shapes</param>
+    /// <returns>matrices</returns>
+    public IEnumerable<Matrix<T>> Reshape(IEnumerable<Shape2D> shapes) {
+        var row_index = 0;
+        var col_index = 0;
+        var values = this.values;
+        var col_count = this.Columns;
+        var row_count = this.Rows;
 
         foreach (var shape in shapes) {
-            var mtx = new Matrix<T>(shape.Rows, shape.Columns);
-            for (int row = 0; row < mtx.Rows; row++) {
-                for (int col = 0; col < mtx.Columns; col++) {
-                    if (index < Size)
-                        mtx.values[row, col] = this[index++];
-                    else 
-                        mtx.values[row, col] = T.Zero;
+            var rows = shape.Rows;
+            var cols = shape.Columns;
+            var mtx = new T[rows, cols];
+            for (int row = 0; row < rows; row++) {
+                if (row_index >= row_count)
+                    continue;
+
+                for (int col = 0; col < cols; col++) {
+                    mtx[row, col] = values[row_index, col_index]; // No 1D to 2D division anymore (faster?)
+                    col_index++;
+                    if (col_index >= col_count) {
+                        row_index++;
+                        col_index = 0;
+                    }
                 }
             }
-            yield return mtx;
+            yield return Matrix<T>.Wrap(mtx);
         }
     }
 
@@ -693,7 +662,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="channels">number of matrices</param>
     /// <returns>matrices</returns>
     public IEnumerable<Matrix<T>> Reshape(Shape2D size, int channels) {       
-        return Reshape(Enumerable.Repeat(0, channels).Select(x => size).ToArray());
+        return Reshape(Enumerable.Repeat(0, channels).Select(x => size));
     }   
 
     /// <summary>
@@ -819,6 +788,14 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     public static Matrix<T> operator * (Matrix<T> a, T b) => a.ScaleBy(b);
 
     /// <summary>
+    /// Divide a matrix by a scalar value
+    /// </summary>
+    /// <param name="a">matrix</param>
+    /// <param name="b">scalar</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> operator / (Matrix<T> a, T b) => a.ScaleBy(T.One / b);
+
+    /// <summary>
     /// Multiply a matrix by a scalar value
     /// </summary>
     /// <param name="scale">scalar</param>
@@ -911,7 +888,16 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="b">RHS vector</param>
     /// <returns>vector</returns>
     /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
-    public static Vec<T> operator * (Matrix<T> a, Vec<T> b) {
+    public static Vec<T> operator * (Matrix<T> a, Vec<T> b) => a.MultiplyWith(b);
+
+    /// <summary>
+    /// Matrix vector multiplication
+    /// </summary>
+    /// <param name="b">RHS vector</param>
+    /// <returns>vector</returns>
+    /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
+    public Vec<T> MultiplyWith(Vec<T> b) {
+        var a = this;
         if (a.Rows != b.Dimensionality)
             throw new ArithmeticException($"Incompatible dimensions for matrix/vector multiplication {a.Rows}x{a.Columns} · {b.Dimensionality}x1");
 
@@ -934,7 +920,16 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="b">RHS matrix</param>
     /// <returns>matrix</returns>
     /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
-    public static Matrix<T> operator + (Matrix<T> a, Matrix<T> b) {
+    public static Matrix<T> operator + (Matrix<T> a, Matrix<T> b) => a.AddWith(b);
+
+    /// <summary>
+    /// Matrix matrix addition
+    /// </summary>
+    /// <param name="b">RHS matrix</param>
+    /// <returns>matrix</returns>
+    /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
+    public Matrix<T> AddWith(Matrix<T> b) { 
+        var a = this;
         if (a.Rows != b.Rows || a.Columns != b.Columns)
             throw new ArithmeticException("Incompatible dimensions for matrix addition");
 
@@ -956,7 +951,16 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="b">RHS matrix</param>
     /// <returns>matrix</returns>
     /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
-    public static Matrix<T> operator - (Matrix<T> a, Matrix<T> b) {
+    public static Matrix<T> operator - (Matrix<T> a, Matrix<T> b) => a.SubtractWith(b);
+
+    /// <summary>
+    /// Matrix matrix subtraction
+    /// </summary>
+    /// <param name="b">RHS matrix</param>
+    /// <returns>matrix</returns>
+    /// <exception cref="ArithmeticException">Incompatible dimensions</exception>
+    public Matrix<T> SubtractWith(Matrix<T> b) {
+        var a = this;
         if (a.Rows != b.Rows || a.Columns != b.Columns)
             throw new ArithmeticException("Incompatible dimensions for matrix subtraction");
 

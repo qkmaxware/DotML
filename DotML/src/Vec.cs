@@ -466,7 +466,14 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// </summary>
     /// <param name="shapes">Matrix sizes</param>
     /// <returns>matrices</returns>
-    public IEnumerable<Matrix<T>> Shape(params Shape2D[] shapes) {
+    public IEnumerable<Matrix<T>> Shape(params Shape2D[] shapes) => Shape((IEnumerable<Shape2D>)shapes);
+
+    /// <summary>
+    /// Shape the vector into multiple 3D matrices of the given sizes.
+    /// </summary>
+    /// <param name="shapes">Matrix sizes</param>
+    /// <returns>matrices</returns>
+    public IEnumerable<Matrix<T>> Shape(IEnumerable<Shape2D> shapes) {
         var index = 0;
         foreach (var shape in shapes) {
             T[,] values = new T[shape.Rows, shape.Columns];

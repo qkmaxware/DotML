@@ -11,6 +11,7 @@ namespace DotML.Network;
 /// </summary>
 public class FeedforwardNetwork: 
     INamedNetwork,
+    IHasStorage,
     ILayeredNeuralNetwork<IFeedforwardNetworkLayer>, 
     IDiagrammable, ISafetensorable, IMarkdownable, IHtmlable, IJsonizable
 {
@@ -64,10 +65,16 @@ public class FeedforwardNetwork:
     }
 
     /// <summary>
-    /// Number of trainable parameters in this layer
+    /// Number of trainable parameters in this network
     /// </summary>
     /// <returns>Number of trainable parameters</returns>
     public int TrainableParameterCount() => this.layers.Select(layer => layer.TrainableParameterCount()).Sum();
+
+    /// <summary>
+    /// Total storage size for all parameters in this network
+    /// </summary>
+    /// <returns>data storage size</returns>
+    public DataSize StorageSize() => DataSize.FromValues64(TrainableParameterCount()); // 64 since all parameters are doubles
 
     public void ValidateSizes() {
         var input_size = this.InputShape;

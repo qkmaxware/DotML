@@ -8,14 +8,14 @@
         <div class="row" style="text-align: center;">
             <div class="col-sm-6">
                 <label>Input 1</label><br>
-                <button type="button" class="btn @(context.Value[0] > 0 ? "btn-primary" : string.Empty)" @onclick=@((evt) => set(context, 0, context.Value[0] <= 0 ? 1.0 : -1.0))>
-                    @(context.Value[0] > 0 ? "True" : "False")
+                <button type="button" class="btn @(context.Value.Dimensionality > 0 && context.Value[0] > 0 ? "btn-primary" : string.Empty)" @onclick=@((evt) => set(context, 0, context.Value[0] <= 0 ? 1.0 : -1.0))>
+                    @(context.Value.Dimensionality > 0 && context.Value[0] > 0 ? "True" : "False")
                 </button>
             </div>
             <div class="col-sm-6">
                 <label>Input 2</label><br>
-                <button type="button" class="btn @(context.Value[1] > 0 ? "btn-primary" : string.Empty)" @onclick=@((evt) => set(context, 1, context.Value[1] <= 0 ? 1.0 : -1.0))>
-                    @(context.Value[1] > 0 ? "True" : "False")
+                <button type="button" class="btn @(context.Value.Dimensionality > 1 && context.Value[1] > 0 ? "btn-primary" : string.Empty)" @onclick=@((evt) => set(context, 1, context.Value[1] <= 0 ? 1.0 : -1.0))>
+                    @(context.Value.Dimensionality > 1 && context.Value[1] > 0 ? "True" : "False")
                 </button>
             </div>
         </div>
@@ -23,7 +23,7 @@
     <Output>
         <div class="p-4" style="text-align: center; font-size: large;">
             <label>Is-True: </label>
-            @if(context.Output.Value[0] > 0) {
+            @if(context.Output.Value.Dimensionality > 0 && context.Output.Value[0] > 0) {
                 <span style="color: green">&checkmark;</span>
             } else {
                 <span style="color: red">&times;</span>

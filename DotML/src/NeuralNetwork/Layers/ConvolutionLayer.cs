@@ -83,7 +83,12 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
 
         Parallel.For(0, filtersLength, filterIndex => {
             var filter = filters[filterIndex];
-            var output = Matrix<double>.ConvolveAll(inputs, filter, StrideX, StrideY, ColumnsPadding, RowsPadding);
+            var output = Matrix<double>.ConvolveEach(
+                inputs, filter, 
+                strideX: StrideX, strideY: StrideY, 
+                paddingX: ColumnsPadding, paddingY: RowsPadding,
+                bias: filter.Bias
+            );
             output_list[filterIndex] = output;
         });
 

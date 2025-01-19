@@ -42,7 +42,7 @@ public static class AlexNet {
             Version.V1 => MakeV1(output_classes, img_channels, img_width, img_height, activation),
             _ => throw new ArgumentException(nameof(version))
         };
-        net.Name = "AlexNet";
+        net.Name = "AlexNet-v" + ((int)version);
         return net;
     }
 
@@ -50,7 +50,7 @@ public static class AlexNet {
         activation = activation ?? ReLU.Instance;
 
         double scalingFactor = Math.Max(1, (img_width * img_height) / (double)(IMG_WIDTH * IMG_HEIGHT));
-        var neurons = Math.Min(4096, (int)(4096 * scalingFactor));
+        var neurons = Math.Max(4096, (int)(4096 * scalingFactor));
 
         return new FeedforwardNetwork(
             // Convo 1
