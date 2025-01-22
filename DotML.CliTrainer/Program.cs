@@ -6,6 +6,12 @@ using System.Reflection;
 using System.Diagnostics;
 
 public class Program {
+
+enum BinaryFormat {
+    TrainingSet,
+    ClassifiedVectors
+}
+
 public static void Main() {
     var now = DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss");
     var dir_root = now + ".reports";
@@ -91,12 +97,13 @@ public static void Main() {
     Console.Write("> "); 
     var file = training_data[int.Parse(Console.ReadLine()?.ToLower() ?? "0")];
     // TODO don't make this a thing where I have to toggle between the two via code, make it based on smart file analysis. 
-    //var data = ReadSerializedTrainingSet(file.FullName);
-    var data = ReadClassifiedBinaryVectors(file.FullName, 10, 0.0, 1.0, (b) => b.ReadByte() / 255.0, fixed_vector_size: 1024 * 3);
+    var format = TrainingSet.IsBinaryTrainingSet(file) ? BinaryFormat.TrainingSet : BinaryFormat.ClassifiedVectors;
+    var data = format == BinaryFormat.TrainingSet ? ReadSerializedTrainingSet(file.FullName) : ReadClassifiedBinaryVectors(file.FullName, 10, 0.0, 1.0, (b) => b.ReadByte() / 255.0, fixed_vector_size: 1024 * 3);
     var all_data_count = (double)data.Size;
     if (data.Size == 0) 
         throw new FormatException("Empty training set");
     Console.WriteLine($"Training vectors loaded: \"{file.Name}\"");
+    Console.Write("    "); Console.WriteLine($"Format: {format}");
     Console.Write("    "); Console.WriteLine($"Records: {all_data_count}");
     Console.Write("    "); Console.WriteLine($"InputSize: {data[0].Input.Dimensionality}");
     Console.Write("    "); Console.WriteLine($"OutputSize: {data[0].Output.Dimensionality}");

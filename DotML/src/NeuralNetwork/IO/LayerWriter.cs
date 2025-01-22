@@ -151,4 +151,16 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
     public void Dispose() {
         WriteFooter();
     }
+
+    public bool Visit(InputCapture capture, int layerIndex) {
+        if (layerIndex == 0) {
+            WriteInputLayer(capture);
+        }
+        
+        WriteLayerRow(
+            capture, 
+            $"Cache the inputs of this layer"
+        );
+        return true;
+    }
 }

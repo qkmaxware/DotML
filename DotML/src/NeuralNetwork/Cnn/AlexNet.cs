@@ -17,17 +17,22 @@ public static class AlexNet {
     }
 
     /// <summary>
+    /// Typical number of output classes used by AlexNet (typically 1000)
+    /// </summary>
+    public const int OUT_CLASSES = 100;
+
+    /// <summary>
     /// Typical number of channels per image processed by AlexNet (typically three, RGB)
     /// </summary>
-    const int IMG_CHANNELS = 3;
+    public const int IMG_CHANNELS = 3;
     /// <summary>
     /// Typical width (in pixels) for an image processed by AlexNet (typically 227 pixels)
     /// </summary>
-    const int IMG_WIDTH = 227;
+    public const int IMG_WIDTH = 227;
     /// <summary>
     /// Typical height (in pixels) for an image processed by AlexNet (typically 227 pixels)
     /// </summary>
-    const int IMG_HEIGHT = 227;
+    public const int IMG_HEIGHT = 227;
 
     /// <summary>
     /// Construct an AlexNet network

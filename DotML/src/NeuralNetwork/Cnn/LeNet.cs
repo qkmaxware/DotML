@@ -18,17 +18,22 @@ public static class LeNet {
     }
 
     /// <summary>
+    /// Typical number of output classes used by LeNet (typically 10)
+    /// </summary>
+    public const int OUT_CLASSES = 10;
+
+    /// <summary>
     /// Typical number of channels per image processed by LeNet (typically one, grayscale)
     /// </summary>
-    const int IMG_CHANNELS = 1;
+    public const int IMG_CHANNELS = 1;
     /// <summary>
     /// Typical width (in pixels) for an image processed by LeNet (typically 28 pixels)
     /// </summary>
-    const int IMG_WIDTH = 28;
+    public const int IMG_WIDTH = 28;
     /// <summary>
     /// Typical height (in pixels) for an image processed by LeNet (typically 28 pixels)
     /// </summary>
-    const int IMG_HEIGHT = 28;
+    public const int IMG_HEIGHT = 28;
 
 
     /// <summary>

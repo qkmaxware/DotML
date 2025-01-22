@@ -8,3 +8,4 @@
 [ ] Learn Stable Diffusion
 [ ] Learn Transformers
 [ ] Learn GPTs
+[ ] Make it fast without using a tonne of Parallel.For's since with large batches you can overload the CPU

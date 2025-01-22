@@ -254,6 +254,10 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
         return new LayerUpdateReturns {};
     }
 
+    public LayerUpdateReturns Visit(InputCapture layer, LayerUpdateArgs args) {
+        // Do nothing for gradient updates on the input capture layer
+        return new LayerUpdateReturns {};
+    }
 }
 
 }

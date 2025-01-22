@@ -310,6 +310,40 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
             yield return set;
     }
 
+
+    private static char[] magic = ['v', 'e', 'c'];
+
+    /// <summary>
+    /// Check if the given file is a binary encoded training set
+    /// </summary>
+    /// <param name="file">file containing the binary encoded training data</param>
+    /// <returns>true if the file is a binary training set</returns>
+    public static bool IsBinaryTrainingSet(FileInfo file) {
+        using var reader = new BinaryReader(file.OpenRead());
+        // Read magic (and validate)
+        for (var i = 0; i < magic.Length; i++) {
+            if (reader.ReadByte() != magic[i])
+                return false;
+        }
+
+        // Read header (and validate)
+        var type = (reader.ReadByte());
+        var scaling = reader.ReadDouble();
+        var output_count = reader.ReadInt32();
+        var input_count = reader.ReadInt32();
+
+        if (!Enum.IsDefined(typeof(VectorStorageType), type))
+            return false;
+        if (double.IsNaN(scaling) || double.IsInfinity(scaling))
+            return false;
+        if (output_count < 0)
+            return false;
+        if (input_count < 0)
+            return false;
+
+        return true;
+    }
+
     // Not super useful in this class, but necessary if other utility programs create training data dumps
     // eg Images2Dataset using U8 for pixel values
     private enum VectorStorageType : byte {
@@ -324,6 +358,10 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// <param name="reader">reader containing binary data</param>
     /// <exception cref="ArgumentException">thrown when vector data-type is unknown</exception>
     public void AddFrom(BinaryReader reader) {
+        for (var i = 0; i < magic.Length; i++) {
+            if (reader.ReadByte() != magic[i])
+                throw new FormatException("Stream is not formatted as a binary training set");
+        }
         var type = (VectorStorageType)(reader.ReadByte());
         var scaling = reader.ReadDouble();
         var output_count = reader.ReadInt32();
@@ -390,6 +428,11 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// </summary>
     /// <param name="writer">writer to dump vectors to</param>
     public void WriteTo(BinaryWriter writer) {
+        // Write magic number
+        for (var i = 0; i < magic.Length; i++) {
+            writer.Write((byte)magic[i]);
+        }
+
         // Compute number of unique outputs
         var outputs = this.Select(pair => pair.Output).Distinct().ToArray();
         // Compute number of unique inputs

@@ -16,9 +16,22 @@ public static class MobileNet {
         Latest = 1
     }
 
-    const int IMG_WIDTH = 224;
-    const int IMG_HEIGHT = 224;
-    const int IMG_CHANNELS = 3;
+    /// <summary>
+    /// Typical number of output classes used by MobileNet (typically 1000)
+    /// </summary>
+    public const int OUT_CLASSES = 100;
+    /// <summary>
+    /// Typical number of channels per image processed by MobileNet (typically one, grayscale)
+    /// </summary>
+    public const int IMG_WIDTH = 224;
+    /// <summary>
+    /// Typical width (in pixels) for an image processed by MobileNet (typically 28 pixels)
+    /// </summary>
+    public const int IMG_HEIGHT = 224;
+    /// <summary>
+    /// Typical height (in pixels) for an image processed by MobileNet (typically 28 pixels)
+    /// </summary>
+    public const int IMG_CHANNELS = 3;
 
     private static IEnumerable<IFeedforwardNetworkLayer> DepthwiseBlock(Shape3D size, int stride, int kernel_size=3, Padding padding = Padding.Same, ActivationFunction? activation = null) {
         var first = new DepthwiseConvolutionLayer(input_size: size, padding: padding, stride: stride, filter: ConvolutionFilter.Make(1, size.Channels, kernel_size)[0]);

@@ -5,51 +5,51 @@ namespace DotML.Network;
 // Desired usage
 /*
     new Network (
-        ...,
-        InputCapture.CaptureInputs(out var capture1),
         ...
-        new AdditionSkipConnection(capture1),
+        .Then(init_shape => ResidualConnection.Block(
+            new ConvolutionLayer(init_shape)
+            .Then((ishape) => new LocalMaxPoolingLayer(ishape))
+            .Then((ishape) => new ActivationLayer(ishape))
+        ))
         ...
-    );
+    )
 */
 
+/// <summary>
+/// A layer which captures (caches) it's inputs so that other layers like those use for skip connections can reference the inputs later
+/// </summary>
 [WorkInProgress]
 public class InputCapture : FeedforwardNetworkLayer {
 
     public BatchedFeatureSet<double>? CapturedInput;
 
-    public static InputCapture CaptureInputs(out InputCapture capture) {
-        capture = new InputCapture();
-        return capture;
-    }
-
+    /// <summary>
+    /// Cache the given feature set
+    /// </summary>
+    /// <param name="channels">feature set</param>
+    /// <returns>the cached feature set</returns>
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
         CapturedInput = new BatchedFeatureSet<double>(channels);
         return channels;
     }
 
+    /// <summary>
+    /// Cache the given feature set
+    /// </summary>
+    /// <param name="features">feature set</param>
+    /// <returns>the cached feature set</returns>
     public override BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
         CapturedInput = features;
         return features;
     }
 
-    public override void Initialize(IInitializer initializer) {
-        throw new NotImplementedException();
-    }
+    public override void Initialize(IInitializer initializer) { }
 
-    public override int TrainableParameterCount() {
-        throw new NotImplementedException();
-    }
+    public override int TrainableParameterCount() { return 0; }
 
-    public override void Visit(ILayerVisitor visitor) {
-        throw new NotImplementedException();
-    }
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
 
-    public override T Visit<T>(ILayerVisitor<T> visitor) {
-        throw new NotImplementedException();
-    }
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
 
-    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) {
-        throw new NotImplementedException();
-    }
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

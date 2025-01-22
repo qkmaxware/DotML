@@ -13,7 +13,7 @@ public class FeedforwardNetwork:
     INamedNetwork,
     IHasStorage,
     ILayeredNeuralNetwork<IFeedforwardNetworkLayer>, 
-    IDiagrammable, ISafetensorable, IMarkdownable, IHtmlable, IJsonizable
+    IDiagrammable, ISafetensorable, IMarkdownable, IHtmlable
 {
     private List<IFeedforwardNetworkLayer> layers = new List<IFeedforwardNetworkLayer>();
 
@@ -56,6 +56,55 @@ public class FeedforwardNetwork:
 
     public FeedforwardNetwork(IEnumerable<IFeedforwardNetworkLayer> layers) {
         this.layers.AddRange(layers);
+    }
+
+    public void RemoveLayer(int index) {
+        if (index < 0)
+            return;
+        
+        if (index >= this.layers.Count)
+            return;
+
+        int prev_index = index - 1;
+        int next_index = index + 1;
+        bool has_previous = prev_index >= 0;
+        bool has_next = next_index < this.layers.Count;
+        if (has_previous && has_next) {
+            if (this.layers[prev_index].OutputShape != this.layers[next_index].InputShape) {
+                throw new ArgumentException("Cannot remove layer as layer shapes will no longer be compatible");
+            }
+        }
+
+        this.layers.RemoveAt(index);
+    }
+
+    public void ReplaceLayer(int index, IFeedforwardNetworkLayer layer) {
+        if (index < 0)
+            return;
+        
+        if (index >= this.layers.Count)
+            return;
+
+        var current = this.layers[index];
+        if (current.InputShape != layer.InputShape || current.OutputShape != layer.OutputShape) {
+            throw new ArgumentException("Cannot replace layer as layer shapes will no longer be compatible");
+        }
+        this.layers[index] = layer;
+    }
+
+    /// <summary>
+    /// Add a layer to the end of the network
+    /// </summary>
+    /// <param name="layer">layer to add</param>
+    /// <exception cref="ArgumentException">thrown when the layer has an incompatible shape with the prior layers</exception>
+    public void AddLayer(IFeedforwardNetworkLayer layer) {
+        if (this.layers.Count > 0) {
+            var current_out_shape = this.OutputShape;
+            if (layer.OutputShape != current_out_shape) {
+                throw new ArgumentException("Layer input shape is incompatible with prior layers");
+            }
+        }
+        this.layers.Add(layer);
     }
 
     public void Initialize(IInitializer initializer) {
@@ -370,21 +419,6 @@ public class FeedforwardNetwork:
                 var layer = this.GetLayer(layerIndex);
                 if (!layer.Visit(html, layerIndex)) {
                     throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
-                }
-            }
-        }
-
-        return sb.ToString();
-    }
-
-    public string ToJson() {
-        using StringWriter sb = new StringWriter();
-
-        using (var html = new NetworkJsonSerializer(sb)) {
-            for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
-                var layer = this.GetLayer(layerIndex);
-                if (!layer.Visit(html, layerIndex)) {
-                    throw new ArgumentException($"Failed to jsonize information for layer {layerIndex}.");
                 }
             }
         }

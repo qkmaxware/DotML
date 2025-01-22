@@ -83,37 +83,8 @@ public abstract class FeedforwardNetworkLayer : IFeedforwardNetworkLayer {
     public abstract T Visit<T>(ILayerVisitor<T> visitor);
     public abstract TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args);
 
-    public LayerSequencer Then(Func<Shape3D, IFeedforwardNetworkLayer> constructor) {
+    public LayerSequencer Then(NetworkLayerGenerator constructor) {
         var seq = new LayerSequencer(this);
         return seq.Then(constructor);
     }
-}
-
-public class LayerSequencer : IEnumerable<IFeedforwardNetworkLayer> {
-    private Shape3D ishape;
-    private List<IFeedforwardNetworkLayer> layers = new List<IFeedforwardNetworkLayer>();
-
-    public Shape3D InputShape => layers.Count > 0 ? layers[0].InputShape : ishape;
-    public Shape3D OutputShape => layers.Count > 0 ? layers[^1].OutputShape : ishape;
-
-    public LayerSequencer(Shape3D input_size) {
-        this.ishape = input_size;
-    } 
-
-    public LayerSequencer(IFeedforwardNetworkLayer first) {
-        this.layers.Add(first);
-    }
-
-    public LayerSequencer Then(Func<Shape3D, IFeedforwardNetworkLayer> constructor) {
-        this.layers.Add(constructor(OutputShape));
-        return this;
-    }
-
-    public LayerSequencer Then(Func<Shape3D, IEnumerable<IFeedforwardNetworkLayer>> generator) {
-        this.layers.AddRange(generator(OutputShape));
-        return this;
-    }
-
-    public IEnumerator<IFeedforwardNetworkLayer> GetEnumerator() => layers.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => layers.GetEnumerator();
 }

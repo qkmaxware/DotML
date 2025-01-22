@@ -76,4 +76,6 @@ public class LayerSafetensorWriter : ILayerVisitor<int, bool> {
     public bool Visit(ActivationLayer layer, int layerIndex) { return true; }
 
     public bool Visit(SoftmaxLayer layer, int layerIndex) { return true; }
+
+    public bool Visit(InputCapture capture, int args) { return true; }
 }

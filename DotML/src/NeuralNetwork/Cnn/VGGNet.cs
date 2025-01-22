@@ -17,17 +17,21 @@ public static class VGGNet {
     }
 
     /// <summary>
+    /// Typical number of output classes used by VGGNet (typically 1000)
+    /// </summary>
+    public const int OUT_CLASSES = 100;
+    /// <summary>
     /// Typical number of channels per image processed by VGGNet (typically three, RGB)
     /// </summary>
-    const int IMG_CHANNELS = 3;
+    public const int IMG_CHANNELS = 3;
     /// <summary>
     /// Typical width (in pixels) for an image processed by VGGNet (typically 224 pixels)
     /// </summary>
-    const int IMG_WIDTH = 224;
+    public const int IMG_WIDTH = 224;
     /// <summary>
     /// Typical height (in pixels) for an image processed by VGGNet (typically 224 pixels)
     /// </summary>
-    const int IMG_HEIGHT = 224;
+    public const int IMG_HEIGHT = 224;
 
     /// <summary>
     /// Construct an VGGNet network

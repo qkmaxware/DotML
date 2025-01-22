@@ -883,6 +883,13 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
         };
     }
 
+    public BackpropagationReturns Visit(InputCapture layer, BackpropagationArgs args) {
+        return new BackpropagationReturns {
+            InputErrors = args.OutputErrors,
+            Gradient = null,
+        };
+    }
+
 		#region Gradient Clipping
 		public bool UseGradientClipping {get; init;}
 		public double GradientClippingThresholdWeight {get; init;}
