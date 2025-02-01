@@ -19,7 +19,7 @@ public class FlatteningLayer : FeedforwardNetworkLayer {
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
         // input is a 2D matrix processed from prior layers like a pooling layer
-        var x = inputs.Channels == 1 && inputs[0].IsColumn ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
+        var x = inputs.Channels == 1 && inputs[0].IsColumnMatrix ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
         return new FeatureSet<double>(x);
     }
 

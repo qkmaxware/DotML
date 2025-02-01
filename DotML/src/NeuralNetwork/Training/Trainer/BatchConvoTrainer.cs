@@ -283,15 +283,15 @@ public partial class BatchTrainerEnumerator<TNetwork>
         bool stopEarly = false;
         if (EnableEarlyStop) {
             ValidationReport?.Reset();
+            validation.Reset();
             OnValidationStart(this.CurrentEpoch, this.MaxEpochs);
             var sum_error = 0d; var count = 0;
             var max_error = double.MinValue;
             var all_less_threshold = true;
 
-            List<(FeatureSet<double> In, Vec<double> Out)> batch = new List<(FeatureSet<double>, Vec<double>)>();
             var concurrency_level = this.BatchSize; // or Environment.ProcessorCount
-            validation.Reset();
-            while (validation.MoveNext() && batch.Count < concurrency_level) {
+            List<(FeatureSet<double> In, Vec<double> Out)> batch = new List<(FeatureSet<double>, Vec<double>)>(concurrency_level);
+            while (batch.Count < concurrency_level && validation.MoveNext()) {
                 var pair = validation.Current;
                 var input = new FeatureSet<double>(pair.Input.Shape(Current.InputShape).ToArray());
                 var output = pair.Output;
@@ -304,7 +304,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
                 var batch_predicted = Current.PredictSync(batch_input);
 
                 // Measure loss across batch
-                for (var batchIndex = 0; batchIndex < batch_input.Batches; batchIndex++) {
+                for (var batchIndex = 0; batchIndex < batch.Count; batchIndex++) {
                     var input = Vec<double>.Wrap(batch_input[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
                     var @true = batch[batchIndex].Out;
                     var predicted =  Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
@@ -321,7 +321,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
                 // Compute next batch
                 batch.Clear();
-                while (validation.MoveNext() && batch.Count < concurrency_level) {
+                while (batch.Count < concurrency_level && validation.MoveNext()) {
                     var pair = validation.Current;
                     var input = new FeatureSet<double>(pair.Input.Shape(Current.InputShape).ToArray());
                     var output = pair.Output;

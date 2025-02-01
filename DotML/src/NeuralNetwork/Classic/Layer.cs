@@ -225,9 +225,6 @@ public class NeuronLayer : ILayerWithNeurons, ILayerWithVectorOutput {
         Array.Fill(outputs, 0.0);
 
         // Evaluate neuron outputs in series
-        //Parallel.For(0, count, (index, _) => {
-            //outputs[index] = neurons[index].Evaluate(input);
-        //});
         for (var i = 0; i < count; i++) {
             outputs[i] = neurons[i].Evaluate(input);
         }

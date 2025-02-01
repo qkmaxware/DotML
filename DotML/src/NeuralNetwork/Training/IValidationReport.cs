@@ -91,10 +91,12 @@ public class DefaultValidationReport : IValidationReport {
             min_loss = loss;
 
         test_all_count++;
-        if (testPassed)
+        if (testPassed) {
             test_passed_count++;
-        else 
+        }
+        else { 
             test_failed_count++;
+        }
 
         // Compute true positives, false positives, true negatives, and false negatives
         // This assumes the outputs are probability distributions, which tbf they usually are

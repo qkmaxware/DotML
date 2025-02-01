@@ -21,7 +21,7 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
         // Treat all inputs values as a single vector, compute the softmax of this vector
         var sum = 0.0d;
-        double[,] values = new double[Size, 1];
+        var values = new Matrix<double>(Size, 1);
         var i = 0;
         foreach (var input in inputs) {
             foreach (var item in input) {
@@ -34,7 +34,7 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
             values[j, 0] = values[j, 0] / sum;
         }
 
-        return new FeatureSet<double>( Matrix<double>.Wrap(values) );
+        return new FeatureSet<double>(values);
     }
 
     public override void Initialize(IInitializer initializer) { /* No initialization needed */ }

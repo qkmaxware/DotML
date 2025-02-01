@@ -63,7 +63,7 @@ public class BatchNorm : FeedforwardNetworkLayer {
         } else {
             var means = new double[features.Channels];
             var variances = new double[features.Channels];
-            Parallel.For(0, variances.Length, (channelIndex) => {
+            for (var channelIndex = 0; channelIndex < variances.Length; channelIndex++) {
                 double sum = 0.0;
                 double sumSq = 0.0;
                 int count = 0;
@@ -88,7 +88,7 @@ public class BatchNorm : FeedforwardNetworkLayer {
 
                 means[channelIndex] = mean;
                 variances[channelIndex] = variance;
-            });
+            }
 
             mean_vec = means;
             variance_vec = variances;
@@ -124,8 +124,8 @@ public class BatchNorm : FeedforwardNetworkLayer {
                     var normalizedMatrix = matrix.Transform(x => (x - mean)  / Math.Sqrt(variance + 1e-8));
 
                     // Apply scaling (gamma) and shifting (beta)
-                    Matrix<double>.HadamardInplace(normalizedMatrix, normalizedMatrix, Gammas[channelIndex]);  // output = output .* gamma
-                    Matrix<double>.AddInplace(normalizedMatrix, normalizedMatrix, Betas[channelIndex]);        // output = output + beta
+                    normalizedMatrix.HadamardWithInplace(Gammas[channelIndex]); // output = output .* gamma
+                    normalizedMatrix.AddWithInplace(Betas[channelIndex]); // output = output + beta     
 
                     return normalizedMatrix;
                 }).ToArray()

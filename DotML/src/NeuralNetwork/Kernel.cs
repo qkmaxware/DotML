@@ -13,13 +13,13 @@ public static class Kernels {
     /// <param name="size">Size of the kernel</param>
     /// <returns>matrix</returns>
     public static Matrix<double> HeKernel(int size) {
-        double[,] filter = new double[size, size];
+        var filter = new Matrix<double>(size, size);
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
                 filter[i, j] = he.RandomWeight(size, size, size);
             }
         }
-        return Matrix<double>.Wrap(filter);
+        return filter;
     }
     static NormalXavierInitialization xavier = new NormalXavierInitialization();
     /// <summary>
@@ -28,13 +28,13 @@ public static class Kernels {
     /// <param name="size">Size of the kernel</param>
     /// <returns>matrix</returns>
     public static Matrix<double> XavierKernel(int size) {
-        double[,] filter = new double[size, size];
+        var filter = new Matrix<double>(size, size);
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
                 filter[i, j] = xavier.RandomWeight(size, size, size);
             }
         }
-        return Matrix<double>.Wrap(filter);
+        return filter;
     }
 
     static Random rand = new Random();
@@ -45,14 +45,14 @@ public static class Kernels {
     /// <returns>matrix</returns>
     public static Matrix<double> RandomKernel(int size) {
         size = Math.Max(1, size);
-        double[,] filter = new double[size, size];
+        var filter = new Matrix<double>(size, size);
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++)
             {
                 filter[i, j] = (float)(rand.NextDouble() * 2 - 1); // Random weights
             }
         }
-        return Matrix<double>.Wrap(filter);
+        return filter;
     }
 
     /// <summary>

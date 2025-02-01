@@ -49,7 +49,7 @@ public class DropoutLayer : FeedforwardNetworkLayer {
 
             for (var channel = 0; channel < channelCount; channel++) {
                 var input = inputs[channel];
-                outputs[channel] = inputs[channel].Hadamard(mask); // Elementwise multiplication with the mask
+                outputs[channel] = inputs[channel].HadamardWith(mask); // Elementwise multiplication with the mask
             }
         }
 

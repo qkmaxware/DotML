@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace DotML.Network.IO;
@@ -8,27 +9,29 @@ namespace DotML.Network.IO;
 /// </summary>
 public class NetBuild {
 
-    private static Regex _token_keyword_scratch = new Regex(@"\s*\b(SCRATCH)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static Regex _token_keyword_input = new Regex(@"\s*\b(INPUT)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static Regex _token_keyword_from = new Regex(@"\s*\b(FROM)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static Regex _token_keyword_add = new Regex(@"\s*\b(ADD)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static Regex _token_keyword_arg = new Regex(@"\s*\b(ARG)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static Regex _token_keyword_name = new Regex(@"\s*\b(NAME)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static Regex _token_keyword_remove = new Regex(@"\s*\b(REMOVE)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static Regex _token_keyword_replace = new Regex(@"\s*\b(REPLACE)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static Regex _token_keyword_as = new Regex(@"\s*\b(AS)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static Regex _token_keyword_with = new Regex(@"\s*\b(WITH)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_scratch = new Regex(@"\G\s*\b(?<value>SCRATCH)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_input = new Regex(@"\G\s*\b(?<value>INPUT)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_from = new Regex(@"\G\s*\b(?<value>FROM)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_add = new Regex(@"\G\s*\b(?<value>ADD)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_arg = new Regex(@"\G\s*\b(?<value>ARG)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_name = new Regex(@"\G\s*\b(?<value>NAME)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_remove = new Regex(@"\G\s*\b(?<value>REMOVE)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_replace = new Regex(@"\G\s*\b(?<value>REPLACE)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_as = new Regex(@"\G\s*\b(?<value>AS)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static Regex _token_keyword_with = new Regex(@"\G\s*\b(?<value>WITH)\b\s*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    private static Regex _token_literal_identifier = new Regex(@"\s*([a-zA-Z_][a-zA-Z_\-0-9]*)\s*|\s*""((?:[^""\\]|\\.)*)""\s*", RegexOptions.Compiled);
-    private static Regex _token_literal_number = new Regex(@"\s*((?:\+|\-)\d*(?:\.\d*)?)\s*", RegexOptions.Compiled);
+    private static Regex _token_literal_identifier = new Regex(@"\G\s*(?:(?<value>([a-zA-Z_][a-zA-Z_\-0-9]*))|""(?<value>(?:[^""\\]|\\.)*)""|'(?<value>(?:[^'\\]|\\.)*)')\s*", RegexOptions.Compiled);
+    private static Regex _token_literal_number = new Regex(@"\G\s*(?<value>(?:\+|\-)?\d*(?:\.\d*)?)\s*", RegexOptions.Compiled);
 
-    private static Regex _token_operator_spec = new Regex(@"\s*(:)\s*", RegexOptions.Compiled);
-    private static Regex _token_operator_assign = new Regex(@"\s*(=)\s*", RegexOptions.Compiled);
+    private static Regex _token_operator_spec = new Regex(@"\G\s*(?<value>:)\s*", RegexOptions.Compiled);
+    private static Regex _token_operator_assign = new Regex(@"\G\s*(?<value>=)\s*", RegexOptions.Compiled);
+
+    private static Regex _token_comment = new Regex(@"\G\s*#(?<value>[^\n]+)\s*", RegexOptions.Compiled);
 
     private Regex[] _all_tokens = [
+        _token_keyword_from,
         _token_keyword_scratch,
         _token_keyword_input,
-        _token_keyword_from,
         _token_keyword_add,
         _token_keyword_arg,
         _token_keyword_name,
@@ -36,13 +39,17 @@ public class NetBuild {
         _token_keyword_replace,
         _token_keyword_as,
         _token_keyword_with,
+
+        _token_operator_spec,
+        _token_operator_assign,
+
         _token_literal_identifier,
         _token_literal_number,
-        _token_operator_spec,
-        _token_operator_assign
+
+        _token_comment
     ];
 
-    private class Token {
+    public class Token {
         public int Position;
         public Regex Type;
         public string Value;
@@ -52,18 +59,13 @@ public class NetBuild {
             this.Type = type;
             this.Value = value;
         }
+
+        public override string ToString() {
+            return $"{{Position: {Position}, Type: '{Type}', Value: '{Value}'}}";
+        }
     }
 
-    /// <summary>
-    /// Parse a given string of text into a network
-    /// </summary>
-    /// <param name="text">NetBuild source</param>
-    /// <returns>created network</returns>
-    /// <exception cref="SyntaxErrorException">thrown if there is a syntax exception</exception>
-    public FeedforwardNetwork Parse(string text) {
-        // Being lazy here, doesn't need to be a full-featured parser or very optimized lol
-
-        // Tokenize
+    public List<Token> Tokenize(string text) {
         #region  Tokenizing
         var tokens = new List<Token>();
         var start_index = 0;
@@ -73,11 +75,11 @@ public class NetBuild {
                 var match = type.Match(text, start_index);
                 if (!match.Success)
                     continue;
-                var token = new Token(start_index, type, match.Groups[1].Value);
-                tokens.Add(token);
+                var token = new Token(start_index, type, match.Groups["value"].Value);
                 start_index += match.Length;
                 was_matched = true;
-                Console.WriteLine("Matched " + token.Value);
+                if (!ReferenceEquals(type, _token_comment))
+                    tokens.Add(token); // Only add the token if it isn't a comment
                 break;
             }
 
@@ -86,6 +88,20 @@ public class NetBuild {
             }
         }
         #endregion
+        return tokens;
+    }
+
+    /// <summary>
+    /// Parse a given string of text into a network
+    /// </summary>
+    /// <param name="text">NetBuild source</param>
+    /// <returns>created network</returns>
+    /// <exception cref="SyntaxErrorException">thrown if there is a syntax exception</exception>
+    public NetbuilderFile Parse(string text) {
+        // Being lazy here, doesn't need to be a full-featured parser or very optimized lol
+
+        // Tokenize
+        var tokens = Tokenize(text);
 
         // Parse
         int lookahead = 0;
@@ -98,8 +114,11 @@ public class NetBuild {
         }
 
         // Process
-        var env = new BuildEnv();
-        return file.Make(env); // Make the network!
+        return file; // Make the network!
+    }
+
+    public FeedforwardNetwork ParseAndBuild(string text) {
+        return Parse(text).Make(new BuildEnv());
     }
 
     #region Parsing
@@ -123,16 +142,24 @@ public class NetBuild {
         return true;
     }
 
-    class NetbuilderFile {
+    public delegate void StatementProcessingHandler(int current_statement_index, int total_statement_count, Stmt? current_statement);
+
+    public class NetbuilderFile {
         public FromStmt? From;
         public List<Stmt> Commands = new List<Stmt>();
 
-        public FeedforwardNetwork Make(BuildEnv env) {
+        public FeedforwardNetwork Make(StatementProcessingHandler? stmt_action = null) => Make(new BuildEnv(), stmt_action);
+
+        public FeedforwardNetwork Make(BuildEnv env, StatementProcessingHandler? stmt_action = null) {
+            var statment_count = 1 + Commands.Count;
+            stmt_action?.Invoke(0, statment_count, From);
             From?.Action(env);
             if (env.Network is null)
                 return new FeedforwardNetwork();
             
+            var stmt_index = 1;
             foreach (var command in Commands) {
+                stmt_action?.Invoke(stmt_index++, statment_count, command);
                 command.Action(env);
             }
 
@@ -140,18 +167,18 @@ public class NetBuild {
         }
     }
 
-    class BuildEnv {
+    public class BuildEnv {
         public Shape3D InputShape;
         public Dictionary<string, object> Arguments {get; private set;} = new Dictionary<string, object>();
         public Dictionary<string, int> LayerAliases {get; private set;} = new Dictionary<string, int>();
         public FeedforwardNetwork? Network {get; set;}
     }
 
-    abstract class Stmt {
+    public abstract class Stmt {
         public abstract void Action(BuildEnv env);
     }
 
-    class FromStmt : Stmt {
+    public class FromStmt : Stmt {
         private Shape3D? manualInputShape;
         public string? Identifier;
         public string? Version;
@@ -166,13 +193,13 @@ public class NetBuild {
             if (string.IsNullOrEmpty(str))
                 return @default;
 
-            if (Enum.TryParse<T>(str, out T result))
+            if (Enum.TryParse<T>(value: str, ignoreCase: true, out T result))
                 return result;
             return @default;
         }
 
         public override void Action(BuildEnv env) {
-            env.Network = (Identifier) switch {
+            env.Network = (Identifier?.ToLower()) switch {
                 // Named networks!
                 "lenet"     => LeNet.Make(make_enum<LeNet.Version>(Version, LeNet.Version.Latest), output_classes: LeNet.OUT_CLASSES),
                 "alexnet"   => AlexNet.Make(make_enum<AlexNet.Version>(Version, AlexNet.Version.Latest), output_classes: AlexNet.OUT_CLASSES),
@@ -187,6 +214,10 @@ public class NetBuild {
             } else {
                 env.InputShape = env.Network.InputShape;
             }
+        }
+
+        public override string ToString() {
+            return $"FROM {Identifier}:{Version}";
         }
     }
 
@@ -258,7 +289,7 @@ public class NetBuild {
         }
     }
 
-    class NameStmt : Stmt {
+    public class NameStmt : Stmt {
         private string name;
         public NameStmt(string name) {
             this.name = name;
@@ -268,6 +299,10 @@ public class NetBuild {
             var net = env.Network;
             if (net is not null)
                 net.Name = name;
+        }
+
+        public override string ToString() {
+            return $"NAME {name}";
         }
     }
 
@@ -288,7 +323,7 @@ public class NetBuild {
         return stmt;
     }
 
-    abstract class Literal {
+    public abstract class Literal {
         public abstract object ValueOf();
 
         public string AsString() => Convert.ToString(ValueOf()) ?? string.Empty;
@@ -297,15 +332,19 @@ public class NetBuild {
         public float AsFloat() => Convert.ToSingle(ValueOf());
         public double AsDouble() => Convert.ToDouble(ValueOf());
     }
-    class ObjectLiteral : Literal {
+    public class ObjectLiteral : Literal {
         private object obj;
         public ObjectLiteral(object o) {
             this.obj = o;
         }
         public override object ValueOf() => obj;
+
+        public override string ToString() {
+            return obj?.ToString() ?? string.Empty;
+        }
     }
 
-    class ArgStmt : Stmt {
+    public class ArgStmt : Stmt {
 
         private Dictionary<string, Literal> values = new Dictionary<string, Literal>();
 
@@ -319,6 +358,10 @@ public class NetBuild {
             foreach (var arg in values) {
                 env.Arguments[arg.Key] = arg.Value.ValueOf();
             }
+        }
+
+        public override string ToString() {
+            return $"ARG {string.Join(' ', values.Select(kv => $"{kv.Key}={kv.Value}"))}";
         }
     }
 
@@ -366,21 +409,29 @@ public class NetBuild {
         }
     }
 
-    abstract class LayerReference {
+    public abstract class LayerReference {
         public abstract int IndexOf(Dictionary<string, int> aliases);
     }
-    class NamedLayerReference : LayerReference {
+    public class NamedLayerReference : LayerReference {
         private string index;
         public NamedLayerReference(string index) => this.index = index;
         public override int IndexOf(Dictionary<string, int> aliases) => aliases[this.index];
+        
+        public override string ToString() {
+            return index.ToString();
+        }
     }
-    class IndexedLayerReference : LayerReference {
+    public class IndexedLayerReference : LayerReference {
         private int index;
         public IndexedLayerReference(int index) => this.index = index;
         public override int IndexOf(Dictionary<string, int> aliases) => index;
+
+        public override string ToString() {
+            return index.ToString();
+        }
     }
 
-    class RemoveStmt : Stmt {
+    public class RemoveStmt : Stmt {
         private LayerReference reference;
         public RemoveStmt(LayerReference reference) {
             this.reference = reference;
@@ -392,6 +443,10 @@ public class NetBuild {
                 return;
             
             network.RemoveLayer(reference.IndexOf(env.LayerAliases));
+        }
+
+        public override string ToString() {
+            return $"REMOVE {reference}";
         }
     }
 
@@ -422,12 +477,14 @@ public class NetBuild {
         }
     }
 
-    class AddStmt : Stmt {
+    public class AddStmt : Stmt {
+        string layer_name;
         Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory;
         string? ident;
         public Dictionary<string, Literal> arguments = new Dictionary<string, Literal>();
 
-        public AddStmt(Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory, List<(Token, Literal)> args, string? alias) {
+        public AddStmt(string layer_name, Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory, List<(Token, Literal)> args, string? alias) {
+            this.layer_name = layer_name;
             this.factory = factory;
             foreach (var pair in args) {
                 arguments[pair.Item1.Value] = pair.Item2;
@@ -450,9 +507,17 @@ public class NetBuild {
                 env.LayerAliases[ident] = index;
             }
         }
+
+        public override string ToString() {
+            if (ident is not null) {
+                return $"ADD {layer_name} {string.Join(' ', arguments.Select(kv => $"{kv.Key}={kv.Value}"))} AS {ident}";
+            } else {
+                return $"ADD {layer_name} {string.Join(' ', arguments.Select(kv => $"{kv.Key}={kv.Value}"))}";
+            }
+        }
     }
 
-    class ReplaceStmt : Stmt {
+    public class ReplaceStmt : Stmt {
         LayerReference reference;
         Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory;
         public Dictionary<string, Literal> arguments = new Dictionary<string, Literal>();
@@ -474,6 +539,10 @@ public class NetBuild {
             var input_shape = network.GetLayer(replacement_index).InputShape;
             IFeedforwardNetworkLayer layer = factory(input_shape, arguments);
             network.ReplaceLayer(replacement_index, layer);
+        }
+
+        public override string ToString() {
+            return $"REPLACE {reference} WITH ...";
         }
     }
 
@@ -506,7 +575,7 @@ public class NetBuild {
             alias = tokens[lookahead++].Value;
         }
     
-        return new AddStmt(factory, args, alias);
+        return new AddStmt(layer_type.Value, factory, args, alias);
     }
 
     private Stmt ParseReplace(ref int lookahead, List<Token> tokens) {
@@ -543,13 +612,38 @@ public class NetBuild {
 
     #region Object Mapping
 
+    private static Literal One = new ObjectLiteral(1);
+    private static Literal Zero = new ObjectLiteral(0);
+    private static Literal Same = new ObjectLiteral("same");
+    private static Literal FirstOf(Dictionary<string, Literal> args, Literal @default, params string[] tokens) {
+        foreach (var token in tokens) {
+            if (args.TryGetValue(token, out var literal)) {
+                return literal;
+            }
+        }
+        return @default;
+    }
+    private static Literal FirstOf(Dictionary<string, Literal> args, params string[] tokens) {
+        foreach (var token in tokens) {
+            if (args.TryGetValue(token, out var literal)) {
+                return literal;
+            }
+        }
+        throw new KeyNotFoundException(string.Join(',', tokens));
+    }
+
     private ActivationFunction GetActivation(string name, double alpha) {
-        return name switch {
+        return name.ToLower() switch {
             "step" => BinaryStep.Instance,
+            "binarystep" => BinaryStep.Instance,
             "elu" => new ExponentialLU(alpha),
+            "exponentiallu" => new ExponentialLU(alpha),
             "tanh" => HyperbolicTangent.Instance,
+            "hyperbolictangent" => HyperbolicTangent.Instance,
             "id" => Identity.Instance,
+            "identity" => Identity.Instance,
             "leaky-relu" => LeakyReLU.Instance,
+            "leakyrelu" => LeakyReLU.Instance,
             "prelu" => new PReLU(alpha),
             "relu" => ReLU.Instance,
             "sigmoid" => Sigmoid.Instance,
@@ -561,10 +655,10 @@ public class NetBuild {
     private Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> GetLayerFactory(string layer_name, int position) {
         Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory = layer_name switch {
             "convolution" => (Shape3D ishape, Dictionary<string, Literal> args) => {
-                var padding = args.ContainsKey("padding") ? Enum.Parse<Padding>(args["padding"].AsString(), true) : Padding.Same;
-                var x_stride = args.ContainsKey("stride") ? args["stride"].AsInt() : 1;
-                var y_stride = args.ContainsKey("stride") ? args["stride"].AsInt() : 1;
-                var filters = args["filter"].AsInt();
+                var padding = Enum.Parse<Padding>(FirstOf(args, Same, "padding").AsString(), true);
+                var x_stride = FirstOf(args, One, "stride-x", "stride").AsInt();
+                var y_stride = FirstOf(args, One, "stride-y", "stride").AsInt();
+                var filters = args["filters"].AsInt();
                 var kernel_size = args["kernel"].AsInt();
 
                 return new ConvolutionLayer(
@@ -588,8 +682,8 @@ public class NetBuild {
                 return new ActivationLayer(ishape, activation);
             },
             "maxpool" => (Shape3D ishape, Dictionary<string, Literal> args) => {
-                var x_stride = args.ContainsKey("stride") ? args["stride"].AsInt() : 1;
-                var y_stride = args.ContainsKey("stride") ? args["stride"].AsInt() : 1;
+                var x_stride = FirstOf(args, One, "stride-x", "stride").AsInt();
+                var y_stride = FirstOf(args, One, "stride-y", "stride").AsInt();
                 var kernel = args["kernel"].AsInt();
 
                 return new LocalMaxPoolingLayer(
@@ -601,8 +695,8 @@ public class NetBuild {
                 );
             }, 
             "avgpool" => (Shape3D ishape, Dictionary<string, Literal> args) => {
-                var x_stride = args.ContainsKey("stride") ? args["stride"].AsInt() : 1;
-                var y_stride = args.ContainsKey("stride") ? args["stride"].AsInt() : 1;
+                var x_stride = FirstOf(args, One, "stride-x", "stride").AsInt();
+                var y_stride = FirstOf(args, One, "stride-y", "stride").AsInt();
                 var kernel = args["kernel"].AsInt();
 
                 return new LocalAvgPoolingLayer(
@@ -613,6 +707,23 @@ public class NetBuild {
                     strideY: y_stride
                 );
             }, 
+            "flattening" => (Shape3D ishape, Dictionary<string, Literal> args) => {
+                return new FlatteningLayer(ishape);
+            },
+            "dropout" => (Shape3D ishape, Dictionary<string, Literal> args) => {
+                var dropout = args["percent"].AsDouble();
+
+                return new DropoutLayer(ishape, dropout);
+            },
+            "layernorm" => (Shape3D ishape, Dictionary<string, Literal> args) => {
+                return new LayerNorm(ishape);
+            },
+            "batchnorm" => (Shape3D ishape, Dictionary<string, Literal> args) => {
+                return new BatchNorm(ishape);
+            },
+            "softmax" => (Shape3D ishape, Dictionary<string, Literal> args) => {
+                return new SoftmaxLayer(ishape.Count);
+            },
             "dense" => (Shape3D ishape, Dictionary<string, Literal> args) => {
                 var neurons = args["neurons"].AsInt();
 

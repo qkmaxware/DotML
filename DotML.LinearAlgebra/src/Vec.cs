@@ -11,14 +11,13 @@ namespace DotML;
 /// Wrapper struct around value array providing vector like functionality. Behaves like pass-by-reference rather than pass-by-value while minimizing heap allocations and dereferences. 
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public struct Vec<T> 
-    : IDistanceable<Vec<T>,T>,
+public struct Vec<T>: 
     IEnumerable<T>,
     IEquatable<Vec<T>>,
     ITensorLike<T>
-where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
+where T:INumber<T>
 {
-    private static T[] NONE = new T[0];
+    private static T[] NONE = Array.Empty<T>();
     private T[] values; // Literally just a pointer to an array... so size of struct is just int or nint.
 
     public int Dimensions => 1;
@@ -48,21 +47,36 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
+    /// Create a vector of the given size with given value for all elements
+    /// </summary>
+    /// <param name="size">size</param>
+    /// <param name="value">filled value</param>
+    public Vec(int size, T value) {
+        this.values = new T[Math.Max(0, size)];
+        this.values.AsSpan().Fill(value);
+    }
+
+    /// <summary>
+    /// Create a vector of the given size with given value for all elements
+    /// </summary>
+    /// <param name="size">size</param>
+    /// <param name="generator">element generator function</param>
+    public Vec(int size, Func<T> generator) {
+        size = Math.Max(0, size);
+        var values = new T[size];
+        for (var i = 0; i < size; i++) {
+            values[i] = generator();
+        }
+        this.values = values;
+    }
+
+    /// <summary>
     /// Create a vector with the given values
     /// </summary>
     /// <param name="values">values</param>
     public Vec(T[] values) {
         //this.values = values;
         this.values = values;
-    }
-
-    private Vec(T[] values, bool shared) {
-        if (!shared) {
-            this.values = new T[values.Length];
-            Array.Copy(values, this.values, values.Length);
-        } else {
-            this.values = values;
-        }
     }
 
     /// <summary>
@@ -87,30 +101,33 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => values[index];
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set => values[index] = value;
+        set {
+            if (index >= 0 && index < values.Length)
+                values[index] = value;
+        }
     }
 
     /// <summary>
     /// Maximum element value
     /// </summary>a
-    public T MaxValue => this.values.Max() ?? T.Zero;
+    public readonly T MaxValue => this.values.Max() ?? T.Zero;
     
     /// <summary>
     /// Minimum element value
     /// </summary>
-    public T MinValue => this.values.Min() ?? T.Zero;
+    public readonly T MinValue => this.values.Min() ?? T.Zero;
 
     /// <summary>
     /// Number of dimensions in this vector. IE a 2D vector has 2 values. 
     /// </summary>
-    public int Dimensionality => this.values.Length;
+    public readonly int Dimensionality => this.values.Length;
 
     /// <summary>
     /// Get the index of the first element that matches the given predicate condition
     /// </summary>
     /// <param name="condition">condition to search for</param>
     /// <returns>element dimension index or null</returns>
-    public int? IndexOf(Predicate<T> condition) {
+    public readonly int? IndexOf(Predicate<T> condition) {
         for (int i = 0; i < this.Dimensionality; i++) {
             if (condition(values[i]))
                 return i;
@@ -122,7 +139,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// Returns the index of the maximal element, useful when using the vector as the output of a ML classifier
     /// </summary>
     /// <returns>index</returns>
-    public int IndexOfMaxValue() {
+    public readonly int IndexOfMaxValue() {
         int index = -1;
         T max = T.Zero;
 
@@ -140,7 +157,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// Returns the index of the minimal element, useful when using the vector as the output of a ML classifier
     /// </summary>
     /// <returns>index</returns>
-    public int IndexOfMinValue() {
+    public readonly int IndexOfMinValue() {
         int index = 0;
         T min = T.Zero;
 
@@ -155,33 +172,9 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
-    /// Length of the vector
-    /// </summary>
-    public T Length => T.Sqrt(SqrLength);
-
-    /// <summary>
     /// Squared length of the vector
     /// </summary>
-    public T SqrLength => values.Select(x => x * x).Aggregate(T.Zero, (a , b) => a + b);
-
-    /// <summary>
-    /// Distance from one vector to another
-    /// </summary>
-    /// <param name="instance">other vector</param>
-    /// <returns>distance</returns>
-    public T DistanceTo(Vec<T> instance) {
-        // Distance from A to B = len(B - A)
-        // ...
-        // len(B - A)
-        // sqrt(sqrLen(B - A))
-        // sqrt((B-A).x^2 + (B-A).y^2 + ... (B-A).n^2)
-        T sqrDistance = T.Zero;
-        for (var dim = 0; dim < Math.Max(this.Dimensionality, instance.Dimensionality); dim++) {
-            var subtraction = instance[dim] - this[dim];
-            sqrDistance += subtraction * subtraction;
-        }
-        return T.Sqrt(sqrDistance);
-    }
+    public readonly T SqrLength() => values.Select(x => x * x).Aggregate(T.Zero, (a , b) => a + b);
 
     /// <summary>
     /// Dot-product between this vector and another
@@ -189,6 +182,8 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="other">other vector</param>
     /// <returns>dot product</returns>
     public readonly T Dot(Vec<T> other) {
+        if (other.Dimensionality != Dimensionality)
+            throw new ArithmeticException("Incompatible shape for dot product");
         return this.values.Zip(other.values).Select(x => x.First * x.Second).Aggregate(T.Zero, (a, b) => a + b);
     }
 
@@ -198,7 +193,10 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="other">other vector</param>
     /// <returns>element-wise product</returns>
     public readonly Vec<T> Hadamard(Vec<T> other) {
-        int output_size = Math.Max(this.values.Length, other.values.Length);
+        if (other.Dimensionality != Dimensionality)
+            throw new ArithmeticException("Incompatible shape for hadamard product");
+
+        int output_size = this.values.Length;
         T[] outs = new T[output_size];
         for (var i = 0; i < output_size; i++) {
             outs[i] = this.values[i] * other[i];
@@ -212,7 +210,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <typeparam name="R">Result type</typeparam>
     /// <param name="mapping">Mapping function</param>
     /// <returns>New vector, same size as the existing one but with elements modified by the mapping function</returns>
-    public Vec<R> Transform<R>(Func<T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+    public readonly Vec<R> Transform<R>(Func<T, R> mapping) where R:INumber<R> {
         R[] values = new R[this.Dimensionality];
 
         for (var col = 0; col < values.Length; col++)
@@ -227,7 +225,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <typeparam name="R">Result type</typeparam>
     /// <param name="mapping">Mapping function</param>
     /// <returns>New vector, same size as the existing one but with elements modified by the mapping function</returns>
-    public Vec<R> Transform<R>(Func<Index, T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
+    public readonly Vec<R> Transform<R>(Func<Index, T, R> mapping) where R:INumber<R> {
         R[] values = new R[this.Dimensionality];
 
         for (var col = 0; col < values.Length; col++)
@@ -237,21 +235,63 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
-    /// Normalize the vector using the softmax function which converts the vector into a probability distribution with values between 0 and 1.
+    /// Perform an element-wise operation between this vector and another
     /// </summary>
-    /// <returns>normalized vector</returns>
-    public Vec<T> SoftmaxNormalized(){
-        var sum = T.Zero;
-        T[] values = new T[this.Dimensionality];
-        for (var i = 0; i < this.Dimensionality; i++) {
-            var exp_i = T.Exp(this.values[i]);
-            values[i] = exp_i;
-            sum += exp_i;
-        }
-        for (var i = 0; i < this.Dimensionality; i++) {
-            values[i] = values[i] / sum;
-        }
-        return Vec<T>.Wrap(values);
+    /// <typeparam name="T2">2nd vector type</typeparam>
+    /// <typeparam name="R">result type</typeparam>
+    /// <param name="other">2nd vector</param>
+    /// <param name="mapping">mapping function</param>
+    /// <returns>New vector</returns>
+    /// <exception cref="ArithmeticException">Thrown when the vectors are incompatible for addition</exception>
+    public readonly Vec<R> ElementWise<T2, R>(Vec<T2> other, Func<T, T2, R> mapping) where T2:INumber<T2> where R:INumber<R> {
+        if (this.Dimensionality != other.Dimensionality)
+            throw new ArithmeticException("Incompatible dimensions for element-wise operations");
+
+        var selfv = this.values;
+        R[] values = new R[this.Dimensionality];
+        for (var i = 0; i < values.Length; i++)
+            values[i] = mapping(selfv[i], other[i]);
+        
+        return Vec<R>.Wrap(values);
+    }
+
+    /// <summary>
+    /// Transform the values in this vector to values of another type.
+    /// </summary>
+    /// <typeparam name="R">Result type</typeparam>
+    /// <param name="mapping">Mapping function</param>
+    /// <returns>New vector, same size as the existing one but with elements modified by the mapping function</returns>
+    public void Apply(Func<T, T> mapping) {
+        for (var col = 0; col < values.Length; col++)
+            values[col] = mapping(this.values[col]);
+    }
+
+    /// <summary>
+    /// Transform the values in this vector to values of another type.
+    /// </summary>
+    /// <typeparam name="R">Result type</typeparam>
+    /// <param name="mapping">Mapping function</param>
+    /// <returns>New vector, same size as the existing one but with elements modified by the mapping function</returns>
+    public void Apply(Func<Index, T, T> mapping) {
+        for (var col = 0; col < values.Length; col++)
+            values[col] = mapping(col, this.values[col]);
+    }
+
+    /// <summary>
+    /// Perform an element-wise operation between this vector and another storing the results in this vector
+    /// </summary>
+    /// <typeparam name="T2">2nd vector type</typeparam>
+    /// <typeparam name="R">result type</typeparam>
+    /// <param name="other">2nd vector</param>
+    /// <param name="mapping">mapping function</param>
+    /// <exception cref="ArithmeticException">Thrown when the vectors are incompatible for addition</exception>
+    public void ElementWiseInplace<T2>(Vec<T2> other, Func<T, T2, T> mapping) where T2:INumber<T2> {
+        if (this.Dimensionality != other.Dimensionality)
+            throw new ArithmeticException("Incompatible dimensions for element-wise operations");
+
+        T[] values = this.values;
+        for (var i = 0; i < values.Length; i++)
+            values[i] = mapping(values[i], other[i]);
     }
 
     /// <summary>
@@ -294,9 +334,9 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// Deep clone the vector
     /// </summary>
     /// <returns>vector</returns>
-    public Vec<T> Clone() {
+    public readonly Vec<T> Clone() {
         T[] values = new T[this.Dimensionality];
-        for (var i = 0; i < this.Dimensionality; i++) {
+        for (var i = 0; i < values.Length; i++) {
             values[i] = this.values[i];
         }
         return Vec<T>.Wrap(values);
@@ -314,47 +354,67 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="vec">vector</param>
     public static explicit operator T[] (Vec<T> vec) => vec.values;
 
-    public static Vec<T> operator * (T lhs, Vec<T> rhs) {
-        var result = new T[rhs.Dimensionality];
+    public static Vec<T> operator * (T lhs, Vec<T> rhs) => rhs.ScaledBy(lhs);
+
+    public static Vec<T> operator * (Vec<T> lhs, T rhs) => lhs.ScaledBy(rhs);
+
+    public static Vec<T> operator / (Vec<T> lhs, T rhs) => lhs.ScaledBy(T.One / rhs);
+
+    /// <summary>
+    /// Return a new vector that is this vector scaled by the given scalar value
+    /// </summary>
+    /// <param name="value">scaling value</param>
+    /// <returns>scaled vector</returns>
+    public readonly Vec<T> ScaledBy(T value) {
+        var self = this.values;
+        var result = new T[this.Dimensionality];
 
         for (var i = 0; i < result.Length; i++) {
-            result[i] = lhs * rhs[i];
+            result[i] = self[i] * value;
         }
 
         return Wrap(result);
     }
 
-    public static Vec<T> operator * (Vec<T> lhs, T rhs) {
-        var result = new T[lhs.Dimensionality];
+    public static Vec<T> operator + (Vec<T> lhs, Vec<T> rhs) => lhs.AddedWith(rhs);
 
-        for (var i = 0; i < result.Length; i++) {
-            result[i] = lhs[i] * rhs;
-        }
+    /// <summary>
+    /// Return a new vector that this the result of adding the vector with another
+    /// </summary>
+    /// <param name="rhs">other vector</param>
+    /// <returns>this + rhs</returns>
+    /// <exception cref="ArithmeticException">Thrown when the vectors are incompatible for addition</exception>
+    public readonly Vec<T> AddedWith(Vec<T> rhs) {
+        if (this.Dimensionality != rhs.Dimensionality)
+            throw new ArithmeticException("Incompatible dimensions for vector addition");
+        var result = new T[this.Dimensionality];
 
-        return Wrap(result);
-    }
-
-    public static Vec<T> operator + (Vec<T> lhs, Vec<T> rhs) {
-        if (lhs.Dimensionality != rhs.Dimensionality)
-            throw new ArgumentException("Incompatible dimensions for vector addition");
-        var result = new T[Math.Max(lhs.Dimensionality, rhs.Dimensionality)];
-
-        var amount = Math.Min(lhs.Dimensionality, rhs.Dimensionality);
+        var self = this.values;
+        var amount = result.Length;
         for (var i = 0; i < amount; i++) {
-            result[i] = lhs[i] + rhs[i];
+            result[i] = self[i] + rhs[i];
         }
 
         return Wrap(result);
     }
 
-    public static Vec<T> operator - (Vec<T> lhs, Vec<T> rhs) {
-        if (lhs.Dimensionality != rhs.Dimensionality)
-            throw new ArgumentException("Incompatible dimensions for vector addition");
-        var result = new T[Math.Max(lhs.Dimensionality, rhs.Dimensionality)];
+    public static Vec<T> operator - (Vec<T> lhs, Vec<T> rhs) => lhs.SubtractWith(rhs);
 
-        var amount = Math.Min(lhs.Dimensionality, rhs.Dimensionality);
+    /// <summary>
+    /// Return a new vector that this the result of subtracting the vector with another
+    /// </summary>
+    /// <param name="rhs">other vector</param>
+    /// <returns>this - rhs</returns>
+    /// <exception cref="ArithmeticException">Thrown when the vectors are incompatible for subtraction</exception>
+    public readonly Vec<T> SubtractWith(Vec<T> rhs) {
+        if (this.Dimensionality != rhs.Dimensionality)
+            throw new ArithmeticException("Incompatible dimensions for vector subtraction");
+        var result = new T[this.Dimensionality];
+
+        var self = this.values;
+        var amount = result.Length;
         for (var i = 0; i < amount; i++) {
-            result[i] = lhs[i] - rhs[i];
+            result[i] = self[i] - rhs[i];
         }
 
         return Wrap(result);
@@ -420,30 +480,6 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
-    /// Convert the vector to a column-matrix representation
-    /// </summary>
-    /// <returns>matrix</returns>
-    public Matrix<T> ToColumnMatrix() {
-        var mat = new T[this.Dimensionality,1];
-        for(var i = 0; i < values.Length; i++) {
-            mat[i, 0] = values[i];
-        }
-        return mat;
-    }
-
-    /// <summary>
-    /// Convert the vector to a row-matrix representation
-    /// </summary>
-    /// <returns>matrix</returns>
-    public Matrix<T> ToRowMatrix() {
-        var mat = new T[1,this.Dimensionality];
-        for(var i = 0; i < values.Length; i++) {
-            mat[0, i] = values[i];
-        }
-        return mat;
-    }
-
-    /// <summary>
     /// Create a span over the entire vector
     /// </summary>
     /// <returns>span over the vector elements</returns>
@@ -460,6 +496,31 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     public T[] AsArray() {
         return this.values;
     }
+
+    /// <summary>
+    /// Convert the vector to a column-matrix representation
+    /// </summary>
+    /// <returns>matrix</returns>
+    public Matrix<T> ToColumnMatrix() {
+        var mat = new Matrix<T>(this.Dimensionality,1);
+        for(var i = 0; i < values.Length; i++) {
+            mat[i, 0] = values[i];
+        }
+        return mat;
+    }
+
+    /// <summary>
+    /// Convert the vector to a row-matrix representation
+    /// </summary>
+    /// <returns>matrix</returns>
+    public Matrix<T> ToRowMatrix() {
+        var mat = new Matrix<T>(1,this.Dimensionality);
+        for(var i = 0; i < values.Length; i++) {
+            mat[0, i] = values[i];
+        }
+        return mat;
+    }
+
 
     /// <summary>
     /// Shape the vector into multiple 2D matrices of the given sizes.
@@ -483,7 +544,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     public IEnumerable<Matrix<T>> Shape(IEnumerable<Shape2D> shapes) {
         var index = 0;
         foreach (var shape in shapes) {
-            T[,] values = new T[shape.Rows, shape.Columns];
+            var values = new Matrix<T>(shape.Rows, shape.Columns);
              for (var row = 0; row < shape.Rows; row++) {
                 for (var col = 0; col < shape.Columns; col++) {
                     if (index < this.Dimensionality)
@@ -492,7 +553,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
                         values[row, col] = T.Zero;
                 }
             }
-            yield return Matrix<T>.Wrap(values);
+            yield return values;
         }
     }
 
@@ -507,14 +568,14 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         var index = 0;
         var channel = 0;
         while (index < this.Dimensionality && (channels < 0 || channel < channels)) {
-            T[,] values = new T[shape.Rows, shape.Columns];
+            var values = new Matrix<T>(shape.Rows, shape.Columns);
             for (var row = 0; row < shape.Rows; row++) {
                 for (var col = 0; col < shape.Columns; col++) {
                     values[row, col] = this[index];
                     index++;
                 }
             }
-            yield return Matrix<T>.Wrap(values);
+            yield return values;
             channel++;
         }
     }
@@ -525,7 +586,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="values">vector elements</param>
     /// <returns>vector</returns>
     public static Vec<T> Wrap(T[] values) {
-        return new Vec<T>(values, shared: true);
+        return new Vec<T>(values);
     }
 
     /// <summary>
@@ -534,19 +595,9 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     /// <param name="values">vector elements</param>
     /// <returns>vector</returns>
     public static Vec<T> FromCopy(T[] values) {
-        return new Vec<T>(values, shared: false);
-    }
-
-    /// <summary>
-    /// Get the associated label corresponding to the element with the largest value
-    /// </summary>
-    /// <param name="labels">list of labels to use</param>
-    /// <returns>label or null if no labels match</returns>
-    public string? GetLabel(IList<string> labels) {
-        var i = this.IndexOfMaxValue();
-        if (i < 0 || i >= labels.Count)
-            return null;
-        return labels[i];
+        var new_values = new T[values.Length];
+        Array.Copy(values, new_values, values.Length);
+        return new Vec<T>(new_values);
     }
 
     public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)values).GetEnumerator();
@@ -560,7 +611,12 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     public override int GetHashCode() {
-        return HashCode.Combine(this.Dimensionality, this[0], this[this.Dimensionality - 1]);
+        var amt = this.Dimensionality;
+        return HashCode.Combine(
+            amt, 
+            amt == 0 ? T.Zero : this[0], 
+            amt == 0 ? T.Zero : this[this.Dimensionality - 1]
+        );
     }
 
     public bool Equals(Vec<T> other) {

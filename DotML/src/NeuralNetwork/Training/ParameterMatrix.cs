@@ -2,38 +2,6 @@ using System.Collections;
 
 namespace DotML.Network.Training;
 
-/*
-Desired usage
-
-// Create a parameter matrix
-var parameters = new ParameterMatrix(
-    "epoch": Enumerable.Range(200, 1000).ToArray(),
-    "learning_rate": [ 0.001, 0.01, 0.1 ],
-    "hidden": Enumerable.Range(27, 72).ToArray()
-);
-
-// Enumerate over cross-join of all parameters
-// Create a matrix and trainer from the cross-joined parameters
-var networks = parameters.Select(set => (
-    return (
-        Network: new ClassicalNeuralNetwork(72, set.Get<int>("hidden"), 26),
-        Trainer: new EnumerableBackpropagationTrainer<ClassicalNeuralNetwork>() {
-            Epochs: set.Get<int>("epoch"),
-            LearningRate: set.Get<double>("learning_rate")
-        };
-    )
-)).ToArray();
-
-// Train them all at the same time with all possible combinations :)
-TrainingSet training;
-TrainingSet validation;
-Parallel.For(0, networks.Length, (index) => {
-    networks[i].Trainer.Train(networks[i].Network, training, validation);
-});
-
-// Determine the "best" training/network parameters from the best network
-*/
-
 public class ParameterSet : Dictionary<string, object> {
     public ParameterSet() : base() {}
     public ParameterSet(int capacity) : base(capacity) { }

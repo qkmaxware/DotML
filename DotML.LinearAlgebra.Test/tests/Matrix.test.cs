@@ -1,6 +1,3 @@
-using DotML.Network;
-using DotML.Network.Training;
-
 namespace DotML.Test;
 
 [TestClass]
@@ -11,10 +8,10 @@ public class BasicMatrix {
         Assert.AreEqual(5, matrix.Rows);
         Assert.AreEqual(2, matrix.Columns);
 
-        Matrix<double> m2 = new double[,]{
+        Matrix<double> m2 = new Matrix<double>(new double[,]{
             {1, 2, 3},
             {4, 5, 6}
-        };
+        });
         Assert.AreEqual(2, m2.Rows);
         Assert.AreEqual(3, m2.Columns);
         Assert.AreEqual(1, m2[0, 0]);
@@ -37,10 +34,10 @@ public class BasicMatrix {
 
     [TestMethod]
     public void TestTranspose() {
-        Matrix<double> m2 = new double[,]{
+        Matrix<double> m2 = new Matrix<double>(new double[,]{
             {1, 2, 3},
             {4, 5, 6}
-        };
+        });
         Assert.AreEqual(2, m2.Rows);
         Assert.AreEqual(3, m2.Columns);
         Assert.AreEqual(1, m2[0, 0]);
@@ -65,10 +62,10 @@ public class BasicMatrix {
 
     [TestMethod]
     public void TestMap() {
-        Matrix<double> A = new double[,] {
+        Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2 },
             { 3, 4 }
-        };
+        });
 
         var B = A.Transform((x) => x * x);
         Assert.AreEqual(1, B[0,0]);
@@ -81,10 +78,10 @@ public class BasicMatrix {
 
     [TestMethod]
     public void TestFlatten() {
-        Matrix<double> A = new double[,] {
+        Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2 },
             { 3, 4 }
-        };
+        });
 
         var row_order = A.FlattenRows().ToArray();
         Assert.AreEqual(A.Size, row_order.Length);
@@ -103,10 +100,10 @@ public class BasicMatrix {
 
     [TestMethod]
     public void TestExtract() {
-        Matrix<double> A = new double[,] {
+        Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2, 3},
             { 4, 5, 6}
-        };
+        });
 
         var row0 = A.ExtractRowVector(0);
         var row1 = A.ExtractRowVector(1);
@@ -128,14 +125,14 @@ public class BasicMatrix {
 
     [TestMethod]
     public void TestElementWise() {
-        Matrix<double> A = new double[,] {
+        Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2 },
             { 3, 4 }
-        };
-        Matrix<double> B = new double[,] {
+        });
+        Matrix<double> B = new Matrix<double>(new double[,] {
             { 5, 6 },
             { 7, 8 }
-        };
+        });
 
         var C = A.ElementWise(B, (a, b) => a + b);
         Assert.AreEqual(1+5, C[0,0]);
@@ -146,10 +143,10 @@ public class BasicMatrix {
 
     [TestMethod]
     public void TestReshape() {
-        Matrix<double> A = new double[,] {
+        Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2 },
             { 3, 4 }
-        };
+        });
         var row = A.Reshape(new Shape2D(rows: 1, columns: 4)).ToArray();
         var col = A.Reshape(new Shape2D(rows: 4, columns: 1)).ToArray();
 
@@ -165,21 +162,21 @@ public class BasicMatrix {
     [TestMethod]
     public void TestCompatibleMultiply() {
         // Arrange: Define two matrices to multiply
-        Matrix<double> A = new double[,] {
+        Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2 },
             { 3, 4 }
-        };
+        });
 
-        Matrix<double> B = new double[,] {
+        Matrix<double> B = new Matrix<double>(new double[,] {
             { 5, 6 },
             { 7, 8 }
-        };
+        });
 
         // Expected result of A * B
-        Matrix<double> expected = new double[,] {
+        Matrix<double> expected = new Matrix<double>(new double[,] {
             { 19, 22 },
             { 43, 50 }
-        };
+        });
 
         // Act: Multiply matrices A and B
         var result = A * B;
@@ -195,10 +192,10 @@ public class BasicMatrix {
     [TestMethod]
     public void TestCompatibleMultiplyVector() {
         // Arrange: Define two matrices to multiply
-        Matrix<double> A = new double[,] {
+        Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2 },
             { 3, 4 }
-        };
+        });
 
         Vec<double> B = new double[] {
             5,
@@ -224,15 +221,15 @@ public class BasicMatrix {
     [TestMethod]
     public void TestCompatibleMultiplyTransposed() {
         // Arrange: Define two matrices to multiply
-        Matrix<double> A = new double[,] {
+        Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2 },
             { 3, 4 }
-        };
+        });
 
-        Matrix<double> B = new double[,] {
+        Matrix<double> B = new Matrix<double>(new double[,] {
             { 5, 6 },
             { 7, 8 }
-        };
+        });
 
         // Expected result of A * B
         Matrix<double> expected = A.Transpose() * B;
@@ -251,15 +248,15 @@ public class BasicMatrix {
     [TestMethod]
     public void TestIncompatibleMultiply() {
         // Arrange: Define two incompatible matrices
-        Matrix<double> A = new double[,] {
+        Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2, 3 }
-        }; // 1x3 matrix
+        }); // 1x3 matrix
 
-        Matrix<double> B = new double[,] {
+        Matrix<double> B = new Matrix<double>(new double[,] {
             { 4, 5 },
             { 6, 7 },
             { 8, 9 }
-        }; // 3x2 matrix
+        }); // 3x2 matrix
 
         // Act & Assert: Try to multiply the matrices (this should throw an exception)
         Assert.ThrowsException<ArithmeticException>(() => B*A);

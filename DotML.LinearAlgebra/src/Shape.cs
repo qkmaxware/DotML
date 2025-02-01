@@ -10,9 +10,25 @@ using System.Text.Json.Serialization;
 namespace DotML;
 
 /// <summary>
+/// Interface for a generic tensor shape
+/// </summary>
+public interface IShape {
+    /// <summary>
+    /// Number of dimensions in the shape
+    /// </summary>
+    public int Dimensions {get;}
+    /// <summary>
+    /// Length/size of a particular dimension
+    /// </summary>
+    /// <param name="index">dimension index</param>
+    /// <returns>dimension length</returns>
+    public int GetDimension(int index);
+}
+
+/// <summary>
 /// 4d or tensor shape
 /// </summary>
-public struct Shape4D {
+public struct Shape4D : IShape {
     /// <summary>
     /// Number of batches
     /// </summary>
@@ -33,6 +49,8 @@ public struct Shape4D {
     /// Total number of tensor elements contained in the shape
     /// </summary>
     public readonly int Count => Channels * Rows * Columns;
+
+    public int Dimensions => 4;
 
     public Shape4D() {}
 
@@ -74,12 +92,20 @@ public struct Shape4D {
     }
 
     public override string ToString() => $"{Batches}x{Channels}x{Rows}x{Columns}";
+
+    public int GetDimension(int index) => index switch {
+        0 => Batches,
+        1 => Channels,
+        2 => Rows,
+        3 => Columns,
+        _ => 1
+    };
 }
 
 /// <summary>
 /// 3d or tensor shape
 /// </summary>
-public struct Shape3D {
+public struct Shape3D : IShape {
     /// <summary>
     /// Number of channels
     /// </summary>
@@ -96,6 +122,8 @@ public struct Shape3D {
     /// Total number of tensor elements contained in the shape
     /// </summary>
     public readonly int Count => Channels * Rows * Columns;
+
+    public int Dimensions => 3;
 
     public Shape3D() {}
 
@@ -135,12 +163,19 @@ public struct Shape3D {
     }
 
     public override string ToString() => $"{Channels}x{Rows}x{Columns}";
+
+    public int GetDimension(int index) => index switch {
+        0 => Channels,
+        1 => Rows,
+        2 => Columns,
+        _ => 1
+    };
 }
 
 /// <summary>
 /// 2d or matrix shape
 /// </summary>
-public struct Shape2D {
+public struct Shape2D : IShape {
     /// <summary>
     ///  Number of rows
     /// </summary>
@@ -149,6 +184,8 @@ public struct Shape2D {
     /// Number of columns
     /// </summary>
     public readonly int Columns {get;}
+
+    public int Dimensions => 2;
 
     public Shape2D() {}
 
@@ -184,4 +221,10 @@ public struct Shape2D {
     }
 
     public override string ToString() => $"{Rows}x{Columns}";
+
+    public int GetDimension(int index) => index switch {
+        0 => Rows,
+        1 => Columns,
+        _ => 1
+    };
 }

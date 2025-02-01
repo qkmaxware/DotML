@@ -24,10 +24,10 @@ public class ActivationLayer : FeedforwardNetworkLayer {
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
         var len = channels.Channels;
         Matrix<double>[] outputs = new Matrix<double>[len];
-        Parallel.For(0, len, i => {
+        for (var i = 0; i < len; i++) {
             outputs[i] = channels[i].Transform(ActivationFunction.Invoke);
-        });
-        return (FeatureSet<double>)outputs;
+        }
+        return new FeatureSet<double>(outputs);
     }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);

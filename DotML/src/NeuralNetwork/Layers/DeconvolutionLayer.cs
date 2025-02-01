@@ -56,11 +56,11 @@ public class DeconvolutionLayer : FeedforwardNetworkLayer {
         foreach (var filter in filters) {
             filter.Bias = initializer.RandomBias(this.InputShape.Count, this.OutputShape.Count, parameters);
             foreach (var kernel in filter) {
-                var values = (double[,])kernel;
+                var self = kernel;
 
-                for (var i = 0; i < values.GetLength(0); i++) {
-                    for (var j = 0; j < values.GetLength(1); j++) {
-                        values[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
+                for (var i = 0; i < self.Rows; i++) {
+                    for (var j = 0; j < self.Columns; j++) {
+                        self[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
                     }
                 }
             }
@@ -72,7 +72,7 @@ public class DeconvolutionLayer : FeedforwardNetworkLayer {
     }
 
     public Matrix<double> TransposeConvolve(Matrix<double> input, int channel) {
-        var output = new double[input.Rows, input.Columns];
+        var output = new Matrix<double>(input.Rows, input.Columns);
 
         // Calculate the input errors for each filter
         for (var filterIndex = 0; filterIndex < Filters.Count; filterIndex++) {
@@ -103,18 +103,18 @@ public class DeconvolutionLayer : FeedforwardNetworkLayer {
             }
         }
 
-        return Matrix<double>.Wrap(output);
+        return output;
     }
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
         var channel_count = OutputShape.Channels;
         var outputs = new Matrix<double>[channel_count];
 
-        Parallel.For(0, channel_count, (int channel) => {
+        for (var channel = 0; channel < channel_count; channel++) {
             var input = channels[channel];
             var kernel = filters[channel];
             outputs[channel] = TransposeConvolve(channels[channel], channel);
-        });
+        }
 
         return new FeatureSet<double>(outputs);
     }

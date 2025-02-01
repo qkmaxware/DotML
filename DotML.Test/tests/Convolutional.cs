@@ -8,31 +8,31 @@ public class ConvolutionalFFTest {
     [TestMethod]
     public void TestConvolutionalLayerValidPadding() {
         var kernels = new Matrix<double>[]{
-            new double[,] {
+            new Matrix<double>(new double[,] {
                 {1, 0, 1},
                 {0, 1, 0},
                 {1, 0, 1}
-            }
+            })
         };
         var layer = new ConvolutionLayer(new Shape3D(1, 5, 5), Padding.Valid, new ConvolutionFilter(kernels));
         var input = new Matrix<double>[] {
-            new double[,]{
+            new Matrix<double>(new double[,]{
                 {1, 1, 1, 0, 0},
                 {0, 1, 1, 1, 0},
                 {0, 0, 1, 1, 1},
                 {0, 0, 1, 1, 0},
                 {0, 1, 1, 0, 0},
-            },
+            }),
         };
         var outputs = layer.EvaluateSync((FeatureSet<double>)input);
         Assert.AreEqual(1, outputs.Channels);
         var output = outputs[0];
 
-        Matrix<double> result = new double[,] {
+        Matrix<double> result = new Matrix<double>(new double[,] {
             {4, 3, 4},
             {2, 4, 3},
             {2, 3, 4}
-        };
+        });
 
         Assert.AreEqual(result.Rows, output.Rows);
         Assert.AreEqual(result.Columns, output.Columns);
@@ -46,20 +46,20 @@ public class ConvolutionalFFTest {
     [TestMethod]
     public void TestConvolutionalLayerSamePadding() {
         var kernels = new Matrix<double>[]{
-            new double[,] {
+            new Matrix<double>(new double[,] {
                 {1, 0, 1},
                 {0, 1, 0},
                 {1, 0, 1}
-            }
+            })
         };
         var layer = new ConvolutionLayer(new Shape3D(1, 5, 5), Padding.Same, new ConvolutionFilter(kernels));
-        Matrix<double> input = new double[,]{
+        Matrix<double> input = new Matrix<double>(new double[,]{
             {1, 1, 1, 0, 0},
             {0, 1, 1, 1, 0},
             {0, 0, 1, 1, 1},
             {0, 0, 1, 1, 0},
             {0, 1, 1, 0, 0},
-        };
+        });
         var inputs = new Matrix<double>[] {
             input
         };
@@ -70,13 +70,13 @@ public class ConvolutionalFFTest {
         // This is a correct answer for this particular problem (ie same padding, no stride)
         var fft_output = CooleyTukey.ConvolveFFT(inputs[0], kernels[0], layer.StrideX, layer.StrideY, layer.ColumnsPadding, layer.RowsPadding);
 
-        Matrix<double> result = new double[,]{
+        Matrix<double> result = new Matrix<double>(new double[,]{
             {2, 2, 3, 1, 1},
             {1, 4, 3, 4, 1},
             {1, 2, 4, 3, 3},
             {1, 2, 3, 4, 1},
             {0, 2, 2, 1, 1},
-        };
+        });
 
         Assert.AreEqual(input.Rows, output.Rows);
         Assert.AreEqual(input.Columns, output.Columns);
@@ -92,21 +92,21 @@ public class ConvolutionalFFTest {
     [TestMethod]
     public void TestLocalMaxPooling() {
         var layer = new LocalMaxPoolingLayer(new Shape3D(1, 4, 4), 2, 2);
-        Matrix<double> input = new double[,] {
+        Matrix<double> input = new Matrix<double>(new double[,] {
             {12, 20, 30, 00},
             {08, 12, 02, 00},
             {34, 70, 37, 04},
             {112, 100, 25, 12}
-        };
+        });
 
         var outputs = layer.EvaluateSync(new FeatureSet<double>(input));
         Assert.AreEqual(1, outputs.Channels);
         var output = outputs[0];
 
-        Matrix<double> result = new double[,] {
+        Matrix<double> result = new Matrix<double>(new double[,] {
             {20, 30},
             {112, 37}
-        };
+        });
         Assert.AreEqual(result.Rows, output.Rows);
         Assert.AreEqual(result.Columns, output.Columns);
         for (var r = 0; r < result.Rows; r++) {
@@ -119,21 +119,21 @@ public class ConvolutionalFFTest {
     [TestMethod]
     public void TestAvgMaxPooling() {
         var layer = new LocalAvgPoolingLayer(new Shape3D(1, 4, 4), 2, 2);
-        Matrix<double> input = new double[,] {
+        Matrix<double> input = new Matrix<double>(new double[,] {
             {12, 20, 30, 00},
             {08, 12, 02, 00},
             {34, 70, 37, 04},
             {112, 100, 25, 12}
-        };
+        });
 
         var outputs = layer.EvaluateSync(new FeatureSet<double>(input));
         Assert.AreEqual(1, outputs.Channels);
         var output = outputs[0];
 
-        Matrix<double> result = new double[,] {
+        Matrix<double> result = new Matrix<double>(new double[,] {
             {13, 8},
             {79, 19.5}
-        };
+        });
         Assert.AreEqual(result.Rows, output.Rows);
         Assert.AreEqual(result.Columns, output.Columns);
         for (var r = 0; r < result.Rows; r++) {

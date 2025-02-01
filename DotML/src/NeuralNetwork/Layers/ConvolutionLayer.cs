@@ -59,11 +59,11 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         foreach (var filter in filters) {
             filter.Bias = initializer.RandomBias(this.InputShape.Count, this.OutputShape.Count, parameters);
             foreach (var kernel in filter) {
-                var values = (double[,])kernel;
-
-                for (var i = 0; i < values.GetLength(0); i++) {
-                    for (var j = 0; j < values.GetLength(1); j++) {
-                        values[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
+                var self = kernel;
+                
+                for (var i = 0; i < self.Rows; i++) {
+                    for (var j = 0; j < self.Columns; j++) {
+                        self[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
                     }
                 }
             }
@@ -81,7 +81,7 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         var filtersLength       = filters.Length;
         var output_list         = new Matrix<double>[filtersLength];
 
-        Parallel.For(0, filtersLength, filterIndex => {
+        for (var filterIndex = 0; filterIndex < filtersLength; filterIndex++) {
             var filter = filters[filterIndex];
             var output = Matrix<double>.ConvolveEach(
                 inputs, filter, 
@@ -90,7 +90,7 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
                 bias: filter.Bias
             );
             output_list[filterIndex] = output;
-        });
+        }
 
         return output_list;
     }

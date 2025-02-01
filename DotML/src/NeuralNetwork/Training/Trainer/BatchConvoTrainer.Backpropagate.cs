@@ -77,7 +77,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
 
             var batch_features = new Matrix<double>[channel_count];
             for (var channelIndex = 0; channelIndex < channel_count; channelIndex++) {
-                var input_error = new double[input_height, input_width];
+                var input_error = new Matrix<double>(input_height, input_width);
 
                 for (var filterIndex = 0; filterIndex < filter_count; filterIndex++) {
                     var filter = layer.Filters[filterIndex];
@@ -128,7 +128,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                     }
                 }
 
-                batch_features[channelIndex] = Matrix<double>.Wrap(input_error);
+                batch_features[channelIndex] = input_error;
             } 
             clip(batch_features, GradientClippingThresholdWeight);
             result_features[batchIndex] = new FeatureSet<double>(batch_features);
@@ -180,7 +180,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
             var kernels = new Matrix<double>[kcount];
             for (var i = 0; i < kcount; i++) {
                 var kernel = filter[i];
-                kernels[i] = Matrix<double>.Wrap(new double[kernel.Rows, kernel.Columns]);
+                kernels[i] = new Matrix<double>(kernel.Rows, kernel.Columns);
             }
             filter_kernel_gradients[f] = kernels;
         }
@@ -202,7 +202,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
 
                 for (var channelIndex = 0; channelIndex < channel_count; channelIndex++) {
                     var input_channel = input_features[channelIndex]; // Matrix 2D
-                    var kernel_gradient = kernel_gradients[channelIndex].AsArray(); // make this a mutable reference
+                    var kernel_gradient = kernel_gradients[channelIndex]; // make this a mutable reference
 
                     for (int outY = 0; outY < error_rows; outY++) {
                         var startY = outY * layer.StrideY - paddingRows;
@@ -277,7 +277,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
             var input_height_padded = input_height + 2 * input_padding_rows;
 
             for (var channelIndex = 0; channelIndex < channel_count; channelIndex++) {
-                var input_error = new double[input_height, input_width];
+                var input_error = new Matrix<double>(input_height, input_width);
                     
                 var kernel = filter[channelIndex];
                 var error = batch_errors[channelIndex];
@@ -313,7 +313,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                     }
                 }
 
-                batch_features[channelIndex] = Matrix<double>.Wrap(input_error);
+                batch_features[channelIndex] = input_error;
             } 
             clip(batch_features, GradientClippingThresholdWeight);
             result_features[batchIndex] = new FeatureSet<double>(batch_features);
@@ -339,7 +339,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
         var kcount = filter.Count;
         Parallel.For(0, kcount, i => {
             var kernel = filter[i];
-            var kernel_gradient_matrix = Matrix<double>.Wrap(new double[kernel.Rows, kernel.Columns]);
+            var kernel_gradient_matrix = new Matrix<double>(kernel.Rows, kernel.Columns);
 
             for (var batchIndex = 0; batchIndex < batch_count; batchIndex++) { // This can't be as two batches can access the same channel at the same time
                 var input_features = args.InputBatch[batchIndex]; // This is the number of channels, not the number of filters
@@ -349,7 +349,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 var error_cols = output_errors.Columns;
 
                 var input_channel = input_features[i]; // Matrix 2D
-                var kernel_gradient = kernel_gradient_matrix.AsArray(); // make this a mutable reference
+                var kernel_gradient = kernel_gradient_matrix; // make this a mutable reference
 
                 for (int outY = 0; outY < error_rows; outY++) {
                     var startY = outY * layer.StrideY - paddingRows;
@@ -409,7 +409,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 var error = errors[featureIndex];
 
                 // Initialize the error matrix for the input
-                var inputError = new double[input.Rows, input.Columns];
+                var inputError = new Matrix<double>(input.Rows, input.Columns);
 
                 // Loop over output
                 for (int row = 0; row < output.Rows; row++) {
@@ -452,7 +452,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 }
 
                 // Assign the errors for this input features
-                batchErrors[featureIndex] = Matrix<double>.Wrap(inputError);
+                batchErrors[featureIndex] = inputError;
             });
 
             // Assign the errors for the input features into the batch
@@ -484,7 +484,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
 
             var matrices = new Matrix<double>[batch.Channels];
             for (var i = 0; i < batch.Channels; i++) {
-                matrices[i] = batch[i].Hadamard(mask_matrix);
+                matrices[i] = batch[i].HadamardWith(mask_matrix);
             }
             input_errors[batchIndex] = new FeatureSet<double>(matrices);
         }
@@ -522,23 +522,23 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
             var beta = layer.Betas[channelIndex];
 
             // dL/dB = Sum_b( dL/dY )
-            var gradient_beta = Matrix<double>.Wrap(new double[rows, columns]);
+            var gradient_beta = new Matrix<double>(rows, columns);
             for (var batchIndex = 0; batchIndex < batches; batchIndex++) {
-                Matrix<double>.AddInplace(gradient_beta, gradient_beta, args.OutputErrors[batchIndex][channelIndex]);
+                gradient_beta.AddWithInplace((args.OutputErrors[batchIndex])[channelIndex]);
             }
             gradient_betas[channelIndex] = gradient_beta;
 
             // dL/dG = Sum_b ( dL/dY * xHat )
-            var gradient_gamma = Matrix<double>.Wrap(new double[rows, columns]);
+            var gradient_gamma = new Matrix<double>(rows, columns);
             for (var batchIndex = 0; batchIndex < batches; batchIndex++) {
                 // Compute xHat from y
                 var xhat_k = args.OutputBatch[batchIndex][channelIndex] - beta; // Sucks that I have to re-compute this
-                Matrix<double>.ElementWiseInplace(xhat_k, xhat_k, gamma, (xhat, g) => xhat / (g + epsilon));
+                xhat_k.ElementWiseInplace(gamma, (xhat, g) => xhat / (g + epsilon));
                 
                 var loss_wrt_y_k = args.OutputErrors[batchIndex][channelIndex];
                 var loss_wrt_y_times_xHat = xhat_k;
-                Matrix<double>.HadamardInplace(loss_wrt_y_times_xHat, loss_wrt_y_k, xhat_k);
-                Matrix<double>.AddInplace(gradient_gamma, gradient_gamma, loss_wrt_y_times_xHat);
+                xhat_k.HadamardWithInplace(loss_wrt_y_k);
+                gradient_gamma.AddWithInplace(loss_wrt_y_times_xHat);
             }
             gradient_gammas[channelIndex] = gradient_gamma;
 
@@ -547,7 +547,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
             var avg_loss_xhat = new double[batches];
             for (var batch = 0; batch < batches; batch++) {
                 var loss_wrt_y_k = args.OutputErrors[batch][channelIndex];
-                var loss_wrt_xhat = loss_wrt_y_k.Hadamard(gamma);
+                var loss_wrt_xhat = loss_wrt_y_k.HadamardWith(gamma);
                 loss_wrt_xhats[batch] = loss_wrt_xhat;
 
                 avg_loss_xhat[batch] = loss_wrt_xhat.Average();
@@ -573,10 +573,10 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 */
 
                 // Add term 1 (1/sqrt(variance + e) * (dL/dxHat - mean(dL/dxHat)))
-                Matrix<double>.ElementWiseInplace(loss_wrt_x, loss_wrt_x, loss_wrt_xHat, (_, xHat) => scale * (xHat - mean_loss_xHat));
+                loss_wrt_x.ElementWiseInplace(loss_wrt_xHat, (_, xHat) => scale * (xHat - mean_loss_xHat));
 
                 // Add term 2 (mean(dL/dxHat) * (x - mean))
-                Matrix<double>.ElementWiseInplace(loss_wrt_x, loss_wrt_x, x, (old, x) => old - mean_loss_xHat * (x - mean));
+                loss_wrt_x.ElementWiseInplace(x, (old, x) => old - mean_loss_xHat * (x - mean));
 
                 // Save result
                 clip(loss_wrt_x, GradientClippingThresholdWeight);
@@ -623,7 +623,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
         }
 
         // Derivations from https://en.wikipedia.org/wiki/Batch_normalization#:~:text=the%20current%20layer.-,Backpropagation,-%5Bedit%5D
-        Parallel.For(0, channels, k => {
+        Parallel.For(0, channels, (int k) => {
             var gamma = layer.Gammas[k];
             var beta = layer.Betas[k];
 
@@ -632,7 +632,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
             var loss_wrt_b = new Matrix<double>(channel_height, channel_width);
             for (var batch = 0; batch < batches; batch++) {
                 var loss_wrt_y_k = args.OutputErrors[batch][k];
-                Matrix<double>.AddInplace(loss_wrt_b, loss_wrt_b, loss_wrt_y_k);
+                loss_wrt_b.AddWithInplace(loss_wrt_y_k);
             }
             beta_gradients[k] = loss_wrt_b;
 
@@ -643,12 +643,12 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 // Compute xHat from y
                 // y = g * xHat + b  => xHat = (y - b) / g
                 var xhat_k = args.OutputBatch[batch][k] - beta; // Sucks that I have to re-compute this
-                Matrix<double>.ElementWiseInplace(xhat_k, xhat_k, gamma, (xhat, g) => xhat / (g + epsilon));
+                xhat_k.ElementWiseInplace(gamma, (xhat, g) => xhat / (g + epsilon));
 
                 var loss_wrt_y_k = args.OutputErrors[batch][k];
                 var loss_wrt_y_times_xHat = xhat_k;
-                Matrix<double>.HadamardInplace(loss_wrt_y_times_xHat, loss_wrt_y_k, xhat_k);
-                Matrix<double>.AddInplace(loss_wrt_g, loss_wrt_g, loss_wrt_y_times_xHat);
+                xhat_k.HadamardWithInplace(loss_wrt_y_k);
+                loss_wrt_g.AddWithInplace(loss_wrt_y_times_xHat);
             }
             gamma_gradients[k] = loss_wrt_g;
 
@@ -656,7 +656,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
             var loss_wrt_xhats = new Matrix<double>[batches];
             for (var batch = 0; batch < batches; batch++) {
                 var loss_wrt_y_k = args.OutputErrors[batch][k];
-                loss_wrt_xhats[batch] = loss_wrt_y_k.Hadamard(gamma);
+                loss_wrt_xhats[batch] = loss_wrt_y_k.HadamardWith(gamma);
             }
 
             var mean = means[k]; // Mean of the channel over the whole batch
@@ -675,11 +675,11 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 // Term 1
                 var x_minus_mean = x_k.Transform(x => x - mean);
                 var x_minus_mean_times_loss = x_minus_mean;
-                Matrix<double>.HadamardInplace(x_minus_mean_times_loss, loss_wrt_y_k, x_minus_mean);
+                x_minus_mean.HadamardWithInplace(loss_wrt_y_k);
 
                 // Term 2
                 var term1_times_term2 = x_minus_mean_times_loss;
-                Matrix<double>.ElementWiseInplace(term1_times_term2,x_minus_mean_times_loss, gamma, (lhs, g) => {
+                x_minus_mean_times_loss.ElementWiseInplace(gamma, (lhs, g) => {
                     return lhs * (g * one_over_std_three_halves_times_two);
                 });
             }
@@ -694,11 +694,11 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
             
                 // Add term 1
                 Matrix<double>.ElementWiseInplace(loss_wrt_mean_term1, loss_wrt_y_k, gamma, (y, g) => y * -g * scale);
-                Matrix<double>.AddInplace(loss_wrt_mean, loss_wrt_mean, loss_wrt_mean_term1);
+                loss_wrt_mean.AddWithInplace(loss_wrt_mean_term1);
 
                 // Add term 2
                 Matrix<double>.ElementWiseInplace(loss_wrt_mean_term2, loss_wrt_variance, x_k, (v, x) => v * one_over_batches * -2.0 * (x - mean));
-                Matrix<double>.AddInplace(loss_wrt_mean, loss_wrt_mean, loss_wrt_mean_term2);
+                loss_wrt_mean.AddWithInplace(loss_wrt_mean_term2);
             }
 
             // Gradient of L with respect to x
@@ -708,14 +708,14 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 var loss_wrt_x = new Matrix<double>(x.Rows, x.Columns);
 
                 // Add term 1 (dL/dxHat * scale)
-                Matrix<double>.ElementWiseInplace(loss_wrt_x, loss_wrt_x, loss_wrt_xHat, (_, v) => v * scale);
+                loss_wrt_x.ElementWiseInplace(loss_wrt_xHat, (_, v) => v * scale);
 
                 // Add term 2 (dl/dV * 2 * (x - mean) / M)
                 var temp1 = loss_wrt_variance.ElementWise(x, (v, x) => v * 2 * (x - mean) * one_over_batches);
-                Matrix<double>.AddInplace(loss_wrt_x, loss_wrt_x, temp1);
+                loss_wrt_x.AddWithInplace(temp1);
 
                 // Add term 3 (dl/du * 1/M)
-                Matrix<double>.ElementWiseInplace(loss_wrt_x, loss_wrt_x, loss_wrt_mean, (old, u) => old + u * one_over_batches);
+                loss_wrt_x.ElementWiseInplace(loss_wrt_mean, (old, u) => old + u * one_over_batches);
 
                 // Save result
                 clip(loss_wrt_x, GradientClippingThresholdWeight);
@@ -770,7 +770,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
             foreach (var feature in batch) {
                 var k = 0;
                 foreach (var value in feature.FlattenRows()) {
-                    xT.AsArray()[i,j++] = feature[k++];
+                    xT[i,j++] = feature[k++];
                 }
             }
         }
@@ -780,7 +780,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
         for (var i = 0; i < args.InputBatch.Batches; i++) {
             var batch_output_errors = args.OutputErrors[i][0]; // This is a column vector (only 1 column)
             for (var j = 0; j < layer.NeuronCount; j++) {
-                delta.AsArray()[j, i] = batch_output_errors[j, 0];
+                delta[j, i] = batch_output_errors[j, 0];
             }
         }
 
@@ -819,16 +819,16 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
                 var shape = shapes[shapeIndex];
                 var rows = shape.Rows;
                 var cols = shape.Columns;
-                var mtx = new double[shape.Rows, shape.Columns];
+                var mtx = new Matrix<double>(shape.Rows, shape.Columns);
                 for (int row = 0; row < rows; row++) {
                     for (int col = 0; col < cols; col++) {
-                        if (index < mtx.Length)
+                        if (index < mtx.Size)
                             mtx[row, col] = input_gradients[index++, batch];
                         else 
                             mtx[row, col] = 0.0;
                     }
                 }
-                var result = Matrix<double>.Wrap(mtx);
+                var result = mtx;
                 clip(result, GradientClippingThresholdWeight);
                 features[shapeIndex] = result;
             }
@@ -857,7 +857,7 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
             Parallel.For(0, input_channels, channel => {
                 var output_gradient = output_gradients[channel];
                 var derivative = batch[channel].Transform(layer.ActivationFunction.InvokeDerivative);   // Gradient of vector elements
-                var delta = output_gradient.Hadamard(derivative);                               // Delta of vector elements (column)
+                var delta = output_gradient.HadamardWith(derivative);                               // Delta of vector elements (column)
                 clip(delta, GradientClippingThresholdWeight);
                 input_gradients[channel] = delta;
             });
@@ -937,19 +937,15 @@ public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetw
 		private void clip(Matrix<double> mat, double clip_threshold) {
 			if (!UseGradientClipping)
 				return;
-		
-			double[,] mut = (double[,])mat;
-			for (var r = 0; r < mut.GetLength(0); r++) {
-				for (var c = 0; c < mut.GetLength(1); c++) {
-					var val = mut[r, c];
-                    sanitize_nan(ref val);
 
-					if (Math.Abs(val) > clip_threshold) {
-						val = Math.Sign(val) * clip_threshold;
-					}
-                    mut[r, c] = val;
-				}
-			}
+            mat.Apply((value) => {
+                var val = value;
+                sanitize_nan(ref val);
+                if (Math.Abs(val) > clip_threshold) {
+                    val = Math.Sign(val) * clip_threshold;
+                }
+                return val;
+            });
 		}
 		
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

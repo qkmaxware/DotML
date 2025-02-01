@@ -12,6 +12,9 @@ public enum DataUnit : byte {
     Gigabyte = 5,
 }
 
+/// <summary>
+/// Extension methods for dealing with units
+/// </summary>
 public static class DataUnitExtensions {
     public static int Factor(this DataUnit uom) {
         return uom switch {
@@ -55,6 +58,23 @@ public struct DataSize {
     public DataSize(double value, DataUnit uom) {
         this.value = value;
         this.uom = uom;
+    }
+
+    public static DataSize FromValue(long totalBytes) {
+        // Choose the appropriate unit based on the total bytes.
+        if (totalBytes >= DataUnit.Gigabyte.Factor()) {
+            // If the size is at least 1GB, use Gigabytes.
+            return new DataSize(totalBytes / DataUnit.Gigabyte.Factor(), DataUnit.Gigabyte);
+        } else if (totalBytes >= DataUnit.Megabyte.Factor()) {
+            // If the size is at least 1MB, use Megabytes.
+            return new DataSize(totalBytes / DataUnit.Megabyte.Factor(), DataUnit.Megabyte);
+        } else if (totalBytes >= DataUnit.Kilobyte.Factor()) {
+            // If the size is at least 1KB, use Kilobytes.
+            return new DataSize(totalBytes / DataUnit.Kilobyte.Factor(), DataUnit.Kilobyte);
+        } else {
+            // If it's less than 1KB, use Bytes.
+            return new DataSize(totalBytes, DataUnit.Bytes);
+        }
     }
 
     public static DataSize FromValues32(int value_count) {

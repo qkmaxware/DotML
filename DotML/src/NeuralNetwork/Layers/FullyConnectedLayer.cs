@@ -17,12 +17,8 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
     
     [JsonIgnore]
     public Matrix<double> Weights {
-        get => Matrix<double>.Wrap(weight_values);
-        set {
-            weight_values = (double[,])value;
-        }
+        get; set;
     }
-    private double[,] weight_values;
 
     [JsonIgnore]
     public Vec<double> Biases {
@@ -56,14 +52,10 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         /// </summary>
         // TODO broken. Weights are rows per neuron, not columns
         public Span<double> Weights {
-            get => MemoryMarshal.CreateSpan(ref parent.weight_values[index, 0], parent.weight_values.GetLength(1));
+            get => parent.Weights.ExtractRowSpan(index);
             set {
-                for (var i = 0; i < parent.weight_values.GetLength(0); i++) {
-                    if (index < value.Length)
-                        parent.weight_values[i, index] = value[i];
-                    else    
-                        parent.weight_values[i, index] = 0.0;
-                }
+                var span = parent.Weights.ExtractRowSpan(index);
+                value.CopyTo(span);
             }
         }
 
@@ -82,7 +74,6 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         this.outputs = neurons;
         this.neuronc = neurons;
         this.Weights = new Matrix<double>(neurons, input_size); // #rows = output count = neurons; #columns = input count
-        this.weight_values = (double[,])Weights;
         this.Biases = new Vec<double>(neurons);
         this.bias_values = (double[])Biases;
 
@@ -112,9 +103,10 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
             bias_values[b] = initializer.RandomBias(this.InputShape.Count, this.OutputShape.Count, parameters);
         }
 
-        for (var i = 0; i < weight_values.GetLength(0); i++) {
-            for (var j = 0; j < weight_values.GetLength(1); j++) {
-                weight_values[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
+        var weights = this.Weights;
+        for (var i = 0; i < weights.Rows; i++) {
+            for (var j = 0; j < weights.Columns; j++) {
+                weights[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
             }
         }
     }
@@ -125,14 +117,14 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void AddMatVecInplace(Matrix<double> target, Matrix<double> a, Vec<double> b) {
-        var result = (double[,])target;
+        var result = target;
         var rows = a.Rows;
         if (rows != target.Rows) {
             throw new ArithmeticException("Incompatible dimensions for storing results of matrix/vector addition");
         }
-        ParallelUtils.ForX(0, rows, (job) => {
-            result[job.X, 0] = a[job.X, 0] + b[job.X];
-        });
+        for (var i = 0; i < rows; i++) {
+            result[i, 0] = a[i, 0] + b[i];
+        }
     }
 
     // On Average, this is slightly faster than the old method but does the same thing (if I didn't copy-paste it wrong) will have to test this haha
@@ -146,15 +138,15 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         int cols = b.Columns; // aka 1
         int innerDim = a.Columns;
 
-        double[,] result = new double[rows, cols];
-        ParallelUtils.ForX(0, rows, (job) => {
+        var result = new Matrix<double>(rows, cols);
+        for (var i = 0; i < rows; i++) {
             double sum = 0.0;     
             for (int j = 0; j < innerDim; j++) {
-                sum += a[job.X, j] * b[j, 0];
+                sum += a[i, j] * b[j, 0];
             }
-            result[job.X, 0] = sum + c[job.X];
-        });
-        return Matrix<double>.Wrap(result);
+            result[i, 0] = sum + c[i];
+        }
+        return result;
     }
 
     public override bool DoesShapeMatchInputShape(Shape3D shape) {
@@ -163,7 +155,7 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
         // input is a 2D matrix processed from prior layers like a pooling layer
-        var x = inputs.Channels == 1 && inputs[0].IsColumn ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
+        var x = inputs.Channels == 1 && inputs[0].IsColumnMatrix ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
         //var x = Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray()); 
         //var mul  = Weights * x; 
         //AddMatVecInplace(mul, mul, bias_values);

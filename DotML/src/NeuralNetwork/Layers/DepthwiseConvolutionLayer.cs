@@ -63,11 +63,11 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
 
         Filter.Bias = 0; // Unused //initializer.RandomBias(this.InputShape.Count, this.OutputShape.Count, parameters);
         foreach (var kernel in Filter) {
-            var values = (double[,])kernel;
+            var self = kernel;
 
-            for (var i = 0; i < values.GetLength(0); i++) {
-                for (var j = 0; j < values.GetLength(1); j++) {
-                    values[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
+            for (var i = 0; i < self.Rows; i++) {
+                for (var j = 0; j < self.Columns; j++) {
+                    self[i, j] = initializer.RandomWeight(this.InputShape.Count, this.OutputShape.Count, parameters);
                 }
             }
         }
@@ -87,7 +87,7 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
         var stridey             = this.StrideY;
 
         // Allocate output
-        var output = new double[outputRows, outputColumns];
+        var output = new Matrix<double>(outputRows, outputColumns);
 
         // Slide over output
         for (var outY = 0; outY < outputRows; outY++) {
@@ -112,20 +112,19 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
         }
 
         // Exit
-        return Matrix<double>.Wrap(output);
+        return output;
     }
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
         var len = channels.Channels;
         var outputs = new Matrix<double>[len];
 
-        Parallel.For(0, len, i => {
+        for (var i = 0; i < len; i++) {
             var channel = channels[i];
             var kernel = Filter[i];
 
             outputs[i] = channel.Convolve(kernel, StrideX, StrideY, ColumnsPadding, RowsPadding);
-            //outputs[i] = Convolve(channel, kernel);
-        });
+        }
 
         return (FeatureSet<double>)outputs;
     }

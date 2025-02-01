@@ -1,0 +1,138 @@
+using System.Xml.Serialization;
+using DotML.Network;
+using DotML.Network.IO;
+
+namespace DotML.Cli;
+
+public class ModelInfo {
+    
+    private FileInfo? metadata_file = null;
+    private FileInfo? network_file = null;
+    private FileInfo? weights_file = null;
+
+    public string? Guid => network_file is  null ? string.Empty : Path.GetFileNameWithoutExtension(network_file.Name);
+    public string? Status() => weights_file is null || !weights_file.Exists ? "Untrained" : "Trained";
+    public List<string> Tags {get; set;} = new List<string>();
+    public DateTime Created() => network_file is null ? DateTime.Now : network_file.CreationTime;
+    public DateTime Modified() => metadata_file is null ? DateTime.Now : metadata_file.LastWriteTime;
+
+    public ModelInfo() { }
+
+    public ModelInfo(FileInfo metadata) {
+        this.metadata_file = metadata;
+        this.network_file = new FileInfo(Path.Combine(metadata_file.Directory?.FullName ?? string.Empty, Path.GetFileNameWithoutExtension(metadata_file.Name) + ".netbuild"));
+        this.weights_file = new FileInfo(Path.Combine(metadata_file.Directory?.FullName ?? string.Empty, Path.GetFileNameWithoutExtension(metadata_file.Name) + ".safetensors"));
+    }
+
+    public ModelInfo(ModelInfo other) {
+        if (other.metadata_file is null) {
+            throw new ArgumentException(nameof(ModelInfo));
+        }
+
+        var guid = System.Guid.NewGuid();
+
+        this.metadata_file = new FileInfo(Path.Combine(other.metadata_file.Directory?.FullName ?? string.Empty, guid + ".xml"));
+        this.network_file = new FileInfo(Path.Combine(other.metadata_file.Directory?.FullName ?? string.Empty, guid + ".netbuild"));
+        this.weights_file = new FileInfo(Path.Combine(other.metadata_file.Directory?.FullName ?? string.Empty, guid + ".safetensors"));
+
+        if (other.network_file is not null && other.network_file.Exists) {
+            network_file.CopyTo(network_file.FullName);
+        }
+        if (other.weights_file is not null && other.weights_file.Exists) {
+            weights_file.CopyTo(weights_file.FullName);
+        }
+        using (var writer = new StreamWriter(metadata_file.OpenWrite())) {
+            writer.Write(this.ToXml());
+        }
+    }
+
+    public static ModelInfo? FromXml(FileInfo metadata_file) {
+        var serializer = new XmlSerializer(typeof(ModelInfo));
+        try {
+            using (var reader = new StreamReader(metadata_file.OpenRead())) {
+                var info = (ModelInfo?)serializer.Deserialize(reader);
+                if (info is null)
+                    return info;
+
+                info.metadata_file = metadata_file;
+                info.network_file = new FileInfo(Path.Combine(metadata_file.Directory?.FullName ?? string.Empty, Path.GetFileNameWithoutExtension(metadata_file.Name) + ".netbuild"));
+                info.weights_file = new FileInfo(Path.Combine(metadata_file.Directory?.FullName ?? string.Empty, Path.GetFileNameWithoutExtension(metadata_file.Name) + ".safetensors"));
+                return info;
+            }
+        } catch {
+            return null;
+        }
+    }
+
+    public string ToXml() {
+        var serializer = new XmlSerializer(typeof(ModelInfo));
+        using (var writer = new StringWriter()) {
+            serializer.Serialize(writer, this);
+            return writer.ToString();
+        }
+    }
+
+    public FeedforwardNetwork Load() {
+        if (this.network_file is null)
+            throw new FileNotFoundException();
+            
+        NetBuild builder = new NetBuild();
+        var network = builder.ParseAndBuild(File.ReadAllText(this.network_file.FullName));
+        if (network is INamedNetwork named) {
+            network.Name = Tags.FirstOrDefault() ?? Guid ?? "?";
+        }
+        if (weights_file is not null && weights_file.Exists) {
+            var st = Safetensors.ReadFromFile(weights_file);
+            network.FromSafetensor(st);
+        }
+        return network;
+    }
+
+    public void UpdateWeights(Safetensors tensors) {
+        if (weights_file is null)
+            return;
+
+        using var stream = weights_file.OpenWrite();
+        using var writer = new BinaryWriter(stream);
+        tensors.WriteTo(writer);
+    }
+
+    public void UpdateBuildScript(string text) {
+        if (network_file is null)
+            return;
+
+        using (var writer = new StreamWriter(network_file.OpenWrite())) {
+            writer.Write(text);
+        }
+    }
+
+    public string GetBuildScript() {
+        if (network_file is null || !network_file.Exists)
+            return string.Empty;
+
+        return File.ReadAllText(network_file.FullName);
+    }
+
+    public void UpdateMetadata() {
+        if (metadata_file is null)
+            return;
+
+        using (var writer = new StreamWriter(metadata_file.OpenWrite())) {
+            writer.Write(this.ToXml());
+        }
+    }
+
+    public bool Delete() {
+        try {
+            if (network_file is not null && network_file.Exists)
+                network_file.Delete();
+            if (weights_file is not null && weights_file.Exists)
+                weights_file.Delete();
+            if (metadata_file is not null && metadata_file.Exists)
+                metadata_file.Delete();
+            return true;
+        } catch {
+            return false;
+        }
+    }
+}

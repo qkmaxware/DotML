@@ -73,9 +73,9 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
                             throw new ArithmeticException($"NaN detected in kernel gradients for Filter {filterIndex}, Kernel {kernelIndex} while updating weights of a ConvolutionalLayer");
                         }
                     }
-                    Matrix<double>.TransformInplace(grads, grads, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
+                    grads.Apply((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
                     var kernel_update = grads;
-                    Matrix<double>.SubInplace(grads, kernel, kernel_update);
+                    grads.ElementWiseInplace(kernel, (g, k) => k - g);
                     var next_kernel = grads;
                     //var kernel_update = grads.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
                     //var next_kernel = kernel - kernel_update;
@@ -113,9 +113,9 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
                 var kernel = layer.Filter[kernelIndex];
                 var kernel_width = kernel.Columns;
 
-                Matrix<double>.TransformInplace(grads, grads, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
+                grads.Apply((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
                 var kernel_update = grads;
-                Matrix<double>.SubInplace(kernel, kernel, kernel_update);
+                kernel.SubtractWithInplace(kernel_update);
 
                 param_offset += kernel.Size;
             }
@@ -146,9 +146,9 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
                 var gamma = layer.Gammas[i];
                 var gradient = gradients.GammaGradients[i];
 
-                Matrix<double>.TransformInplace(gradient, gradient, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, gamma[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
+                gradient.Apply((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, gamma[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
                 var weight_update = gradient;
-                Matrix<double>.SubInplace(gamma, gamma, weight_update);
+                gamma.SubtractWithInplace(weight_update);
                 param_offset += gamma.Size;
             }
         }
@@ -160,9 +160,9 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
                 var beta = layer.Betas[i];
                 var gradient = gradients.BetaGradients[i];
 
-                Matrix<double>.TransformInplace(gradient, gradient, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, beta[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
+                gradient.Apply((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, beta[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
                 var weight_update = gradient;
-                Matrix<double>.SubInplace(beta, beta, weight_update);
+                beta.SubtractWithInplace(weight_update);
                 param_offset += beta.Size;
             }
         }
@@ -183,9 +183,9 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
                 var gamma = layer.Gammas[i];
                 var gradient = gradients.GammaGradients[i];
 
-                Matrix<double>.TransformInplace(gradient, gradient, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, gamma[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
+                gradient.Apply((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, gamma[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
                 var weight_update = gradient;
-                Matrix<double>.SubInplace(gamma, gamma, weight_update);
+                gamma.SubtractWithInplace(weight_update);
                 param_offset += gamma.Size;
             }
         }
@@ -197,9 +197,9 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
                 var beta = layer.Betas[i];
                 var gradient = gradients.BetaGradients[i];
 
-                Matrix<double>.TransformInplace(gradient, gradient, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, beta[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
+                gradient.Apply((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, beta[index.Row, index.Column], grad, param_offset + index.Column + index.Row * gamma_width));
                 var weight_update = gradient;
-                Matrix<double>.SubInplace(beta, beta, weight_update);
+                beta.SubtractWithInplace(weight_update);
                 param_offset += beta.Size;
             }
         }
@@ -224,9 +224,9 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
         var param_offset = args.ParameterOffset;
         var weight_count = layer.Weights.Size;
         var weight_width = layer.Weights.Columns;
-        Matrix<double>.TransformInplace(gradients.WeightGradients, gradients.WeightGradients, (index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Weights[index.Row, index.Column], grad, param_offset + index.Column + index.Row * weight_width));
+        gradients.WeightGradients.Apply((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Weights[index.Row, index.Column], grad, param_offset + index.Column + index.Row * weight_width));
         var weight_update = gradients.WeightGradients;
-        Matrix<double>.SubInplace(layer.Weights, layer.Weights, weight_update);
+        layer.Weights.SubtractWithInplace(weight_update);
         foreach (var elem in layer.Weights) {
             if (double.IsNaN(elem)) {
                 throw new ArithmeticException($"NaN detected while updating weights of a FullyConnectedLayer");

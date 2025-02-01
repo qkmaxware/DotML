@@ -108,7 +108,7 @@ public static class CooleyTukey {
             var kernel = pair.Second;
 
             var convolution = ConvolveFFT(input, kernel, strideX, strideY, paddingX, paddingY);
-            Matrix<double>.AddInplace(result, result, convolution);
+            result.AddWithInplace(convolution);
         }
 
         return result;
@@ -128,7 +128,6 @@ public static class CooleyTukey {
         var outputColumns       = (inputColumns - filterColumns + 2 * paddingColumns) / strideX + 1;  
 
         var result              = new Matrix<double>(outputRows, outputColumns, 0.0);
-        var result_array        = result.AsArray();
 
         // Different from this point onwards
         // 1. Pad matrices with 0s to nearest power of 2
@@ -183,7 +182,7 @@ public static class CooleyTukey {
                 if (region_col_index >= padded_width)
                     continue;
 
-                result_array[row, col] = padded_input[region_row_index, region_col_index].Real;
+                result[row, col] = padded_input[region_row_index, region_col_index].Real;
             }
         }
 

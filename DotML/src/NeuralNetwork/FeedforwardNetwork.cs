@@ -100,7 +100,7 @@ public class FeedforwardNetwork:
     public void AddLayer(IFeedforwardNetworkLayer layer) {
         if (this.layers.Count > 0) {
             var current_out_shape = this.OutputShape;
-            if (layer.OutputShape != current_out_shape) {
+            if (!layer.DoesShapeMatchInputShape(current_out_shape)) {
                 throw new ArgumentException("Layer input shape is incompatible with prior layers");
             }
         }
@@ -129,7 +129,7 @@ public class FeedforwardNetwork:
         var input_size = this.InputShape;
         int layer_index = 0;
         foreach (var layer in this.layers) { 
-            if (input_size != layer.InputShape) {
+            if (!layer.DoesShapeMatchInputShape(input_size)) {
                 throw new ArgumentException($"Layer {layer_index} expects an input shape of {layer.InputShape} but is receiving an input of shape {input_size} from the previous layer.");
             }
             input_size = layer.OutputShape;

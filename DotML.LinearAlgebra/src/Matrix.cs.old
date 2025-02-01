@@ -8,7 +8,6 @@ using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Text.Json.Serialization;
-using DotML.Network;
 
 namespace DotML;
 
@@ -17,7 +16,7 @@ namespace DotML;
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct Matrix<T> 
-: IEnumerable<T>, ITensorLike<T>, IHtmlable
+: IEnumerable<T>, ITensorLike<T>
 where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 {
     private static T[,] NONE = new T[0,0];
@@ -264,7 +263,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     }
 
     /// <summary>
-    /// Generate a matrix with the given values provided by a generator function
+    /// Generate a matrix with the given values provided by a generator function (such as System.Random.NextDouble)
     /// </summary>
     /// <param name="rows">number of rows</param>
     /// <param name="cols">number of columns</param>
@@ -291,6 +290,61 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     public static explicit operator T[,] (Matrix<T> mat) => mat.values;
 
     /// <summary>
+    /// Pad a matrix with 0's to a given size
+    /// </summary>
+    /// <param name="top">top padding</param>
+    /// <param name="right">right padding</param>
+    /// <param name="bottom">bottom padding</param>
+    /// <param name="left">left padding</param>
+    /// <returns>padded matrix</returns>
+    public Matrix<T> Pad(int top = 0, int right = 0, int bottom = 0, int left = 0) {
+        top         = Math.Max(0, top);
+        right       = Math.Max(0, right);
+        bottom      = Math.Max(0, bottom);
+        left        = Math.Max(0, left);
+
+        var rows    = top + bottom + this.Rows;
+        var columns = left + right + this.Columns;
+        var matrix  = new T[rows, columns];
+
+        for (var r = 0; r < this.Rows; r++) {
+            for (var c = 0; c < this.Columns; c++) {
+                matrix[r + left, c + top] = this[r, c];
+            }
+        }
+
+        return Matrix<T>.Wrap(matrix);
+    }
+
+    /// <summary>
+    /// Mirror the matrix across the selected axis
+    /// </summary>
+    /// <param name="x">mirror over the x axis (swap columns)</param>
+    /// <param name="y">mirror over the y axis (swap rows)</param>
+    /// <returns>mirrored matrix</returns>
+    public Matrix<T> Mirror(bool x = false, bool y = false) {
+        var rows    = this.Rows;
+        var columns = this.Columns;
+        var matrix  = new T[rows, columns];
+
+        for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < columns; c++) {
+                var x_index = x switch {
+                    true => columns - 1 - c,
+                    false => c 
+                };
+                var y_index = y switch {
+                    true => rows - 1 - r,
+                    false => r
+                };
+                matrix[y_index, x_index] = this[r, c];
+            }
+        }
+
+        return Matrix<T>.Wrap(matrix);
+    }
+
+    /// <summary>
     /// Transform the values in this matrix to values of another type.
     /// </summary>
     /// <typeparam name="R">Result type</typeparam>
@@ -299,7 +353,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     public Matrix<R> Transform<R>(Func<T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
         var self = this;
         R[,] values = new R[Rows, Columns];
-        ParallelUtils.ForEach(self, (job) => {
+        Loop.ForXY(self, (job) => {
             values[job.Row, job.Column] = mapping(self.values[job.Row, job.Column]);
         });
         return Matrix<R>.Wrap(values);
@@ -314,7 +368,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
     public Matrix<R> Transform<R>(Func<(int Row, int Column), T, R> mapping) where R:INumber<R>,IExponentialFunctions<R>,IRootFunctions<R> {
         var self = this;
         R[,] values = new R[Rows, Columns];
-        ParallelUtils.ForEach(self, (job) => {
+        Loop.ForXY(self, (job) => {
             values[job.Row, job.Column] = mapping((job.Row, job.Column), self.values[job.Row, job.Column]);
         });
         return Matrix<R>.Wrap(values);
@@ -418,7 +472,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 
         var result              = new Matrix<T>(outputRows, outputColumns, T.Zero);
         var result_array        = result.AsArray();
-        ParallelUtils.ForEach(result, (job) => {
+        Loop.ForXY(result, (job) => {
             var startY = job.Y * strideY - paddingRows;
             var startX = job.X * strideX - paddingColumns;
 
@@ -469,7 +523,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         var result              = new Matrix<T>(outputRows, outputColumns, bias ?? T.Zero);
         var result_array        = result.AsArray();
         foreach (var (input, kernel) in inputs.Zip(kernels)) {
-            ParallelUtils.ForEach(result, (job) => {
+            Loop.ForXY(result, (job) => {
                 var startY = job.Y * strideY - paddingRows;
                 var startX = job.X * strideX - paddingColumns;
 
@@ -524,7 +578,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         T[] result = new T[this.Columns];
         var rows = this.Rows;
         var src = this;
-        ParallelUtils.ForX(0, this.Columns, (job) => {
+        Loop.ForX(0, this.Columns, (job) => {
             T aggregate = initial;
             for (var row = 0; row < rows; row++) {
                 aggregate = aggregator(aggregate, src[row, job.X]);
@@ -543,7 +597,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         T[] result = new T[this.Rows];
         var columns = this.Columns;
         var src = this;
-        ParallelUtils.ForX(0, this.Rows, (job) => {
+        Loop.ForX(0, this.Rows, (job) => {
             T aggregate = initial;
             for (var col = 0; col < columns; col++) {
                 aggregate = aggregator(aggregate, src[job.X, col]);
@@ -582,7 +636,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 
         var self = this;
         T[,] values = new T[rows, cols];
-        ParallelUtils.ForEach(this, (job) => {
+        Loop.ForXY(this, (job) => {
             values[job.Row, job.Column] = @operator(self[job.Row, job.Column], other[job.Row, job.Column]);
         });
         return Matrix<T>.Wrap(values);
@@ -609,7 +663,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
 
         var self = this;
         R[,] values = new R[rows, cols];
-        ParallelUtils.ForEach(this, (job) => {
+        Loop.ForXY(this, (job) => {
             values[job.Row, job.Column] = @operator(self[job.Row, job.Column], other[job.Row, job.Column]);
         });
         return Matrix<R>.Wrap(values);
@@ -837,13 +891,13 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         int innerDim = a.Columns;
 
         T[,] result = new T[rows, cols];
-        ParallelUtils.ForX(0, rows, i => {
+        Parallel.For(0, rows, i => { // This is the only thing imma leave as Parallel.For in Matrix for now
             for (int j = 0; j < cols; j++) {
                 T sum = T.Zero;            
                 for (int k = 0; k < innerDim; k++) {
-                    sum += a[i.X, k] * b[k, j];
+                    sum += a[i, k] * b[k, j];
                 }
-                result[i.X, j] = sum;
+                result[i, j] = sum;
             }
         });
         return Matrix<T>.Wrap(result);
@@ -869,7 +923,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         int innerDim = this_T_columns;
 
         T[,] result = new T[rows, cols];
-        ParallelUtils.ForX(0, rows, i => {
+        Loop.ForX(0, rows, i => {
             for (int j = 0; j < cols; j++) {
                 T sum = T.Zero;            
                 for (int k = 0; k < innerDim; k++) {
@@ -902,7 +956,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
             throw new ArithmeticException($"Incompatible dimensions for matrix/vector multiplication {a.Rows}x{a.Columns} · {b.Dimensionality}x1");
 
         T[] result = new T[a.Rows];
-        ParallelUtils.ForX(0, a.Rows, (job) => {
+        Loop.ForX(0, a.Rows, (job) => {
             T value = T.Zero;
             for (int j = 0; j < a.Columns; j++) {
                 value = value + a[job.X, j] * b[j];
@@ -937,7 +991,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         int cols = a.Columns;
 
         T[,] values = new T[rows, cols];
-        ParallelUtils.ForXY(0, cols, 0, rows, (job) => {
+        Loop.ForXY(0, cols, 0, rows, (job) => {
             values[job.Row, job.Column] = a[job.Row, job.Column] + b[job.Row, job.Column];
         });
 
@@ -968,7 +1022,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
         int cols = a.Columns;
 
         T[,] values = new T[rows, cols];
-        ParallelUtils.ForXY(0, cols, 0, rows, (job) => {
+        Loop.ForXY(0, cols, 0, rows, (job) => {
             values[job.Row, job.Column] = a[job.Row, job.Column] - b[job.Row, job.Column];
         });
 
@@ -993,7 +1047,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
             throw new ArithmeticException("Incompatible dimensions for storing matrix transformation result");
         }
         
-        ParallelUtils.ForEach(target, (job) => {
+        Loop.ForXY(target, (job) => {
             result[job.Row, job.Column] =  mapping(src[job.Row, job.Column]);
         });
     } 
@@ -1014,7 +1068,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
             throw new ArithmeticException("Incompatible dimensions for storing matrix transformation result");
         }
         
-        ParallelUtils.ForEach(target, (job) => {
+        Loop.ForXY(target, (job) => {
             result[job.Row, job.Column] =  mapping((job.Row, job.Column), src[job.Row, job.Column]);
         });
     }
@@ -1032,7 +1086,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
             throw new ArithmeticException("Incompatible dimensions for storing element-wise multiplication result");
         }
 
-        ParallelUtils.ForEach(target, (job) => {
+        Loop.ForXY(target, (job) => {
             result[job.Row, job.Column] = a[job.Row, job.Column] * b[job.Row, job.Column];
         });
     }
@@ -1050,7 +1104,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
             throw new ArithmeticException("Incompatible dimensions for storing element-wise multiplication result");
         }
 
-        ParallelUtils.ForEach(target, (job) => {
+        Loop.ForXY(target, (job) => {
             result[job.Row, job.Column] =  mapping(a[job.Row, job.Column], b[job.Row, job.Column]);
         });
     }
@@ -1068,7 +1122,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
             throw new ArithmeticException("Incompatible dimensions for storing matrix addition result");
         }
 
-        ParallelUtils.ForEach(target, (job) => {
+        Loop.ForXY(target, (job) => {
             result[job.Row, job.Column] =  a[job.Row, job.Column] + b[job.Row, job.Column];
         });
     }
@@ -1086,7 +1140,7 @@ where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T>
             throw new ArithmeticException("Incompatible dimensions for storing matrix subtraction result");
         }
 
-        ParallelUtils.ForEach(target, (job) => {
+        Loop.ForXY(target, (job) => {
             result[job.Row, job.Column] =  a[job.Row, job.Column] - b[job.Row, job.Column];
         });
     }

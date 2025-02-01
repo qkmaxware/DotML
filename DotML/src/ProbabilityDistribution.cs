@@ -154,7 +154,12 @@ public struct ProbabilityDistribution
         {
             var label = this.GetCategoryLabel(index) ?? string.Empty;
             sb.Append(index); sb.Append(":"); sb.Append(label.PadRight(label_width, ' ')); sb.Append(' ');
-            sb.Append(new String('#', (int)(max_width * prob))); sb.Append(' '); sb.Append((prob * 100).ToString("F2")); sb.AppendLine("%");
+            sb.Append('|'); 
+                sb.Append(new String('-', (int)(max_width * prob)).PadRight(max_width, ' ')); 
+            sb.Append('|'); 
+            sb.Append(' '); 
+            sb.Append((prob * 100).ToString("F2")); 
+            sb.AppendLine("%");
             index++;
         }
 

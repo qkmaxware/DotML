@@ -19,6 +19,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.CliTrainer", "DotML.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinaryMerge", "DotML.Utils\BinaryMerge\BinaryMerge.csproj", "{9D3CAC41-EAB3-45B0-BDBC-85A7F24DDEFE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.LinearAlgebra", "DotML.LinearAlgebra\DotML.LinearAlgebra.csproj", "{6C12254A-94DD-43DD-86D7-DF03DF752E3F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.LinearAlgebra.Test", "DotML.LinearAlgebra.Test\DotML.LinearAlgebra.Test.csproj", "{16FC6016-B35F-449A-9D15-20F2997A8527}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.LinearAlgebra.Benchmark", "DotML.LinearAlgebra.Benchmark\DotML.LinearAlgebra.Benchmark.csproj", "{521100EE-055A-4351-A24B-F89CACDE6CA2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.Cli", "DotML.Cli\DotML.Cli.csproj", "{4C1A3FEE-AD49-4C83-9905-5F027B53CA8E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,6 +64,22 @@ Global
 		{9D3CAC41-EAB3-45B0-BDBC-85A7F24DDEFE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D3CAC41-EAB3-45B0-BDBC-85A7F24DDEFE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9D3CAC41-EAB3-45B0-BDBC-85A7F24DDEFE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C12254A-94DD-43DD-86D7-DF03DF752E3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C12254A-94DD-43DD-86D7-DF03DF752E3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C12254A-94DD-43DD-86D7-DF03DF752E3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C12254A-94DD-43DD-86D7-DF03DF752E3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{16FC6016-B35F-449A-9D15-20F2997A8527}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16FC6016-B35F-449A-9D15-20F2997A8527}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16FC6016-B35F-449A-9D15-20F2997A8527}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16FC6016-B35F-449A-9D15-20F2997A8527}.Release|Any CPU.Build.0 = Release|Any CPU
+		{521100EE-055A-4351-A24B-F89CACDE6CA2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{521100EE-055A-4351-A24B-F89CACDE6CA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{521100EE-055A-4351-A24B-F89CACDE6CA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{521100EE-055A-4351-A24B-F89CACDE6CA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C1A3FEE-AD49-4C83-9905-5F027B53CA8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C1A3FEE-AD49-4C83-9905-5F027B53CA8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C1A3FEE-AD49-4C83-9905-5F027B53CA8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C1A3FEE-AD49-4C83-9905-5F027B53CA8E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{77B59DD2-CBC5-4ECD-8531-B18626262C52} = {96CE2825-D8B7-4981-AC95-75F67B1B3D6C}

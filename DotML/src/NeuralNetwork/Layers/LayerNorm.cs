@@ -74,8 +74,8 @@ public class LayerNorm : FeedforwardNetworkLayer {
             var output = features.Transform(v => (v - mean) * sqrt);
 
             // Apply scaling (gamma) and shifting (beta)
-            Matrix<double>.HadamardInplace(output, output, Gammas[channel]);    // output = output .* gamma
-            Matrix<double>.AddInplace(output, output, Betas[channel]);          // output = output + beta
+            output.HadamardWithInplace(Gammas[channel]); // output = output .* gamma
+            output.AddWithInplace(Betas[channel]); // output = output + beta
 
             // Save results
             outputs[channel] = output;                              

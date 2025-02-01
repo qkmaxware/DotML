@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Dynamic;
+using System.Text.RegularExpressions;
+using DotML.Network.Training;
 
 namespace DotML.Network.Training;
 
@@ -31,6 +33,67 @@ public abstract class TrainingPairSequencer : IEnumerator<TrainingPair> {
     public void Dispose() {}
     public abstract bool MoveNext();
     public abstract void Reset();
+
+    /// <summary>
+    /// Treat this enumerator as it's own enumerable object for use in for loops
+    /// </summary>
+    /// <returns>enumerable of training pairs</returns>
+    public IEnumerable<TrainingPair> AsEnumerable() {
+        Reset();
+        while (MoveNext())
+            yield return Current;
+    }
+
+    /// <summary>
+    /// Treat this enumerator as it's own enumerable object where elements are sampled in a batch
+    /// </summary>
+    /// <returns>enumerable of batches/groups of training pairs</returns>
+    public IEnumerable<IGrouping<int, TrainingPair>> AsBatchedEnumerable(int batch_size) {
+        batch_size = Math.Max(1, batch_size);
+        var batch = new List<TrainingPair>(batch_size);
+
+        // Create initial batch
+        Reset();
+        while (batch.Count < batch_size && MoveNext()) {
+            batch.Add(this.Current);
+        }
+
+        int batch_index = 0;
+        while (batch.Count > 0) {
+            yield return new TrainingPairBatch(batch_index, batch);
+            batch_index++;
+
+            // Create subsequent batch
+            batch = new List<TrainingPair>(batch_size);
+            while (batch.Count < batch_size && MoveNext()) {
+                batch.Add(this.Current);
+            }
+        }
+    }   
+
+    /// <summary>
+    /// Represents a group of training pairs of a given batch size
+    /// </summary>
+    public class TrainingPairBatch : IGrouping<int, TrainingPair> {
+        /// <summary>
+        /// Batch number / Group key (0-indexed)
+        /// </summary>
+        public int Key {get; private set;}
+        
+        /// <summary>
+        /// Batch size (number of elements)
+        /// </summary>
+        public int Size => items.Count();
+        private IEnumerable<TrainingPair> items;
+
+        public TrainingPairBatch(int batch_index, IEnumerable<TrainingPair> items) {
+            this.Key = batch_index;
+            this.items = items;
+        }
+
+        public IEnumerator<TrainingPair> GetEnumerator() => items.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => items.GetEnumerator();
+    }
 }
 
 /// <summary>
