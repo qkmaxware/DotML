@@ -6,6 +6,7 @@ namespace DotML.Network;
 public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
 
     protected TextWriter sb;
+    private static LayerDescriber describer = new LayerDescriber();
 
     public LayerWriter(TextWriter writer) {
         this.sb = writer;
@@ -35,7 +36,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
         WriteLayerRow(
             layer, 
-            $"{layer.FilterCount} filters of size {layer.Filters.FirstOrDefault()?.FirstOrDefault().Shape}"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -47,7 +48,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
 
         WriteLayerRow(
             layer, 
-            $"{layer.Filter.Count} kernels of size {layer.Filter?.FirstOrDefault().Shape}"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -59,7 +60,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
 
         WriteLayerRow(
             layer, 
-            $"Pooling with a size of {layer.FilterHeight}x{layer.FilterWidth}"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -71,7 +72,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
         WriteLayerRow(
             layer, 
-            $"Flatten multi-dimensional input to 1D"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -83,7 +84,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
         WriteLayerRow(
             layer, 
-            $"Dropout with probability {layer.DropoutRate} to reduce overfitting"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -95,7 +96,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
         WriteLayerRow(
             layer, 
-            $"Normalize the inputs across the layer"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -107,7 +108,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
         WriteLayerRow(
             layer, 
-            $"Normalize the inputs across the entire batch"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -119,7 +120,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
         WriteLayerRow(
             layer, 
-            $"Fully connected layer of {layer.NeuronCount} neurons"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -131,7 +132,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
         WriteLayerRow(
             layer, 
-            $"Apply {layer.ActivationFunction?.GetType().Name} activation function to inputs"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -143,7 +144,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
         WriteLayerRow(
             layer, 
-            $"Convert output to probability distribution over {layer.OutputShape.Count} classes"
+            layer.Visit(describer)
         );
         return true;
     }
@@ -159,7 +160,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
         WriteLayerRow(
             capture, 
-            $"Cache the inputs of this layer"
+            capture.Visit(describer)
         );
         return true;
     }

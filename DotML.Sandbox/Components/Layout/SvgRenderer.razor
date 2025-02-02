@@ -4,7 +4,9 @@
 </div>
 <figure>
 @if (Value is not null) {
-    @((MarkupString)Value.ToSvg())
+    var builder = new StringWriter();
+    Value.ToSvg(builder);
+    @((MarkupString)builder.ToString())
 }
 </figure>
 
@@ -14,6 +16,8 @@
     private async void download_str(string name = "network.svg") {
         if (Value is null)
             return;
-        await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "text/svg", System.Text.Encoding.UTF8.GetBytes(Value.ToSvg()));
+        var builder = new StringWriter();
+        Value.ToSvg(builder);
+        await js.InvokeVoidAsync("BlazorComponents.Files.download", name, "text/svg", System.Text.Encoding.UTF8.GetBytes(builder.ToString()));
     }
 }

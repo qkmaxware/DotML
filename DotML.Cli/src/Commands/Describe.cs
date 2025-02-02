@@ -1,4 +1,5 @@
 using CommandLine;
+using DotML.Network;
 
 namespace DotML.Cli.Commands;
 
@@ -55,6 +56,7 @@ public class Describe : BaseCommand {
         Console.WriteLine();
 
         var network = model.Load();
+        var describer = new LayerDescriber();
         for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
             var layer = network.GetLayer(layerIndex);
             Console.Write(" | ");
@@ -66,7 +68,7 @@ public class Describe : BaseCommand {
             Console.Write(' ');
             Console.Write(ColumnValue(layer.UnTrainableParameterCount(), lengths[3]));
             Console.Write(' ');
-            Console.Write(ColumnValue("", lengths[4])); // TODO description like from the markdown exporter
+            Console.Write(layer.Visit(describer), lengths[4]);
             Console.WriteLine();
         }
         Console.WriteLine();

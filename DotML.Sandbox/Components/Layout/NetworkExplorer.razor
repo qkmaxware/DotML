@@ -157,7 +157,9 @@
         <figure>
             <figcaption>Network Digram</figcaption>
         @if (Network is not null && Network is IDiagrammable diagrammableNetwork && Network.InputShape.Count < 128) {
-            @((MarkupString)diagrammableNetwork.ToSvg())
+            var builder = new StringWriter();
+            diagrammableNetwork.ToSvg(builder);
+            @((MarkupString)builder.ToString())
         } else {
             <div class="alert alert-danger" role="alert">
                 Cannot create a diagram for network. It may be of an incompatible format, or may just be too large.
