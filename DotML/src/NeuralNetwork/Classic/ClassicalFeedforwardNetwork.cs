@@ -277,8 +277,7 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithVecto
     /// Convert this network to an SVG representation
     /// </summary>
     /// <returns>svg string</returns>
-    public string ToSvg() {
-        StringBuilder s = new StringBuilder();
+    public void ToSvg(TextWriter s) {
         Random rng = new Random();
 
         var circle_radius = 24;
@@ -298,18 +297,18 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithVecto
 
         var units = "px";
 
-        s.AppendLine($"<svg width='{img_width}{units}' height='{img_height}{units}' xmlns='http://www.w3.org/2000/svg'>");
+        s.WriteLine($"<svg width='{img_width}{units}' height='{img_height}{units}' xmlns='http://www.w3.org/2000/svg'>");
 
-        s.AppendLine("    <style>");
-        s.AppendLine("        .Neuron  { stroke-width: 1px; stroke: black; fill: white; }");
-        s.AppendLine("        .Synapse { stroke-width: 2px; stroke: black; }");
-        s.AppendLine("        .Input   { fill: black; }");
-        s.AppendLine("        .Bias    { fill: black; }");
-        s.AppendLine("        .Weight  { fill: white; stroke-width: 1px; stroke: black; }");
-        s.AppendLine("    </style>");
+        s.WriteLine("    <style>");
+        s.WriteLine("        .Neuron  { stroke-width: 1px; stroke: black; fill: white; }");
+        s.WriteLine("        .Synapse { stroke-width: 2px; stroke: black; }");
+        s.WriteLine("        .Input   { fill: black; }");
+        s.WriteLine("        .Bias    { fill: black; }");
+        s.WriteLine("        .Weight  { fill: white; stroke-width: 1px; stroke: black; }");
+        s.WriteLine("    </style>");
 
         // Synapses
-        s.AppendLine("    <g id='Synapses'>");
+        s.WriteLine("    <g id='Synapses'>");
         var synapse_from_layer_index = 0;
         var synapse_to_layer_index = 1;
         foreach (var layer in layers) {
@@ -332,8 +331,8 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithVecto
                         var synapse_label_x = (1 - synapse_label_loc_percent) * input_center_x + synapse_label_loc_percent * neuron_center_x;
                         var synapse_label_y = (1 - synapse_label_loc_percent) * input_center_y + synapse_label_loc_percent * neuron_center_y;
 
-                        s.Append("        ");
-                        s.AppendLine($"<line id='Synapse {synapse_from_layer_index}[{weight_index}]->{synapse_to_layer_index}[{neuron_index}]' class='Synapse' x1='{input_center_x}{units}' y1='{input_center_y}{units}' x2='{neuron_center_x}{units}' y2='{neuron_center_y}{units}'/>");
+                        s.Write("        ");
+                        s.WriteLine($"<line id='Synapse {synapse_from_layer_index}[{weight_index}]->{synapse_to_layer_index}[{neuron_index}]' class='Synapse' x1='{input_center_x}{units}' y1='{input_center_y}{units}' x2='{neuron_center_x}{units}' y2='{neuron_center_y}{units}'/>");
 
                         var anchor = synapse_label_loc_percent switch {
                             < 0.25 => "start",
@@ -342,8 +341,8 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithVecto
                             _ => "middle"
                         } ;
 
-                        s.Append("        ");
-                        s.AppendLine($"<text class='Weight' text-anchor='{anchor}' dominant-baseline=\"middle\" x='{synapse_label_x}{units}' y='{synapse_label_y}{units}'>{weight:F2}</text>");
+                        s.Write("        ");
+                        s.WriteLine($"<text class='Weight' text-anchor='{anchor}' dominant-baseline=\"middle\" x='{synapse_label_x}{units}' y='{synapse_label_y}{units}'>{weight:F2}</text>");
 
                         weight_index++;
                     }
@@ -354,25 +353,25 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithVecto
             synapse_from_layer_index++;
             synapse_to_layer_index++;
         }
-        s.AppendLine("    </g>");
+        s.WriteLine("    </g>");
 
         // Neurons
-        s.AppendLine("    <g id='Neurons'>");
+        s.WriteLine("    <g id='Neurons'>");
         if (this.LayerCount > 0) {
             // Input Layer
             var first_layer = this.layers[0];
             var last_layer = this.layers[^1];
 
-            s.Append("        "); s.AppendLine($"<g id='Input Layer'>");
+            s.Write("        "); s.WriteLine($"<g id='Input Layer'>");
             for (var i = 0; i < input_neuron_count; i++) {
                 var neuron_center_x = circle_buffer + circle_radius;
                 var neuron_center_y = i * neuron_block_height + circle_buffer + circle_radius;
-                s.Append("            ");
-                s.AppendLine($"<circle id='Input {i + 1}' class='Neuron' r='{circle_radius}{units}' cx='{neuron_center_x}{units}' cy='{neuron_center_y}{units}'/>");
-                s.Append("            ");
-                s.AppendLine($"<text class='Input' text-anchor='middle' dominant-baseline=\"middle\" x='{neuron_center_x}{units}' y='{neuron_center_y}{units}'>IN {i+1}</text>");
+                s.Write("            ");
+                s.WriteLine($"<circle id='Input {i + 1}' class='Neuron' r='{circle_radius}{units}' cx='{neuron_center_x}{units}' cy='{neuron_center_y}{units}'/>");
+                s.Write("            ");
+                s.WriteLine($"<text class='Input' text-anchor='middle' dominant-baseline=\"middle\" x='{neuron_center_x}{units}' y='{neuron_center_y}{units}'>IN {i+1}</text>");
             }
-            s.Append("        "); s.AppendLine("</g>");
+            s.Write("        "); s.WriteLine("</g>");
 
             // Hidden / Output Layers
             var layer_index = 1;
@@ -382,35 +381,34 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithVecto
                 var layer_center_x = gap + (layer_index + 0.5f) * layer_width;
                 var layer_end_x  = gap + (layer_index + 1) * layer_width;
 
-                s.Append("        "); if (layer == last_layer) { s.AppendLine($"<g id='Output Layer'>"); } else { s.AppendLine($"<g id='Hidden Layer {layer_index}'>"); }
+                s.Write("        "); if (layer == last_layer) { s.WriteLine($"<g id='Output Layer'>"); } else { s.WriteLine($"<g id='Hidden Layer {layer_index}'>"); }
 
                 var neuron_index = 0;
                 foreach (var neuron in layer.Neurons) {
                     var neuron_center_x = layer_center_x;
                     var neuron_center_y = neuron_index * neuron_block_height + circle_buffer + circle_radius;
 
-                    s.Append("            ");
-                    s.AppendLine($"<circle id='Neuron {neuron_index + 1}' class='Neuron' r='{circle_radius}{units}' cx='{neuron_center_x}{units}' cy='{neuron_center_y}{units}'>");
-                    s.Append("                ");
-                    s.AppendLine($"<desc id='Bias'>{neuron.Bias}</desc>");
-                    s.Append("                ");
-                    s.AppendLine($"<desc id='Activation Function'>{neuron.ActivationFunction?.GetType()?.Name}</desc>");
-                    s.Append("            ");
-                    s.AppendLine($"</circle>");
-                    s.Append("            ");
-                    s.AppendLine($"<text class='Bias' text-anchor='middle' dominant-baseline=\"middle\" x='{neuron_center_x}{units}' y='{neuron_center_y}{units}'>{neuron.Bias:F2}</text>");
+                    s.Write("            ");
+                    s.WriteLine($"<circle id='Neuron {neuron_index + 1}' class='Neuron' r='{circle_radius}{units}' cx='{neuron_center_x}{units}' cy='{neuron_center_y}{units}'>");
+                    s.Write("                ");
+                    s.WriteLine($"<desc id='Bias'>{neuron.Bias}</desc>");
+                    s.Write("                ");
+                    s.WriteLine($"<desc id='Activation Function'>{neuron.ActivationFunction?.GetType()?.Name}</desc>");
+                    s.Write("            ");
+                    s.WriteLine($"</circle>");
+                    s.Write("            ");
+                    s.WriteLine($"<text class='Bias' text-anchor='middle' dominant-baseline=\"middle\" x='{neuron_center_x}{units}' y='{neuron_center_y}{units}'>{neuron.Bias:F2}</text>");
 
                     neuron_index++;
                 }
-                s.Append("        "); s.AppendLine("</g>");
+                s.Write("        "); s.WriteLine("</g>");
 
                 layer_index++;
             }
         }
-        s.AppendLine("    </g>");
+        s.WriteLine("    </g>");
 
-        s.Append("</svg>");
-        return s.ToString();
+        s.Write("</svg>");
     }
 
     /// <summary>

@@ -48,7 +48,7 @@ public static void Main() {
         }
     } else if (network is IDiagrammable svg) {
         using (var writer = new StreamWriter($"{filename_root}network.svg")) {
-            writer.Write(svg.ToSvg());
+            svg.ToSvg(writer);
         }
     }
     #endregion

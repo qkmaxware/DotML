@@ -99,9 +99,7 @@ public class Run : BaseCommand {
         } else {
             Console.WriteLine("done");
         }
-        Console.WriteLine();
-        Console.WriteLine(new string('-', 100));
-        Console.WriteLine();
+        DrawDivider();
         result.ConsoleOutput();
     }
 }

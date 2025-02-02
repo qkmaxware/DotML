@@ -219,9 +219,8 @@ public class FeedforwardNetwork:
         sb.WriteTo(writer);
     }
 
-    public string ToSvg() {
+    public void ToSvg(TextWriter s) {
         // Draw input layer
-        StringBuilder s = new StringBuilder();
 
         var max_outputs_matrices = this.InputShape.Channels;
         var kernel_buffer = 0;
@@ -257,20 +256,20 @@ public class FeedforwardNetwork:
         var img_width = (layer_buffer + layer_width) * (this.LayerCount + 1);
 
         var units = "px";
-        s.AppendLine($"<svg width='{img_width}{units}' height='{img_height}{units}' xmlns='http://www.w3.org/2000/svg'>");
-        s.AppendLine("<defs>");
-            s.AppendLine("<pattern id='grid' width='12' height='12' patternUnits='userSpaceOnUse'>");
-                s.AppendLine("<rect x='0' y='0' width='12' height='12' fill='white'></rect>");
-                s.AppendLine("<path d='M 12 0 L 0 0 0 12' fill='white' stroke='gray' stroke-width='1'/>");
-            s.AppendLine("</pattern>");
-        s.AppendLine("</defs>");
+        s.WriteLine($"<svg width='{img_width}{units}' height='{img_height}{units}' xmlns='http://www.w3.org/2000/svg'>");
+        s.WriteLine("<defs>");
+            s.WriteLine("<pattern id='grid' width='12' height='12' patternUnits='userSpaceOnUse'>");
+                s.WriteLine("<rect x='0' y='0' width='12' height='12' fill='white'></rect>");
+                s.WriteLine("<path d='M 12 0 L 0 0 0 12' fill='white' stroke='gray' stroke-width='1'/>");
+            s.WriteLine("</pattern>");
+        s.WriteLine("</defs>");
 
         // Draw "input" layer
-        s.AppendLine($"<text x='{layer_width/2}' y='{16}' text-anchor='middle'>Input</text>");
+        s.WriteLine($"<text x='{layer_width/2}' y='{16}' text-anchor='middle'>Input</text>");
         var input_count = this.InputShape.Channels;
         var matrix_offset = (layer_width - matrix_size) / 2;
         for (var i = 0; i < input_count; i++) {
-            s.AppendLine($"<rect x='{matrix_offset}' y='{i * matrix_size + header_size}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
+            s.WriteLine($"<rect x='{matrix_offset}' y='{i * matrix_size + header_size}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
         }
         var start_layer_midpoint_y = header_size + (input_count * matrix_size) / 2;
 
@@ -279,7 +278,7 @@ public class FeedforwardNetwork:
         var last_layer_midpoint_y = start_layer_midpoint_y;
         bool last_layer_was_fully_connected = false;
         for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
-            s.AppendLine($"<g id='layer{layerIndex}'>");
+            s.WriteLine($"<g id='layer{layerIndex}'>");
             // Compute dimensions
             var layer = this.GetLayer(layerIndex);
             var layer_start_x   = (layer_buffer + layer_width) * (layerIndex + 1);
@@ -297,20 +296,20 @@ public class FeedforwardNetwork:
                         var filter = convo.Filters[filterIndex];
                         for (var kernel = filter.Count; kernel > 0; kernel--) {
                             var kernelIndex = kernel - 1;
-                            s.AppendLine($"<rect x='{matrix_offset + layer_start_x + kernelIndex*kernel_offset}' y='{header_size + filterIndex * matrix_size - kernelIndex*kernel_offset}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
+                            s.WriteLine($"<rect x='{matrix_offset + layer_start_x + kernelIndex*kernel_offset}' y='{header_size + filterIndex * matrix_size - kernelIndex*kernel_offset}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
                         }
                     }
                     layer_midpoint_y = header_size + (convo.FilterCount * matrix_size) / 2;
                     break;
                 case PoolingLayer pool:
                     for (var i = 0; i < last_output_matrices; i++) {
-                        s.AppendLine($"<rect x='{matrix_offset + layer_start_x}' y='{header_size + i * matrix_size}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
+                        s.WriteLine($"<rect x='{matrix_offset + layer_start_x}' y='{header_size + i * matrix_size}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
                     }
                     layer_midpoint_y = last_layer_midpoint_y;
                     break;
                 case ActivationLayer active:
                     {
-                        s.AppendLine("<g id='synapses'>");
+                        s.WriteLine("<g id='synapses'>");
                         if (last_layer_was_fully_connected) {
                             for (var i = 0; i < active.InputShape.Count; i++) {
                                 var neuron_offset = (matrix_size - 2*neuron_radius) / 2;
@@ -318,15 +317,15 @@ public class FeedforwardNetwork:
                                 var center_y = header_size + i * matrix_size + matrix_size / 2;
                                 var in_center_x = (layer_buffer + layer_width) * layerIndex + matrix_offset + matrix_size - neuron_offset; // from the prev_layer
                                 var in_center_y = header_size + i * matrix_size + matrix_size / 2;
-                                s.AppendLine($"<line x1='{in_center_x}' y1='{in_center_y}' x2='{center_x - neuron_radius}' y2='{center_y}' stroke='gray'/>");
+                                s.WriteLine($"<line x1='{in_center_x}' y1='{in_center_y}' x2='{center_x - neuron_radius}' y2='{center_y}' stroke='gray'/>");
                             }
                         }
-                        s.AppendLine("</g>");
+                        s.WriteLine("</g>");
                         for (var i = 0; i < active.InputShape.Count; i++) {
                             var center_x = matrix_offset + layer_start_x + matrix_size / 2;
                             var center_y = header_size + i * matrix_size + matrix_size / 2;
-                            s.AppendLine($"<circle cx='{center_x}' cy='{center_y}' r='{neuron_radius}' fill='black' stroke='black'/>");
-                            s.AppendLine($"<text x='{center_x}' y='{center_y}' text-anchor='middle' fill='white'>F(x)</text>");
+                            s.WriteLine($"<circle cx='{center_x}' cy='{center_y}' r='{neuron_radius}' fill='black' stroke='black'/>");
+                            s.WriteLine($"<text x='{center_x}' y='{center_y}' text-anchor='middle' fill='white'>F(x)</text>");
                         }
                         layer_midpoint_y = last_layer_midpoint_y;
                     }
@@ -336,30 +335,30 @@ public class FeedforwardNetwork:
                         var neuron_offset = (matrix_size - 2*neuron_radius) / 2;
                         var center_x = matrix_offset + layer_start_x + matrix_size / 2;
                         var center_y = header_size + i * matrix_size + matrix_size / 2;
-                        s.AppendLine("<g id='synapses'>");
+                        s.WriteLine("<g id='synapses'>");
                         if (last_layer_was_fully_connected) {
                             for (var j = 0; j < connect.InputShape.Count; j++) {
                                 var in_center_x = (layer_buffer + layer_width) * layerIndex + matrix_offset + matrix_size - neuron_offset; // from the prev_layer
                                 var in_center_y = header_size + j * matrix_size + matrix_size / 2;
-                                s.AppendLine($"<line x1='{in_center_x}' y1='{in_center_y}' x2='{center_x - neuron_radius}' y2='{center_y}' stroke='gray'/>");
+                                s.WriteLine($"<line x1='{in_center_x}' y1='{in_center_y}' x2='{center_x - neuron_radius}' y2='{center_y}' stroke='gray'/>");
                             }
                         }
-                        s.AppendLine("</g>");
-                        s.AppendLine($"<circle cx='{center_x}' cy='{center_y}' r='{neuron_radius}'/>");
+                        s.WriteLine("</g>");
+                        s.WriteLine($"<circle cx='{center_x}' cy='{center_y}' r='{neuron_radius}'/>");
                     }
                     layer_midpoint_y = header_size + (connect.OutputShape.Count * matrix_size) / 2;
                     break;
                 case SoftmaxLayer softmax:
-                    s.AppendLine($"<text x='{layer_width/2}' y='{layer_midpoint_y}' text-anchor='middle'>softmax(x)</text>");
+                    s.WriteLine($"<text x='{layer_width/2}' y='{layer_midpoint_y}' text-anchor='middle'>softmax(x)</text>");
                     break;
             }
 
             // Draw dotted arrow
             if (!last_layer_was_fully_connected) {
-                s.AppendLine($"<line x1='{layer_start_buffer_x}' y1='{last_layer_midpoint_y}' x2='{layer_start_x}' y2='{layer_midpoint_y}' stroke-dasharray='4' stroke='gray'/>");
+                s.WriteLine($"<line x1='{layer_start_buffer_x}' y1='{last_layer_midpoint_y}' x2='{layer_start_x}' y2='{layer_midpoint_y}' stroke-dasharray='4' stroke='gray'/>");
             }
             // Draw title
-            s.AppendLine($"<text x='{layer_start_x + layer_width/2}' y='{layer_start_y + 16}' text-anchor='middle'>{layer.GetType().Name}</text>");
+            s.WriteLine($"<text x='{layer_start_x + layer_width/2}' y='{layer_start_y + 16}' text-anchor='middle'>{layer.GetType().Name}</text>");
 
 
             switch (layer) {
@@ -381,11 +380,10 @@ public class FeedforwardNetwork:
                     break;
             }
             last_layer_midpoint_y = layer_midpoint_y;
-            s.AppendLine("</g>");
+            s.WriteLine("</g>");
         }
 
-        s.Append("</svg>");
-        return s.ToString();
+        s.Write("</svg>");
     }
 
     /// <summary>

@@ -4,7 +4,7 @@ using DotML.Network.Training;
 namespace DotML.Test;
 
 [TestClass]
-public class MakeNetBuild {
+public class NetBuildWriterTest {
 
     [TestMethod]
     // CIFAR10
@@ -50,4 +50,14 @@ public class MakeNetBuild {
         netbuild.Encode(network);
     }
 
+    [TestMethod]
+    // OCR
+    public void MakeAlexNet4x224x224_10() { 
+        var network = AlexNet.Make(AlexNet.Version.V1, 10, img_width: 224, img_height: 224, activation: ReLU.Instance);
+
+        using var writer = new StreamWriter("alexnet.3x224x224.10.netbuild");
+        var netbuild = new NetBuildWriter(writer);
+
+        netbuild.Encode(network);
+    }
 }

@@ -8,5 +8,5 @@ public interface IDiagrammable {
     /// Convert this object to an SVG formatted diagram
     /// </summary>
     /// <returns>SVG string</returns>
-    public string ToSvg();
+    public void ToSvg(TextWriter writer);
 }

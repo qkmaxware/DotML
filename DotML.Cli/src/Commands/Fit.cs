@@ -50,8 +50,20 @@ public class Fit : BaseCommand {
     [Option("learning-rate", HelpText = "Initial learning rate", Required = false, Default = 0.01)]
     public double LearningRate {get; set;}
 
-    [Option("clip-gradients", HelpText = "Flag to indicate if gradient clipping should be performed", Required = false, Default = false)]
-    public bool ClipGradients {get; set;}
+    [Option("batch-size", HelpText = "Batch size, leave blank for batch to be automatically determined", Required = false)]
+    public int? BatchSize {get; set;}
+
+    [Option("clip-gradients", HelpText = "Flag to indicate if gradient clipping should be performed", Required = false, Default = "false")]
+    public string? ClipGradientsStr {get; set;}
+    public bool ClipGradients => IsSet(ClipGradientsStr);
+
+    [Option("skip-testing", HelpText = "Flag to indicate if the testing phase should be skipped", Required = false, Default = "false")]
+    public string? SkipTestingStr {get; set;}
+    public bool SkipTesting => IsSet(SkipTestingStr);
+
+    [Option("continue", HelpText = "Flag to indicate if the existing weights should be used or if the network should be re-initialized", Required = false, Default = "false")]
+    public string? ContinueStr {get; set;}
+    public bool ContinueFromExisting => IsSet(ContinueStr);
 
     public enum UpdateModeType {
         none, overwrite, duplicate
@@ -109,7 +121,7 @@ public class Fit : BaseCommand {
         
         if (network is IDiagrammable svg) {
             using (var writer = new StreamWriter(Path.Combine(dir.FullName, "network-diagram.svg"))) {
-                writer.Write(svg.ToSvg());
+                svg.ToSvg(writer);
             }
         }
         #endregion
@@ -128,7 +140,7 @@ public class Fit : BaseCommand {
             EarlyStopPatience       = 1,
             LossFunction            = smart_pick_loss(network),
             NetworkInitializer      = smart_pick_initializer(network),
-            BatchSize               = smart_pick_batch_size(network),
+            BatchSize               = BatchSize.HasValue ? Math.Max(1, BatchSize.Value) : smart_pick_batch_size(network),
             EnableGradientClipping  = ClipGradients,
             ClippingThresholdSynapses = 10,
             ClippingThresholdBiases = 5.0,
@@ -151,9 +163,9 @@ public class Fit : BaseCommand {
 
         #region Data
         var randgen = new Random();
-        TrainingSet trainingPairs   = read_data(training_file);                                                      // Data used in backpropagation
-        TrainingSet validationPairs = validation_file is not null ? read_data(validation_file) : new TrainingSet(trainingPairs.SampleRandomly((int)Math.Max(1, 0.25 * trainingPairs.Size)).AsEnumerable());    // Data used in early-stop & validation
-        TrainingSet testingPairs    = testing_file is not null ? read_data(testing_file) : trainingPairs;             // Data used in verify model "generality"
+        TrainingSet trainingPairs   = ReadData(training_file);                                                      // Data used in backpropagation
+        TrainingSet validationPairs = validation_file is not null ? ReadData(validation_file) : new TrainingSet(trainingPairs.SampleRandomly((int)Math.Max(1, 0.25 * trainingPairs.Size)).AsEnumerable());    // Data used in early-stop & validation
+        TrainingSet testingPairs    = testing_file is not null ? ReadData(testing_file) : trainingPairs;             // Data used in verify model "generality"
         var batch_size              = trainer.BatchSize;
         var batch_count             = (trainingPairs.Size + trainer.BatchSize - 1) / trainer.BatchSize;
         var validation_batch_count  = (validationPairs.Size + trainer.BatchSize - 1) / trainer.BatchSize;
@@ -204,6 +216,9 @@ public class Fit : BaseCommand {
 
         #region Training / Load checkpoint
         // TODO load checkpoint / prior weights
+        if (ContinueFromExisting) {
+            network.FromSafetensor(model.FetchSavedWeights()); // Undo the "reset" operation on the weights
+        }
         #endregion
 
         for (var col = 0; col < training_headers.Length; col++) {
@@ -293,9 +308,9 @@ public class Fit : BaseCommand {
             validation_writer.Flush();
 
             // Save testing report entry (currently no UI to monitor this)
-            if (testing_report is not null) {
+            if (!SkipTesting && testing_report is not null) {
                 report = testing_report;
-                test(network, testingPairs, report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
+                Test(network, testingPairs, report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
 
                 testing_writer.WriteLine($"{epoch_id}, {report.TestsPassedCount}, {report.TestsFailedCount}, {report.AverageLoss}, {report.MaxLoss}, {report.MinLoss}, {report.Accuracy}, {report.Precision}, {report.Recall}, {report.F1Score}, \"{elapsed}\"");
                 testing_writer.Flush();
@@ -324,6 +339,7 @@ public class Fit : BaseCommand {
         #endregion
 
         #region Cleanup
+        DrawDivider();
         switch (UpdateMode) {
             case UpdateModeType.none:
                 break;
@@ -335,7 +351,6 @@ public class Fit : BaseCommand {
                 model.UpdateWeights(network.ToSafetensor());
                 break;
         }
-        Console.WriteLine();
         Console.WriteLine($"Reports saved to '{dir.FullName}'.");
         #endregion
     }
@@ -375,7 +390,7 @@ public class Fit : BaseCommand {
             return new HeInitialization();
         }
     }
-    private static void test(FeedforwardNetwork network, TrainingSet data, IValidationReport report, int batch_size, double pass_threshold, LossFunction loss_fn) {
+    public static void Test(FeedforwardNetwork network, TrainingSet data, IValidationReport report, int batch_size, double pass_threshold, LossFunction loss_fn) {
         var data_iterator = data.SampleSequentially(); 
         var max_error = double.MinValue;
         var all_less_threshold = true;
@@ -420,13 +435,13 @@ public class Fit : BaseCommand {
         }
     }
 
-    ITrainingDataFormat[] formats = [
+    private static ITrainingDataFormat[] formats = [
         new TrainingData.JsonVectorPairs(),
         new TrainingData.ClassifiedCsv(),
         new TrainingData.BinaryTrainingSet(),
         new TrainingData.BinaryClassifiedVectors()
     ];
-    private TrainingSet read_data(FileInfo file) {
+    public static TrainingSet ReadData(FileInfo file) {
         foreach (var format in formats) {
             if (format.IsInFormat(file)) {
                 return format.Read(file);

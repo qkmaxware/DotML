@@ -88,6 +88,16 @@ public class ModelInfo {
         return network;
     }
 
+    public Safetensors FetchSavedWeights() {
+        try {
+            if (weights_file is not null && weights_file.Exists) {
+                var st = Safetensors.ReadFromFile(weights_file);
+                return st;
+            }
+        } catch { }
+        return new Safetensors();
+    }
+
     public void UpdateWeights(Safetensors tensors) {
         if (weights_file is null)
             return;

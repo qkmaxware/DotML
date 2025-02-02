@@ -40,13 +40,13 @@ public class Tag : BaseCommand {
         if (ToAdd is not null && ToAdd.Any()) {
             foreach (var tag in ToAdd)
                 model.Tags.Add(tag);
-            Console.WriteLine($"Added tags: [{string.Join(',', ToAdd)}]");
+            Console.WriteLine($"Successfully added tags [{string.Join(',', ToAdd)}] on {model.Guid}");
         }
 
         if (ToRemove is not null && ToRemove.Any()) {
             foreach (var tag in ToRemove)
                 model.Tags.Remove(tag);
-            Console.WriteLine($"Removed tags: [{string.Join(',', ToRemove)}]");
+            Console.WriteLine($"Successfully removed tags [{string.Join(',', ToRemove)}] on {model.Guid}");
         }
 
         model.UpdateMetadata();

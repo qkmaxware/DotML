@@ -18,10 +18,25 @@ public abstract class BaseCommand {
             return ex.ErrorCode;
         }
         catch (Exception e) {
+            Console.WriteLine();
             Console.WriteLine("An unexpected error occurred:");
             Console.WriteLine(e);
             return GENERIC_ERROR;
         }
+    }
+
+    private static string[] truthy = ["true", "yes"];
+    protected static bool IsSet(string? value) {
+        return 
+            !string.IsNullOrEmpty(value)    // Not empty
+            && truthy.Where(v => v.Equals(value, StringComparison.CurrentCultureIgnoreCase)).Any() // And is a truth string
+        ;
+    }
+
+    protected void DrawDivider(int? size = null) {
+        Console.WriteLine();
+        Console.WriteLine(new string('-', size.HasValue ? Math.Max(0, size.Value) : Console.WindowWidth));
+        Console.WriteLine();
     }
 
     protected string ColumnValue(object obj, int colLength) {
