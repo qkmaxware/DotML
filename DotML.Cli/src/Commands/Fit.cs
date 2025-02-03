@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CommandLine;
+using DotML.Cli.Notifiers;
 using DotML.Network;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
@@ -68,9 +69,12 @@ public class Fit : BaseCommand {
     public enum UpdateModeType {
         none, overwrite, duplicate
     }
-
     [Option("save", HelpText = "Flag to indicate how the final weights should be applied to the model (none, overwrite, or duplicate)", Default = UpdateModeType.overwrite)]
     public UpdateModeType UpdateMode {get; set;}
+    
+
+    [Option("notify", HelpText = "Url, endpoint, or address to send notification updates to.", Required = false, Default = null)]
+    public string? NotifyEndpoint {get; set;}
 
     public override void Action(AppData appData) {
         #region Validate Args
@@ -94,6 +98,7 @@ public class Fit : BaseCommand {
             Console.WriteLine($"The testing data file '{TestingDataPath}' doesn't exist.");
             return;
         }
+        INotifier? notifier = GetNotifierFor(NotifyEndpoint);
         #endregion
 
         var dir = appData.CreateTrainingDir();
@@ -207,7 +212,8 @@ public class Fit : BaseCommand {
         Console.WriteLine();
         string[] training_headers = ["EPOCH", "PROGRESS", "ACCURACY", "PRECISION", "RECALL", "LOSS", "VALIDATION", "TIME-TAKEN"];
         int[] training_header_len = [5,       25,         10,          10,          10,       10,    15,            25          ];
-        Console.WriteLine(new String('-', training_header_len.Sum()));
+        var divider_len = training_header_len.Sum();
+        Console.WriteLine(new String('-', divider_len));
         Console.WriteLine();
 
         #region Training
@@ -230,23 +236,32 @@ public class Fit : BaseCommand {
         Console.WriteLine();
 
         ProgressBar? current_progress = null;
+        var has_cancelled = false;
         session.OnEpochStart += (int epoch, int epochCount) => {
             current_progress?.Update(0, iteration_count);
+            
         };
-            session.OnBatchStart += (int batch, int batchCount) => { };
+            session.OnBatchStart += (int batch, int batchCount) => {
+                
+            };
             session.OnBatchEnd += (int batch, int batchCount) => {
                 current_progress?.Update(batch, iteration_count);
+                
             };
             session.OnValidationStart += (int epoch, int epochCount) => {
                 current_progress?.Update(batch_count, iteration_count);
+                
             };
                 session.OnValidated += (int epoch, int epochCount, int inputIndex, double loss) => {
                     var actual_progress = batch_count + inputIndex/batch_size; // batch index for validation
                     current_progress?.Update(actual_progress, iteration_count);
+                    
                 };
-            session.OnValidationEnd += (int epoch, int epochCount, double loss) => {};
+            session.OnValidationEnd += (int epoch, int epochCount, double loss) => {
+                
+            };
         session.OnEpochEnd += (int epoch, int epochCount) => {
-            current_progress?.Update(iteration_count, iteration_count);
+           
         };
 
         using var validation_writer = new StreamWriter(Path.Combine(dir.FullName, "validation.csv"));
@@ -259,9 +274,19 @@ public class Fit : BaseCommand {
 
         (double accuracy, double precision, double recall, double minloss, double maxloss, double avgloss, int passed)? prev_report = null;
         var has_next = true;
+        Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
+            has_next = false;                   // Stop at end of next iteration
+            has_cancelled = true;               // Indicate that we have cancelled it
+            UpdateMode = UpdateModeType.none;   // We don't want to preserve weights if cancelled
+            Console.WriteLine(); Console.WriteLine();
+            Console.WriteLine("<!-- Training Cancelled by User -->");
+            DrawDivider(divider_len);
+            Console.WriteLine($"Reports saved to '{dir.FullName}'.");
+        };
+        notifier?.NotifyTrainingStarted(network);
         while (has_next) {
             #region Training / Epoch Start
-            // Print the begining of the epoch entry to the CLI
+            // Print the beginning of the epoch entry to the CLI
             var epoch_id = session.CurrentEpoch + 1;
             Console.Write(ColumnValue(epoch_id, training_header_len[0]));
             Console.Write(' '); 
@@ -282,20 +307,21 @@ public class Fit : BaseCommand {
             #region Training / Epoch End
             // Print the rest of the epoch entry to the CLI 
             var report = validation_report;
+            notifier?.NotifyTrainingStep(network, epoch_id, trainer.Epochs, validation_report);
             var def_colour = Console.ForegroundColor;
-            Console.ForegroundColor = (prev_report.HasValue && prev_report.Value.accuracy <= report.Accuracy) ? ConsoleColor.Green : ConsoleColor.Red; // Accuracy should be higher
+            Console.ForegroundColor = !prev_report.HasValue ? def_colour : (prev_report.Value.accuracy <= report.Accuracy ? ConsoleColor.Green : ConsoleColor.Red); // Accuracy should be higher
             Console.Write(ColumnValue(report.Accuracy, training_header_len[2]));
             Console.Write(' '); 
-            Console.ForegroundColor = (prev_report.HasValue && prev_report.Value.precision <= report.Precision) ? ConsoleColor.Green : ConsoleColor.Red; // Precision should be higher
+            Console.ForegroundColor = !prev_report.HasValue ? def_colour : (prev_report.Value.precision <= report.Precision ? ConsoleColor.Green : ConsoleColor.Red); // Precision should be higher
             Console.Write(ColumnValue(report.Precision, training_header_len[3]));
             Console.Write(' '); 
             Console.ForegroundColor = def_colour;
             Console.Write(ColumnValue(report.Recall, training_header_len[4]));
             Console.Write(' '); 
-            Console.ForegroundColor = (prev_report.HasValue && prev_report.Value.avgloss >= report.AverageLoss) ? ConsoleColor.Green : ConsoleColor.Red; // Loss should be smaller
+            Console.ForegroundColor = !prev_report.HasValue ? def_colour : (prev_report.Value.avgloss >= report.AverageLoss ? ConsoleColor.Green : ConsoleColor.Red); // Loss should be smaller
             Console.Write(ColumnValue(report.AverageLoss, training_header_len[5]));
             Console.Write(' '); 
-            Console.ForegroundColor = (prev_report.HasValue && prev_report.Value.passed <= report.TestsPassedCount) ? ConsoleColor.Green : ConsoleColor.Red; // Passed should be higher
+            Console.ForegroundColor = !prev_report.HasValue ? def_colour : (prev_report.Value.passed <= report.TestsPassedCount ? ConsoleColor.Green : ConsoleColor.Red); // Passed should be higher
             Console.Write(ColumnValue(report.TestsPassedCount + "/" + report.TestCount, training_header_len[6]));
             Console.Write(' '); 
             Console.ForegroundColor = def_colour;
@@ -333,13 +359,14 @@ public class Fit : BaseCommand {
             } catch {}
             #endregion
         }
+        notifier?.NotifyTrainingDone(network, session.CurrentEpoch, validation_report);
         #region Training / Done
 
         #endregion
         #endregion
 
         #region Cleanup
-        DrawDivider();
+        DrawDivider(divider_len);
         switch (UpdateMode) {
             case UpdateModeType.none:
                 break;
@@ -435,6 +462,19 @@ public class Fit : BaseCommand {
         }
     }
 
+    private static INotifierFactory[] notifiers = [
+        new DiscordFactory()
+    ];
+    private INotifier? GetNotifierFor(string? endpoint) {
+        if (string.IsNullOrEmpty(endpoint))
+            return null;
+        foreach (var notifier in notifiers) {
+            if (notifier.SupportsEndpoint(endpoint))
+                return notifier.Make(endpoint);
+        }
+        return null;
+    }
+
     private static ITrainingDataFormat[] formats = [
         new TrainingData.JsonVectorPairs(),
         new TrainingData.ClassifiedCsv(),
@@ -449,5 +489,9 @@ public class Fit : BaseCommand {
         }
         throw new FormatException($"Unknown file format for '{file.Name}'");
     }
+    #endregion
+
+    #region Utility Classes
+    private class TrainingCancelledEvent : Exception { }
     #endregion
 }
