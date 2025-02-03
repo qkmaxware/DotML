@@ -16,7 +16,7 @@ public class BinaryClassifiedVectors : ITrainingDataFormat {
     }
 
     public TrainingSet Read(FileInfo file) {
-        return read_classified_binary_vectors(file, OutputClasses, ZeroValue, OneValue, x => x.ReadByte());
+        return read_classified_binary_vectors(file, ZeroValue, OneValue, x => x.ReadByte());
     }
 
     private static Vec<double> vector_from_label_index(int index, int classes, double off = -1, double on = 1) {
@@ -27,13 +27,15 @@ public class BinaryClassifiedVectors : ITrainingDataFormat {
         return Vec<double>.Wrap(values);
     }
 
-    private static TrainingSet read_classified_binary_vectors(FileInfo file, int category_count, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
+    private static TrainingSet read_classified_binary_vectors(FileInfo file, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
         using var stream = file.OpenRead();
         using var reader = new BinaryReader(stream);
-                            
-        List<TrainingPair> pairs = new List<TrainingPair>();
+        
+        List<(Vec<double>, int)> items = new List<(Vec<double>, int)>();
+        int category_count = 1;
         while (stream.Position < stream.Length) {
             var category_index  = reader.ReadByte();
+            category_count = Math.Max(category_count, category_index + 1);
             var vector_size     = fixed_vector_size.HasValue ? fixed_vector_size.Value : reader.ReadInt32();
             double[] input_vec  = new double[vector_size];
 
@@ -44,9 +46,9 @@ public class BinaryClassifiedVectors : ITrainingDataFormat {
                     input_vec[i] = default(double);
                 }
             } 
-            pairs.Add(new TrainingPair { Input = Vec<double>.Wrap(input_vec), Output = vector_from_label_index(category_index, category_count, category_off, category_on) });
+            items.Add((Vec<double>.Wrap(input_vec), category_index));
         }
-
-        return new TrainingSet(pairs);
+        
+        return new TrainingSet(items.Select(item => new TrainingPair { Input=item.Item1, Output=vector_from_label_index(item.Item2, category_count, category_off, category_on) }));
     }
 }

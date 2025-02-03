@@ -43,9 +43,8 @@ public class Describe : BaseCommand {
         Console.WriteLine();
 
         Console.WriteLine("ARCHITECTURE");
-        string[] columns = ["INPUT-SHAPE", "OUTPUT-SHAPE", "TRAINABLE-PARAMS", "UNTRAINABLE_PARAMS", "DESCRIPTION"];
+        string[] columns = ["LAYER-TYPE       ", "INPUT-SHAPE", "OUTPUT-SHAPE", "TRAINABLE-PARAMS", "UNTRAINABLE-PARAMS", "DESCRIPTION"];
         int[] lengths = columns.Select(str => str.Length).ToArray();
-        lengths[^1] = 80;
         Console.Write(" | ");
         for (var col = 0; col < columns.Length; col++) {
             var name = columns[col];
@@ -60,15 +59,17 @@ public class Describe : BaseCommand {
         for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
             var layer = network.GetLayer(layerIndex);
             Console.Write(" | ");
-            Console.Write(ColumnValue(layer.InputShape, lengths[0]));
+            Console.Write(ColumnValue(layer.GetType().Name.Replace("Layer", string.Empty), lengths[0]));
             Console.Write(' ');
-            Console.Write(ColumnValue(layer.OutputShape, lengths[1]));
+            Console.Write(ColumnValue(layer.InputShape, lengths[1]));
             Console.Write(' ');
-            Console.Write(ColumnValue(layer.TrainableParameterCount(), lengths[2]));
+            Console.Write(ColumnValue(layer.OutputShape, lengths[2]));
             Console.Write(' ');
-            Console.Write(ColumnValue(layer.UnTrainableParameterCount(), lengths[3]));
+            Console.Write(ColumnValue(layer.TrainableParameterCount(), lengths[3]));
             Console.Write(' ');
-            Console.Write(layer.Visit(describer), lengths[4]);
+            Console.Write(ColumnValue(layer.UnTrainableParameterCount(), lengths[4]));
+            Console.Write(' ');
+            Console.Write(layer.Visit(describer), lengths[5]);
             Console.WriteLine();
         }
         Console.WriteLine();

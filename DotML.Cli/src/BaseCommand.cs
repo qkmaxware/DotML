@@ -8,6 +8,7 @@ public abstract class BaseCommand {
     public abstract void Action(AppData appData);
 
     public int TryDoAction(AppData appData) {
+        Console.Title = "DotML.NetFlow";
         try {
             Console.WriteLine();
             Action(appData);
@@ -35,7 +36,7 @@ public abstract class BaseCommand {
 
     protected void DrawDivider(int? size = null) {
         Console.WriteLine();
-        Console.WriteLine(new string('-', size.HasValue ? Math.Max(0, size.Value) : Console.WindowWidth));
+        Console.WriteLine(new string('-', size.HasValue ? Math.Max(0, size.Value) : (Console.WindowWidth - 1)));
         Console.WriteLine();
     }
 

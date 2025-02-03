@@ -79,7 +79,7 @@ public class ModelInfo {
         NetBuild builder = new NetBuild();
         var network = builder.ParseAndBuild(File.ReadAllText(this.network_file.FullName));
         if (network is INamedNetwork named) {
-            network.Name = Tags.FirstOrDefault() ?? Guid ?? "?";
+            network.Name = Guid;
         }
         if (weights_file is not null && weights_file.Exists) {
             var st = Safetensors.ReadFromFile(weights_file);
