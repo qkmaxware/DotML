@@ -22,12 +22,12 @@ public class LayerSafetensorWriter : ILayerVisitor<int, bool> {
     }
 
     public bool Visit(DepthwiseConvolutionLayer convo, int layerIndex) {
-        var filter = convo.Filter;
+        var filter = convo.Filters;
         for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
-            var kernel = filter[kernelIndex];
+            var kernel = filter[kernelIndex][0];
             sb.Add($"Layers[{layerIndex}].Filter.Kernel[{kernelIndex}]", kernel);
         }
-        sb.Add($"Layers[{layerIndex}].Filter.Bias", new Matrix<double>(1, 1, filter.Bias));
+        sb.Add($"Layers[{layerIndex}].Filter.Bias", new Vec<double>(filter.Select(x => x.Bias).ToArray()));
         return true;
     }
 

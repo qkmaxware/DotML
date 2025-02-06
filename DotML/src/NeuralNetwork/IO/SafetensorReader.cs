@@ -29,17 +29,20 @@ public class LayerSafetensorReader : ILayerVisitor<int, bool> {
     }
 
     public bool Visit(DepthwiseConvolutionLayer convo, int layerIndex) {
-        var filter = convo.Filter;
+        var filter = convo.Filters;
         for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
-            var kernel = filter[kernelIndex];
+            var kernel = filter[kernelIndex][0];
             var kkey = $"Layers[{layerIndex}].Filter.Kernel[{kernelIndex}]";
             if (sb.ContainsKey(kkey)) {
-                filter[kernelIndex] = sb.GetTensor<double>(kkey);
+                filter[kernelIndex][0] = sb.GetTensor<double>(kkey);
             }
         }
         var bkey = $"Layers[{layerIndex}].Filter.Bias";
         if (sb.ContainsKey(bkey)) {
-            filter.Bias = sb.GetTensor<double>(bkey)[0, 0];
+            int index = 0;
+            foreach (var bias in sb.GetTensor<double>(bkey)) {
+                filter[index++].Bias = bias;
+            }
         }
         return true;
     }

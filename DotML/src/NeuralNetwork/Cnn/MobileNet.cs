@@ -34,7 +34,7 @@ public static class MobileNet {
     public const int IMG_CHANNELS = 3;
 
     private static IEnumerable<IFeedforwardNetworkLayer> DepthwiseBlock(Shape3D size, int stride, int kernel_size=3, Padding padding = Padding.Same, ActivationFunction? activation = null) {
-        var first = new DepthwiseConvolutionLayer(input_size: size, padding: padding, stride: stride, filter: ConvolutionFilter.Make(1, size.Channels, kernel_size)[0]);
+        var first = new DepthwiseConvolutionLayer(input_size: size, padding: padding, stride: stride, filter: ConvolutionFilter.Make(size.Channels, 1, kernel_size));
         yield return first;
         yield return new BatchNorm(input_size: first.OutputShape);
         yield return new ActivationLayer(input_size: first.OutputShape, activation: activation ?? ReLU.Instance);

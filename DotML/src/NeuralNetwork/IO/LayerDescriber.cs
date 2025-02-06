@@ -9,7 +9,7 @@ public class LayerDescriber : ILayerVisitor<string> {
     }
 
     public string Visit(DepthwiseConvolutionLayer layer) {
-        return $"{layer.Filter.Count} kernels of size {layer.Filter?.FirstOrDefault().Shape}";
+        return $"{layer.Filters.Count} kernels of size {layer.Filters?.FirstOrDefault()?.FirstOrDefault().Shape}";
     }
 
     public string Visit(PoolingLayer layer) {

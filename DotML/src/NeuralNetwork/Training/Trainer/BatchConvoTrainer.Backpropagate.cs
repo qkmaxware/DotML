@@ -254,9 +254,9 @@ public class BackpropagationActions {
 
             var batch_features = new Matrix<double>[channel_count];
 
-            var filter = layer.Filter;
-            var filter_width = filter.Width;
-            var filter_height = filter.Height;
+            var filter = layer.Filters;
+            var filter_width = filter[0].Width;
+            var filter_height = filter[0].Height;
 
             var filter_height_m1 = filter_height - 1;
             var filter_width_m1 = filter_width - 1;
@@ -270,7 +270,7 @@ public class BackpropagationActions {
             for (var channelIndex = 0; channelIndex < channel_count; channelIndex++) {
                 var input_error = new Matrix<double>(input_height, input_width);
                     
-                var kernel = filter[channelIndex];
+                var kernel = filter[channelIndex][0];
                 var error = batch_errors[channelIndex];
                 
                 // Slide kernel over input
@@ -321,15 +321,15 @@ public class BackpropagationActions {
         // This looks almost identical to what I already have, except summing over batch
         // dW(filter, kernel, row, col) = dy(filter, i, j) * input(c, i+k-1, j+l-1)
         // convolution between the input and the error
-        var filter = layer.Filter;
-        var filter_height = filter.Height;
-        var filter_width = filter.Width;
+        var filter = layer.Filters;
+        var filter_height = filter[0].Height;
+        var filter_width = filter[0].Width;
         var paddingRows  = layer.RowsPadding; 
         var paddingColumns  = layer.ColumnsPadding; 
 
         var kcount = filter.Count;
         Parallel.For(0, kcount, i => {
-            var kernel = filter[i];
+            var kernel = filter[i][0];
             var kernel_gradient_matrix = new Matrix<double>(kernel.Rows, kernel.Columns);
 
             for (var batchIndex = 0; batchIndex < batch_count; batchIndex++) { // This can't be as two batches can access the same channel at the same time
