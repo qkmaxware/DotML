@@ -1,5 +1,6 @@
 using System.Collections;
 using DotML.Network.Initialization;
+using DotML.Network.Training;
 
 namespace DotML.Network;
 
@@ -9,6 +10,7 @@ namespace DotML.Network;
 public interface IFeedforwardNetworkLayer : ILayer {
     public FeatureSet<double> EvaluateSync(FeatureSet<double> features);
     public BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features);
+    public BackpropagationReturns Backpropagate(BackpropagationArgs args);
 
     public void BeginTraining();
     public void EndTraining();
@@ -78,6 +80,8 @@ public abstract class FeedforwardNetworkLayer : IFeedforwardNetworkLayer {
         });
         return new BatchedFeatureSet<double>(results);
     }
+
+    public abstract BackpropagationReturns Backpropagate(BackpropagationArgs args);
 
     public abstract void Visit(ILayerVisitor visitor);
     public abstract T Visit<T>(ILayerVisitor<T> visitor);

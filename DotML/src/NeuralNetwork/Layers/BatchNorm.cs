@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Text.Json.Serialization;
 using DotML.Network.Initialization;
+using DotML.Network.Training;
 
 namespace DotML.Network;
 
@@ -132,6 +133,181 @@ public class BatchNorm : FeedforwardNetworkLayer {
             );
         });
         return new BatchedFeatureSet<double>(results);
+    }
+
+    public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        // Terminology
+        // x    is input
+        // xHat is output before scaling and shifting
+        // y    is output after scaling and shifting
+        // g    is a scaling value from the gamma matrix
+        // b    is a shifting value from the beta matrix
+        // u    is the mean 
+        // o2   is the variance
+
+        var batches  = args.OutputErrors.Batches;
+        var one_over_batches = 1.0 / batches;
+        var channels = args.OutputErrors.Channels;
+        var channel_width = args.OutputErrors.Columns;
+        var channel_height = args.OutputErrors.Rows;
+        const double epsilon = 1e-8;
+
+        // Compute mean and variance across the whole batch per channel
+        ComputeMeansAndVariances(args.InputBatch, out var means, out var variances);
+
+        var gamma_gradients = new Matrix<double>[channels];
+        var beta_gradients = new Matrix<double>[channels];
+        var input_gradients = new Matrix<double>[batches][];
+        for (var batch = 0; batch < batches; batch++) {
+            input_gradients[batch] = new Matrix<double>[channels];
+        }
+
+        // Derivations from https://en.wikipedia.org/wiki/Batch_normalization#:~:text=the%20current%20layer.-,Backpropagation,-%5Bedit%5D
+        Parallel.For(0, channels, (int k) => {
+            var gamma = Gammas[k];
+            var beta = Betas[k];
+
+            // Gradient of L with respect to Beta
+            // SUM (dl/dy(k))
+            var loss_wrt_b = new Matrix<double>(channel_height, channel_width);
+            for (var batch = 0; batch < batches; batch++) {
+                var loss_wrt_y_k = args.OutputErrors[batch][k];
+                loss_wrt_b.AddWithInplace(loss_wrt_y_k);
+            }
+            beta_gradients[k] = loss_wrt_b;
+
+            // Gradient of L with respect to Gamma
+            // SUM (dl/dy(k) * xHat) where xHat = (y - b) / g
+            var loss_wrt_g = new Matrix<double>(channel_height, channel_width);
+            for (var batch = 0; batch < batches; batch++) {
+                // Compute xHat from y
+                // y = g * xHat + b  => xHat = (y - b) / g
+                var xhat_k = args.OutputBatch[batch][k] - beta; // Sucks that I have to re-compute this
+                xhat_k.ElementWiseInplace(gamma, (xhat, g) => xhat / (g + epsilon));
+
+                var loss_wrt_y_k = args.OutputErrors[batch][k];
+                var loss_wrt_y_times_xHat = xhat_k;
+                xhat_k.HadamardWithInplace(loss_wrt_y_k);
+                loss_wrt_g.AddWithInplace(loss_wrt_y_times_xHat);
+            }
+            gamma_gradients[k] = loss_wrt_g;
+
+            // Gradient of L with respect to xHat
+            var loss_wrt_xhats = new Matrix<double>[batches];
+            for (var batch = 0; batch < batches; batch++) {
+                var loss_wrt_y_k = args.OutputErrors[batch][k];
+                loss_wrt_xhats[batch] = loss_wrt_y_k.HadamardWith(gamma);
+            }
+
+            var mean = means[k]; // Mean of the channel over the whole batch
+            var variance = variances[k]; // Variance of the channel over the whole batch
+            var std = Math.Sqrt(variance + epsilon);
+            var scale = 1.0 / std;
+
+            // Gradient of L with respect to variance
+            var loss_wrt_variance = new Matrix<double>(channel_height, channel_width);
+            var std_three_halves_times_two = -Math.Pow(variance + epsilon, 3.0 / 2.0) * 2.0;
+            var one_over_std_three_halves_times_two = 1.0 / std_three_halves_times_two;
+            for (var batch = 0; batch < batches; batch++) {
+                var loss_wrt_y_k = args.OutputErrors[batch][k];
+                var x_k = args.InputBatch[batch][k];
+
+                // Term 1
+                var x_minus_mean = x_k.Transform(x => x - mean);
+                var x_minus_mean_times_loss = x_minus_mean;
+                x_minus_mean.HadamardWithInplace(loss_wrt_y_k);
+
+                // Term 2
+                var term1_times_term2 = x_minus_mean_times_loss;
+                x_minus_mean_times_loss.ElementWiseInplace(gamma, (lhs, g) => {
+                    return lhs * (g * one_over_std_three_halves_times_two);
+                });
+            }
+
+            // Gradient of L with respect to mean
+            var loss_wrt_mean = new Matrix<double>(channel_height, channel_width);
+            var loss_wrt_mean_term1 = new Matrix<double>(channel_height, channel_width);
+            var loss_wrt_mean_term2 = new Matrix<double>(channel_height, channel_width);
+            for (var batch = 0; batch < batches; batch++) {
+                var loss_wrt_y_k = args.OutputErrors[batch][k];
+                var x_k = args.InputBatch[batch][k];
+            
+                // Add term 1
+                Matrix<double>.ElementWiseInplace(loss_wrt_mean_term1, loss_wrt_y_k, gamma, (y, g) => y * -g * scale);
+                loss_wrt_mean.AddWithInplace(loss_wrt_mean_term1);
+
+                // Add term 2
+                Matrix<double>.ElementWiseInplace(loss_wrt_mean_term2, loss_wrt_variance, x_k, (v, x) => v * one_over_batches * -2.0 * (x - mean));
+                loss_wrt_mean.AddWithInplace(loss_wrt_mean_term2);
+            }
+
+            // Gradient of L with respect to x
+            for (var batch = 0; batch < batches; batch++) {
+                var x = args.InputBatch[batch][k];
+                var loss_wrt_xHat = loss_wrt_xhats[batch];
+                var loss_wrt_x = new Matrix<double>(x.Rows, x.Columns);
+
+                // Add term 1 (dL/dxHat * scale)
+                loss_wrt_x.ElementWiseInplace(loss_wrt_xHat, (_, v) => v * scale);
+
+                // Add term 2 (dl/dV * 2 * (x - mean) / M)
+                var temp1 = loss_wrt_variance.ElementWise(x, (v, x) => v * 2 * (x - mean) * one_over_batches);
+                loss_wrt_x.AddWithInplace(temp1);
+
+                // Add term 3 (dl/du * 1/M)
+                loss_wrt_x.ElementWiseInplace(loss_wrt_mean, (old, u) => old + u * one_over_batches);
+
+                // Save result
+                input_gradients[batch][k] = loss_wrt_x;
+            }
+
+        });
+
+        return new BackpropagationReturns(
+            new BatchedFeatureSet<double>(input_gradients.Select(x => new FeatureSet<double>(x)).ToArray()),
+            new Gradients (
+                gamma_gradients,
+                beta_gradients
+            )
+        );
+    }
+
+    public class Gradients : LayerGradients {
+        public Matrix<double>[] GammaGradients;
+        public Matrix<double>[] BetaGradients;
+
+        public Gradients(Matrix<double>[] gamma, Matrix<double>[] beta) {
+            this.GammaGradients = gamma;
+            this.BetaGradients = beta;
+        }
+
+        public override void Clip(double weight_threshold, double bias_threshold) {
+            foreach (var matrix in GammaGradients)
+                ClipMatrix(matrix, weight_threshold);
+            foreach (var matrix in BetaGradients)
+                ClipMatrix(matrix, weight_threshold);
+        }
+
+        public override void Apply(GradientTransformationHandler handler) {
+            int index = 0;
+            for (var m = 0; m < GammaGradients.Length; m++) {
+                var gamma = GammaGradients[m];
+                for (var r = 0; r < gamma.Rows; r++) {
+                    for (var c = 0; c < gamma.Columns; c++) {
+                        gamma[r,c] = handler(index++, gamma[r,c]);
+                    }
+                }
+            }
+
+            for (var m = 0; m < BetaGradients.Length; m++) {
+                var beta = BetaGradients[m];
+                for (var r = 0; r < beta.Rows; r++) {
+                    for (var c = 0; c < beta.Columns; c++) {
+                        beta[r,c] = handler(index++, beta[r,c]);
+                    }
+                }
+            }
+        }
     }
 
     public override void Initialize(IInitializer initializer) {

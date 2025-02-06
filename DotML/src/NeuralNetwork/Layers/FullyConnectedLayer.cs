@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 using DotML.Network.Initialization;
+using DotML.Network.Training;
 
 namespace DotML.Network;
 
@@ -164,6 +165,114 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         //var biased = mul + Matrix<double>.Column(bias_values); 
         //var activated = this.ActivationFunction.Invoke(biased);
         //return [ activated ];
+    }
+
+    public class Gradients : LayerGradients {
+        public Matrix<double> WeightGradients;
+        public Vec<double> BiasGradients;
+
+        public Gradients(Matrix<double> weight, Vec<double> bias) {
+            this.WeightGradients = weight;
+            this.BiasGradients = bias;
+        }
+
+        public override void Clip(double weight_threshold, double bias_threshold) {
+            ClipMatrix(WeightGradients, weight_threshold);
+            ClipVector(BiasGradients, bias_threshold);
+        }
+
+        public override void Apply(GradientTransformationHandler handler) {
+            int index = 0;
+            for (var r = 0; r < WeightGradients.Rows; r++) {
+                for (var c = 0; c < WeightGradients.Columns; c++) {
+                    WeightGradients[r,c] = handler(index++, WeightGradients[r,c]);
+                }
+            }
+
+            for (var i = 0; i < BiasGradients.Dimensionality; i++) {
+                BiasGradients[i] = handler(index++, BiasGradients[i]);
+            }
+        }
+    }
+
+    public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        // Form X input matrix for all flattened input batch vectors
+        var xT = new Matrix<double>(args.InputBatch.Batches, InputShape.Count);
+        for (var i = 0; i < args.InputBatch.Batches; i++) {
+            var j = 0;
+            var batch = args.InputBatch[i];
+            foreach (var feature in batch) {
+                var k = 0;
+                foreach (var value in feature.FlattenRows()) {
+                    xT[i,j++] = feature[k++];
+                }
+            }
+        }
+
+        // Form delta matrix for all batch output errors
+        var delta = new Matrix<double>(NeuronCount, args.InputBatch.Batches);
+        for (var i = 0; i < args.InputBatch.Batches; i++) {
+            var batch_output_errors = args.OutputErrors[i][0]; // This is a column vector (only 1 column)
+            for (var j = 0; j < NeuronCount; j++) {
+                delta[j, i] = batch_output_errors[j, 0];
+            }
+        }
+
+        // TODO check dimensions
+        // xT is a matrix of Batches x Input Features
+        // delta is a matrix of Neurons x Batches
+        // layer.Weights is a matrix of size Neurons x Input Features
+        // layer.WeightT is a matrix of size Input Features x Neurons
+
+        // Need this to be of size: Neurons x Input Features 
+        // Delta * InputTransposed
+        // Neurons x Batches * Batches x Input Features => Neurons x Input Features 
+        var weight_gradients = delta * xT; // Neurons x Batches * Batches x Input Features => Neurons x Input Features 
+        // Need this to be of size: Neurons
+        // Delta.Rows
+        // Neurons x Batches => Neurons = Delta.Rows
+        var bias_gradients = delta.AggregateOverColumns((agg, next) => agg + next, initial: 0.0); // Each column is a batch 
+
+        // Need this to be of size: Batches x Input Features | Input Features x Batches (transposed)
+        // WeightsT * Delta
+        // Input Features x Neurons * Neurons x Batches => Input Features x Batches
+        // equivalent to layer.Weights.Transpose() * delta // using the method below removes the need to allocate a temp matrix
+        var input_gradients = this.Weights.MultiplyTransposedWith(delta); // Input Features x Neurons * Neurons x Batches => Input Features x Batches
+
+        // TODO reshape input_error. Each input feature is a column
+        // Each batch must have it's input errors have the same channel/row/column dimensions
+        var shaped_input_gradients = new FeatureSet<double>[args.InputBatch.Batches];
+        for (var batch = 0; batch < shaped_input_gradients.Length; batch++) {
+            var shapes = args.InputBatch[batch].Select(x => x.Shape).ToArray();
+            var features = new Matrix<double>[shapes.Length]; 
+            var index = 0;
+
+            for (var shapeIndex = 0; shapeIndex < shapes.Length; shapeIndex++) {
+                var shape = shapes[shapeIndex];
+                var rows = shape.Rows;
+                var cols = shape.Columns;
+                var mtx = new Matrix<double>(shape.Rows, shape.Columns);
+                for (int row = 0; row < rows; row++) {
+                    for (int col = 0; col < cols; col++) {
+                        if (index < mtx.Size)
+                            mtx[row, col] = input_gradients[index++, batch];
+                        else 
+                            mtx[row, col] = 0.0;
+                    }
+                }
+                var result = mtx;
+                features[shapeIndex] = result;
+            }
+            shaped_input_gradients[batch] = new FeatureSet<double>(features);
+        }
+
+        return new BackpropagationReturns(
+            new BatchedFeatureSet<double>(shaped_input_gradients),
+            new Gradients(
+                weight_gradients,
+                bias_gradients
+            )
+        );
     }
 
 }

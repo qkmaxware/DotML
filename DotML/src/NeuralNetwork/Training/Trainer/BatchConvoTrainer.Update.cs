@@ -11,7 +11,7 @@ public struct LayerUpdateArgs {
     public int ParameterOffset;
     public int UpdateTimestep;
     public int LayerIndex;
-    public Gradients? Gradients;
+    public LayerGradients? Gradients;
 }
 public struct LayerUpdateReturns {
     // Empty but left in case we need this in the future
@@ -56,7 +56,7 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
     }
 
     public LayerUpdateReturns Visit(ConvolutionLayer layer, LayerUpdateArgs args) {
-        if (args.Gradients is null || args.Gradients is not ConvolutionGradients gradients)
+        if (args.Gradients is null || args.Gradients is not ConvolutionLayer.Gradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));
 
         var param_offset = args.ParameterOffset;        
@@ -85,19 +85,17 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
             }
         }
 
-        if (gradients.BiasGradients is not null) {
-            foreach (var elem in gradients.BiasGradients) {
-                if (double.IsNaN(elem)) {
-                    throw new ArithmeticException($"NaN detected in bias gradients while updating weights of a ConvolutionalLayer");
-                }
+        foreach (var elem in gradients.BiasGradients) {
+            if (double.IsNaN(elem)) {
+                throw new ArithmeticException($"NaN detected in bias gradients while updating weights of a ConvolutionalLayer");
             }
-			for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
-				var filter = layer.Filters[filterIndex];
-                var grads = gradients.BiasGradients[filterIndex];
-                var bias_update = gradient_update(args.UpdateTimestep, LearningRate, filter.Bias, grads, param_offset + filterIndex);
-				filter.Bias = filter.Bias - bias_update;
-			}
-		}
+        }
+        for (var filterIndex = 0; filterIndex < layer.FilterCount; filterIndex++) {
+            var filter = layer.Filters[filterIndex];
+            var grads = gradients.BiasGradients[filterIndex];
+            var bias_update = gradient_update(args.UpdateTimestep, LearningRate, filter.Bias, grads, param_offset + filterIndex);
+            filter.Bias = filter.Bias - bias_update;
+        }
 
         return new LayerUpdateReturns {};
     }
@@ -108,9 +106,9 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
 
         if (gradients.KernelGradients is not null) {
             var param_offset = args.ParameterOffset;
-            for (var kernelIndex = 0; kernelIndex < layer.Filter.Count; kernelIndex++) {
+            for (var kernelIndex = 0; kernelIndex < layer.Filters.Count; kernelIndex++) {
                 var grads = gradients.KernelGradients[kernelIndex];
-                var kernel = layer.Filter[kernelIndex];
+                var kernel = layer.Filters[kernelIndex][0];
                 var kernel_width = kernel.Columns;
 
                 grads.Apply((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, kernel[index.Row, index.Column], grad, param_offset + index.Column + index.Row * kernel_width));
@@ -135,7 +133,7 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
     }
 
     public LayerUpdateReturns Visit(LayerNorm layer, LayerUpdateArgs args) {
-        if (args.Gradients is null || args.Gradients is not NormalizationGradients gradients)
+        if (args.Gradients is null || args.Gradients is not LayerNorm.Gradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));
         
         var param_offset = args.ParameterOffset;
@@ -172,7 +170,7 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
 
     public LayerUpdateReturns Visit(BatchNorm layer, LayerUpdateArgs args) {
         // Same as LayerNorm above
-        if (args.Gradients is null || args.Gradients is not NormalizationGradients gradients)
+        if (args.Gradients is null || args.Gradients is not BatchNorm.Gradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));
         
         var param_offset = args.ParameterOffset;
@@ -218,7 +216,7 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
     }
 
     public LayerUpdateReturns Visit(FullyConnectedLayer layer, LayerUpdateArgs args) {
-        if (args.Gradients is null || args.Gradients is not FullyConnectedGradients gradients)
+        if (args.Gradients is null || args.Gradients is not FullyConnectedLayer.Gradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));
 
         var param_offset = args.ParameterOffset;

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using DotML.Network.Initialization;
+using DotML.Network.Training;
 
 namespace DotML.Network;
 
@@ -117,6 +118,10 @@ public class DeconvolutionLayer : FeedforwardNetworkLayer {
         }
 
         return new FeatureSet<double>(outputs);
+    }
+
+    public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        throw new NotImplementedException();
     }
 
     public override void Visit(ILayerVisitor visitor) {

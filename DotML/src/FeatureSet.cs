@@ -13,15 +13,39 @@ public class BatchedFeatureSet<T> :
 {
     private FeatureSet<T>[] batches;
 
+    /// <summary>
+    /// Create a new empty batched feature set
+    /// </summary>
     public BatchedFeatureSet() {
         batches = Array.Empty<FeatureSet<T>>();
     }
 
+    /// <summary>
+    /// Copy an existing batched feature set
+    /// </summary>
+    /// <param name="other"></param>
     public BatchedFeatureSet(BatchedFeatureSet<T> other) {
         this.batches = (FeatureSet<T>[])other.batches.Clone();
     }
 
+    /// <summary>
+    /// Create a new batched feature set from the list of feature sets
+    /// </summary>
+    /// <param name="batches">feature sets</param>
     public BatchedFeatureSet(params FeatureSet<T>[] batches) {
+        this.batches = batches;
+    }
+
+    /// <summary>
+    /// Create a batched feature set with the given shape
+    /// </summary>
+    /// <param name="shape">shape of the feature set</param>
+    public BatchedFeatureSet(Shape4D shape) {
+        var batches = new FeatureSet<T>[shape.Batches];
+        var subshape = new Shape3D(shape.Channels, shape.Rows, shape.Columns);
+        for (var batch = 0; batch < shape.Batches; batch++) {
+            batches[batch] = new FeatureSet<T>(subshape);
+        }
         this.batches = batches;
     }
 
@@ -112,6 +136,18 @@ public class FeatureSet<T> :
     /// </summary>
     /// <param name="channels">feature channels</param>
     public FeatureSet(params Matrix<T>[] channels) {
+        this.channels = channels;
+    }
+
+    /// <summary>
+    /// Create a feature set with the given shape
+    /// </summary>
+    /// <param name="channels">shape of the feature set</param>
+    public FeatureSet(Shape3D shape) {
+        var channels = new Matrix<T>[shape.Channels];
+        for (var c = 0; c < shape.Channels; c++) {
+            channels[c] = new Matrix<T>(shape.Rows, shape.Columns);
+        }
         this.channels = channels;
     }
 

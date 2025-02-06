@@ -6,15 +6,6 @@ using DotML.Network.Initialization;
 namespace DotML.Network.Training;
 
 public partial class BatchTrainerEnumerator<TNetwork> {
-
-public struct BackpropagationArgs {
-    public Vec<double>[] BatchTrueLabels;
-    public int LayerIndex;
-    public BatchedFeatureSet<double> InputBatch;
-    public BatchedFeatureSet<double> OutputBatch;
-    public BatchedFeatureSet<double> OutputErrors;
-}
-
 public abstract class Gradients { }
 
 public class FullyConnectedGradients : Gradients {
@@ -46,7 +37,7 @@ public double GradientClippingThresholdWeight => backpropagationActions.Gradient
 public double GradientClippingThresholdBias => backpropagationActions.GradientClippingThresholdBias;
 
 private BackpropagationActions backpropagationActions {get; init;}
-public class BackpropagationActions : ILayerVisitor<BatchTrainerEnumerator<TNetwork>.BackpropagationArgs, BatchTrainerEnumerator<TNetwork>.BackpropagationReturns> {
+public class BackpropagationActions {
 
     public BackpropagationActions(bool useClipping, double weightThreshold, double biasThreshold) {
         this.UseGradientClipping = useClipping;

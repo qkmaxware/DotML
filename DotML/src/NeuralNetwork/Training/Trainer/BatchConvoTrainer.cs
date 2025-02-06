@@ -201,7 +201,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
         this.batch_inputs   = new FeatureSet<double>[this.BatchSize][]; // The inputs to each layer
         this.batch_outputs  = new FeatureSet<double>[this.BatchSize][]; // The outputs from each layer
-        this.layer_gradients = new Gradients?[Current.LayerCount];
+        this.layer_gradients = new LayerGradients?[Current.LayerCount];
 
         this.MaxEpochs = Math.Max(0, epochs);
 
@@ -227,7 +227,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
     private int num_batches;
     FeatureSet<double>[][] batch_inputs;
     FeatureSet<double>[][] batch_outputs;
-    Gradients?[] layer_gradients;
+    LayerGradients?[] layer_gradients;
 
     private int count_training_items() {
         int count = 0;
@@ -251,7 +251,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this.batch.Clear(); this.batch.EnsureCapacity(this.BatchSize);
         this.batch_inputs   = new FeatureSet<double>[this.BatchSize][]; // The inputs to each layer
         this.batch_outputs  = new FeatureSet<double>[this.BatchSize][]; // The outputs from each layer
-        this.layer_gradients = new Gradients?[Current.LayerCount];
+        this.layer_gradients = new LayerGradients?[Current.LayerCount];
 
         this._patience_count = this.EarlyStopPatience;
 
@@ -419,13 +419,10 @@ public partial class BatchTrainerEnumerator<TNetwork>
                     output_batches[layerIndex] = new BatchedFeatureSet<double>(outfeatures);
                 }
                 // Setup initial backpropagation arguments
-                var backprop_args = new BackpropagationArgs();
-                backprop_args.BatchTrueLabels = new Vec<double>[batch_size];
                 FeatureSet<double>[] output_errors = new FeatureSet<double>[batch_size];
                 for (var b = 0; b < batch_size; b++) {
                     var currentPair = batch[b];
                     var expected = currentPair.Output;
-                    backprop_args.BatchTrueLabels[b] = expected;
 
                     var predicted = output_batches[^1][b];                                      // The outputs of the last layer for batch 'b'
                     var @true = expected.Shape(predicted.Shape);                                // Make the expected vector match the output shape
@@ -433,18 +430,29 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
                     output_errors[b] = new FeatureSet<double>(errors);
                 }
-                backprop_args.OutputErrors = new BatchedFeatureSet<double>(output_errors);
+                var backprop_args = new BackpropagationArgs(
+                    Current.LayerCount - 1, 
+                    new BatchedFeatureSet<double>(), // Gets replaced later
+                    new BatchedFeatureSet<double>(), // Gets replaced later
+                    new BatchedFeatureSet<double>(output_errors)
+                );
 
                 // Do backwards pass through the layers
                 for (var layerIndex = Current.LayerCount - 1; layerIndex >= 0; layerIndex--) {
+                    backprop_args.LayerIndex = layerIndex;
                     backprop_args.InputBatch = input_batches[layerIndex]; // Will be needed for backpropagation of BatchNorm (as we need to see ALL batched inputs to compute mean/variance)
                     backprop_args.OutputBatch = output_batches[layerIndex];
                     
                     var layer = Current.GetLayer(layerIndex);
-                    backprop_args.LayerIndex = layerIndex;
-                    var returns = layer.Visit(this.backpropagationActions, backprop_args); // Backpropagation is different for each layer kind, leverage polymorphism
-                    
-                    layer_gradients[layerIndex] = returns.Gradient;
+                    var returns = layer.Backpropagate(backprop_args);
+                    if (UseGradientClipping) {
+                        // Do gradient clipping on update gradients
+                        returns.Gradients?.Clip(GradientClippingThresholdWeight, GradientClippingThresholdBias);
+                        // Do gradient clipping on input gradients (so that the clipped gradients get backpropagated)
+                        ClipBatch(returns.InputErrors, GradientClippingThresholdWeight);
+                    }
+
+                    layer_gradients[layerIndex] = returns.Gradients;
                     backprop_args.OutputErrors = returns.InputErrors;
                 }
             }
@@ -457,13 +465,15 @@ public partial class BatchTrainerEnumerator<TNetwork>
                 this.layerUpdateActions.TrackUsedParameters(false); // TODO only do this in DEBUG mode
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                     // Average gradients across batch
-                    Gradients? avgGradient = layer_gradients[layerIndex];
+                    LayerGradients? avgGradient = layer_gradients[layerIndex];
+                    //avgGradient?.Apply((index, grad) =>  gradient_update(update_args.UpdateTimestep, LearningRate, prev, grad, update_args.ParameterOffset + index));
 
                     // Perform update
                     update_args.Gradients = avgGradient;
                     var layer = Current.GetLayer(layerIndex);
                     update_args.LayerIndex = layerIndex;
                     layer.Visit<LayerUpdateArgs, LayerUpdateReturns>(this.layerUpdateActions, update_args);
+                    //layer.SubtractGradients(avgGradient);
                     update_args.ParameterOffset += layer.TrainableParameterCount();
                 }
             }
@@ -485,6 +495,35 @@ public partial class BatchTrainerEnumerator<TNetwork>
         } catch (Exception e) {
             throw new ConvolutionalBackpropagationException(Current, e);
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected double ClipValue(double d, double threshold) {
+        if (double.IsNaN(d))
+            d = 1e-8;
+        return Math.Abs(d) > threshold ? Math.Sign(d) * threshold : d;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected void ClipVector(Vec<double> vec, double threshold) {
+        vec.Apply((value) => ClipValue(value, threshold));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected void ClipMatrix(Matrix<double> mat, double threshold) {
+        mat.Apply((value) => ClipValue(value, threshold));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected void ClipFeatures(FeatureSet<double> features, double threshold) {
+        foreach (var matrix in features)
+            ClipMatrix(matrix, threshold);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected void ClipBatch(BatchedFeatureSet<double> batch, double threshold) {
+        foreach (var features in batch)
+            ClipFeatures(features, threshold);
     }
 
     public event EpochStartHandler OnEpochStart = delegate {};

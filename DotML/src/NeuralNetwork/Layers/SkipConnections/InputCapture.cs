@@ -1,4 +1,5 @@
 using DotML.Network.Initialization;
+using DotML.Network.Training;
 
 namespace DotML.Network;
 
@@ -41,6 +42,10 @@ public class InputCapture : FeedforwardNetworkLayer {
     public override BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
         CapturedInput = features;
         return features;
+    }
+
+    public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        return new BackpropagationReturns(args.OutputErrors, null);
     }
 
     public override void Initialize(IInitializer initializer) { }

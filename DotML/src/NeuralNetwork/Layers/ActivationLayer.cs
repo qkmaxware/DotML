@@ -1,5 +1,6 @@
 using System.Drawing;
 using DotML.Network.Initialization;
+using DotML.Network.Training;
 
 namespace DotML.Network;
 
@@ -28,6 +29,33 @@ public class ActivationLayer : FeedforwardNetworkLayer {
             outputs[i] = channels[i].Transform(ActivationFunction.Invoke);
         }
         return new FeatureSet<double>(outputs);
+    }
+
+    public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        FeatureSet<double>[] batched_input_gradients = new FeatureSet<double>[args.InputBatch.Batches];
+
+        Parallel.For(0, batched_input_gradients.Length, (batchIndex) => {
+            var batch = args.InputBatch[batchIndex];
+
+            var input_channels = batch.Channels;
+            var input_gradients = new Matrix<double>[input_channels];
+            var output_gradients = args.OutputErrors[batchIndex];
+
+            Parallel.For(0, input_channels, channel => {
+                var output_gradient = output_gradients[channel];
+                var derivative = batch[channel].Transform(ActivationFunction.InvokeDerivative);   // Gradient of vector elements
+                var delta = output_gradient.HadamardWith(derivative);                             // Delta of vector elements (column)
+                input_gradients[channel] = delta;
+            });
+
+            batched_input_gradients[batchIndex] = new FeatureSet<double>(input_gradients);
+        });
+
+        // Return the gradients to be propagated to the previous layer
+        return new BackpropagationReturns(
+            new BatchedFeatureSet<double>(batched_input_gradients),
+            null
+        );
     }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);

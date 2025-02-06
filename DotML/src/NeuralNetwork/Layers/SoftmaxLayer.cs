@@ -1,5 +1,6 @@
 using System.Drawing;
 using DotML.Network.Initialization;
+using DotML.Network.Training;
 
 namespace DotML.Network;
 
@@ -35,6 +36,10 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
         }
 
         return new FeatureSet<double>(values);
+    }
+
+    public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        return new BackpropagationReturns(args.OutputErrors, null);
     }
 
     public override void Initialize(IInitializer initializer) { /* No initialization needed */ }

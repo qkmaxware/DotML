@@ -1,5 +1,6 @@
 using System.Drawing;
 using DotML.Network.Initialization;
+using DotML.Network.Training;
 
 namespace DotML.Network;
 
@@ -170,6 +171,62 @@ public abstract class LocalPoolingLayer : PoolingLayer {
 
         return (FeatureSet<double>)pooled;
     }
+
+    public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        FeatureSet<double>[] input_errors = new FeatureSet<double>[args.OutputBatch.Batches];
+
+        Parallel.For(0, args.OutputBatch.Batches, batchIndex => {
+            // Extract inputs, outputs, and errors
+            var inputs = args.InputBatch[batchIndex];
+            var outputs = args.OutputBatch[batchIndex];
+            var errors = args.OutputErrors[batchIndex];
+
+            int featureCount = inputs.Channels;
+            var batchErrors = new Matrix<double>[featureCount];
+
+            var filterWidth = FilterWidth;
+            var filterHeight = FilterHeight;
+            var filterElementCount = filterWidth * filterHeight;
+
+            Parallel.For(0, featureCount, featureIndex => {
+                // Get the input and output for this batch item
+                var input = inputs[featureIndex];
+                var output = outputs[featureIndex];
+                var error = errors[featureIndex];
+
+                // Initialize the error matrix for the input
+                var inputError = new Matrix<double>(input.Rows, input.Columns);
+
+                // Loop over output
+                for (int row = 0; row < output.Rows; row++) {
+                    var StartY = row * StrideY;
+                    var EndY = Math.Min(row * StrideY + filterHeight, input.Rows);
+                    for (int col = 0; col < output.Columns; col++) {
+                        var StartX = col * StrideX;
+                        var EndX = Math.Min(col * StrideX + filterWidth, input.Columns);
+
+                        // Loop over input values where the filter is applied
+                        Backpropagate(inputError, input, error[row, col], filterElementCount, StartX, EndX, StartY, EndY);
+                    }
+                }
+
+                // Assign the errors for this input features
+                batchErrors[featureIndex] = inputError;
+            });
+
+            // Assign the errors for the input features into the batch
+            input_errors[batchIndex] = new FeatureSet<double>(batchErrors);
+        });
+        
+
+        // Pass errors along for next layer
+        return new BackpropagationReturns (
+            new BatchedFeatureSet<double>(input_errors),
+            null
+        );
+    }
+
+    protected abstract void Backpropagate(Matrix<double> inputError, Matrix<double> input, double error, int filterSize, int startX, int endX, int startY, int endY);
 }
 
 /// <summary>
@@ -219,6 +276,23 @@ public class LocalMaxPoolingLayer : LocalPoolingLayer {
     protected override double Aggregate(double current, int count){
         return current;
     }
+    
+   protected override void Backpropagate(Matrix<double> inputError, Matrix<double> input, double error, int filterSize, int startX, int endX, int startY, int endY) {
+        int maxRow = 0, maxCol = 0; double maxVal = double.MinValue; // Values for max pooling
+        for (int kr = startY; kr < endY; kr++) {
+            for (int kc = startX; kc < endX; kc++) {
+                var value = input[kr, kc];
+
+                // Compute; Assume max pooling (avg is different)
+                if (value > maxVal) {
+                    maxVal = value;
+                    maxRow = kr;
+                    maxCol = kc;
+                }
+            }
+        }
+        inputError[maxRow, maxCol] += error; 
+   }
 }
 
 /// <summary>
@@ -267,5 +341,14 @@ public class LocalAvgPoolingLayer : LocalPoolingLayer {
 
     protected override double Aggregate(double current, int count){
         return current / Math.Max(1, count);
+    }
+
+    protected override void Backpropagate(Matrix<double> inputError, Matrix<double> input, double error, int filterSize, int startX, int endX, int startY, int endY) {
+        double errorContribution = error / Math.Max(1, filterSize); // Distribute the error
+        for (int kr = startY; kr < endY; kr++) {
+            for (int kc = startX; kc < endX; kc++) {
+                inputError[kr, kc] += errorContribution;            // Assign the error contribution to each element in the pooling region
+            }   
+        }
     }
 }

@@ -684,7 +684,7 @@ where T:INumber<T> {
     /// <param name="paddingX">horizontal padding of this matrix</param>
     /// <param name="paddingY">vertical padding of this matrix</param>
     /// <returns>convolution of this matrix</returns>
-    public Matrix<T> Convolve(Matrix<T> kernel, int strideX = 1, int strideY = 1, int paddingX = 0, int paddingY = 0) {
+    public Matrix<T> Convolve(Matrix<T> kernel, int strideX = 1, int strideY = 1, int paddingX = 0, int paddingY = 0, T? bias = default(T)) {
         var filterRows          = kernel.Rows;   
         var filterColumns       = kernel.Columns;  
         var paddingRows         = paddingY;
@@ -698,7 +698,7 @@ where T:INumber<T> {
         var outputRows          = (inputRows - filterRows + 2 * paddingRows) / strideY + 1; 
         var outputColumns       = (inputColumns - filterColumns + 2 * paddingColumns) / strideX + 1;  
 
-        var result              = new Matrix<T>(outputRows, outputColumns, T.Zero);
+        var result              = new Matrix<T>(outputRows, outputColumns, bias ?? T.Zero);
         for (var y = 0; y < outputRows; y++) {
         for (var x = 0; x < outputColumns; x++) {
             var startY = y * strideY - paddingRows;

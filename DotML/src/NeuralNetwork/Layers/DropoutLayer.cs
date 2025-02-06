@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using DotML.Network.Initialization;
+using DotML.Network.Training;
 
 namespace DotML.Network;
 
@@ -54,6 +55,34 @@ public class DropoutLayer : FeedforwardNetworkLayer {
         }
 
         return (FeatureSet<double>)outputs;
+    }
+
+    public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        Matrix<double>? mask = this.GetSharedMask();
+        if (!mask.HasValue) {
+            return new BackpropagationReturns(
+                args.OutputErrors, // Just pass the errors to the next layer if no mask was assigned
+                null
+            );
+        }
+
+        var mask_matrix = mask.Value;
+
+        FeatureSet<double>[] input_errors = new FeatureSet<double>[args.OutputErrors.Batches];
+        for (var batchIndex = 0; batchIndex < args.OutputBatch.Batches; batchIndex++) {
+            var batch = args.OutputErrors[batchIndex];
+
+            var matrices = new Matrix<double>[batch.Channels];
+            for (var i = 0; i < batch.Channels; i++) {
+                matrices[i] = batch[i].HadamardWith(mask_matrix);
+            }
+            input_errors[batchIndex] = new FeatureSet<double>(matrices);
+        }
+
+        return new BackpropagationReturns(
+            new BatchedFeatureSet<double>(input_errors),
+            null
+        );
     }
 
     public bool UseSharedMask {get; set;}
