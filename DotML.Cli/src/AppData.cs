@@ -9,7 +9,10 @@ public class AppData {
     private string model_dir;
 
     public AppData() {
-        this.root_dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DotML.NetFlow");
+        var home = Environment.GetEnvironmentVariable("NETFLOW_HOME");
+        var app_data = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DotML.NetFlow");
+
+        this.root_dir = home ?? app_data;
         Directory.CreateDirectory(root_dir);
 
         this.training_dir = Path.Combine(root_dir, "Training");
