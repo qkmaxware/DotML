@@ -20,12 +20,12 @@ public class SerializationTest {
             }
         );
 
-        var json = before.ToJson();
+        var json = ((IJsonizable)before).ToJson();
 
         var after = ClassicalFeedforwardNetwork.FromJson(json);
 
         Console.WriteLine(json);
-        Console.WriteLine(after.ToJson());
+        Console.WriteLine(((IJsonizable)after).ToJson());
 
         // Verify shape
         Assert.AreEqual(before.LayerCount, after.LayerCount);

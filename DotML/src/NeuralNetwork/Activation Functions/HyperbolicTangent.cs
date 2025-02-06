@@ -38,8 +38,8 @@ public class HyperbolicTangent : ActivationFunction {
         return 1 - y*y;
     }
 
-    public override string ToHtml() {
-        return 
+    public override void ToHtml(TextWriter writer) {
+        writer.Write( 
 $@"<math>
     <mtext>f(x) = </mtext>
     <mfrac>
@@ -54,6 +54,6 @@ $@"<math>
             <msup><mi>e</mi><mn>-x</mn></msup>
         </mrow>
     </mfrac>
-</math>";
+</math>");
     }
 }

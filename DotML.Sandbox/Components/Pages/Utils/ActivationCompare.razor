@@ -22,7 +22,7 @@
             <div style="display: inline-block; text-align: center; padding: 6px; vertical-align:top">
                 <input type="checkbox" checked="@(!ignored.Contains(i))" @onchange=@(e => toggle(e, fn))> @series1.Name
                 <p>
-                @((MarkupString)fn.ToHtml()) 
+                @((MarkupString)((IHtmlable)fn).ToHtml()) 
                 </p>
                 f(x)  <div style="display: inline-block; width: 2em; height: 1em; background-color: rgb(@c1.R, @c1.G, @c1.B); border: 1px solid black"></div>
                 f'(x) <div style="display: inline-block; width: 2em; height: 1em; background-color: rgb(@c2.R, @c2.G, @c2.B); border: 1px solid black"></div>

@@ -29,8 +29,8 @@ public class Sigmoid : ActivationFunction {
         return y * (1.0 - y); 
     }
 
-    public override string ToHtml() {
-        return 
+    public override void ToHtml(TextWriter writer) {
+        writer.Write( 
 $@"<math>
     <mtext>f(x) = </mtext>
     <mfrac>
@@ -43,6 +43,6 @@ $@"<math>
             <msup><mi>e</mi><mn>-x</mn></msup>
         </mrow>
     </mfrac>
-</math>";
+</math>");
     }
 }

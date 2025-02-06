@@ -4,6 +4,21 @@ using DotML.Network.IO;
 
 namespace DotML.Cli;
 
+public class ModelTrainingInfo {
+    public string? TrainingDuration {get; set;}
+    public double Accuracy {get; set;}
+    public double Precision {get; set;}
+    public double Recall {get; set;}
+    public double MinLoss {get; set;}
+    public double MaxLoss {get; set;}
+    public double AvgLoss {get; set;}
+}
+
+public enum ModelTrainingStatus {
+    Untrained,
+    Trained
+}
+
 public class ModelInfo {
     
     private FileInfo? metadata_file = null;
@@ -11,10 +26,12 @@ public class ModelInfo {
     private FileInfo? weights_file = null;
 
     public string? Guid => network_file is  null ? string.Empty : Path.GetFileNameWithoutExtension(network_file.Name);
-    public string? Status() => weights_file is null || !weights_file.Exists ? "Untrained" : "Trained";
+    public ModelTrainingStatus Status() => weights_file is null || !weights_file.Exists ? ModelTrainingStatus.Untrained : ModelTrainingStatus.Trained;
     public List<string> Tags {get; set;} = new List<string>();
     public DateTime Created() => network_file is null ? DateTime.Now : network_file.CreationTime;
     public DateTime Modified() => metadata_file is null ? DateTime.Now : metadata_file.LastWriteTime;
+
+    public ModelTrainingInfo? TrainingMetadata {get; set;}
 
     public ModelInfo() { }
 

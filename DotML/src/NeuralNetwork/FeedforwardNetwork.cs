@@ -120,6 +120,12 @@ public class FeedforwardNetwork:
     public int TrainableParameterCount() => this.layers.Select(layer => layer.TrainableParameterCount()).Sum();
 
     /// <summary>
+    /// Number of un-trainable parameters in this network
+    /// </summary>
+    /// <returns>Number of trainable parameters</returns>
+    public int UnTrainableParameterCount() => this.layers.Select(layer => layer.UnTrainableParameterCount()).Sum();
+
+    /// <summary>
     /// Total storage size for all parameters in this network
     /// </summary>
     /// <returns>data storage size</returns>
@@ -390,10 +396,9 @@ public class FeedforwardNetwork:
     /// Convert this object to a Markdown representation
     /// </summary>
     /// <returns>Markdown serialized string</returns>
-    public string ToMarkdown() {
-        using StringWriter sb = new StringWriter();
+    public void ToMarkdown(TextWriter writer) {
 
-        using (var md = new LayerMarkdownWriter(sb)) {
+        using (var md = new LayerMarkdownWriter(writer)) {
             for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
                 var layer = this.GetLayer(layerIndex);
                 if (!layer.Visit(md, layerIndex)) {
@@ -401,18 +406,16 @@ public class FeedforwardNetwork:
                 }
             }
         }
-
-        return sb.ToString();
+        
     }
 
     /// <summary>
     /// Convert this object to an HTML representation
     /// </summary>
     /// <returns>HTML serialized string</returns>
-    public string ToHtml() {
-        using StringWriter sb = new StringWriter();
+    public void ToHtml(TextWriter writer) {
 
-        using (var html = new LayerHtmlWriter(sb)) {
+        using (var html = new LayerHtmlWriter(writer)) {
             for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
                 var layer = this.GetLayer(layerIndex);
                 if (!layer.Visit(html, layerIndex)) {
@@ -421,6 +424,5 @@ public class FeedforwardNetwork:
             }
         }
 
-        return sb.ToString();
     }
 }

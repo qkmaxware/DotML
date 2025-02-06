@@ -25,8 +25,8 @@ public class PReLU : ActivationFunction {
         return base.ToString() + $"({Alpha})";
     }
 
-    public override string ToHtml() {
-        return 
+    public override void ToHtml(TextWriter writer) {
+        writer.Write( 
 $@"<math>
     <mtext>f(x) = </mtext>
     <mrow>
@@ -42,6 +42,6 @@ $@"<math>
             </mtr>
         </mtable>
     </mrow>
-</math>";
+</math>");
     }
 }

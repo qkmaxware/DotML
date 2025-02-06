@@ -92,14 +92,15 @@ public class Run : BaseCommand {
         Console.WriteLine("done");
 
         Console.Write("Decoding...");
-        var result = decoder.Decode(output_vector);
-        if (!string.IsNullOrEmpty(OutputFile)) {
-            result.FileOutput(new FileInfo(OutputFile));
-            Console.WriteLine($"done created '{OutputFile}'");
-        } else {
-            Console.WriteLine("done");
+        using (var result = decoder.Decode(network.OutputShape, output_vector)) {
+            if (!string.IsNullOrEmpty(OutputFile)) {
+                result.FileOutput(new FileInfo(OutputFile));
+                Console.WriteLine($"done created '{OutputFile}'");
+            } else {
+                Console.WriteLine("done");
+            }
+            DrawDivider();
+            result.ConsoleOutput();
         }
-        DrawDivider();
-        result.ConsoleOutput();
     }
 }

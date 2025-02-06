@@ -5,20 +5,20 @@ using DotML.Network.Training;
 
 namespace DotML.Cli.Notifiers;
 
-public class DiscordFactory : INotifierFactory {
-    public bool SupportsEndpoint(string endpoint) => endpoint.StartsWith("https://discord.com/api/webhooks/");
+public class SlackFactory : INotifierFactory {
+    public bool SupportsEndpoint(string endpoint) => endpoint.StartsWith("https://hooks.slack.com/services/");
 
-    public INotifier Make(string endpoint) => new Discord(endpoint);
+    public INotifier Make(string endpoint) => new Slack(endpoint);
 }
 
 /// <summary>
 /// Notifier to send update messages during training to Discord via a webhook
 /// </summary>
-public class Discord : INotifier {
+public class Slack : INotifier {
 
     private string webhook_url;
 
-    public Discord(string webhook) {
+    public Slack(string webhook) {
         this.webhook_url = webhook;
     }
 
@@ -47,7 +47,16 @@ public class Discord : INotifier {
     private bool SendMessage(string message) {
         using (HttpClient client = new HttpClient()) {
             var payload = new {
-                content = message
+                text = string.Empty,
+                blocks = new []{
+                    new {
+                        type = "section",
+                        text = new {
+                            type = "mrkdwn",
+                            text = message
+                        }
+                    }
+                }
             };
 
             // Convert the payload object to JSON

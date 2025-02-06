@@ -112,15 +112,15 @@ public class Fit : BaseCommand {
         var network = model.Load();
         if (network is IMarkdownable md) {
             using (var writer = new StreamWriter(Path.Combine(dir.FullName, "network-description.md"))) {
-                writer.Write(md.ToMarkdown());
+                md.ToMarkdown(writer);
             }
         } else if (network is IJsonizable json) {
             using (var writer = new StreamWriter(Path.Combine(dir.FullName, "network-description.json"))) {
-                writer.Write(json.ToJson());
+                json.ToJson(writer);
             }
         } else if (network is IHtmlable html) {
             using (var writer = new StreamWriter(Path.Combine(dir.FullName, "network-description.html"))) {
-                writer.Write(html.ToHtml());
+                html.ToHtml(writer);
             }
         } 
         
@@ -271,7 +271,8 @@ public class Fit : BaseCommand {
         using var testing_writer = new StreamWriter(Path.Combine(dir.FullName, "testing.csv"));
         testing_writer.WriteLine("Epoch, Tests-Passed, Tests-Failed, Loss-Average, Loss-Max, Loss-Min, Accuracy, Precision, Recall, F1-Score, Time-Taken");
         testing_writer.Flush();
-
+        
+        var start_timer = Stopwatch.StartNew();
         (double accuracy, double precision, double recall, double minloss, double maxloss, double avgloss, int passed)? prev_report = null;
         var has_next = true;
         Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
@@ -360,6 +361,7 @@ public class Fit : BaseCommand {
             #endregion
         }
         notifier?.NotifyTrainingDone(network, session.CurrentEpoch, validation_report);
+        start_timer.Stop();
         #region Training / Done
 
         #endregion
@@ -370,12 +372,23 @@ public class Fit : BaseCommand {
         switch (UpdateMode) {
             case UpdateModeType.none:
                 break;
-            case UpdateModeType.overwrite:
-                model.UpdateWeights(network.ToSafetensor());
-                break;
             case UpdateModeType.duplicate:
                 model = new ModelInfo(model);
+                goto case UpdateModeType.overwrite;
+            case UpdateModeType.overwrite:
                 model.UpdateWeights(network.ToSafetensor());
+
+                var training_report = testing_report ?? validation_report;
+                model.TrainingMetadata = new ModelTrainingInfo {
+                    TrainingDuration = start_timer.Elapsed.ToString("G"),
+                    Accuracy = training_report.Accuracy,
+                    Precision = training_report.Precision,
+                    Recall = training_report.Recall,
+                    MaxLoss = training_report.MaxLoss,
+                    MinLoss = training_report.MinLoss,
+                    AvgLoss = training_report.AverageLoss,
+                };
+                model.UpdateMetadata();
                 break;
         }
         Console.WriteLine($"Reports saved to '{dir.FullName}'.");
@@ -463,7 +476,8 @@ public class Fit : BaseCommand {
     }
 
     private static INotifierFactory[] notifiers = [
-        new DiscordFactory()
+        new DiscordFactory(),
+        new SlackFactory(),
     ];
     private INotifier? GetNotifierFor(string? endpoint) {
         if (string.IsNullOrEmpty(endpoint))

@@ -16,8 +16,8 @@ public class LeakyReLU : ActivationFunction {
         return x <= 0 ? 0.01 : 1;
     }
 
-    public override string ToHtml() {
-        return 
+    public override void ToHtml(TextWriter writer) {
+        writer.Write( 
 $@"<math>
     <mtext>f(x) = </mtext>
     <mrow>
@@ -33,6 +33,6 @@ $@"<math>
             </mtr>
         </mtable>
     </mrow>
-</math>";
+</math>");
     }
 }

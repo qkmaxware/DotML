@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using CommandLine;
 using DotML.Network;
 
@@ -21,13 +22,11 @@ public class Describe : BaseCommand {
         Console.WriteLine();
 
         Console.WriteLine("TAGS");
-        Console.Write(" | ");
         foreach (var tag in model.Tags.Select((t, i) => (i, t))) {
-            if (tag.i != 0)
-                Console.Write(", ");
+            Console.Write(" | ");
             Console.Write('\''); Console.Write(tag.t); Console.Write('\'');
+            Console.WriteLine();
         }
-        Console.WriteLine();
         Console.WriteLine();
 
         Console.WriteLine("BUILD-SCRIPT");
@@ -38,38 +37,77 @@ public class Describe : BaseCommand {
         Console.WriteLine();
 
         Console.WriteLine("TRAINING");
+        string[] train_columns = ["STATUS   ", "ACCURACY ", "PRECISION", "RECALL   ", "LOSS             ", "TRAINING-DURATION "];
+        int[] train_len = train_columns.Select(str => str.Length).ToArray();
         Console.Write(" | ");
-        Console.WriteLine(model.Status());
+        for (var col = 0; col < train_columns.Length; col++) {
+            var name = train_columns[col];
+            var len = train_len[col];
+            Console.Write(ColumnValue(name, len));
+            Console.Write(' ');
+        }
+        Console.WriteLine();
+        Console.Write(" | ");
+        Console.Write(ColumnValue(model.Status(), train_len[0])); Console.Write(' ');
+        ModelTrainingInfo? trainingMeta;
+        if (model.Status() == ModelTrainingStatus.Trained) {
+            if ((trainingMeta = model.TrainingMetadata) is not null) {
+                Console.Write(ColumnValue(trainingMeta.Accuracy, train_len[1])); Console.Write(' ');
+                Console.Write(ColumnValue(trainingMeta.Precision, train_len[2])); Console.Write(' ');
+                Console.Write(ColumnValue(trainingMeta.Recall, train_len[3])); Console.Write(' ');
+                Console.Write(ColumnValue($"{trainingMeta.AvgLoss:F3} ± {(trainingMeta.MaxLoss - trainingMeta.MinLoss):F3}", train_len[4])); Console.Write(' ');
+                Console.Write(ColumnValue(trainingMeta.TrainingDuration, train_len[5]));
+            }
+        }
+        Console.WriteLine();
         Console.WriteLine();
 
         Console.WriteLine("ARCHITECTURE");
-        string[] columns = ["LAYER-TYPE       ", "INPUT-SHAPE", "OUTPUT-SHAPE", "TRAINABLE-PARAMS", "UNTRAINABLE-PARAMS", "DESCRIPTION"];
-        int[] lengths = columns.Select(str => str.Length).ToArray();
+        var network = model.Load();
+        string[] arch_columns = ["LAYER-TYPE       ", "INPUT-SHAPE", "OUTPUT-SHAPE", "TRAINABLE-PARAMS", "UNTRAINABLE-PARAMS", "DESCRIPTION"];
+        string[] summary_columns = ["LAYERS", "STORAGE-SIZE", "TRAINABLE-PARAMS", "UNTRAINABLE-PARAMS"];
+        int[] sum_length = [arch_columns[0].Length, 1 + arch_columns[1].Length + arch_columns[2].Length, arch_columns[3].Length, arch_columns[4].Length];
         Console.Write(" | ");
-        for (var col = 0; col < columns.Length; col++) {
-            var name = columns[col];
-            var len = lengths[col];
+        for (var col = 0; col < summary_columns.Length; col++) {
+            var name = summary_columns[col];
+            var len = sum_length[col];
+            Console.Write(ColumnValue(name, len));
+            Console.Write(' ');
+        }
+        Console.WriteLine();
+        Console.Write(" | ");
+        Console.Write(ColumnValue(network.LayerCount, sum_length[0])); Console.Write(' ');
+        Console.Write(ColumnValue(network.StorageSize(), sum_length[1])); Console.Write(' ');
+        Console.Write(ColumnValue(network.TrainableParameterCount(), sum_length[2])); Console.Write(' ');
+        Console.Write(ColumnValue(network.UnTrainableParameterCount(), sum_length[3])); Console.Write(' ');
+        Console.WriteLine();
+
+        Console.WriteLine(" | ");
+        int[] arch_len = arch_columns.Select(str => str.Length).ToArray();
+        Console.Write(" | ");
+        for (var col = 0; col < arch_columns.Length; col++) {
+            var name = arch_columns[col];
+            var len = arch_len[col];
             Console.Write(ColumnValue(name, len));
             Console.Write(' ');
         }
         Console.WriteLine();
 
-        var network = model.Load();
         var describer = new LayerDescriber();
         for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
             var layer = network.GetLayer(layerIndex);
             Console.Write(" | ");
-            Console.Write(ColumnValue(layer.GetType().Name.Replace("Layer", string.Empty), lengths[0]));
+            Console.Write(ColumnValue(layer.GetType().Name.Replace("Layer", string.Empty), arch_len[0]));
             Console.Write(' ');
-            Console.Write(ColumnValue(layer.InputShape, lengths[1]));
+            Console.Write(ColumnValue(layer.InputShape, arch_len[1]));
             Console.Write(' ');
-            Console.Write(ColumnValue(layer.OutputShape, lengths[2]));
+            Console.Write(ColumnValue(layer.OutputShape, arch_len[2]));
             Console.Write(' ');
-            Console.Write(ColumnValue(layer.TrainableParameterCount(), lengths[3]));
+            Console.Write(ColumnValue(layer.TrainableParameterCount(), arch_len[3]));
             Console.Write(' ');
-            Console.Write(ColumnValue(layer.UnTrainableParameterCount(), lengths[4]));
+            Console.Write(ColumnValue(layer.UnTrainableParameterCount(), arch_len[4]));
             Console.Write(' ');
-            Console.Write(layer.Visit(describer), lengths[5]);
+            Console.Write(layer.Visit(describer), arch_len[5]);
             Console.WriteLine();
         }
         Console.WriteLine();

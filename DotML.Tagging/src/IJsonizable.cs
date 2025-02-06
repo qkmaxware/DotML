@@ -7,8 +7,17 @@ public interface IJsonizable {
     /// <summary>
     /// Convert this object to a JSON representation
     /// </summary>
+    public void ToJson(TextWriter writer);
+
+    /// <summary>
+    /// Convert this object to a JSON representation
+    /// </summary>
     /// <returns>JSON serialized string</returns>
-    public string ToJson();
+    public string ToJson() {
+        using var writer = new StringWriter();
+        ToJson(writer);
+        return writer.ToString();
+    }
 
     /// <summary>
     /// Convert this object to a JSON representation, or a default value if serialization fails

@@ -20,9 +20,11 @@ public class Vector : IDecoder {
                 writer.Write(vector.ToString());
             }
         }
+
+        public void Dispose() { }
     }
 
-    public IDecodedResult Decode(Vec<double> output) {
+    public IDecodedResult Decode(Shape3D output_shape, Vec<double> output) {
         return new Result(output);
     }
 }

@@ -47,7 +47,7 @@ public class List : BaseCommand {
                 Console.Write(ColumnValue(model.Modified().ToString("yyyy-MM-dd hh:mm"), column_lengths[3]));
                 Console.Write(' ');
 
-                Console.Write(ColumnValue(model.Status() ?? "?", column_lengths[4]));
+                Console.Write(ColumnValue(model.Status(), column_lengths[4]));
                 Console.WriteLine();
             }
         }   

@@ -415,8 +415,8 @@ public class ClassicalFeedforwardNetwork : ILayeredNeuralNetwork<ILayerWithVecto
     /// Convert this network to a JSON representation
     /// </summary>
     /// <returns>JSON serialized Neural Network string</returns>
-    public string ToJson() {
-        return JsonSerializer.Serialize(this);
+    public void ToJson(TextWriter writer) {
+        writer.Write(JsonSerializer.Serialize(this));
     }
     /// <summary>
     /// Create a network from a JSON representation

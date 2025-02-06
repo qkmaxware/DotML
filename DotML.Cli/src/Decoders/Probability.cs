@@ -20,9 +20,11 @@ public class Probability : IDecoder {
                 writer.Write(dist.ToString().ReplaceLineEndings());
             }
         }
+
+        public void Dispose() { }
     }
 
-    public IDecodedResult Decode(Vec<double> output) {
+    public IDecodedResult Decode(Shape3D output_shape, Vec<double> output) {
         return new Result(output);
     }
 }

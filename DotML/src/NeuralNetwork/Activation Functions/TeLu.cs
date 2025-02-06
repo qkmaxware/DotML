@@ -29,11 +29,11 @@ public class TeLU : ActivationFunction {
         return Math.Tanh(ex) + ex * x * sec * sec;
     }
 
-    public override string ToHtml() {
-        return 
+    public override void ToHtml(TextWriter writer) {
+        writer.Write(
 $@"<math>
     <mtext>f(x) = </mtext>
     <mrow><mtext>x tanh(</mtext><msup><mi>e</mi><mn>x</mn></msup><mtext>)</mtext></mrow>
-</math>";
+</math>");
     }
 }

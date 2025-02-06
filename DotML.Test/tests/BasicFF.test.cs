@@ -112,7 +112,7 @@ public class BasicFFTest {
                 ActivationFunctions = [Sigmoid.Instance]
             }
         );
-        Console.WriteLine(network.ToJson());
+        Console.WriteLine(((IJsonizable)network).ToJson());
 
         var actual_outputs = new double[test_inputs.Length];
         for (var i = 0; i < test_inputs.Length; i++) {
@@ -205,7 +205,7 @@ public class BasicFFTest {
             Console.WriteLine($"For {trainingData[i].Input} = {trainingData[i].Output} got {output}");
             measured[i] = output;
         }
-        Console.WriteLine(network.ToJson());
+        Console.WriteLine(((IJsonizable)network).ToJson());
 
         for (var i = 0; i < trainingData.Count; i++) {
             var pair = trainingData[i];

@@ -19,7 +19,7 @@ public abstract class BaseCommand {
             return ex.ErrorCode;
         }
         catch (Exception e) {
-            Console.WriteLine();
+            DrawDivider();
             Console.WriteLine("An unexpected error occurred:");
             Console.WriteLine(e);
             return GENERIC_ERROR;
@@ -40,8 +40,8 @@ public abstract class BaseCommand {
         Console.WriteLine();
     }
 
-    protected string ColumnValue(object obj, int colLength) {
-        var str = Truncate(obj.ToString() ?? string.Empty, colLength);
+    protected string ColumnValue(object? obj, int colLength) {
+        var str = Truncate(obj?.ToString() ?? string.Empty, colLength);
         return str.PadRight(colLength, ' ');
     }
 

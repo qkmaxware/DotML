@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
+using DotML.Network;
 
 namespace DotML;
 
@@ -14,7 +15,8 @@ namespace DotML;
 public struct Matrix<T>: 
     IEnumerable<T>,
     IEquatable<Matrix<T>>,
-    IMutableTensorLike<T>
+    IMutableTensorLike<T>,
+    IHtmlable
 where T:INumber<T> {
 
     #region Data
@@ -892,24 +894,22 @@ where T:INumber<T> {
     /// String representation of the matrix in a HTML compatible MathML
     /// </summary>
     /// <returns>MathML HTML string</returns>
-    public string ToHtml() {
-        StringBuilder sb = new StringBuilder();
-        sb.Append("<math><mrow>");
-            sb.Append("<mo>[</mo>");
-            sb.Append("<mtable>");
+    public void ToHtml(TextWriter writer) {
+        writer.Write("<math><mrow>");
+            writer.Write("<mo>[</mo>");
+            writer.Write("<mtable>");
             for (int i = 0; i < Rows; i++) {
-                sb.Append("<mtr>");
+                writer.Write("<mtr>");
                 for (int j = 0; j < Columns; j++) {
-                    sb.Append("<mtd>");
-                    sb.Append("<mn>"); sb.Append(this[i, j]); sb.Append("</mn>");
-                    sb.Append("</mtd>");
+                    writer.Write("<mtd>");
+                    writer.Write("<mn>"); writer.Write(this[i, j]); writer.Write("</mn>");
+                    writer.Write("</mtd>");
                 }
-                sb.Append("</mtr>");
+                writer.Write("</mtr>");
             }   
-            sb.Append("</mtable>");
-            sb.Append("<mo>]</mo>");
-        sb.Append("</mrow></math>");
-        return sb.ToString();
+            writer.Write("</mtable>");
+            writer.Write("<mo>]</mo>");
+        writer.Write("</mrow></math>");
     }
 
     #endregion

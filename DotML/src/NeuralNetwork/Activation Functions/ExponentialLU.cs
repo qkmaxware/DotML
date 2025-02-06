@@ -19,8 +19,8 @@ public class ExponentialLU : ActivationFunction {
         return x < 0 ? Alpha*Math.Exp(x) : 1;
     }
 
-    public override string ToHtml() {
-        return 
+    public override void ToHtml(TextWriter writer) {
+        writer.Write( 
 $@"<math>
     <mtext>f(x) = </mtext>
     <mrow>
@@ -36,7 +36,7 @@ $@"<math>
             </mtr>
         </mtable>
     </mrow>
-</math>";
+</math>");
     }
 
     public override string ToString() {

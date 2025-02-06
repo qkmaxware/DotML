@@ -37,7 +37,7 @@ public class PerformanceTest {
         );
 
         using var writer = new StreamWriter("alexnet_20.md");
-        writer.Write(alexNet.ToMarkdown());
+        writer.Write(((IMarkdownable)alexNet).ToMarkdown());
     }
 
     [TestMethod]

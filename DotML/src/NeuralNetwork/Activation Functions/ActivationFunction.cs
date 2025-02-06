@@ -37,12 +37,12 @@ public abstract class ActivationFunction : IHtmlable {
     /// Activation function as HTML MathML
     /// </summary>
     /// <returns>HTML string</returns>
-    public virtual string ToHtml() {
-        return
+    public virtual void ToHtml(TextWriter writer) {
+        writer.Write(
 $@"<math>
     <mtext>f(x) = </mtext>
     <mtext>{ToString()}(x)</mtext>
-</math>";
+</math>");
     }
 
     public override string ToString() => GetType().Name;

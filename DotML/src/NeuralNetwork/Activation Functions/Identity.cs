@@ -26,10 +26,10 @@ public class Identity : ActivationFunction {
         return 1;
     }
 
-    public override string ToHtml() {
-        return 
+    public override void ToHtml(TextWriter writer) {
+        writer.Write(
 $@"<math>
     <mtext>f(x) = x</mtext>
-</math>";
+</math>");
     }
 }
