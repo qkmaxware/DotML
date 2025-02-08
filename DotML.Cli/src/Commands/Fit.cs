@@ -378,7 +378,7 @@ public class Fit : BaseCommand {
             case UpdateModeType.overwrite:
                 model.UpdateWeights(network.ToSafetensor());
 
-                var training_report = testing_report ?? validation_report;
+                var training_report = (!SkipTesting && testing_report is not null) ? testing_report : validation_report;
                 model.TrainingMetadata = new ModelTrainingInfo {
                     TrainingDuration = start_timer.Elapsed.ToString("G"),
                     Accuracy = training_report.Accuracy,
