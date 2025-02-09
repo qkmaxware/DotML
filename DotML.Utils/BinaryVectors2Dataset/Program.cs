@@ -26,10 +26,12 @@ public class Program {
             var parser = new BinaryClassifiedVectors();
             TrainingSet set = new TrainingSet();
             foreach (var file in files) {
+                Console.Write($"Processing '{file}'...");
                 var info = new FileInfo(file);
                 if (!info.Exists)
                     continue;
                 set.AddRange(parser.Read(info));
+                Console.WriteLine("done");
             }
 
             using var out_stream = File.Open(options.OutName, FileMode.Create);
@@ -44,7 +46,8 @@ public class Program {
 
 public class BinaryClassifiedVectors {
 
-    public int OutputClasses = 10;
+    public bool CategoryIsByte = false;
+    public int OutputClasses = 2;
     public double ZeroValue = 0.0;
     public double OneValue = 1.0;
 
@@ -54,7 +57,7 @@ public class BinaryClassifiedVectors {
             category_off:       ZeroValue, 
             category_on:        OneValue, 
             element_parser:     x => (x.ReadByte() / 255.0), 
-            fixed_vector_size:  1024 * 3 
+            fixed_vector_size:  null//1024 * 3 
         );
     }
 
@@ -66,17 +69,18 @@ public class BinaryClassifiedVectors {
         return Vec<double>.Wrap(values);
     }
 
-    private static IEnumerable<TrainingPair> read_classified_binary_vectors(FileInfo file, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
+    private IEnumerable<TrainingPair> read_classified_binary_vectors(FileInfo file, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
         using var stream = file.OpenRead();
         using var reader = new BinaryReader(stream);
         
         List<(Vec<double>, int)> items = new List<(Vec<double>, int)>();
         int category_count = 1;
         while (stream.Position < stream.Length) {
-            var category_index  = reader.ReadByte();
+            var category_index  = !CategoryIsByte ? reader.ReadInt32() : reader.ReadByte();
             category_count = Math.Max(category_count, category_index + 1);
             var vector_size     = fixed_vector_size.HasValue ? fixed_vector_size.Value : reader.ReadInt32();
             double[] input_vec  = new double[vector_size];
+            Console.WriteLine($"CATEGORY: {category_index}, VECTOR: {vector_size}");
 
             for (var i = 0; i < vector_size; i++) {
                 try {

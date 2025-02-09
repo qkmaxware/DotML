@@ -12,4 +12,8 @@
     <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\DotML\DotML.csproj" />
+  </ItemGroup>
+
 </Project>

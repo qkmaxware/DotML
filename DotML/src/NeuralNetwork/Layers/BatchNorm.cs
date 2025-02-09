@@ -266,19 +266,38 @@ public class BatchNorm : FeedforwardNetworkLayer {
         return new BackpropagationReturns(
             new BatchedFeatureSet<double>(input_gradients.Select(x => new FeatureSet<double>(x)).ToArray()),
             new Gradients (
+                this.Gammas,
+                this.Betas,
                 gamma_gradients,
                 beta_gradients
             )
         );
     }
 
+    public override void SubtractGradients(LayerGradients? gradients) {
+        if (gradients is null || gradients is not Gradients grads)
+            throw new ArgumentException(nameof(gradients));
+
+        for (var g = 0; g < this.Gammas.Length; g++) {
+            this.Gammas[g].SubtractWithInplace(grads.GammaGradients[g]);
+        }
+
+        for (var b = 0; b < this.Betas.Length; b++) {
+            this.Betas[b].SubtractWithInplace(grads.BetaGradients[b]);
+        }
+    }
+
     public class Gradients : LayerGradients {
+        private Matrix<double>[] Gammas;
+        private Matrix<double>[] Betas;
         public Matrix<double>[] GammaGradients;
         public Matrix<double>[] BetaGradients;
 
-        public Gradients(Matrix<double>[] gamma, Matrix<double>[] beta) {
-            this.GammaGradients = gamma;
-            this.BetaGradients = beta;
+        public Gradients(Matrix<double>[] gamma, Matrix<double>[] beta, Matrix<double>[] gammagrad, Matrix<double>[] betagrad) {
+            this.Gammas = gamma;
+            this.Betas = beta;
+            this.GammaGradients = gammagrad;
+            this.BetaGradients = betagrad;
         }
 
         public override void Clip(double weight_threshold, double bias_threshold) {
@@ -291,19 +310,21 @@ public class BatchNorm : FeedforwardNetworkLayer {
         public override void Apply(GradientTransformationHandler handler) {
             int index = 0;
             for (var m = 0; m < GammaGradients.Length; m++) {
-                var gamma = GammaGradients[m];
-                for (var r = 0; r < gamma.Rows; r++) {
-                    for (var c = 0; c < gamma.Columns; c++) {
-                        gamma[r,c] = handler(index++, gamma[r,c]);
+                var gradient = GammaGradients[m];
+                var parameter = Gammas[m];
+                for (var r = 0; r < gradient.Rows; r++) {
+                    for (var c = 0; c < gradient.Columns; c++) {
+                        gradient[r,c] = handler(index++, parameter[r,c], gradient[r,c]);
                     }
                 }
             }
 
             for (var m = 0; m < BetaGradients.Length; m++) {
-                var beta = BetaGradients[m];
-                for (var r = 0; r < beta.Rows; r++) {
-                    for (var c = 0; c < beta.Columns; c++) {
-                        beta[r,c] = handler(index++, beta[r,c]);
+                var gradient = BetaGradients[m];
+                var parameter = Betas[m];
+                for (var r = 0; r < gradient.Rows; r++) {
+                    for (var c = 0; c < gradient.Columns; c++) {
+                        gradient[r,c] = handler(index++, parameter[r,c], gradient[r,c]);
                     }
                 }
             }

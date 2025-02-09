@@ -5,26 +5,34 @@ namespace DotML.Cli.Decodings;
 /// </summary>
 public class Probability : IDecoder {
     public class Result : IDecodedResult {
-        private ProbabilityDistribution dist;
+        private ProbabilityDistribution[] dists;
 
-        public Result(Vec<double> vector) {
-            this.dist = new ProbabilityDistribution(vector);
+        public Result(Vec<double>[] vectors) {
+            this.dists = vectors.Select(x => new ProbabilityDistribution(x)).ToArray();
         }
 
         public void ConsoleOutput() {
-            Console.WriteLine(dist.ToString().ReplaceLineEndings());
+            foreach (var dist in this.dists) {
+                Console.WriteLine(dist.ToString().ReplaceLineEndings());
+            }
         }
 
         public void FileOutput(FileInfo file) {
             using (var writer = new StreamWriter(file.OpenWrite())) {
-                writer.Write(dist.ToString().ReplaceLineEndings());
+                foreach (var dist in this.dists) {
+                    writer.Write(dist.ToString().ReplaceLineEndings());
+                }
             }
         }
 
         public void Dispose() { }
     }
 
-    public IDecodedResult Decode(Shape3D output_shape, Vec<double> output) {
-        return new Result(output);
+    public IDecodedResult Decode(BatchedFeatureSet<double>  output) {
+        return new Result(
+            output.Select(
+                b => Vec<double>.Wrap(b.SelectMany(f => f.FlattenRows()).ToArray())
+            ).ToArray()
+        );
     }
 }

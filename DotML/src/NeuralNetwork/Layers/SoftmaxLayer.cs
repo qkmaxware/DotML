@@ -42,6 +42,8 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
         return new BackpropagationReturns(args.OutputErrors, null);
     }
 
+    public override void SubtractGradients(LayerGradients? gradients) { }
+
     public override void Initialize(IInitializer initializer) { /* No initialization needed */ }
 
     /// <summary>

@@ -5,26 +5,38 @@ namespace DotML.Cli.Decodings;
 /// </summary>
 public class Vector : IDecoder {
     public class Result : IDecodedResult {
-        private Vec<double> vector;
+        private Vec<double>[] vectors;
 
-        public Result(Vec<double> vector) {
-            this.vector = vector;
+        public Result(Vec<double>[] vectors) {
+            this.vectors = vectors;
         }
 
         public void ConsoleOutput() {
-            Console.WriteLine(vector.ToString());
+            foreach (var vector in vectors) {
+                Console.WriteLine(vector.ToString());
+            }
         }
 
         public void FileOutput(FileInfo file) {
             using (var writer = new StreamWriter(file.OpenWrite())) {
-                writer.Write(vector.ToString());
+                foreach (var vector in vectors) {
+                    writer.Write(vector.ToString());
+                }
             }
         }
 
         public void Dispose() { }
     }
 
-    public IDecodedResult Decode(Shape3D output_shape, Vec<double> output) {
-        return new Result(output);
+    public IDecodedResult Decode(BatchedFeatureSet<double> output) {
+        return new Result(
+            output.Select(
+                b => Vec<double>.Wrap(
+                    b.SelectMany(
+                        f => f.FlattenRows()
+                    ).ToArray()
+                )
+            ).ToArray()
+        );
     }
 }

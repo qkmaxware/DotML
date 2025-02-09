@@ -126,7 +126,7 @@ public class ImagePreprocessor {
             //var categories_vectors = categories.Select((cat, i) => MakeVector(i, categories)).ToArray(); // [-1,-1,...1,...-1,-1]
 
             Directory.CreateDirectory(Path.Combine("data", "images", "processed"));
-            using var binary = new BinaryWriter(File.Open(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".vectors.bin"), FileMode.Create));
+            using var binary = new BinaryWriter(File.Open(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".trainingset.bin"), FileMode.Create));
             using var labelWriter = new StreamWriter(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".labels.csv"));
 
             List<Transform> transforms = [
@@ -155,10 +155,11 @@ public class ImagePreprocessor {
             //new Rotate(2.0f, 6.0f, step: 2.0f).Named("rpos") 
 
             // Write binary header
-            binary.Write(0b0001_0000);                                         // U8 As per VectorStorageType in DotML\src\NeuralNetwork\Training\TrainingData.cs
+            binary.Write([(byte)'v', (byte)'e', (byte)'c']);
+            binary.Write((byte)0b0001_0000);                                   // U8 As per VectorStorageType in DotML\src\NeuralNetwork\Training\TrainingData.cs
             binary.Write(1.0/255.0);                                           // Scaling from 0..255 to 0..1
-            binary.Write(categories.Length);                                   // Output count
-            binary.Write(file_count * transforms.Select(x => x.CreatedImageCount()).Sum()); // Input count
+            binary.Write((Int32)(categories.Length));                                   // Output count
+            binary.Write((Int32)(file_count * transforms.Select(x => x.CreatedImageCount()).Sum())); // Input count
 
             // Write output vectors
             for (var i = 0; i < categories.Length; i++) {
@@ -228,7 +229,7 @@ public class ImagePreprocessor {
                     Console.WriteLine("done");
                 }
             }
-
+            binary.Flush();
         });
     }
 }

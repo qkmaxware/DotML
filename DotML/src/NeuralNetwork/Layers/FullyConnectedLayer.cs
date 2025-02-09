@@ -168,12 +168,16 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
     }
 
     public class Gradients : LayerGradients {
+        private Matrix<double> Weights;
+        private Vec<double> Bias;
         public Matrix<double> WeightGradients;
         public Vec<double> BiasGradients;
 
-        public Gradients(Matrix<double> weight, Vec<double> bias) {
-            this.WeightGradients = weight;
-            this.BiasGradients = bias;
+        public Gradients(Matrix<double> weight, Vec<double> bias, Matrix<double> weight_grads, Vec<double> bias_grads) {
+            this.Weights = weight;
+            this.Bias = bias;
+            this.WeightGradients = weight_grads;
+            this.BiasGradients = bias_grads;
         }
 
         public override void Clip(double weight_threshold, double bias_threshold) {
@@ -185,12 +189,12 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
             int index = 0;
             for (var r = 0; r < WeightGradients.Rows; r++) {
                 for (var c = 0; c < WeightGradients.Columns; c++) {
-                    WeightGradients[r,c] = handler(index++, WeightGradients[r,c]);
+                    WeightGradients[r,c] = handler(index++, Weights[r,c], WeightGradients[r,c]);
                 }
             }
 
             for (var i = 0; i < BiasGradients.Dimensionality; i++) {
-                BiasGradients[i] = handler(index++, BiasGradients[i]);
+                BiasGradients[i] = handler(index++, Bias[i], BiasGradients[i]);
             }
         }
     }
@@ -269,10 +273,20 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         return new BackpropagationReturns(
             new BatchedFeatureSet<double>(shaped_input_gradients),
             new Gradients(
+                this.Weights,
+                this.Biases,
                 weight_gradients,
                 bias_gradients
             )
         );
+    }
+
+    public override void SubtractGradients(LayerGradients? gradients) {
+        if (gradients is null || gradients is not Gradients grads)
+            throw new ArgumentException(nameof(gradients));
+        
+        this.Weights.SubtractWithInplace(grads.WeightGradients);
+        this.Biases.SubtractWith(grads.BiasGradients);
     }
 
 }

@@ -11,6 +11,7 @@ public interface IFeedforwardNetworkLayer : ILayer {
     public FeatureSet<double> EvaluateSync(FeatureSet<double> features);
     public BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features);
     public BackpropagationReturns Backpropagate(BackpropagationArgs args);
+    public void SubtractGradients(LayerGradients? gradients);
 
     public void BeginTraining();
     public void EndTraining();
@@ -82,6 +83,8 @@ public abstract class FeedforwardNetworkLayer : IFeedforwardNetworkLayer {
     }
 
     public abstract BackpropagationReturns Backpropagate(BackpropagationArgs args);
+
+    public abstract void SubtractGradients(LayerGradients? gradients);
 
     public abstract void Visit(ILayerVisitor visitor);
     public abstract T Visit<T>(ILayerVisitor<T> visitor);

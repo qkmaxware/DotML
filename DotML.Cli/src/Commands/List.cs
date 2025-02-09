@@ -28,7 +28,11 @@ public class List : BaseCommand {
         Console.WriteLine();
 
         foreach (var model in appData.ListModels()) {
-            foreach (var tag in model.Tags.Prepend(model.Guid)) {
+            IEnumerable<string> tags = model.Tags;
+            if (model.Tags is null || model.Tags.Count < 1) {
+                model.Tags = [model.Guid];
+            }
+            foreach (var tag in tags) {
                 if (tag is null || (!string.IsNullOrEmpty(Filter) && !tag.Contains(Filter, StringComparison.CurrentCultureIgnoreCase))) {
                     // We were filtering (filter exists) but the name doesn't contain the filter. 
                     // Skip

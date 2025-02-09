@@ -1,5 +1,6 @@
 
 using System.Text.Json;
+using DotML.Network;
 
 namespace DotML.Cli.Embeddings;
 
@@ -7,13 +8,13 @@ namespace DotML.Cli.Embeddings;
 /// Treat the input as a JSON vector (double array)
 /// </summary>
 public class Json : IEmbedder {
-    public Vec<double> CreateEmbedding(FileInfo file) {
-        var vec = JsonSerializer.Deserialize<double[]>(file.OpenRead()) ?? new double[0];
-        return Vec<double>.Wrap(vec);
+    public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, FileInfo file) {
+        var vec = Matrix<double>.Column(JsonSerializer.Deserialize<double[]>(file.OpenRead()) ?? new double[0]);
+        return new BatchedFeatureSet<double>(new FeatureSet<double>(vec));
     }
 
-    public Vec<double> CreateEmbedding(string raw) {
-        var vec = JsonSerializer.Deserialize<double[]>(raw) ?? new double[0];
-        return Vec<double>.Wrap(vec);
+    public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, string raw) {
+        var vec = Matrix<double>.Column(JsonSerializer.Deserialize<double[]>(raw) ?? new double[0]);
+        return new BatchedFeatureSet<double>(new FeatureSet<double>(vec));
     }
 }

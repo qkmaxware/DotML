@@ -1,3 +1,5 @@
+using DotML.Network;
+using DotML.Network.Training;
 using SkiaSharp;
 
 namespace DotML.Cli.Embeddings;
@@ -5,31 +7,29 @@ namespace DotML.Cli.Embeddings;
 /// <summary>
 /// Treat the input as an RGB image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
-public class RgbImage : IEmbedder {
-    public Vec<double> CreateEmbedding(FileInfo file) {
-        using var bitmap = SKBitmap.FromImage(SKImage.FromEncodedData(file.FullName));
+public class RgbImage : ImageEmbedding {
+    public override BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
-        var img_size    = rows * cols;
         var samples     = 3;
-        var vector      = new Vec<double>(samples * img_size);
+
+        const int R = 0;
+        const int G = 1;
+        const int B = 2;
+        var features = new FeatureSet<double>(new Shape3D(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {
                 var index_in_sample = row * cols + col;
                 var colour = bitmap.GetPixel(col, row);
 
-                vector[0 * img_size + index_in_sample] = (colour.Red / 255.0);
-                vector[1 * img_size + index_in_sample] = (colour.Green / 255.0);
-                vector[2 * img_size + index_in_sample] = (colour.Blue / 255.0);
+                features[R, row, col] = (colour.Red / 255.0);
+                features[G, row, col] = (colour.Green / 255.0);
+                features[B, row, col] = (colour.Blue / 255.0);
             }
         }
 
-        return vector;
-    }
-
-    public Vec<double> CreateEmbedding(string raw) {
-        throw new NotSupportedException("Reading images from standard input is not supported");
+        return new BatchedFeatureSet<double>(features);
     }
 }
 
@@ -37,14 +37,14 @@ public class RgbImage : IEmbedder {
 /// <summary>
 /// Treat the input as a Mono image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
-public class MonoImage : IEmbedder {
-    public Vec<double> CreateEmbedding(FileInfo file) {
-        using var bitmap = SKBitmap.FromImage(SKImage.FromEncodedData(file.FullName));
+public class MonoImage : ImageEmbedding {
+    public override BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
-        var img_size    = rows * cols;
-        var samples     = 3;
-        var vector      = new Vec<double>(samples * img_size);
+        var samples     = 1;
+
+        const int GREY = 0;
+        var features = new FeatureSet<double>(new Shape3D(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {
@@ -52,14 +52,10 @@ public class MonoImage : IEmbedder {
                 var colour = bitmap.GetPixel(col, row);
 
                 var grey = (0.299 * colour.Red) + (0.587 * colour.Green) + (0.114 * colour.Blue);
-                vector[index_in_sample] = Math.Clamp(grey, 0, 255) / 255.0;
+                features[GREY, row, col] = Math.Clamp(grey, 0, 255) / 255.0;
             }
         }
 
-        return vector;
-    }
-
-    public Vec<double> CreateEmbedding(string raw) {
-        throw new NotSupportedException("Reading images from standard input is not supported");
+        return new BatchedFeatureSet<double>(features);
     }
 }

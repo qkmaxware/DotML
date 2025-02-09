@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace DotML;
 
@@ -54,7 +55,10 @@ public class BatchedFeatureSet<T> :
     /// </summary>
     /// <param name="batch">batch index</param>
     /// <returns>feature set</returns>
-    public FeatureSet<T> this[int batch] => batches[batch];
+    public FeatureSet<T> this[int batch] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => batches[batch];
+    }
 
     /// <summary>
     /// Fetch a feature matrix
@@ -62,7 +66,10 @@ public class BatchedFeatureSet<T> :
     /// <param name="batch">batch index</param>
     /// <param name="channel">channel index</param>
     /// <returns>feature</returns>
-    public Matrix<T> this[int batch, int channel] => batches[batch][channel];
+    public Matrix<T> this[int batch, int channel] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => batches[batch][channel];
+    }
 
     /// <summary>
     /// Fetch a feature value
@@ -72,7 +79,15 @@ public class BatchedFeatureSet<T> :
     /// <param name="row">row index</param>
     /// <param name="col">column index</param>
     /// <returns>feature</returns>
-    public T this[int batch, int channel, int row, int col] => batches[batch][channel][row, col];
+    public T this[int batch, int channel, int row, int col] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => batches[batch][channel][row, col];
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set {
+            var m = batches[batch][channel];
+            m[row, col] = value;
+        }
+    }
 
     /// <summary>
     /// Number of batches of feature sets
@@ -184,7 +199,10 @@ public class FeatureSet<T> :
     /// </summary>
     /// <param name="channel">channel index</param>
     /// <returns>feature matrix</returns>
-    public Matrix<T> this[int channel] => channels[channel];
+    public Matrix<T> this[int channel] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => channels[channel];
+    }
 
     /// <summary>
     /// Fetch a feature value
@@ -193,7 +211,15 @@ public class FeatureSet<T> :
     /// <param name="row">row index</param>
     /// <param name="col">column index</param>
     /// <returns>feature value</returns>
-    public T this[int channel, int row, int col] => channels[channel][row, col];
+    public T this[int channel, int row, int col] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => channels[channel][row, col];
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set {
+            var m = channels[channel];
+            m[row, col] = value;
+        }
+    }
 
     #endregion
 

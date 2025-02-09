@@ -70,20 +70,20 @@ public class Run : BaseCommand {
         Console.WriteLine("done");
 
         Console.Write($"Vectorizing '{(string.IsNullOrEmpty(InputFile) ? "stdin" : InputFile)}'...");
-        Vec<double> input_vector;
+        BatchedFeatureSet<double> input_vector;
         if (string.IsNullOrEmpty(InputFile)) {
             StringBuilder sb = new StringBuilder();
             while (Console.In.Peek() != -1) {
                 sb.Append(Console.In.ReadLine());
             }
-            input_vector = embedder.CreateEmbedding(sb.ToString());
+            input_vector = embedder.CreateEmbedding(network, sb.ToString());
         } else {
             FileInfo input = new FileInfo(InputFile);
             if (!input.Exists) {
                 Console.WriteLine($"No file exists with name '{InputFile}'.");
                 return;
             }
-            input_vector = embedder.CreateEmbedding(input);
+            input_vector = embedder.CreateEmbedding(network, input);
         }
         Console.WriteLine("done");
 
@@ -92,7 +92,7 @@ public class Run : BaseCommand {
         Console.WriteLine("done");
 
         Console.Write("Decoding...");
-        using (var result = decoder.Decode(network.OutputShape, output_vector)) {
+        using (var result = decoder.Decode(output_vector)) {
             if (!string.IsNullOrEmpty(OutputFile)) {
                 result.FileOutput(new FileInfo(OutputFile));
                 Console.WriteLine($"done created '{OutputFile}'");

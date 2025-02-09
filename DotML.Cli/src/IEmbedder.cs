@@ -1,6 +1,8 @@
+using DotML.Network;
+
 namespace DotML.Cli;
 
 public interface IEmbedder {
-    public Vec<double> CreateEmbedding(FileInfo file);
-    public Vec<double> CreateEmbedding(string raw);
+    public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, FileInfo file);
+    public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, string raw);
 }

@@ -76,6 +76,8 @@ public abstract class PoolingLayer : FeedforwardNetworkLayer {
 
     public override void Initialize(IInitializer initializer) {}
 
+    public override void SubtractGradients(LayerGradients? gradients) { }
+
     /// <summary>
     /// Number of trainable parameters in this layer
     /// </summary>

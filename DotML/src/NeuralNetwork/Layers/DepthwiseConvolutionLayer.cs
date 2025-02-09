@@ -141,11 +141,12 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
     }
 
     public class Gradients : LayerGradients {
-
+        private ConvolutionFilter[] Filters;
         public BatchedFeatureSet<double> FilterKernelGradients;
         public Vec<double> BiasGradients;
 
-        public Gradients(BatchedFeatureSet<double> filter, Vec<double> bias) {
+        public Gradients(ConvolutionFilter[] filters, BatchedFeatureSet<double> filter, Vec<double> bias) {
+            this.Filters = filters;
             this.FilterKernelGradients = filter;
             this.BiasGradients = bias;
         }
@@ -160,14 +161,15 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
             for (var b = 0; b < FilterKernelGradients.Batches; b++) { // Filter
                 for (var f = 0; f < FilterKernelGradients.Channels; f++) { // Kernel
                     var kmatrix = FilterKernelGradients[b][f];
+                    var paramk = Filters[b][f];
                     for (var i = 0; i < kmatrix.Size; i++) { // Kernel value
-                        kmatrix[i] = handler(parameter_index++, kmatrix[i]);
+                        kmatrix[i] = handler(parameter_index++, paramk[i], kmatrix[i]);
                     }
                 }
             }
 
             for (var f = 0; f < BiasGradients.Dimensionality; f++) {
-                BiasGradients[f] = handler(parameter_index++, BiasGradients[f]);
+                BiasGradients[f] = handler(parameter_index++, Filters[f].Bias, BiasGradients[f]);
             } 
         } 
     }
@@ -181,10 +183,29 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
         return new BackpropagationReturns(
             dX,
             new Gradients(
+                this.filters,
                 dW,
                 dB
             )
         );
+    }
+
+    public override void SubtractGradients(LayerGradients? gradients) {
+        if (gradients is null || gradients is not Gradients grads)
+            throw new ArgumentException(nameof(gradients));
+
+        for (var f = 0; f < filters.Length; f++) {
+            var filter = filters[f];
+            for (var k = 0; k < filter.Count; k++) {
+                var kernel = filter[k];
+                kernel.SubtractWithInplace(grads.FilterKernelGradients[f, k]);
+            }
+        } 
+
+        for (var f = 0; f < filters.Length; f++) {
+            var filter = filters[f];
+            filter.Bias -= grads.BiasGradients[f];
+        }  
     }
 
     private BatchedFeatureSet<double> BackpropagateWrtWeights(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY) {

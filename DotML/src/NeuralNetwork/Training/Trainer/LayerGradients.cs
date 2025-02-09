@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 
 namespace DotML.Network.Training;
 
-public delegate double GradientTransformationHandler(int index, double value);
+public delegate double GradientTransformationHandler(int parameterIndex, double parameterValue, double gradient);
 
 /// <summary>
 /// Base class for layer gradients

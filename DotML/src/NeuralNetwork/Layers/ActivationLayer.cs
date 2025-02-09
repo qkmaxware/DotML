@@ -58,6 +58,8 @@ public class ActivationLayer : FeedforwardNetworkLayer {
         );
     }
 
+    public override void SubtractGradients(LayerGradients? gradients) { }
+
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
     public override T Visit<T>(ILayerVisitor<T> visitor) =>visitor.Visit(this);
     public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);

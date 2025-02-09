@@ -103,10 +103,12 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
     }
 
     public class Gradients : LayerGradients {
+        private ConvolutionFilter[] Filters;
         public BatchedFeatureSet<double> FilterKernelGradients;
         public Vec<double> BiasGradients;
 
-        public Gradients(BatchedFeatureSet<double> weights, Vec<double> bias) {
+        public Gradients(ConvolutionFilter[] filters, BatchedFeatureSet<double> weights, Vec<double> bias) {
+            this.Filters = filters;
             this.FilterKernelGradients = weights;
             this.BiasGradients = bias;
         }
@@ -120,18 +122,20 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
             int index = 0;
             for (var m = 0; m < FilterKernelGradients.Batches; m++) {
                 var filter = FilterKernelGradients[m];
+                var param_filter = Filters[m];
                 for (var k = 0; k < filter.Channels; k++) {
                     var matrix = filter[k];
+                    var param_kernel = param_filter[k];
                     for (var r = 0; r < matrix.Rows; r++) {
                         for (var c = 0; c < matrix.Columns; c++) {
-                            matrix[r,c] = handler(index++, matrix[r,c]);
+                            matrix[r,c] = handler(index++, param_kernel[r,c], matrix[r,c]);
                         }
                     }
                 }
             }
 
             for (var i = 0; i < BiasGradients.Dimensionality; i++) {
-                BiasGradients[i] = handler(index++, BiasGradients[i]);
+                BiasGradients[i] = handler(index++, Filters[i].Bias, BiasGradients[i]);
             }
         }
     }
@@ -146,10 +150,29 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         return new BackpropagationReturns(
             dX,
             new Gradients (
+                this.filters,
                 dW,
                 dB
             )
         );
+    }
+
+    public override void SubtractGradients(LayerGradients? gradients) {
+        if (gradients is null || gradients is not Gradients grads)
+            throw new ArgumentException(nameof(gradients));
+
+        for (var f = 0; f < filters.Length; f++) {
+            var filter = filters[f];
+            for (var k = 0; k < filter.Count; k++) {
+                var kernel = filter[k];
+                kernel.SubtractWithInplace(grads.FilterKernelGradients[f, k]);
+            }
+        } 
+
+        for (var f = 0; f < filters.Length; f++) {
+            var filter = filters[f];
+            filter.Bias -= grads.BiasGradients[f];
+        }  
     }
 
     private BatchedFeatureSet<double> BackpropagateWrtWeights(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
@@ -157,6 +180,7 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         // dW(filter, kernel, row, col) = dy(filter, i, j) * input(c, i+k-1, j+l-1)
         // ----------------------------------------------------------------------------
         var (batch_size, in_channels, height, width) = X.Shape;
+        var (_, _, output_height, output_width) = dY.Shape;
         var (out_channels, _, filter_height, filter_width) = filter_shape;
 
         var dW = new BatchedFeatureSet<double>(filter_shape); // (out_channels, kernel_count, filter_height, filter_width)
@@ -166,9 +190,30 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
             for (var out_channel = 0; out_channel < out_channels; out_channel++) {
                 // Apply a valid convolution of the input image and dY
                 for (var in_channel = 0; in_channel < in_channels; in_channel++) {
-                    dW[out_channel, in_channel].AddWithInplace(
-                        X[batch, in_channel].Convolve(dY[batch, out_channel], strideX: StrideX, strideY: StrideY, paddingX: 0, paddingY: 0) // Maybe this is correct? This is a "valid" convolution as valid means no padding
-                    );
+                    // Iterate over the positions of the kernel in the output feature map
+                    for (var oy = 0; oy < output_height; oy++) {
+                        var startY = oy * this.StrideY;
+
+                        for (var ox = 0; ox < output_width; ox++) {
+                            // The start and end coordinates in the input based on stride
+                            var startX = ox * this.StrideX;
+
+                            for (var ky = 0; ky < filter_height; ky++) {
+                                for (var kx = 0; kx < filter_width; kx++) {
+                                    // Ensure we stay within bounds
+                                    if (startY + ky < height && startX + kx < width) {
+                                        // Access the input values manually
+                                        double input_value = X[batch, in_channel, startY + ky, startX + kx];
+                                        double dY_value = dY[batch, out_channel, oy, ox];
+
+                                        // Accumulate the weight gradient
+                                        var kernel = dW[out_channel, in_channel];
+                                        kernel[ky, kx] += input_value * dY_value;
+                                    }
+                                }
+                            } 
+                        }
+                    }
                 }
             }
         }

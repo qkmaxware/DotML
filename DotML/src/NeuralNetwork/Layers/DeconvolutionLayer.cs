@@ -124,6 +124,10 @@ public class DeconvolutionLayer : FeedforwardNetworkLayer {
         throw new NotImplementedException();
     }
 
+    public override void SubtractGradients(LayerGradients? gradients) {
+        throw new NotImplementedException();
+    }
+
     public override void Visit(ILayerVisitor visitor) {
         throw new NotImplementedException();
     }

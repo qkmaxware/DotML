@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using CommandLine;
 using DotML.Cli.Notifiers;
+using DotML.Cli.Retention;
 using DotML.Network;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
@@ -71,6 +72,17 @@ public class Fit : BaseCommand {
     }
     [Option("save", HelpText = "Flag to indicate how the final weights should be applied to the model (none, overwrite, or duplicate)", Default = UpdateModeType.overwrite)]
     public UpdateModeType UpdateMode {get; set;}
+
+    public enum RetentionPolicy {
+        none,
+        all, 
+        most_recent,
+        last5,
+        last10,
+        smallest_loss,
+    }
+    [Option("retention", HelpText = "Flag to indicate how intermediate weights should be retained (none, all, most_recent, last5, last10, smallest_loss)", Default = RetentionPolicy.all)]
+    public RetentionPolicy Retention {get; set;}
     
 
     [Option("notify", HelpText = "Url, endpoint, or address to send notification updates to.", Required = false, Default = null)]
@@ -99,7 +111,6 @@ public class Fit : BaseCommand {
             return;
         }
         INotifier? notifier = GetNotifierFor(NotifyEndpoint);
-        #endregion
 
         var dir = appData.CreateTrainingDir();
         var weights_dir = Path.Combine(dir.FullName, "weights");
@@ -107,6 +118,7 @@ public class Fit : BaseCommand {
         using (var writer = new StreamWriter(Path.Combine(dir.FullName, $"model.{model.Guid}.xml"))) {
             writer.Write(model.ToXml());
         }
+        #endregion
 
         #region Network
         var network = model.Load();
@@ -164,6 +176,14 @@ public class Fit : BaseCommand {
                 trainer_prop_writer.Write("    "); trainer_prop_writer.Write(property.Name); trainer_prop_writer.Write(": "); trainer_prop_writer.WriteLine(value);
             }
         }
+        IRetentionPolicy<Safetensors> retention_policy = this.Retention switch {
+            RetentionPolicy.all             => new AllWeights(weights_dir),
+            RetentionPolicy.most_recent     => new MostRecentWeights(weights_dir),
+            RetentionPolicy.last5           => new LastNWeights(weights_dir, 5),
+            RetentionPolicy.last10          => new LastNWeights(weights_dir, 10),
+            RetentionPolicy.smallest_loss   => new SmallestLoss(weights_dir, validation_report),
+            _                               => new NoWeights()
+        };
         #endregion
 
         #region Data
@@ -356,7 +376,8 @@ public class Fit : BaseCommand {
 
             // Save weights
             try {
-                network.ToSafetensor().WriteToFile(Path.Combine(weights_dir,  $"epoch-{epoch_id}.safetensors"));
+                retention_policy.Backup($"epoch-{epoch_id}.safetensors", network.ToSafetensor());
+                //network.ToSafetensor().WriteToFile(Path.Combine(weights_dir,  $"epoch-{epoch_id}.safetensors"));
             } catch {}
             #endregion
         }

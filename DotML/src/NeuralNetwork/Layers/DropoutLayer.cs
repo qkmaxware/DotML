@@ -85,6 +85,8 @@ public class DropoutLayer : FeedforwardNetworkLayer {
         );
     }
 
+    public override void SubtractGradients(LayerGradients? gradients) { }
+
     public bool UseSharedMask {get; set;}
     private Matrix<double>? batchMask = null;
     public void ClearSharedMask() { batchMask = null; }

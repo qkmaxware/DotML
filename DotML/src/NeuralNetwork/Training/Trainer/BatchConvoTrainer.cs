@@ -462,18 +462,19 @@ public partial class BatchTrainerEnumerator<TNetwork>
                 var update_args = new LayerUpdateArgs();
                 update_args.UpdateTimestep = CurrentUpdateTimestep;
                 update_args.ParameterOffset = 0;
-                this.layerUpdateActions.TrackUsedParameters(false); // TODO only do this in DEBUG mode
+                // OLD this.layerUpdateActions.TrackUsedParameters(false); // TODO only do this in DEBUG mode
+                BeginParameterTracking();
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                     // Average gradients across batch
                     LayerGradients? avgGradient = layer_gradients[layerIndex];
-                    //avgGradient?.Apply((index, grad) =>  gradient_update(update_args.UpdateTimestep, LearningRate, prev, grad, update_args.ParameterOffset + index));
+                    avgGradient?.Apply((index, parameter, grad) =>  gradient_update(update_args.UpdateTimestep, LearningRate, parameter, grad, update_args.ParameterOffset + index));
 
                     // Perform update
                     update_args.Gradients = avgGradient;
                     var layer = Current.GetLayer(layerIndex);
                     update_args.LayerIndex = layerIndex;
-                    layer.Visit<LayerUpdateArgs, LayerUpdateReturns>(this.layerUpdateActions, update_args);
-                    //layer.SubtractGradients(avgGradient);
+                    // OLD layer.Visit<LayerUpdateArgs, LayerUpdateReturns>(this.layerUpdateActions, update_args);
+                    layer.SubtractGradients(avgGradient);
                     update_args.ParameterOffset += layer.TrainableParameterCount();
                 }
             }
@@ -524,6 +525,30 @@ public partial class BatchTrainerEnumerator<TNetwork>
     protected void ClipBatch(BatchedFeatureSet<double> batch, double threshold) {
         foreach (var features in batch)
             ClipFeatures(features, threshold);
+    }
+
+    private bool IsTrackingUsedParameters = false;
+    private void BeginParameterTracking() {
+        #if DEBUG
+        IsTrackingUsedParameters = true;
+        used_params.Clear();
+        #endif
+    }
+    private HashSet<int> used_params = new HashSet<int>();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private double gradient_update(int updateTimestep, double learningRate, double prevWeight, double gradient, int parameterIndex) {
+        // Verify the parameter has not been used this iteration already
+        if (IsTrackingUsedParameters) {
+            lock(used_params) {
+                if (used_params.Contains(parameterIndex))
+                    throw new Exception("Parameter " + parameterIndex + " has already been used this iteration");
+                used_params.Add(parameterIndex);
+            }
+        }
+
+        var regularized_grad = gradient + Regularization.Invoke(prevWeight);
+        var optimized_grad = LearningRateOptimizer.GetParameterUpdate(updateTimestep, learningRate, regularized_grad, parameterIndex);
+        return optimized_grad;
     }
 
     public event EpochStartHandler OnEpochStart = delegate {};
