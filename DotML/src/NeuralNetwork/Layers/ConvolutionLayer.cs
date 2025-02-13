@@ -352,10 +352,10 @@ Mine
                     
                     // Slide kernel over input
                     for (var inputY = 0; inputY < input_height_padded; inputY++) {
-                        var outY = (inputY - input_padding_rows - input_to_output_padding_rows) / stride_y;  // This assumes the output is "centered" in the middle of the input
+                        var outY = (inputY / stride_y - input_padding_rows - input_to_output_padding_rows);  // This assumes the output is "centered" in the middle of the input
 
                         for (var inputX = 0; inputX < input_width_padded; inputX++) {
-                            var outX = (inputX - input_padding_cols - input_to_output_padding_cols) / stride_x; // This assumes the output is "centered" in the middle of the input
+                            var outX = (inputX / stride_x - input_padding_cols - input_to_output_padding_cols); // This assumes the output is "centered" in the middle of the input
 
                             var sum = 0.0;
                             for (var kernelY = 0; kernelY < filter_height; kernelY++) {

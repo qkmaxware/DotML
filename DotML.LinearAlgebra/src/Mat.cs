@@ -676,6 +676,65 @@ where T:INumber<T> {
     }
 
     /// <summary>
+    /// Perform a transpose convolution of this matrix using the provided kernel
+    /// </summary>
+    /// <param name="kernel">kernel</param>
+    /// <param name="flip_kernel">should the kernel be flipped across both dimensions or not</param>
+    /// <param name="strideX">stride across the x-axis (columns) of the output matrix</param>
+    /// <param name="strideY">stride across the y-axis (rows) of the output matrix</param>
+    /// <param name="paddingX">horizontal padding of the input matrix</param>
+    /// <param name="paddingY">vertical padding of the input matrix</param>
+    /// <param name="outputPaddingX">horizontal padding of the output matrix</param>
+    /// <param name="outputPaddingY">vertical padding of the output matrix</param>
+    /// <returns>transpose convolved matrix</returns>
+    public Matrix<T> TransposeConvolve(Matrix<T> kernel, bool flip_kernel = false, int strideX = 1, int strideY = 1, int paddingX = 0, int paddingY = 0, int outputPaddingX = 0, int outputPaddingY = 0) {
+        var in_rows = this.Rows;
+        var in_cols = this.Columns;
+
+        var kernel_rows = kernel.Rows;
+        var kernel_rows_m1 = kernel_rows - 1;
+        var kernel_cols = kernel.Columns;
+        var kernel_cols_m1 = kernel_cols - 1;
+
+        // TODO account for stride in output size calculation
+        // https://www.digitalocean.com/community/tutorials/transpose-convolution
+        // Transpose Convolution Output Size = (Input Size - 1) * Strides + Filter Size - 2 * Padding + Output Padding
+        var out_cols = (this.Columns - 1) * strideX + kernel.Columns - 2 * outputPaddingX; 
+        var out_rows = (this.Rows - 1) * strideY + kernel.Rows - 2 * outputPaddingY;
+
+        var result = new Matrix<T>(out_rows, out_cols);
+        for (var r = 0; r < in_rows; r++) {
+            var region_start_y = r * strideY - outputPaddingY;
+            var region_end_y = region_start_y + kernel_rows;
+
+            for (var c = 0; c < in_cols; c++) {
+                var region_start_x = c * strideX - outputPaddingX;
+                var region_end_x = region_start_x + kernel_cols;
+
+                var i = this[r, c];
+
+                for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
+                    if (out_y < 0 || out_y >= out_rows)
+                        continue;
+
+                    for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
+                        if (out_x < 0 || out_x >= out_cols)
+                            continue;
+
+                        if (flip_kernel) {
+                            ky = kernel_rows_m1 - ky;
+                            kx = kernel_cols_m1 - kx;
+                        }
+                        result[out_y, out_x] += i * kernel[ky, kx];
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Perform a convolution of this matrix using the provided kernel
     /// </summary>
     /// <param name="kernel">kernel</param>

@@ -262,4 +262,65 @@ public class BasicMatrix {
         Assert.ThrowsException<ArithmeticException>(() => B*A);
     }
 
+    [TestMethod]
+    public void TestConvolve() {
+        var kernels = new Matrix<double>(new double[,] {
+                {1, 0, 1},
+                {0, 1, 0},
+                {1, 0, 1}
+            });
+        var input = new Matrix<double>(new double[,]{
+            {1, 1, 1, 0, 0},
+            {0, 1, 1, 1, 0},
+            {0, 0, 1, 1, 1},
+            {0, 0, 1, 1, 0},
+            {0, 1, 1, 0, 0},
+        });
+        var output = input.Convolve(kernels);
+
+        Matrix<double> result = new Matrix<double>(new double[,] {
+            {4, 3, 4},
+            {2, 4, 3},
+            {2, 3, 4}
+        });
+
+        Assert.AreEqual(result.Rows, output.Rows);
+        Assert.AreEqual(result.Columns, output.Columns);
+        for (var r = 0; r < result.Rows; r++) {
+            for (var c = 0; c < result.Columns; c++) {
+                Assert.AreEqual(result[r, c], output[r, c], $"Element mismatch @ row {r}, column {c}. Expected {result}, got {output}");
+            }
+        }
+    }
+
+    [TestMethod]
+    public void TestTransposeConvolve() {
+        Matrix<double> input = new Matrix<double>(new double[,]{
+            {1, 2, 3},
+            {4, 5, 6},
+            {7, 8, 9}
+        });
+
+        Matrix<double> kernel = new Matrix<double>(new double[,]{
+            {1, 2, 3},
+            {4, 5, 6},
+            {7, 8, 9}
+        });
+
+        Matrix<double> result_truth = new Matrix<double>(new double[,]{
+            {1, 4, 10, 12, 9},
+            {8, 26, 56, 54, 36},
+            {30, 84, 165, 144, 90},
+            {56, 134, 236, 186, 108},
+            {49, 112, 190, 144, 81}
+        });
+        var result_predicted = input.TransposeConvolve(kernel);
+        Assert.AreEqual(result_truth.Rows, result_predicted.Rows);
+        Assert.AreEqual(result_truth.Columns, result_predicted.Columns);
+
+        foreach (var (predicted, truth) in result_predicted.Zip(result_truth)) {
+            Assert.AreEqual(truth, predicted, 0.0001);
+        }
+    }
+
 }
