@@ -199,39 +199,6 @@ Mine
 
         var dW = new BatchedFeatureSet<double>(filter_shape); // (out_channels, kernel_count, filter_height, filter_width)
 
-        // Iterate through each batch and output channel
-        /*for (var batch = 0; batch < batch_size; batch++) {
-            for (var out_channel = 0; out_channel < out_channels; out_channel++) {
-                // Apply a valid convolution of the input image and dY
-                for (var in_channel = 0; in_channel < in_channels; in_channel++) {
-                    // Iterate over the positions of the kernel in the output feature map
-                    for (var oy = 0; oy < output_height; oy++) {
-                        var startY = oy * this.StrideY;
-
-                        for (var ox = 0; ox < output_width; ox++) {
-                            // The start and end coordinates in the input based on stride
-                            var startX = ox * this.StrideX;
-
-                            for (var ky = 0; ky < filter_height; ky++) {
-                                for (var kx = 0; kx < filter_width; kx++) {
-                                    // Ensure we stay within bounds
-                                    if (startY + ky < height && startX + kx < width) {
-                                        // Access the input values manually
-                                        double input_value = X[batch, in_channel, startY + ky, startX + kx];
-                                        double dY_value = dY[batch, out_channel, oy, ox];
-
-                                        // Accumulate the weight gradient
-                                        var kernel = dW[out_channel, in_channel];
-                                        kernel[ky, kx] += input_value * dY_value;
-                                    }
-                                }
-                            } 
-                        }
-                    }
-                }
-            }
-        }*/
-
         for (var oY = 0; oY < output_height; oY++) {
             for (var oX = 0; oX < output_width; oX++) {
                 // Region on the input which was used to compute this value on the output
@@ -419,8 +386,6 @@ Mine
             } 
             result_features[batchIndex] = new FeatureSet<double>(batch_features);
         });
-
-        // TOD gradient clipping
 
         return new BatchedFeatureSet<double>(result_features);
     }

@@ -177,6 +177,7 @@ public class ConvolutionalLayerTest {
         using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingSame.YTruth.txt")) {
             writer.Write(Y_truth);
         }
+        Assert.AreEqual(Y_truth.Shape, Y_projected.Shape);
         foreach (var (projected, truth) in Y_projected.Zip(Y_truth)) {
             Assert.AreEqual(truth, projected, 0.001, "Feedforward failed, projected value does not equal truth. Compare YProjected.txt to YTruth.txt.");
         }
@@ -215,6 +216,7 @@ public class ConvolutionalLayerTest {
             output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
             error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
         ));
+        Assert.AreEqual(Y_truth.Shape, dY.Shape);
         Assert.IsInstanceOfType<ConvolutionLayer.Gradients>(backprop_returns.Gradients);
         var gradients = (ConvolutionLayer.Gradients)backprop_returns.Gradients;
         
@@ -281,12 +283,191 @@ public class ConvolutionalLayerTest {
             writer.Write(dW_truth);
         }
 
+        Assert.AreEqual(dB_truth.Dimensionality, dB_projected.Dimensionality);
         foreach (var (projected, truth) in dB_projected.Zip(dB_truth)) {
             Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(B) value does not equal truth. Compare dBProjected.txt to dBTruth.txt.");
         }
+        Assert.AreEqual(dW_truth.Shape, dW_projected.Shape);
         foreach (var (projected, truth) in dW_projected.Zip(dW_truth)) {
             Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(W) value does not equal truth. Compare dWProjected.txt to dWTruth.txt.");
         }
+        Assert.AreEqual(dX_truth.Shape, dX_projected.Shape);
+        foreach (var (projected, truth) in dX_projected.Zip(dX_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(X) value does not equal truth. Compare dXProjected.txt to dXTruth.txt.");
+        }
+    }
+
+    [TestMethod]
+    public void TestStride2PaddingSame() {
+        // SRC Generator = /DotML.Utils/BackpropGenerators/conv2d.py
+        // Step 1: Setup layer and input
+        var layer = new ConvolutionLayer(
+            input_size: new Shape3D(1, 5, 5),
+            padding: Padding.Same,
+            stride: 2,
+            new ConvolutionFilter(
+                Matrix<double>.FromFlattened(3, 3, [
+                    0.16329312324523926,
+                    0.09592697024345398,
+                    0.3095523416996002,
+                    0.244705468416214,
+                    -0.004788994789123535,
+                    0.1564023196697235,
+                    -0.33284634351730347,
+                    -0.2813574969768524,
+                    0.1707456409931183
+                ])
+            )
+        );
+        layer.Filters[0].Bias = -0.27856478095054626;
+
+        var X = Matrix<double>.FromFlattened(5, 5, [
+            0.648898184299469,
+            -0.3165184557437897,
+            0.5921686291694641,
+            0.669906735420227,
+            1.8797013759613037,
+            0.8009260892868042,
+            -0.2469014674425125,
+            1.3706653118133545,
+            0.026790814474225044,
+            0.8981137871742249,
+            -1.9287036657333374,
+            -0.5320494771003723,
+            0.7677139043807983,
+            -0.09868572652339935,
+            0.22990605235099792,
+            -0.48545515537261963,
+            1.3519724607467651,
+            -0.0021796601358801126,
+            -1.567776083946228,
+            -0.8130477666854858,
+            -0.10570134222507477,
+            -0.01946316659450531,
+            0.2615739703178406,
+            -0.40154287219047546,
+            0.1635170876979828
+        ]);
+
+        // Step 2: Assert that feed-forward worked.
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0, 0];
+        var Y_truth = Matrix<double>.FromFlattened(3, 3, [
+            -0.5986804962158203,
+            -0.5529718399047852,
+            -0.38524511456489563,
+            0.015289336442947388,
+            -1.0454885959625244,
+            0.5372989177703857,
+            0.0908353254199028,
+            -0.6121324896812439,
+            -0.7116078734397888
+        ]);
+
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride2PaddingSame.YProjected.txt")) {
+            writer.Write(Y_projected);
+        }
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride2PaddingSame.YTruth.txt")) {
+            writer.Write(Y_truth);
+        }
+        Assert.AreEqual(Y_truth.Shape, Y_projected.Shape);
+        foreach (var (projected, truth) in Y_projected.Zip(Y_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Feedforward failed, projected value does not equal truth. Compare YProjected.txt to YTruth.txt.");
+        }
+
+        // Step 3: Backpropagate and check gradients
+        var dY = Matrix<double>.FromFlattened(3, 3, [
+            1.2390981912612915,
+            -0.27579402923583984,
+            -1.463151216506958,
+            0.8923978209495544,
+            -1.5148130655288696,
+            0.35458904504776,
+            0.7004590630531311,
+            1.1337686777114868,
+            -0.1760110855102539
+        ]);
+        var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
+            layer: -1, 
+            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
+            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
+            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
+        ));
+        Assert.AreEqual(Y_truth.Shape, dY.Shape);
+        Assert.IsInstanceOfType<ConvolutionLayer.Gradients>(backprop_returns.Gradients);
+        var gradients = (ConvolutionLayer.Gradients)backprop_returns.Gradients;
+        
+        var dX_projected = backprop_returns.InputErrors[0, 0];
+        var dX_truth = Matrix<double>.FromFlattened(5, 5, [
+            -0.005934034939855337,
+            0.12630951404571533,
+            0.0013207761803641915,
+            -0.40117594599723816,
+            0.007007023319602013,
+            -0.26302453875541687,
+            0.3322529196739197,
+            -0.06771471351385117,
+            0.028901897370815277,
+            0.44568321108818054,
+            -0.004273688420653343,
+            -0.23110996186733246,
+            0.007254431955516338,
+            -0.15015040338039398,
+            -0.0016981250373646617,
+            -0.18388989567756653,
+            1.0585384368896484,
+            0.5349630117416382,
+            -0.05445203185081482,
+            -0.11665049195289612,
+            -0.0033544946927577257,
+            0.38699281215667725,
+            -0.005429612472653389,
+            0.13425317406654358,
+            0.0008429161971434951
+        ]);
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride2PaddingSame.dXProjected.txt")) {
+            writer.Write(dX_projected);
+        }
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride2PaddingSame.dXTruth.txt")) {
+            writer.Write(dX_truth);
+        }
+
+        var dB_projected = gradients.BiasGradients;
+        var dB_truth = Vec<double>.Wrap([0.8905434608459473]);
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride2PaddingSame.dBProjected.txt")) {
+            writer.Write(dB_projected);
+        }
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride2PaddingSame.dBTruth.txt")) {
+            writer.Write(dB_truth);
+        }
+        
+        var dW_projected = gradients.FilterKernelGradients[0, 0];
+        var dW_truth = Matrix<double>.FromFlattened(3, 3, [
+            2.19227933883667,
+            -1.2425031661987305,
+            -1.0914113521575928,
+            -0.0733090490102768,
+            -4.718402862548828,
+            -1.3711528778076172,
+            -2.5750069618225098,
+            -1.417886734008789,
+            3.2680611610412598
+        ]);
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride2PaddingSame.dWProjected.txt")) {
+            writer.Write(dW_projected);
+        }
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride2PaddingSame.dWTruth.txt")) {
+            writer.Write(dW_truth);
+        }
+
+        Assert.AreEqual(dB_truth.Dimensionality, dB_projected.Dimensionality);
+        foreach (var (projected, truth) in dB_projected.Zip(dB_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(B) value does not equal truth. Compare dBProjected.txt to dBTruth.txt.");
+        }
+        Assert.AreEqual(dW_truth.Shape, dW_projected.Shape);
+        foreach (var (projected, truth) in dW_projected.Zip(dW_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(W) value does not equal truth. Compare dWProjected.txt to dWTruth.txt.");
+        }
+        Assert.AreEqual(dX_truth.Shape, dX_projected.Shape);
         foreach (var (projected, truth) in dX_projected.Zip(dX_truth)) {
             Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(X) value does not equal truth. Compare dXProjected.txt to dXTruth.txt.");
         }
@@ -446,6 +627,172 @@ public class ConvolutionalLayerTest {
             1.615986704826355,
             -1.4229464530944824,
             -1.9790031909942627
+        ]);
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingValid.dWProjected.txt")) {
+            writer.Write(dW_projected);
+        }
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingValid.dWTruth.txt")) {
+            writer.Write(dW_truth);
+        }
+
+        Assert.AreEqual(dB_truth.Dimensionality, dB_projected.Dimensionality);
+        foreach (var (projected, truth) in dB_projected.Zip(dB_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(B) value does not equal truth. Compare dBProjected.txt to dBTruth.txt.");
+        }
+        Assert.AreEqual(dW_truth.Shape, dW_projected.Shape);
+        foreach (var (projected, truth) in dW_projected.Zip(dW_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(W) value does not equal truth. Compare dWProjected.txt to dWTruth.txt.");
+        }
+        Assert.AreEqual(dX_truth.Shape, dX_projected.Shape);
+        foreach (var (projected, truth) in dX_projected.Zip(dX_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(X) value does not equal truth. Compare dXProjected.txt to dXTruth.txt.");
+        }
+    }
+
+    [TestMethod]
+    public void TestStride2PaddingValid() {
+        // SRC Generator = /DotML.Utils/BackpropGenerators/conv2d.py
+        // Step 1: Setup layer and input
+        var layer = new ConvolutionLayer(
+            input_size: new Shape3D(1, 5, 5),
+            padding: Padding.Valid,
+            stride: 2,
+            new ConvolutionFilter(
+                Matrix<double>.FromFlattened(3, 3, [
+                    -0.22670862078666687,
+                    0.29332056641578674,
+                    -0.19603630900382996,
+                    -0.09961383044719696,
+                    0.2943679988384247,
+                    -0.22048604488372803,
+                    0.3319796621799469,
+                    0.1491285264492035,
+                    -0.25655075907707214
+                ])
+            )
+        );
+        layer.Filters[0].Bias = -0.21968214213848114;
+
+        var X = Matrix<double>.FromFlattened(5, 5, [
+            -1.187608242034912,
+            -0.013705188408493996,
+            0.773604691028595,
+            -0.019701238721609116,
+            1.003239631652832,
+            -0.453906774520874,
+            0.446717768907547,
+            0.8841092586517334,
+            -0.908335268497467,
+            -0.4518772065639496,
+            0.9588450789451599,
+            1.2185893058776855,
+            -0.35732653737068176,
+            0.8467770218849182,
+            -1.6297091245651245,
+            0.9893779158592224,
+            0.15075571835041046,
+            -0.7110050916671753,
+            0.3123204708099365,
+            1.2634272575378418,
+            -0.8262707591056824,
+            -1.0932413339614868,
+            -0.26137712597846985,
+            1.3187628984451294,
+            0.039951782673597336
+        ]);
+
+        // Step 2: Assert that feed-forward worked.
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0, 0];
+        var Y_truth = Matrix<double>.FromFlattened(2, 2, [
+            0.46738120913505554,
+            -0.4275803565979004,
+            -0.277267724275589,
+            0.4130247235298157
+        ]);
+
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingValid.YProjected.txt")) {
+            writer.Write(Y_projected);
+        }
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingValid.YTruth.txt")) {
+            writer.Write(Y_truth);
+        }
+        Assert.AreEqual(Y_truth.Shape, Y_projected.Shape);
+        foreach (var (projected, truth) in Y_projected.Zip(Y_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Feedforward failed, projected value does not equal truth. Compare YProjected.txt to YTruth.txt.");
+        }
+
+        // Step 3: Backpropagate and check gradients
+        var dY = Matrix<double>.FromFlattened(2, 2, [
+            0.13445043563842773,
+            1.81400728225708,
+            -1.0690683126449585,
+            -0.22659282386302948
+        ]);
+        Assert.AreEqual(Y_truth.Shape, dY.Shape);
+        var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
+            layer: -1, 
+            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
+            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
+            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
+        ));
+        Assert.IsInstanceOfType<ConvolutionLayer.Gradients>(backprop_returns.Gradients);
+        var gradients = (ConvolutionLayer.Gradients)backprop_returns.Gradients;
+        
+        var dX_projected = backprop_returns.InputErrors[0, 0];
+        var dX_truth = Matrix<double>.FromFlattened(5, 5, [
+            -0.030481072142720222,
+            0.039437077939510345,
+            -0.4376082718372345,
+            0.532085657119751,
+            -0.35561129450798035,
+            -0.01339312270283699,
+            0.0395779050886631,
+            -0.21034465730190277,
+            0.5339856743812561,
+            -0.39996328949928284,
+            0.2870018184185028,
+            -0.29352930188179016,
+            0.8286668658256531,
+            0.20405590534210205,
+            -0.4209645092487335,
+            0.1064939871430397,
+            -0.3146995007991791,
+            0.25828641653060913,
+            -0.06670167297124863,
+            0.049960557371377945,
+            -0.35490894317626953,
+            -0.15942858159542084,
+            0.1990460902452469,
+            -0.03379145264625549,
+            0.058132562786340714
+        ]);
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingValid.dXProjected.txt")) {
+            writer.Write(dX_projected);
+        }
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingValid.dXTruth.txt")) {
+            writer.Write(dX_truth);
+        }
+
+        var dB_projected = gradients.BiasGradients;
+        var dB_truth = Vec<double>.Wrap([0.6527965664863586]);
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingValid.dBProjected.txt")) {
+            writer.Write(dB_projected);
+        }
+        using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingValid.dBTruth.txt")) {
+            writer.Write(dB_truth);
+        }
+        
+        var dW_projected = gradients.FilterKernelGradients[0, 0];
+        var dW_truth = Matrix<double>.FromFlattened(3, 3, [
+            0.2995468080043793,
+            -1.5322096347808838,
+            2.675182342529297,
+            0.6461487412452698,
+            -1.8196029663085938,
+            -0.22701019048690796,
+            0.42329028248786926,
+            2.569827079772949,
+            -2.7339699268341064
         ]);
         using (var writer = new StreamWriter("ConvolutionalLayerTest.TestStride1PaddingValid.dWProjected.txt")) {
             writer.Write(dW_projected);
