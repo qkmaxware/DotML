@@ -80,6 +80,7 @@ public class Fit : BaseCommand {
         last5,
         last10,
         smallest_loss,
+        most_passed,
     }
     [Option("retention", HelpText = "Flag to indicate how intermediate weights should be retained (none, all, most_recent, last5, last10, smallest_loss)", Default = RetentionPolicy.all)]
     public RetentionPolicy Retention {get; set;}
@@ -182,6 +183,7 @@ public class Fit : BaseCommand {
             RetentionPolicy.last5           => new LastNWeights(weights_dir, 5),
             RetentionPolicy.last10          => new LastNWeights(weights_dir, 10),
             RetentionPolicy.smallest_loss   => new SmallestLoss(weights_dir, validation_report),
+            RetentionPolicy.most_passed     => new MostTestsPassed(weights_dir, validation_report),
             _                               => new NoWeights()
         };
         #endregion

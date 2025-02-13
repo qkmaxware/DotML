@@ -175,6 +175,20 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         }  
     }
 
+    /*
+Real
+[
+    -10.99089527130127,  -14.076019287109375,  -7.06515645980835;
+    -3.2001407146453857, -4.924467086791992,   8.84919548034668;
+    3.4817280769348145,  -0.5803017616271973,  -3.469475746154785
+]
+Mine
+[ 
+    -4.924466511838364,  8.849195123358085,   2.8818279499852455;
+    -0.5803017808134274, -3.4694756084658263, -5.9314796635580285;
+    -4.323853240887876,  1.008588256967232,   1.2048606242936302
+]
+    */
     private BatchedFeatureSet<double> BackpropagateWrtWeights(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
         // Kernel/Weight Gradients
         // dW(filter, kernel, row, col) = dy(filter, i, j) * input(c, i+k-1, j+l-1)
@@ -186,7 +200,7 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         var dW = new BatchedFeatureSet<double>(filter_shape); // (out_channels, kernel_count, filter_height, filter_width)
 
         // Iterate through each batch and output channel
-        for (var batch = 0; batch < batch_size; batch++) {
+        /*for (var batch = 0; batch < batch_size; batch++) {
             for (var out_channel = 0; out_channel < out_channels; out_channel++) {
                 // Apply a valid convolution of the input image and dY
                 for (var in_channel = 0; in_channel < in_channels; in_channel++) {
@@ -212,6 +226,39 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
                                     }
                                 }
                             } 
+                        }
+                    }
+                }
+            }
+        }*/
+
+        for (var oY = 0; oY < output_height; oY++) {
+            for (var oX = 0; oX < output_width; oX++) {
+                // Region on the input which was used to compute this value on the output
+                var x_start = oX * StrideX - ColumnsPadding;
+                var x_end = x_start + filter_width;
+                var y_start = oY * StrideY - RowsPadding;
+                var y_end = y_start + filter_height;
+
+                for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
+                    for (var filterIndex = 0; filterIndex < out_channels; filterIndex++) {
+                        var grad = dY[batchIndex, filterIndex, oY, oX];
+
+                        for (var kernelIndex = 0; kernelIndex < in_channels; kernelIndex++) {
+                            var dk = dW[filterIndex, kernelIndex];
+                            var x = X[batchIndex, kernelIndex];
+
+                            for (int iY = y_start, ky = 0; iY < y_end; iY++, ky++) {
+                                if (iY < 0 || iY >= height)
+                                    continue;
+
+                                for (int iX = x_start, kx = 0; iX < x_end; iX++, kx++) {
+                                    if (iX < 0 || iX >= width)
+                                        continue;
+
+                                    dk[ky, kx] += grad * x[iY, iX];
+                                }
+                            }
                         }
                     }
                 }
