@@ -143,9 +143,9 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         var filter_shape = FilterShape;
         var dW = BackpropagateWrtWeights(args.InputBatch, args.OutputErrors, filter_shape);
         var dB = BackpropagateWrtBias   (args.OutputErrors);
-        var dX = TransposeConvolve2(this, args);
+        //var dX = TransposeConvolve2(this, args);
         // TODO fix this
-        //var dX = BackpropagateWrtInput  (args.InputBatch, args.OutputErrors, filter_shape);
+        var dX = BackpropagateWrtInput  (args.InputBatch, args.OutputErrors, filter_shape);
 
         return new BackpropagationReturns(
             dX,
@@ -263,46 +263,61 @@ Mine
         // To compute the gradients w.r.t. the input (dinput), you perform a convolution of dY with the filter weights, flipping them. 
         // This is the same process used to calculate the forward pass convolution but with flipped weights
         // ---------------------------------------------------------------
-        var (batch_size, in_channels, in_rows, in_columns) = X.Shape;
-        var (_, out_channels, out_rows, out_columns) = dY.Shape;
-        var (_, _, kernel_height, kernel_width) = filter_shape;
+        var (batch_size, in_channels, out_rows, out_columns) = X.Shape; // In and out rows/columns flipped here since the "input" is dY and the output is "dX"
+        var (_, out_channels, in_rows, in_columns) = dY.Shape;
+        var (filter_count, kernel_count, kernel_height, kernel_width) = filter_shape;
+        var kernel_rows_m1 = kernel_height - 1;
+        var kernel_cols_m1 = kernel_width - 1;
 
-        var dX = new FeatureSet<double>[batch_size];
-        var flipped_filters = this.filters.Select(filter => new ConvolutionFilter(
-            filter.Select(
-                kernel => kernel.Mirror(x: true, y: true) // Flip the kernel
-            ).ToArray()
-        )).ToArray();
-        var filtersLength = flipped_filters.Length;
-
-        // DY should be zero-padded to match the shape of X
-        var Sy = StrideY;
-        var Sx = StrideX;
-
+        var dX = new BatchedFeatureSet<double>(X.Shape);
+        const bool flip_kernel = false;
+        
+        // How it worked.
+        // Each filter was an output channel
+        // Each kernel applied to a single input
+        // So to go backwards we need to take the output from each filter and distribute it with each kernel back to the associated input
         for (var batch = 0; batch < batch_size; batch++) {
-            var features = new Matrix<double>[in_channels];
-            for (var feature = 0; feature < in_channels; feature++) {
-                var matrix = new Matrix<double>(in_rows, in_columns);
-                for (var i = 0; i < in_rows; i++) {
-                    for (var j = 0; j < in_columns; j++) {
-                        // Loop over Cout 
-                        for (var channel = 0; channel < out_channels; channel++) {
-                            var flipped_kernel = flipped_filters[channel][feature];
-                            // Loop over Kh
-                            for (var kernel_y = 0; kernel_y < kernel_height; kernel_y++) {
-                                // Loop over Kw
-                                for (var kernel_x = 0; kernel_x < kernel_width; kernel_x++) {
-                                    var dX_n_cin_i_j = dY[batch, channel, (i + kernel_y) / Sy, (j + kernel_x) / Sx] * flipped_kernel[kernel_y, kernel_x];
-                                    matrix[i,j] = dX_n_cin_i_j;
+            for (var output_index = 0; output_index < out_channels; output_index++) {
+                var filter = this.filters[output_index];
+                var output = dY[batch, output_index];
+
+                for (var kernel_index = 0; kernel_index < in_channels; kernel_index++) {
+                    var kernel = filter[kernel_index];
+                    var result = dX[batch, kernel_index];
+
+                    // --------------------------------------
+                    // COPIED FROM Matrix<double>.TransposeConvolve();
+                    // --------------------------------------
+                    for (var r = 0; r < in_rows; r++) {
+                        var region_start_y = r * StrideY - RowsPadding;
+                        var region_end_y = region_start_y + kernel_height;
+
+                        for (var c = 0; c < in_columns; c++) {
+                            var region_start_x = c * StrideX - ColumnsPadding;
+                            var region_end_x = region_start_x + kernel_width;
+
+                            var i = output[r, c];
+
+                            for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
+                                if (out_y < 0 || out_y >= out_rows)
+                                    continue;
+
+                                for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
+                                    if (out_x < 0 || out_x >= out_columns)
+                                        continue;
+
+                                    if (flip_kernel) {
+                                        result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
+                                    } else {
+                                        result[out_y, out_x] += i * kernel[ky, kx];
+                                    }
                                 }
                             }
                         }
                     }
+                    // --------------------------------------
                 }
-                features[feature] = matrix;
             }
-
-            dX[batch] = new FeatureSet<double>(features);
         }
 
         return new BatchedFeatureSet<double>(dX);

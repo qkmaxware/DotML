@@ -147,6 +147,114 @@ public class LocalAvgPoolingLayerTest {
             writer.Write(dX_truth);
         }
 
+        Assert.AreEqual(dX_truth.Shape, dX_projected.Shape);
+        foreach (var (projected, truth) in dX_projected.Zip(dX_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(X) value does not equal truth. Compare dXProjected.txt to dXTruth.txt.");
+        }
+    }
+
+    [TestMethod]
+    public void TestStride2Padding0Kernel3() {
+        var layer = new LocalAvgPoolingLayer(new Shape3D(1, 5, 5), size: 3, stride: 2);
+
+        var X = Matrix<double>.FromFlattened(5, 5, [
+                    1.3925418853759766,
+                    -0.06613739579916,
+                    -0.5422175526618958,
+                    0.5325701236724854,
+                    -0.8462679982185364,
+                    1.1723917722702026,
+                    -0.9220021367073059,
+                    -0.6057412624359131,
+                    0.77365642786026,
+                    1.1700763702392578,
+                    0.2963123023509979,
+                    -0.63601154088974,
+                    1.5949783325195312,
+                    0.1986580193042755,
+                    -0.3485676348209381,
+                    -0.06287429481744766,
+                    0.7226407527923584,
+                    1.2705717086791992,
+                    0.8389192819595337,
+                    -1.1125303506851196,
+                    0.8723279237747192,
+                    0.06361571699380875,
+                    0.5719498991966248,
+                    -0.9991300106048584,
+                    -0.3620969355106354
+        ]);
+
+        var Y_truth = Matrix<double>.FromFlattened(2, 2, [
+                    0.1871238350868225,
+                    0.21412721276283264,
+                    0.5215012431144714,
+                    0.18363916873931885
+        ]);
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0,0];
+        Assert.AreEqual(Y_truth.Rows, Y_projected.Rows);
+        Assert.AreEqual(Y_truth.Columns, Y_projected.Columns);
+
+        using (var writer = new StreamWriter("LocalAvgPoolingLayerTest.TestStride1Padding0Kernel3.YProjected.txt")) {
+            writer.Write(Y_projected);
+        }
+        using (var writer = new StreamWriter("LocalAvgPoolingLayerTest.TestStride1Padding0Kernel3.YTruth.txt")) {
+            writer.Write(Y_truth);
+        }
+        foreach (var (projected, truth) in Y_projected.Zip(Y_truth)) {
+            Assert.AreEqual(truth, projected, 0.001, "Feedforward failed, projected value does not equal truth. Compare YProjected.txt to YTruth.txt.");
+        }
+
+        var dY = Matrix<double>.FromFlattened(2, 2, [
+                    0.23149579763412476,
+                    -0.8691568374633789,
+                    -0.5454152226448059,
+                    1.0452895164489746
+        ]);
+        var dX_truth = Matrix<double>.FromFlattened(5, 5, [
+                    0.025721754878759384,
+                    0.025721754878759384,
+                    -0.07085122168064117,
+                    -0.09657298028469086,
+                    -0.09657298028469086,
+                    0.025721754878759384,
+                    0.025721754878759384,
+                    -0.07085122168064117,
+                    -0.09657298028469086,
+                    -0.09657298028469086,
+                    -0.03487993776798248,
+                    -0.03487993776798248,
+                    -0.015309639275074005,
+                    0.019570298492908478,
+                    0.019570298492908478,
+                    -0.06060169264674187,
+                    -0.06060169264674187,
+                    0.05554158613085747,
+                    0.11614327877759933,
+                    0.11614327877759933,
+                    -0.06060169264674187,
+                    -0.06060169264674187,
+                    0.05554158613085747,
+                    0.11614327877759933,
+                    0.11614327877759933
+        ]);
+
+        var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
+            layer: -1,
+            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
+            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
+            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
+        ));
+        var dX_projected = backprop_returns.dX[0,0];
+        Assert.IsNull(backprop_returns.Gradients);
+        using (var writer = new StreamWriter("LocalAvgPoolingLayerTest.TestStride1Padding0Kernel3.dXProjected.txt")) {
+            writer.Write(dX_projected);
+        }
+        using (var writer = new StreamWriter("LocalAvgPoolingLayerTest.TestStride1Padding0Kernel3.dXTruth.txt")) {
+            writer.Write(dX_truth);
+        }
+
+        Assert.AreEqual(dX_truth.Shape, dX_projected.Shape);
         foreach (var (projected, truth) in dX_projected.Zip(dX_truth)) {
             Assert.AreEqual(truth, projected, 0.001, "Backprop failed, gradient(X) value does not equal truth. Compare dXProjected.txt to dXTruth.txt.");
         }

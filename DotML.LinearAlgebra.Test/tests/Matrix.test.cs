@@ -323,4 +323,72 @@ public class BasicMatrix {
         }
     }
 
+    [TestMethod]
+    public void TestTransposeConvolve2() {
+        Matrix<double> input = Matrix<double>.FromFlattened(3, 3, [
+            1.2390981912612915,
+            -0.27579402923583984,
+            -1.463151216506958,
+            0.8923978209495544,
+            -1.5148130655288696,
+            0.35458904504776,
+            0.7004590630531311,
+            1.1337686777114868,
+            -0.1760110855102539
+        ]);
+
+        Matrix<double> kernel = Matrix<double>.FromFlattened(3, 3, [
+            0.16329312324523926,
+            0.09592697024345398,
+            0.3095523416996002,
+            0.244705468416214,
+            -0.004788994789123535,
+            0.1564023196697235,
+            -0.33284634351730347,
+            -0.2813574969768524,
+            0.1707456409931183
+        ]);
+
+        Matrix<double> result_truth = Matrix<double>.FromFlattened(5, 5, [
+            -0.005934034939855337,
+            0.12630951404571533,
+            0.0013207761803641915,
+            -0.40117594599723816,
+            0.007007023319602013,
+            -0.26302453875541687,
+            0.3322529196739197,
+            -0.06771471351385117,
+            0.028901897370815277,
+            0.44568321108818054,
+            -0.004273688420653343,
+            -0.23110996186733246,
+            0.007254431955516338,
+            -0.15015040338039398,
+            -0.0016981250373646617,
+            -0.18388989567756653,
+            1.0585384368896484,
+            0.5349630117416382,
+            -0.05445203185081482,
+            -0.11665049195289612,
+            -0.0033544946927577257,
+            0.38699281215667725,
+            -0.005429612472653389,
+            0.13425317406654358,
+            0.0008429161971434951
+        ]);
+        var result_predicted = input.TransposeConvolve(kernel, 
+            flip_kernel: false, 
+            outputStrideX: 2, outputStrideY: 2, 
+            outputPaddingX: 1,
+            outputPaddingY: 1,
+            bias: 0
+        );
+        Assert.AreEqual(result_truth.Rows, result_predicted.Rows);
+        Assert.AreEqual(result_truth.Columns, result_predicted.Columns);
+
+        foreach (var (predicted, truth) in result_predicted.Zip(result_truth)) {
+            Assert.AreEqual(truth, predicted, 0.0001);
+        }
+    }
+
 }

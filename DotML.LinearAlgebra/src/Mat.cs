@@ -680,14 +680,14 @@ where T:INumber<T> {
     /// </summary>
     /// <param name="kernel">kernel</param>
     /// <param name="flip_kernel">should the kernel be flipped across both dimensions or not</param>
-    /// <param name="strideX">stride across the x-axis (columns) of the output matrix</param>
-    /// <param name="strideY">stride across the y-axis (rows) of the output matrix</param>
+    /// <param name="outputStrideX">stride across the x-axis (columns) of the output matrix</param>
+    /// <param name="outputStrideY">stride across the y-axis (rows) of the output matrix</param>
     /// <param name="paddingX">horizontal padding of the input matrix</param>
     /// <param name="paddingY">vertical padding of the input matrix</param>
     /// <param name="outputPaddingX">horizontal padding of the output matrix</param>
     /// <param name="outputPaddingY">vertical padding of the output matrix</param>
     /// <returns>transpose convolved matrix</returns>
-    public Matrix<T> TransposeConvolve(Matrix<T> kernel, bool flip_kernel = false, int strideX = 1, int strideY = 1, int paddingX = 0, int paddingY = 0, int outputPaddingX = 0, int outputPaddingY = 0) {
+    public Matrix<T> TransposeConvolve(Matrix<T> kernel, bool flip_kernel = false, int outputStrideX = 1, int outputStrideY = 1, int outputPaddingX = 0, int outputPaddingY = 0, T? bias = default(T)) {
         var in_rows = this.Rows;
         var in_cols = this.Columns;
 
@@ -699,16 +699,16 @@ where T:INumber<T> {
         // TODO account for stride in output size calculation
         // https://www.digitalocean.com/community/tutorials/transpose-convolution
         // Transpose Convolution Output Size = (Input Size - 1) * Strides + Filter Size - 2 * Padding + Output Padding
-        var out_cols = (this.Columns - 1) * strideX + kernel.Columns - 2 * outputPaddingX; 
-        var out_rows = (this.Rows - 1) * strideY + kernel.Rows - 2 * outputPaddingY;
+        var out_cols = (this.Columns - 1) * outputStrideX + kernel.Columns - 2 * outputPaddingX; 
+        var out_rows = (this.Rows - 1) * outputStrideY + kernel.Rows - 2 * outputPaddingY;
 
-        var result = new Matrix<T>(out_rows, out_cols);
+        var result = new Matrix<T>(out_rows, out_cols, bias ?? T.Zero);
         for (var r = 0; r < in_rows; r++) {
-            var region_start_y = r * strideY - outputPaddingY;
+            var region_start_y = r * outputStrideY - outputPaddingY;
             var region_end_y = region_start_y + kernel_rows;
 
             for (var c = 0; c < in_cols; c++) {
-                var region_start_x = c * strideX - outputPaddingX;
+                var region_start_x = c * outputStrideX - outputPaddingX;
                 var region_end_x = region_start_x + kernel_cols;
 
                 var i = this[r, c];
@@ -722,10 +722,10 @@ where T:INumber<T> {
                             continue;
 
                         if (flip_kernel) {
-                            ky = kernel_rows_m1 - ky;
-                            kx = kernel_cols_m1 - kx;
+                            result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
+                        } else {
+                            result[out_y, out_x] += i * kernel[ky, kx];
                         }
-                        result[out_y, out_x] += i * kernel[ky, kx];
                     }
                 }
             }
