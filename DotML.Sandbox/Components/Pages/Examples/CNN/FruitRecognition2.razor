@@ -67,7 +67,7 @@
     private EnumerableBatchTrainer<FeedforwardNetwork> trainer = new EnumerableBatchTrainer<FeedforwardNetwork> {
         LearningRate = 0.001,
         LearningRateOptimizer = new AdamOptimizer(),
-        LossFunction = LossFunctions.CrossEntropy,
+        LossFunction = LossFunctions.CategoricalCrossEntropy,
         NetworkInitializer = new HeInitialization(),
         BatchSize = 6,
         EnableGradientClipping = true,

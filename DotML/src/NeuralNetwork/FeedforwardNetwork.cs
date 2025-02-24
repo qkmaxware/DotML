@@ -58,12 +58,12 @@ public class FeedforwardNetwork:
         this.layers.AddRange(layers);
     }
 
-    public void RemoveLayer(int index) {
+    public IFeedforwardNetworkLayer? RemoveLayer(int index) {
         if (index < 0)
-            return;
+            return null;
         
         if (index >= this.layers.Count)
-            return;
+            return null;
 
         int prev_index = index - 1;
         int next_index = index + 1;
@@ -75,7 +75,9 @@ public class FeedforwardNetwork:
             }
         }
 
+        var layer = this.layers[index];
         this.layers.RemoveAt(index);
+        return layer;
     }
 
     public void ReplaceLayer(int index, IFeedforwardNetworkLayer layer) {

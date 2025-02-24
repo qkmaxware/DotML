@@ -64,6 +64,13 @@ public class ConvolutionFilter : IEnumerable<Matrix<double>> {
 
         this.kernels = kernels;
     }
+    /// <summary>
+    /// Create a filter from the given kernels
+    /// </summary>
+    /// <param name="kernels">kernels</param>
+    public ConvolutionFilter(double bias, params Matrix<double>[] kernels) : this(kernels) {
+        this.Bias = bias;
+    }
 
     /// <summary>
     /// Make a bunch of filters with the given number of kernels per filter and kernel size

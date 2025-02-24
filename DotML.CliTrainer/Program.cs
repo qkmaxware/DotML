@@ -60,7 +60,7 @@ public static void Main() {
         Epochs = 100,
         LearningRate = 0.001,
         LearningRateOptimizer = new AdamOptimizer(),
-        LossFunction = LossFunctions.CrossEntropy,
+        LossFunction = LossFunctions.CategoricalCrossEntropy,
         NetworkInitializer = new HeInitialization(),
         BatchSize = 10,
         EnableGradientClipping = false,

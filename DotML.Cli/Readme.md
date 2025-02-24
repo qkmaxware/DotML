@@ -10,7 +10,7 @@ A command line utility for:
 
 > netflow rm my_network
 
-> netflow tag --add "custom-tag"
+> netflow tag my_network --add "custom-tag"
 ```
 3. Training Neural Networks
 ```ps

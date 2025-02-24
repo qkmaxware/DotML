@@ -8,6 +8,7 @@ using DotML.Cli.Retention;
 using DotML.Network;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
+using DotML.Cli.Visualizations;
 
 namespace DotML.Cli.Commands;
 
@@ -52,8 +53,17 @@ public class Fit : BaseCommand {
     [Option("learning-rate", HelpText = "Initial learning rate", Required = false, Default = 0.01)]
     public double LearningRate {get; set;}
 
+    [Option("accuracy", HelpText = "Early stop accuracy threshold", Required = false, Default = 0.15)]
+    public double Accuracy {get; set;}
+
+    [Option("patience", HelpText = "Early stop patience (min 1)", Required = false, Default = 1)]
+    public int Patience {get; set;}
+
     [Option("batch-size", HelpText = "Batch size, leave blank for batch to be automatically determined", Required = false)]
     public int? BatchSize {get; set;}
+
+    [Option("loss", HelpText = "Name of the loss function to use, leave blank for function to be automatically determined", Required = false)]
+    public string? LossFunctionName {get; set;}
 
     [Option("clip-gradients", HelpText = "Flag to indicate if gradient clipping should be performed", Required = false, Default = "false")]
     public string? ClipGradientsStr {get; set;}
@@ -66,6 +76,9 @@ public class Fit : BaseCommand {
     [Option("continue", HelpText = "Flag to indicate if the existing weights should be used or if the network should be re-initialized", Required = false, Default = "false")]
     public string? ContinueStr {get; set;}
     public bool ContinueFromExisting => IsSet(ContinueStr);
+
+    [Option("retry", HelpText = "Number of times to retry training if an exception occurs", Required = false)]
+    public int? RetryCount {get; set;}
 
     public enum UpdateModeType {
         none, overwrite, duplicate
@@ -154,11 +167,11 @@ public class Fit : BaseCommand {
             LearningRate            = Math.Max(0, LearningRate),
             LearningRateOptimizer   = new AdamOptimizer(),
             EarlyStop               = true,
-            EarlyStopAccuracy       = 0.1,
-            EarlyStopPatience       = 1,
+            EarlyStopAccuracy       = Math.Max(0, Accuracy),
+            EarlyStopPatience       = Math.Max(1, Patience),
             LossFunction            = smart_pick_loss(network),
             NetworkInitializer      = smart_pick_initializer(network),
-            BatchSize               = BatchSize.HasValue ? Math.Max(1, BatchSize.Value) : smart_pick_batch_size(network),
+            BatchSize               = smart_pick_batch_size(network),
             EnableGradientClipping  = ClipGradients,
             ClippingThresholdSynapses = 10,
             ClippingThresholdBiases = 5.0,
@@ -238,6 +251,12 @@ public class Fit : BaseCommand {
         Console.WriteLine(new String('-', divider_len));
         Console.WriteLine();
 
+        int retries = RetryCount.HasValue ? Math.Max(0, RetryCount.Value) : 0; // No retries by default
+        int attempt = 1;
+        System.Diagnostics.Stopwatch? start_timer = null;
+        training_start_label:
+        try {
+
         #region Training
         var session = trainer.EnumerateTraining(network, trainingPairs.SampleRandomly(), validationPairs.SampleSequentially());
         session.Reset();
@@ -245,6 +264,7 @@ public class Fit : BaseCommand {
         #region Training / Load checkpoint
         // TODO load checkpoint / prior weights
         if (ContinueFromExisting) {
+            Console.WriteLine($"Using pre-trained weights: '{model.GetWeightsFile()}'");
             network.FromSafetensor(model.FetchSavedWeights()); // Undo the "reset" operation on the weights
         }
         #endregion
@@ -294,7 +314,7 @@ public class Fit : BaseCommand {
         testing_writer.WriteLine("Epoch, Tests-Passed, Tests-Failed, Loss-Average, Loss-Max, Loss-Min, Accuracy, Precision, Recall, F1-Score, Time-Taken");
         testing_writer.Flush();
         
-        var start_timer = Stopwatch.StartNew();
+        start_timer = Stopwatch.StartNew();
         (double accuracy, double precision, double recall, double minloss, double maxloss, double avgloss, int passed)? prev_report = null;
         var has_next = true;
         Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
@@ -304,9 +324,24 @@ public class Fit : BaseCommand {
             Console.WriteLine(); Console.WriteLine();
             Console.WriteLine("<!-- Training Cancelled by User -->");
             DrawDivider(divider_len);
-            Console.WriteLine($"Reports saved to '{dir.FullName}'.");
+            PrintDone(dir);
         };
         notifier?.NotifyTrainingStarted(network);
+        
+        // Do an initial status test to see "how good it is" originally
+        validation_report.Reset();
+        Test(network, testingPairs, validation_report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
+        validation_writer.WriteLine($"{0}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}, {validation_report.AverageLoss}, {validation_report.MaxLoss}, {validation_report.MinLoss}, {validation_report.Accuracy}, {validation_report.Precision}, {validation_report.Recall}, {validation_report.F1Score}, \"n/a\"");
+        validation_writer.Flush();
+        validation_report.Reset();
+        if (!SkipTesting && testing_report is not null) {
+            var report = testing_report;
+            Test(network, testingPairs, report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
+
+            testing_writer.WriteLine($"{0}, {report.TestsPassedCount}, {report.TestsFailedCount}, {report.AverageLoss}, {report.MaxLoss}, {report.MinLoss}, {report.Accuracy}, {report.Precision}, {report.Recall}, {report.F1Score}, \"n/a\"");
+            testing_writer.Flush();
+        }
+
         while (has_next) {
             #region Training / Epoch Start
             // Print the beginning of the epoch entry to the CLI
@@ -385,6 +420,24 @@ public class Fit : BaseCommand {
         }
         notifier?.NotifyTrainingDone(network, session.CurrentEpoch, validation_report);
         start_timer.Stop();
+        } catch (Exception e) {
+            using (var writer = new StreamWriter(File.Open(Path.Combine(dir.FullName, "errors.log"), FileMode.Append))) {
+                writer.WriteLine($"Attempt {attempt}");
+                writer.WriteLine(e);
+                writer.WriteLine();
+            }
+
+            if (retries <= 0) {
+                throw;
+            } else {
+                Console.WriteLine(); Console.WriteLine();
+                Console.WriteLine("<!-- Retrying After Exception -->");
+                Console.WriteLine();
+                retries--;
+                attempt++;
+                goto training_start_label; // Just try the training all over again from the beginning, but with one less retry
+            }
+        }
         #region Training / Done
 
         #endregion
@@ -403,7 +456,7 @@ public class Fit : BaseCommand {
 
                 var training_report = (!SkipTesting && testing_report is not null) ? testing_report : validation_report;
                 model.TrainingMetadata = new ModelTrainingInfo {
-                    TrainingDuration = start_timer.Elapsed.ToString("G"),
+                    TrainingDuration = start_timer is null ? null : start_timer.Elapsed.ToString("G"),
                     Accuracy = training_report.Accuracy,
                     Precision = training_report.Precision,
                     Recall = training_report.Recall,
@@ -414,21 +467,49 @@ public class Fit : BaseCommand {
                 model.UpdateMetadata();
                 break;
         }
-        Console.WriteLine($"Reports saved to '{dir.FullName}'.");
+        PrintDone(dir);
         #endregion
     }
 
-    #region Utility Functions
-    private static LossFunction smart_pick_loss(FeedforwardNetwork network) {
-        return network.GetOutputLayer() is SoftmaxLayer 
-            ? LossFunctions.CrossEntropy 
-            : LossFunctions.MeanSquaredError
-        ;
+    private void PrintDone(DirectoryInfo training_dir) {
+        Console.WriteLine($"Reports saved to '{training_dir.FullName}'.");
+        Console.WriteLine($"Review manually or use '{typeof(Fit).Assembly.GetName().Name} report {training_dir.Name}'.");
     }
-    private static int smart_pick_batch_size(FeedforwardNetwork network) {
+
+    #region Utility Functions
+    private LossFunction smart_pick_loss(FeedforwardNetwork network) {
+        // User provided loss function, use that if it matches one
+        if (!string.IsNullOrEmpty(LossFunctionName)) {
+            var loss_function = 
+                typeof(LossFunctions)
+                .GetMethods(BindingFlags.Static | BindingFlags.Public)
+                .Select(func => Delegate.CreateDelegate(typeof(LossFunction), func, false))
+                .Where(@delegate => @delegate is not null && @delegate.Method.Name.Contains(LossFunctionName, StringComparison.CurrentCultureIgnoreCase))
+                .Cast<LossFunction>()
+                .FirstOrDefault();
+            if (loss_function is not null)
+                return loss_function;
+        }
+
+        // Softmax layer use cross-entropy
+        if (network.GetOutputLayer() is SoftmaxLayer) {
+            // Remove softmax for training as Categorical Cross Entropy already does softmax
+            //var removed = network.RemoveLayer(network.LayerCount - 1);
+            //if (removed is not SoftmaxLayer)
+                //throw new Exception("Failed to remove softmax layer from network for use with categorical cross entropy");
+            return LossFunctions.CategoricalCrossEntropy;
+        }
+
+        // Non-softmax layer
+        return LossFunctions.MeanSquaredError;
+    }
+    private int smart_pick_batch_size(FeedforwardNetwork network) {
+        if (BatchSize.HasValue) {
+            return Math.Max(1, BatchSize.Value);
+        }
         return Math.Max(1, Environment.ProcessorCount);
     }
-    private static IInitializer smart_pick_initializer(FeedforwardNetwork network) {
+    private IInitializer smart_pick_initializer(FeedforwardNetwork network) {
         Dictionary<Type, int> counts = new Dictionary<Type, int>();
         for(var l = 0; l < network.LayerCount; l++) {
             var layer = network.GetLayer(l);

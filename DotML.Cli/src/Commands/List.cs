@@ -28,9 +28,12 @@ public class List : BaseCommand {
         Console.WriteLine();
 
         foreach (var model in appData.ListModels()) {
-            IEnumerable<string> tags = model.Tags;
-            if (model.Tags is null || model.Tags.Count < 1) {
-                model.Tags = [model.Guid];
+            IEnumerable<string>? tags = model.Tags;
+            if (tags is null || tags.Count() < 1) {
+                if (model.Guid is not null)
+                    tags = [model.Guid];
+                else 
+                    tags = [];
             }
             foreach (var tag in tags) {
                 if (tag is null || (!string.IsNullOrEmpty(Filter) && !tag.Contains(Filter, StringComparison.CurrentCultureIgnoreCase))) {

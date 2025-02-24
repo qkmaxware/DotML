@@ -89,9 +89,4 @@ public abstract class FeedforwardNetworkLayer : IFeedforwardNetworkLayer {
     public abstract void Visit(ILayerVisitor visitor);
     public abstract T Visit<T>(ILayerVisitor<T> visitor);
     public abstract TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args);
-
-    public LayerSequencer Then(NetworkLayerGenerator constructor) {
-        var seq = new LayerSequencer(this);
-        return seq.Then(constructor);
-    }
 }

@@ -71,8 +71,8 @@ public static class LossFunctions {
     /// <param name="predicted">The predicted value, such as the result from a network</param>
     /// <param name="true">The true value, such as the result from a training set</param>
     /// <returns>Cross entropy loss</returns>
-    public static double CrossEntropy (Vec<double> predicted, Vec<double> @true) {
-        if (!IsLikelyAProbability(predicted))
+    public static double CategoricalCrossEntropy (Vec<double> predicted, Vec<double> @true) {
+        if (!predicted.IsLikelyAProbabilityDistribution())
             predicted = predicted.SoftmaxNormalized();
 
         // -SUM(exp_i * log(actual_i))
@@ -83,19 +83,5 @@ public static class LossFunctions {
             sum += @true[i] * Math.Log(Math.Max(predicted[i], 1e-8));
         }
         return -(1.0/M)*sum;
-    }
-
-    private static bool IsLikelyAProbability(Vec<double> predicted) {
-        const double epsilon = 1e-8;
-        
-        var sum = 0.0;
-        foreach (var p in predicted) {
-            if (p < 0.0 || p > 1.0) {
-                return false;
-            }
-            sum += p;
-        }
-        
-        return Math.Abs(sum - 1.0) < epsilon;
     }
 }

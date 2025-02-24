@@ -427,6 +427,34 @@ where T:INumber<T> {
         return new Matrix<T>(rows, columns, data);
     } 
 
+    /// <summary>
+    /// Create a matrix from a C# rectangular array in row-major order.
+    /// </summary>
+    /// <param name="array">Array of matrix values</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> FromRectangular(T[,] array) {
+        return new Matrix<T>(array);
+    }
+
+    /// <summary>
+    /// Create a matrix from a jagged array of rows.
+    /// </summary>
+    /// <param name="array">Array with each element representing a single row of matrix values</param>
+    /// <returns>matrix</returns>
+    public static Matrix<T> FromJagged(T[][] array) {
+        var rows = array.Length;
+        var columns = array.Select(x => x.Length).Max();
+
+        var result = new Matrix<T>(rows, columns, T.Zero);
+        for (var r = 0; r < rows; r++) {
+            var row = array[r];
+            for (var c = 0; c < row.Length; c++) {
+                result[r, c] = row[c];
+            }
+        }
+        return result;
+    }
+
     #endregion
     #region Methods
     /// <summary>

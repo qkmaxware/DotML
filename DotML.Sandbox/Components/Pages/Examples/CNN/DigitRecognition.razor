@@ -85,7 +85,7 @@
         ]
     );
     private EnumerableBatchTrainer<FeedforwardNetwork> trainer = new EnumerableBatchTrainer<FeedforwardNetwork>(){
-        LossFunction = LossFunctions.CrossEntropy
+        LossFunction = LossFunctions.CategoricalCrossEntropy
     };
 
     private bool loaded => training is null || testing is null;

@@ -60,4 +60,23 @@ public static class VecExtensions {
         return Vec<T>.Wrap(values);
     } 
 
+    /// <summary>
+    /// Check if the vector likely represents a probability distribution or not
+    /// </summary>
+    /// <param name="vec">vector</param>
+    /// <returns>true if the vector exhibits properties commonly associated with probability distributions</returns>
+    public static bool IsLikelyAProbabilityDistribution(this Vec<double> vec) {
+        const double epsilon = 1e-8;
+        
+        var sum = 0.0;
+        foreach (var p in vec) {
+            if (p < 0.0 || p > 1.0) {
+                return false;
+            }
+            sum += p;
+        }
+        
+        return Math.Abs(sum - 1.0) < epsilon;
+    } // TODO make this not a double exclusive thing
+
 }

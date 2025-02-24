@@ -100,6 +100,8 @@ public class DefaultValidationReport : IValidationReport {
 
         // Compute true positives, false positives, true negatives, and false negatives
         // This assumes the outputs are probability distributions, which tbf they usually are
+        if (!predicted.IsLikelyAProbabilityDistribution())
+            predicted = predicted.SoftmaxNormalized(); // Turn outputs into probability distribution if it wasn't already
         var class_belonging_to = predicted.IndexOfMaxValue();  // Class label (index)
         var predicted_positive = Math.Clamp(predicted[class_belonging_to], 0.0, 1.0) > TrueProbabilityThreshold;
 

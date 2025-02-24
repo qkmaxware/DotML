@@ -1,4 +1,4 @@
-namespace DotML.Cli;
+namespace DotML.Cli.Visualizations;
 
 public class ProgressBar {
 

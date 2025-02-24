@@ -25,6 +25,9 @@ public class ModelInfo {
     private FileInfo? network_file = null;
     private FileInfo? weights_file = null;
 
+    public FileInfo? GetWeightsFile() => weights_file;
+    public FileInfo? GetBuildScriptFile() => network_file;
+
     public string? Guid => network_file is  null ? string.Empty : Path.GetFileNameWithoutExtension(network_file.Name);
     public ModelTrainingStatus Status() => weights_file is null || !weights_file.Exists ? ModelTrainingStatus.Untrained : ModelTrainingStatus.Trained;
     public List<string> Tags {get; set;} = new List<string>();

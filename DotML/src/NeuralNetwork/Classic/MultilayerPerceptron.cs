@@ -19,7 +19,7 @@ public static class MultilayerPerceptron {
 
         // First layer (input -> layer[0])
         var ilayer = new FullyConnectedLayer(input_size, layer_sizes[0]);
-        var set = new LayerSequencer(ilayer);
+        var set = ilayer.BeginSequence();
         if (activation is not null) {
             set = set.Then((ishape) => new ActivationLayer(ishape, activation));
         }

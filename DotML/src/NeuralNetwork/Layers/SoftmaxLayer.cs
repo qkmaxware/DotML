@@ -20,6 +20,18 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
     }
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
+        if (this.IsTraining) {
+            // Flatten and return the inputs as is if we are in training mode. AKA SKIP SOFTMAX WHILE TRAINING
+            var vs = new Matrix<double>(Size, 1);
+            var index = 0;
+            foreach (var input in inputs) {
+                foreach (var item in input) {
+                    vs[index++, 0] = item;
+                }
+            }
+            return  new FeatureSet<double>(vs);
+        }
+
         // Treat all inputs values as a single vector, compute the softmax of this vector
         var sum = 0.0d;
         var values = new Matrix<double>(Size, 1);
@@ -39,6 +51,7 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        // Since we skip softmax during training just pass back the same errors during backpropagation
         return new BackpropagationReturns(args.OutputErrors, null);
     }
 

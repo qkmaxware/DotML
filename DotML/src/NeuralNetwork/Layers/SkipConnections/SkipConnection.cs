@@ -57,11 +57,11 @@ public abstract class SkipConnection : FeedforwardNetworkLayer {
     /// <param name="type">Skip connection type</param>
     /// <param name="sequencer">Layers in the block</param>
     /// <returns>Generator to create all layers</returns>
-    public static NetworkBlockGenerator Block(Func<Shape3D, SkipConnection> type, LayerSequencer sequencer)  {
+    public static NetworkBlockGenerator Block(Func<Shape3D, SkipConnection> type, IEnumerable<IFeedforwardNetworkLayer> sequencer)  {
         return (ishape) => {
             // Bookend the layers with:
             var first = new InputCapture();            // An input capture to pass onto the end of the skip connection
-            var last = type(sequencer.OutputShape);    // The actual end of the skip connection
+            var last = type(sequencer.OutputShape());    // The actual end of the skip connection
             return sequencer.Prepend(first).Append(last);
         };
     }

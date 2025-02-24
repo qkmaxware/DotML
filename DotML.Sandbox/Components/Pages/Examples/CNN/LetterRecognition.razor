@@ -87,7 +87,7 @@
         ]
     );
     private EnumerableBatchTrainer<FeedforwardNetwork> trainer = new EnumerableBatchTrainer<FeedforwardNetwork>(){
-        LossFunction = LossFunctions.CrossEntropy,
+        LossFunction = LossFunctions.CategoricalCrossEntropy,
         BatchSize = 8
     };
 

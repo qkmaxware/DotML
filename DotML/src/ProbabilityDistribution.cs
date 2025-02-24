@@ -12,14 +12,14 @@ public struct ProbabilityDistribution
 
     public int Categories => values.Length;
 
-    public ProbabilityDistribution(Vec<double> vec)
-    {
-        this.values = (double[])vec.SoftmaxNormalized();
+    public ProbabilityDistribution(Vec<double> vec) {
+        if (!vec.IsLikelyAProbabilityDistribution())
+            vec = vec.SoftmaxNormalized();
+
+        this.values = (double[])vec;
     }
 
-    public ProbabilityDistribution(Vec<double> vec, string[]? labels)
-    {
-        this.values = (double[])vec.SoftmaxNormalized();
+    public ProbabilityDistribution(Vec<double> vec, string[]? labels) : this(vec) {
         this.labels = labels;
     }
 

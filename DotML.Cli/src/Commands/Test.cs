@@ -38,7 +38,7 @@ public class Test : BaseCommand {
         var watch = Stopwatch.StartNew();
         var report = new DefaultValidationReport();
         LossFunction loss = network.GetOutputLayer() is SoftmaxLayer 
-            ? LossFunctions.CrossEntropy 
+            ? LossFunctions.CategoricalCrossEntropy 
             : LossFunctions.MeanSquaredError
         ;
         Fit.Test(network, data, report, Math.Max(1, Environment.ProcessorCount), 0.1, loss);
