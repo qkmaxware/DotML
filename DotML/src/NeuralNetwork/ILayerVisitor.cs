@@ -11,7 +11,7 @@ public interface ILayerVisitor {
     public void Visit(DropoutLayer layer);
     public void Visit(LayerNorm layer);
     public void Visit(BatchNorm layer);
-    public void Visit(FullyConnectedLayer layer);
+    public void Visit(DenseLinearLayer layer);
     public void Visit(ActivationLayer layer);
     public void Visit(SoftmaxLayer layer);
 
@@ -29,7 +29,7 @@ public interface ILayerVisitor<TOut> {
     public TOut Visit(DropoutLayer layer);
     public TOut Visit(LayerNorm layer);
     public TOut Visit(BatchNorm layer);
-    public TOut Visit(FullyConnectedLayer layer);
+    public TOut Visit(DenseLinearLayer layer);
     public TOut Visit(ActivationLayer layer);
     public TOut Visit(SoftmaxLayer layer);
 
@@ -47,7 +47,7 @@ public interface ILayerVisitor<TIn, TOut> {
     public TOut Visit(DropoutLayer layer, TIn args);
     public TOut Visit(LayerNorm layer, TIn args);
     public TOut Visit(BatchNorm layer, TIn args);
-    public TOut Visit(FullyConnectedLayer layer, TIn args);
+    public TOut Visit(DenseLinearLayer layer, TIn args);
     public TOut Visit(ActivationLayer layer, TIn args);
     public TOut Visit(SoftmaxLayer layer, TIn args);
 

@@ -46,4 +46,9 @@ public class AppData {
         Directory.CreateDirectory(path);
         return new DirectoryInfo(path);
     }
+
+    public IEnumerable<TrainingReport> EnumerateTrainingSessions() {
+        var info = Directory.CreateDirectory(training_dir);
+        return info.EnumerateDirectories().Select(x => new TrainingReport(x));
+    }
 }

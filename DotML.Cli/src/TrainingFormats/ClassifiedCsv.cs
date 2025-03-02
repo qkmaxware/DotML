@@ -12,12 +12,22 @@ public class ClassifiedCsv : ITrainingDataFormat {
         return file.Extension == ".csv";
     }
 
+    private static bool isHeader(string line) {
+        return line.Contains("class", StringComparison.CurrentCultureIgnoreCase) || line.Contains("label", StringComparison.CurrentCultureIgnoreCase);
+    }
+
     public TrainingSet Read(FileInfo file) {
         List<(Vec<double>, int)> items = new List<(Vec<double>, int)>();
         var max_count = 1;
         using var reader = new StreamReader(file.OpenRead());
+        bool first_row = true;
         string? line;
         while ((line = reader.ReadLine()) is not null) {
+            if (first_row && isHeader(line)) {
+                // Skip the header
+                first_row = false;
+            }
+
             var data = line.Split(',').Select(x => {
                 double.TryParse(x, out double res);
                 return res;
@@ -27,6 +37,7 @@ public class ClassifiedCsv : ITrainingDataFormat {
             var vector_data = data[1..].ToArray();
             max_count = Math.Max(max_count, class_label + 1);
             items.Add((vector_data, class_label));
+            first_row = false;
         }
 
         return new TrainingSet(items.Select(item=> new TrainingPair { Input=item.Item1, Output=vector_from_label_index(item.Item2, max_count, 0, 1) }));

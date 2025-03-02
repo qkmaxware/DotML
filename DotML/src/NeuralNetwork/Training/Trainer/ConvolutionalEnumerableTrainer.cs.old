@@ -502,7 +502,7 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
         };
     }
 
-    public BackpropagationReturns Visit(FullyConnectedLayer layer, BackpropagationArgs args) {
+    public BackpropagationReturns Visit(DenseLinearLayer layer, BackpropagationArgs args) {
         // Current layer deltas
         var flattened_inputs = Matrix<double>.Column(args.Inputs.SelectMany(x => x.FlattenRows()).ToArray());
         var output = args.Outputs[0];                                       // Output vector (column)
@@ -689,7 +689,7 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
         return new LayerUpdateReturns {};
     }
 
-    public LayerUpdateReturns Visit(FullyConnectedLayer layer, LayerUpdateArgs args) {
+    public LayerUpdateReturns Visit(DenseLinearLayer layer, LayerUpdateArgs args) {
         if (args.Gradients is null || args.Gradients is not FullyConnectedGradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));
 
@@ -702,7 +702,7 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
         
             foreach (var elem in gradients.WeightGradients.Value) {
                 if (double.IsNaN(elem)) {
-                    throw new ArithmeticException($"NaN detected in weight gradients for a FullyConnectedLayer");
+                    throw new ArithmeticException($"NaN detected in weight gradients for a DenseLinearLayer");
                 }
             }
         }
@@ -712,7 +712,7 @@ public class ConvolutionalBackpropagationEnumerator<TNetwork>
             layer.Biases = layer.Biases - bias_update;
             foreach (var elem in gradients.BiasGradients.Value) {
                 if (double.IsNaN(elem)) {
-                    throw new ArithmeticException($"NaN detected in bias gradients for a FullyConnectedLayer");
+                    throw new ArithmeticException($"NaN detected in bias gradients for a DenseLinearLayer");
                 }
             }
         }

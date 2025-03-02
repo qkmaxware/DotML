@@ -132,10 +132,10 @@ public struct ProbabilityDistribution
     {
         // Example of distribution being printed
         /*
-        0:Cat      ######## 30%
-        1:Dog      ########### 50%
-        2:Elephant ##### 15%
-        3:Squirrel ## 5%
+        0:Cat      |-------         |30%
+        1:Dog      |----------      |50%
+        2:Elephant |-------         |15%
+        3:Squirrel |--              |5%
         */
         StringBuilder sb = new StringBuilder();
         var index = 0;

@@ -113,7 +113,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         return true;
     }
 
-    public bool Visit(FullyConnectedLayer layer, int layerIndex) {
+    public bool Visit(DenseLinearLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }

@@ -283,7 +283,7 @@ private static double MaxMeanSquaredError(INeuralNetwork network, TrainingSet va
     var set = data.SampleSequentially();
     while (set.MoveNext()) {
         var predicted = network.PredictSync(set.Current.Input);
-        var loss = LossFunctions.MeanSquaredError(predicted, set.Current.Output);
+        var loss = LossFunctions.MeanSquaredError.Invoke(predicted, set.Current.Output);
         if (loss < loss_threshold) {
             below_loss++;
         } else {

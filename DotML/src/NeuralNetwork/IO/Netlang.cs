@@ -727,7 +727,7 @@ public class NetBuild {
             "dense" => (Shape3D ishape, Dictionary<string, Literal> args) => {
                 var neurons = args["neurons"].AsInt();
 
-                return new FullyConnectedLayer(
+                return new DenseLinearLayer(
                     input_size: ishape.Count,
                     neurons: neurons
                 );

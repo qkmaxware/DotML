@@ -69,11 +69,11 @@
         new ConvolutionLayer     (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 384, 3)),
         new ActivationLayer      (input_size: new Shape3D(256, 13, 13), HyperbolicTangent.Instance),
         new LocalMaxPoolingLayer (input_size: new Shape3D(256, 13, 13), size: 3, stride: 2),
-        new FullyConnectedLayer  (input_size: 9216, neurons: 4096),
+        new DenseLinearLayer  (input_size: 9216, neurons: 4096),
         new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), HyperbolicTangent.Instance),
-        new FullyConnectedLayer  (input_size: 4096, neurons: 4096),
+        new DenseLinearLayer  (input_size: 4096, neurons: 4096),
         new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), HyperbolicTangent.Instance),
-        new FullyConnectedLayer  (input_size: 4096, neurons: OUT_CLASSES),
+        new DenseLinearLayer  (input_size: 4096, neurons: OUT_CLASSES),
         new SoftmaxLayer         (OUT_CLASSES)
     );
 
@@ -90,13 +90,13 @@
         new ActivationLayer(input_size: new Shape3D(128, 56, 56), activation: HyperbolicTangent.Instance),
         new LocalMaxPoolingLayer(input_size: new Shape3D(128, 56, 56), size: 2, stride: 2),
 
-        new FullyConnectedLayer(input_size: new Shape3D(128, 28, 28).Count, neurons: 512),
+        new DenseLinearLayer(input_size: new Shape3D(128, 28, 28).Count, neurons: 512),
         new ActivationLayer(input_size: new Shape3D(1, 512, 1), activation: HyperbolicTangent.Instance),
 
-        new FullyConnectedLayer(input_size: new Shape3D(1, 512, 1).Count, neurons: 128),
+        new DenseLinearLayer(input_size: new Shape3D(1, 512, 1).Count, neurons: 128),
         new ActivationLayer(input_size: new Shape3D(1, 128, 1), activation: HyperbolicTangent.Instance),
 
-        new FullyConnectedLayer(input_size: new Shape3D(1, 128, 1).Count, neurons: OUT_CLASSES),
+        new DenseLinearLayer(input_size: new Shape3D(1, 128, 1).Count, neurons: OUT_CLASSES),
         new SoftmaxLayer(size: OUT_CLASSES)
     );*/
 

@@ -65,7 +65,7 @@ public class NetBuildWriter : ILayerVisitor {
         sb.WriteLine($"ADD batchnorm");
     }
 
-    public void Visit(FullyConnectedLayer layer) {
+    public void Visit(DenseLinearLayer layer) {
         sb.WriteLine($"ADD dense neurons={layer.NeuronCount}");
     }
 

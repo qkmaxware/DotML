@@ -25,7 +25,7 @@ public static class NetworkEvaluationFunctions {
         var set = data.SampleSequentially();
         while (set.MoveNext()) {
             var predicted = network.PredictSync(set.Current.Input);
-            maxloss = Math.Max(maxloss, LossFunctions.MeanSquaredError(predicted, set.Current.Output));
+            maxloss = Math.Max(maxloss, LossFunctions.MeanSquaredError.Invoke(predicted, set.Current.Output));
         }
 
         return maxloss;
@@ -44,7 +44,7 @@ public static class NetworkEvaluationFunctions {
         set.Reset();
         while (set.MoveNext()) {
             var predicted = network.PredictSync(set.Current.Input);
-            maxloss = Math.Max(maxloss, LossFunctions.MeanSquaredError(predicted, set.Current.Output));
+            maxloss = Math.Max(maxloss, LossFunctions.MeanSquaredError.Invoke(predicted, set.Current.Output));
         }
 
         return maxloss;
@@ -64,7 +64,7 @@ public static class NetworkEvaluationFunctions {
         var set = data.SampleSequentially();
         while (set.MoveNext()) {
             var predicted = network.PredictSync(set.Current.Input);
-            netloss += LossFunctions.MeanSquaredError(predicted, set.Current.Output);
+            netloss += LossFunctions.MeanSquaredError.Invoke(predicted, set.Current.Output);
         }
         netloss /= datasize;
 
@@ -85,7 +85,7 @@ public static class NetworkEvaluationFunctions {
         set.Reset();
         while (set.MoveNext()) {
             var predicted = network.PredictSync(set.Current.Input);
-            netloss += LossFunctions.MeanSquaredError(predicted, set.Current.Output);
+            netloss += LossFunctions.MeanSquaredError.Invoke(predicted, set.Current.Output);
             datasize++;
         }
         netloss /= datasize;

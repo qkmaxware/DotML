@@ -540,7 +540,7 @@ public class BackpropagationEnumerator<TNetwork> : IEpochEnumerator<TNetwork> wh
                 
                 var set = validation.Current;
                 var predicted = Current.PredictSync(set.Input);
-                var self_loss = LossFunction(predicted, set.Output);
+                var self_loss = LossFunction.Invoke(predicted, set.Output);
                 loss = Math.Max(loss, self_loss); // loss + LossFunction(predicted, set.Output) for avg, currently max
                 OnValidated(this.CurrentEpoch, this.MaxEpochs, count, self_loss);
                 count++;

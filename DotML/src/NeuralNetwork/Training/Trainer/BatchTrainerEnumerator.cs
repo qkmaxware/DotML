@@ -5,139 +5,6 @@ using DotML.Network.Initialization;
 
 namespace DotML.Network.Training;
 
-#region Enumerable
-/// <summary>
-/// Simple Neural Network trainer based on backpropagation
-/// </summary>
-/// <typeparam name="TNetwork">type of network to train (convolutional network)</typeparam>
-public class EnumerableBatchTrainer<TNetwork>
-    : IEnumerableTrainer<TNetwork>
-where TNetwork : FeedforwardNetwork
-{
-    /// <summary>
-    /// Number of epochs (default: 250)
-    /// </summary>
-    public int Epochs {get; set;} = 250;
-
-    /// <summary>
-    /// Learning rate for changes to weights/biases, usually between 0.0001 and 0.1. (default: 0.1)
-    /// </summary>
-    public double LearningRate {get; set;} = 0.1;
-    /// <summary>
-    /// Strategy for learning rate adjusting during training. (default: ConstantRate)
-    /// </summary>
-    public ILearningRateOptimizer LearningRateOptimizer {get; set;} = new ConstantRate();
-
-    /// <summary>
-    /// Enable to perform clipping of gradients with magnitudes larger than the GradientClipThreshold value. (default: false)
-    /// </summary>
-    public bool EnableGradientClipping {get; set;} = false;
-    /// <summary>
-    /// Threshold to compare gradients against when EnableGradientClipping is set. Sets both ClippingThresholdSynapses and ClippingThresholdBiases properties.
-    /// </summary>
-    public double ClippingThreshold {
-        set {
-            ClippingThresholdSynapses = value;
-            ClippingThresholdBiases = value;
-        }
-    }
-    /// <summary>
-    /// Threshold to compare synapse gradients against when EnableGradientClipping is set. Values between 1.0 and 10.0 are common. (default 10.0)
-    /// </summary>
-    public double ClippingThresholdSynapses {get; set;} = 10;
-    /// <summary>
-    /// Threshold to compare bias gradients against when EnableGradientClipping is set. Values between 1.0 and 5.0 are common. (default 5.0)
-    /// </summary>
-    public double ClippingThresholdBiases {get; set;} = 5;
-
-    /// <summary>
-    /// Flag to indicate if training should stop before the MaxEpochs has been reached if the network has achieved the desired accuracy (default: true)
-    /// </summary>
-    public bool EarlyStop {get; set;} = true;
-
-    /// <summary>
-    /// The accuracy that is used as a condition to stop training if EarlyStop is set to true (default: 0.1)
-    /// </summary>
-    public double EarlyStopAccuracy {
-        get => _earlyStopAccuracy;
-        set {
-            _earlyStopAccuracy = Math.Max(0, value);
-        }
-    }
-    private double _earlyStopAccuracy = 0.1;
-
-    private int _earlyStopPatience = 1;
-    /// <summary>
-    /// The number of epochs in a row where the early stop condition has been met before early stop is triggered (default: 1)
-    /// </summary>
-    public int EarlyStopPatience {
-        get => _earlyStopPatience;
-        set => _earlyStopPatience = Math.Max(1, value); // Always have at least 1 
-    }
-
-    /// <summary>
-    /// The loss function used in network accuracy evaluation (default: MSE)
-    /// </summary>
-    public LossFunction LossFunction {get; set;} = LossFunctions.MeanSquaredError;
-
-    /// <summary>
-    /// Gets or sets a place to report testing validation results to (default: DefaultValidationReport)
-    /// </summary>
-    public IValidationReport? ValidationReport {get; set;} = new DefaultValidationReport();
-
-    /// <summary>
-    /// Gets or sets a place to report training run-time performance results to (default: null)
-    /// </summary>
-    public IProfilingReport? Profiler {get; set;} = null;
-
-    /// <summary>
-    /// Regularization function (default: NoRegularization)
-    /// </summary>
-    public RegularizationFunction Regularization {get; set;} = new NoRegularization();
-
-    /// <summary>
-    /// Network initialization strategy (default: NormalXavierInitialization)
-    /// </summary>
-    public IInitializer NetworkInitializer {get; set;} = new NormalXavierInitialization();
-
-    /// <summary>
-    /// Size of batches per epoch (default: 1)
-    /// </summary>
-    public int BatchSize {get; set;} = 1;
-
-    public IEpochEnumerator<TNetwork> EnumerateTraining(TNetwork network, IEnumerator<TrainingPair> dataset, IEnumerator<TrainingPair> validation) {
-        return new BatchTrainerEnumerator<TNetwork>(
-            network,
-            dataset,
-            validation,
-            batchSize:              this.BatchSize,
-
-            earlyStop:              this.EarlyStop,
-            earlyStopThreshold:     this.EarlyStopAccuracy,
-            earlyStopPatience:      this.EarlyStopPatience,
-            lossFunction:           this.LossFunction,
-            validationReport:       this.ValidationReport,
-            performanceReport:      this.Profiler,
-            regularization:         this.Regularization,
-
-            networkInitializer:     this.NetworkInitializer,
-            optimizer:              this.LearningRateOptimizer,
-
-            epochs:                 this.Epochs,
-            learningRate:           this.LearningRate,
-
-            useClipping:            this.EnableGradientClipping,
-            clipThresholdWeight:    this.ClippingThresholdSynapses,
-            clipThresholdBias:      this.ClippingThresholdBiases
-        );
-    }
-
-    public void Train(TNetwork network, IEnumerator<TrainingPair> dataset, IEnumerator<TrainingPair> validation) {
-        EnumerateTraining(network, dataset, validation).MoveToEnd();
-    }
-}
-#endregion
-
 #region Enumerator
 public partial class BatchTrainerEnumerator<TNetwork> 
     : IEpochEnumerator<TNetwork>
@@ -146,7 +13,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
     public int CurrentEpoch {get; private set;}
     private int CurrentUpdateTimestep;
     public int MaxEpochs {get; init;}
-    public double LearningRate => layerUpdateActions.LearningRate;
+    public double LearningRate {get; init;}
     public int BatchSize {get; init;}
 
     public IValidationReport? ValidationReport {get; set;}
@@ -163,11 +30,17 @@ public partial class BatchTrainerEnumerator<TNetwork>
     public int EarlyStopPatience {get; private set;}
     private int _patience_count = 0;
     public LossFunction LossFunction {get; private set;}
-    public RegularizationFunction Regularization => layerUpdateActions.Regularization;
+    public RegularizationFunction Regularization {get; init;}
 
     public IInitializer NetworkInitializer {get; private set;}
 
-    public ILearningRateOptimizer LearningRateOptimizer => layerUpdateActions.LearningRateOptimizer;
+    public ILearningRateOptimizer LearningRateOptimizer {get; init;}
+
+    public bool UseGradientClipping {get; init;}
+    public double GradientClippingThresholdWeight {get; init;}
+    public double GradientClippingThresholdBias {get; init;}
+    
+    #region Initialization
 
     public BatchTrainerEnumerator(
         TNetwork network,
@@ -199,8 +72,8 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this.BatchSize = Math.Max(1, batchSize);
         this.batch = new List<TrainingPair>(this.BatchSize);
 
-        this.batch_inputs   = new FeatureSet<double>[this.BatchSize][]; // The inputs to each layer
-        this.batch_outputs  = new FeatureSet<double>[this.BatchSize][]; // The outputs from each layer
+        this.inputs = new BatchedFeatureSet<double>[Current.LayerCount];
+        this.outputs = new BatchedFeatureSet<double>[Current.LayerCount];
         this.layer_gradients = new LayerGradients?[Current.LayerCount];
 
         this.MaxEpochs = Math.Max(0, epochs);
@@ -215,19 +88,18 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this.EarlyStopPatience = Math.Max(1, earlyStopPatience);
         this._patience_count = this.EarlyStopPatience;
 
-        this.backpropagationActions = new BackpropagationActions(useClipping, clipThresholdWeight, clipThresholdBias);
-        this.layerUpdateActions = new LayerUpdateActions(Math.Abs(learningRate), regularization, optimizer);
+        this.LearningRate = Math.Abs(learningRate);
+        this.Regularization = regularization;
+        this.LearningRateOptimizer = optimizer;
+
+        this.UseGradientClipping = useClipping;
+        this.GradientClippingThresholdWeight = clipThresholdWeight;
+        this.GradientClippingThresholdBias = clipThresholdBias;
 
         Reset();
     }
 
     public void Dispose() { }
-
-    private List<TrainingPair> batch;
-    private int num_batches;
-    FeatureSet<double>[][] batch_inputs;
-    FeatureSet<double>[][] batch_outputs;
-    LayerGradients?[] layer_gradients;
 
     private int count_training_items() {
         int count = 0;
@@ -248,17 +120,12 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this.Current.Initialize(this.NetworkInitializer);
         this.LearningRateOptimizer.Initialize(this.Current);
 
-        this.batch.Clear(); this.batch.EnsureCapacity(this.BatchSize);
-        this.batch_inputs   = new FeatureSet<double>[this.BatchSize][]; // The inputs to each layer
-        this.batch_outputs  = new FeatureSet<double>[this.BatchSize][]; // The outputs from each layer
-        this.layer_gradients = new LayerGradients?[Current.LayerCount];
-
         this._patience_count = this.EarlyStopPatience;
 
-        for (var b = 0; b < this.BatchSize; b++) {
-            this.batch_inputs[b] = new FeatureSet<double>[Current.LayerCount];
-            this.batch_outputs[b] = new FeatureSet<double>[Current.LayerCount];
-        }
+        this.batch.Clear(); this.batch.EnsureCapacity(this.BatchSize);
+        this.inputs = new BatchedFeatureSet<double>[Current.LayerCount];
+        this.outputs = new BatchedFeatureSet<double>[Current.LayerCount];
+        this.layer_gradients = new LayerGradients?[Current.LayerCount];
     }
 
     public bool MoveNext() {
@@ -278,6 +145,10 @@ public partial class BatchTrainerEnumerator<TNetwork>
         var is_done = epochs_finished || stopEarly;
         return !is_done;
     }
+
+    #endregion
+
+    #region Validation Step
 
     private bool ValidateStep() {
         bool stopEarly = false;
@@ -309,7 +180,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
                     var @true = batch[batchIndex].Out;
                     var predicted =  Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
                     
-                    var loss = LossFunction(predicted, @true);
+                    var loss = LossFunction.Invoke(predicted, @true);
                     sum_error += loss;
                     max_error = Math.Max(max_error, loss);
                     var passed = loss < EarlyStopThreshold;
@@ -348,9 +219,19 @@ public partial class BatchTrainerEnumerator<TNetwork>
         return stopEarly;
     }
 
+    #endregion
+
     const string FeedforwardPerformanceKey = "Feed Forward";
     const string BackpropagationPerformanceKey = "Backpropagation";
     const string WeightUpdatePerformanceKey = "Weight Update";
+
+    #region Training Step
+
+    private List<TrainingPair> batch;
+    private int num_batches;
+    private BatchedFeatureSet<double>[] inputs;
+    private BatchedFeatureSet<double>[] outputs;
+    LayerGradients?[] layer_gradients;
 
     private void TrainingStep() {
         training.Reset();
@@ -383,19 +264,15 @@ public partial class BatchTrainerEnumerator<TNetwork>
             using (var metric = Profiler?.Begin(FeedforwardPerformanceKey)) {
                 BatchedFeatureSet<double> layer_input = batch_features;
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
-                    // Store input to this layer (less than ideal to have a loop here)
-                    for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
-                        this.batch_inputs[batchIndex][layerIndex] = layer_input[batchIndex];
-                    }
+                    // Store input to this layer
+                    this.inputs[layerIndex] = layer_input;
 
                     // Evaluate the layer
                     var layer = Current.GetLayer(layerIndex);
                     var layer_output = layer.EvaluateSync(layer_input);
 
-                    // Store outputs from evaluation of this layer (less than ideal to have a loop here)
-                    for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
-                        this.batch_outputs[batchIndex][layerIndex] = layer_output[batchIndex];
-                    }
+                    // Store outputs from evaluation of this layer
+                    this.outputs[layerIndex] = layer_output;
 
                     // Set the next-layer input to the output of this layer
                     layer_input = layer_output;
@@ -405,43 +282,33 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
             // Backwards pass
             using (var metric = Profiler?.Begin(BackpropagationPerformanceKey)) {
-                // Roll up inputs/outputs into batched feature sets again in case they are needed by a backpropagation method
-                var input_batches = new BatchedFeatureSet<double>[Current.LayerCount];
-                var output_batches = new BatchedFeatureSet<double>[Current.LayerCount];
-                for (var layerIndex = 0; layerIndex < input_batches.Length; layerIndex++) {
-                    var infeatures = new FeatureSet<double>[batch_size];
-                    var outfeatures = new FeatureSet<double>[batch_size];
-                    for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
-                        infeatures[batchIndex] = this.batch_inputs[batchIndex][layerIndex];
-                        outfeatures[batchIndex] = this.batch_outputs[batchIndex][layerIndex];
-                    }
-                    input_batches[layerIndex] = new BatchedFeatureSet<double>(infeatures);
-                    output_batches[layerIndex] = new BatchedFeatureSet<double>(outfeatures);
-                }
                 // Setup initial backpropagation arguments
                 FeatureSet<double>[] output_errors = new FeatureSet<double>[batch_size];
                 for (var b = 0; b < batch_size; b++) {
                     var currentPair = batch[b];
-                    var expected = currentPair.Output;
-
-                    var predicted = output_batches[^1][b];                                      // The outputs of the last layer for batch 'b'
-                    var @true = expected.Shape(predicted.Shape);                                // Make the expected vector match the output shape
-                    var errors = predicted.Zip(@true).Select(x => x.First-x.Second).ToArray();  // predicted - expected
-
+                    var expected_vec = currentPair.Output;                                                          // The outputs as recorded in the training pair
+                    var predicted = outputs[^1][b];                                                                 // The outputs of the last layer for batch 'b'
+                    
+                    var predicted_vec = Vec<double>.Wrap(predicted.SelectMany(mtx => mtx.FlattenRows()).ToArray()); // Convert the predicted outputs to a vector
+                    var error_vec = this.LossFunction.Gradient(@predicted: predicted_vec, @true: expected_vec);     // Compute the gradient values for the loss function
+                    var errors = error_vec.Shape(predicted.Shape).ToArray();                                        // Make the error vector match the output shape for backpropagation    
+                    
+                    //var @true = expected.Shape(predicted.Shape);                                // Make the expected vector match the output shape
+                    //var errors = predicted.Zip(@true).Select(x => x.First-x.Second).ToArray();  // predicted - expected
                     output_errors[b] = new FeatureSet<double>(errors);
                 }
                 var backprop_args = new BackpropagationArgs(
                     Current.LayerCount - 1, 
-                    new BatchedFeatureSet<double>(), // Gets replaced later
-                    new BatchedFeatureSet<double>(), // Gets replaced later
-                    new BatchedFeatureSet<double>(output_errors)
+                    new BatchedFeatureSet<double>(),                // Gets replaced later
+                    new BatchedFeatureSet<double>(),                // Gets replaced later
+                    new BatchedFeatureSet<double>(output_errors)    // OutputErrors at output layer = predicted - expected as computed above
                 );
 
                 // Do backwards pass through the layers
                 for (var layerIndex = Current.LayerCount - 1; layerIndex >= 0; layerIndex--) {
                     backprop_args.LayerIndex = layerIndex;
-                    backprop_args.InputBatch = input_batches[layerIndex]; // Will be needed for backpropagation of BatchNorm (as we need to see ALL batched inputs to compute mean/variance)
-                    backprop_args.OutputBatch = output_batches[layerIndex];
+                    backprop_args.InputBatch = inputs[layerIndex];
+                    backprop_args.OutputBatch = outputs[layerIndex];
                     
                     var layer = Current.GetLayer(layerIndex);
                     var returns = layer.Backpropagate(backprop_args);
@@ -462,10 +329,9 @@ public partial class BatchTrainerEnumerator<TNetwork>
                 var update_args = new LayerUpdateArgs();
                 update_args.UpdateTimestep = CurrentUpdateTimestep;
                 update_args.ParameterOffset = 0;
-                // OLD this.layerUpdateActions.TrackUsedParameters(false); // TODO only do this in DEBUG mode
                 BeginParameterTracking();
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
-                    // Average gradients across batch
+                    // Modify the gradient based on optimizer to get actual gradient to apply
                     LayerGradients? avgGradient = layer_gradients[layerIndex];
                     avgGradient?.Apply((index, parameter, grad) =>  gradient_update(update_args.UpdateTimestep, LearningRate, parameter, grad, update_args.ParameterOffset + index));
 
@@ -473,7 +339,6 @@ public partial class BatchTrainerEnumerator<TNetwork>
                     update_args.Gradients = avgGradient;
                     var layer = Current.GetLayer(layerIndex);
                     update_args.LayerIndex = layerIndex;
-                    // OLD layer.Visit<LayerUpdateArgs, LayerUpdateReturns>(this.layerUpdateActions, update_args);
                     layer.SubtractGradients(avgGradient);
                     update_args.ParameterOffset += layer.TrainableParameterCount();
                 }
@@ -551,6 +416,10 @@ public partial class BatchTrainerEnumerator<TNetwork>
         return optimized_grad;
     }
 
+    #endregion
+
+    #region Event Handlers
+
     public event EpochStartHandler OnEpochStart = delegate {};
     public event BatchStartHandler OnBatchStart = delegate {};
     public event BatchEndHandler OnBatchEnd = delegate {};
@@ -558,5 +427,18 @@ public partial class BatchTrainerEnumerator<TNetwork>
     public event ValidationStepHandler OnValidated = delegate {};
     public event ValidationEndHandler OnValidationEnd = delegate {};
     public event EpochEndHandler OnEpochEnd = delegate {};
+
+    #endregion
+
+    #region Utility Classes
+
+    public struct LayerUpdateArgs {
+        public int ParameterOffset;
+        public int UpdateTimestep;
+        public int LayerIndex;
+        public LayerGradients? Gradients;
+    }
+
+    #endregion
 }
 #endregion

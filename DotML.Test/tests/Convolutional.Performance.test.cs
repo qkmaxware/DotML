@@ -27,11 +27,11 @@ public class PerformanceTest {
             new ConvolutionLayer     (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 384, 3)),
             new ActivationLayer      (input_size: new Shape3D(256, 13, 13),  activation: HyperbolicTangent.Instance),
             new LocalMaxPoolingLayer (input_size: new Shape3D(256, 13, 13), size: 3, stride: 2),
-            new FullyConnectedLayer  (input_size: 9216, neurons: 4096),
+            new DenseLinearLayer  (input_size: 9216, neurons: 4096),
             new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), activation: HyperbolicTangent.Instance),
-            new FullyConnectedLayer  (input_size: 4096, neurons: 4096),
+            new DenseLinearLayer  (input_size: 4096, neurons: 4096),
             new ActivationLayer      (input_size: new Shape3D(1, 4096, 1),  activation: HyperbolicTangent.Instance),
-            new FullyConnectedLayer  (input_size: 4096, neurons: OUT_CLASSES),
+            new DenseLinearLayer  (input_size: 4096, neurons: OUT_CLASSES),
             new ActivationLayer      (input_size: new Shape3D(1, OUT_CLASSES, 1),  activation: HyperbolicTangent.Instance),
             new SoftmaxLayer         (size: OUT_CLASSES)
         );
@@ -58,11 +58,11 @@ public class PerformanceTest {
             new ConvolutionLayer     (input_size: new Shape3D(384, 13, 13), padding: Padding.Same, stride: 1, filters: ConvolutionFilter.Make(256, 384, 3)),
             new ActivationLayer      (input_size: new Shape3D(256, 13, 13), HyperbolicTangent.Instance),
             new LocalMaxPoolingLayer (input_size: new Shape3D(256, 13, 13), size: 3, stride: 2),
-            new FullyConnectedLayer  (input_size: 9216, neurons: 4096),
+            new DenseLinearLayer  (input_size: 9216, neurons: 4096),
             new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), HyperbolicTangent.Instance),
-            new FullyConnectedLayer  (input_size: 4096, neurons: 4096),
+            new DenseLinearLayer  (input_size: 4096, neurons: 4096),
             new ActivationLayer      (input_size: new Shape3D(1, 4096, 1), HyperbolicTangent.Instance),
-            new FullyConnectedLayer  (input_size: 4096, neurons: OUT_CLASSES),
+            new DenseLinearLayer  (input_size: 4096, neurons: OUT_CLASSES),
             new ActivationLayer      (input_size: new Shape3D(1, OUT_CLASSES, 1), HyperbolicTangent.Instance),
             new SoftmaxLayer         (OUT_CLASSES)
         );
@@ -105,7 +105,7 @@ public class PerformanceTest {
     [TestMethod]
     public void TestAlexNetFullLayerFF() {
         var matrix = new Matrix<double>(9216,1);
-        var layer = new FullyConnectedLayer     (9216, 4096);
+        var layer = new DenseLinearLayer     (9216, 4096);
 
         var _result = layer.EvaluateSync(new FeatureSet<double>(matrix));
     }

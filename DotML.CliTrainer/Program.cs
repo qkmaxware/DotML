@@ -22,7 +22,7 @@ public static void Main() {
 
     #region Network
 
-    var network = LeNet.Make(LeNet.Version.V5, output_classes: 10, img_channels: 3, img_width: 32, img_height: 32, activation: TeLU.Instance);
+    var network = AlexNet.Make(AlexNet.Version.V1, output_classes: 2, img_channels: 3, img_width: 224, img_height: 224, activation: ReLU.Instance);
     //MobileNet.Make(MobileNet.Version.V1, output_classes: 3, activation: ReLU.Instance);
     
     Console.WriteLine("Network configured: " + network.GetType().Name + " with " + network.LayerCount + " layers");
@@ -62,7 +62,7 @@ public static void Main() {
         LearningRateOptimizer = new AdamOptimizer(),
         LossFunction = LossFunctions.CategoricalCrossEntropy,
         NetworkInitializer = new HeInitialization(),
-        BatchSize = 10,
+        BatchSize = 8,
         EnableGradientClipping = false,
         ClippingThresholdSynapses = 10,
         ClippingThresholdBiases = 5.0,
@@ -76,7 +76,7 @@ public static void Main() {
         foreach (PropertyInfo property in trainer.GetType().GetProperties()) {
             object? value = property.CanRead ? property.GetValue(trainer, null) : null;
             if (value is LossFunction loss)
-                value = loss.Method.Name;
+                value = loss.Name;
             else 
                 value = value?.ToString() ?? "n/a";
             Console.Write("    "); Console.Write(property.Name); Console.Write(": "); Console.WriteLine(value);
@@ -232,7 +232,7 @@ public static void Main() {
                     var @true = batch[batchIndex].Out;
                     var predicted =  Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
                     
-                    var loss = trainer.LossFunction(predicted, @true);
+                    var loss = trainer.LossFunction.Invoke(predicted, @true);
                     max_error = Math.Max(max_error, loss);
                     var passed = loss < trainer.EarlyStopAccuracy;
                     all_less_threshold &= passed;

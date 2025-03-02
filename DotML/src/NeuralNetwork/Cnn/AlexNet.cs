@@ -100,11 +100,11 @@ public static class AlexNet {
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new LocalMaxPoolingLayer(ishape, stride: 2, size: 3))
             // Flattening
-            .Then(ishape => new FullyConnectedLayer(ishape.Count, neurons))
+            .Then(ishape => new DenseLinearLayer(ishape.Count, neurons))
             .Then(ishape => new ActivationLayer(ishape, activation))
-            .Then(ishape => new FullyConnectedLayer(ishape.Count, neurons))
+            .Then(ishape => new DenseLinearLayer(ishape.Count, neurons))
             .Then(ishape => new ActivationLayer(ishape, activation))
-            .Then(ishape => new FullyConnectedLayer(ishape.Count, output_classes))
+            .Then(ishape => new DenseLinearLayer(ishape.Count, output_classes))
             .Then(ishape => new SoftmaxLayer(ishape.Count))
         );
     }

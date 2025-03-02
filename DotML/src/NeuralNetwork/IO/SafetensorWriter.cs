@@ -67,7 +67,7 @@ public class LayerSafetensorWriter : ILayerVisitor<int, bool> {
         return true;
     }
 
-    public bool Visit(FullyConnectedLayer conn, int layerIndex) {
+    public bool Visit(DenseLinearLayer conn, int layerIndex) {
         sb.Add($"Layers[{layerIndex}].Weights", conn.Weights);
         sb.Add($"Layers[{layerIndex}].Biases", conn.Biases);
         return true;

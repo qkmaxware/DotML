@@ -89,7 +89,7 @@ public static class LeNet {
                 )
             )
             .Then(ishape => 
-                new FullyConnectedLayer(
+                new DenseLinearLayer(
                     ishape.Count,
                     output_classes
                 )
@@ -136,21 +136,21 @@ public static class LeNet {
                     stride: 2
                 )
             ).Then(ishape =>
-                new FullyConnectedLayer(
+                new DenseLinearLayer(
                     input_size: ishape.Count, 
                     neurons: fullyConnectedNeurons1
                 )
             )
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => 
-                new FullyConnectedLayer(
+                new DenseLinearLayer(
                     input_size: ishape.Count, 
                     neurons: fullyConnectedNeurons2
                 )
             )
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => 
-                new FullyConnectedLayer(
+                new DenseLinearLayer(
                     input_size: ishape.Count, 
                     neurons: output_classes
                 )

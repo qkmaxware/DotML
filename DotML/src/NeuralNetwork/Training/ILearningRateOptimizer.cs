@@ -141,6 +141,7 @@ public class AdamOptimizer : ILearningRateOptimizer {
         var parameter_update = baseLearningRate * adjusted_gradient;
         if (double.IsNaN(parameter_update)) {
             throw new ArithmeticException("NaN generated for parameter update.");
+            //parameter_update = 0;
         }
         return parameter_update;
     }

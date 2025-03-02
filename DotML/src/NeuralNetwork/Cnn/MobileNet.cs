@@ -119,9 +119,9 @@ public static class MobileNet {
             // Pooling layer
             .Then((size) => new LocalAvgPoolingLayer(input_size: size, size: 7, stride: 1))
             // Output layers
-            .Then((size) => new FullyConnectedLayer(input_size: size.Count, neurons: 1024))
+            .Then((size) => new DenseLinearLayer(input_size: size.Count, neurons: 1024))
             .Then((size) => new ActivationLayer(input_size: size, activation: activation))
-            .Then((size) => new FullyConnectedLayer(input_size: size.Count, output_classes))
+            .Then((size) => new DenseLinearLayer(input_size: size.Count, output_classes))
             .Then((size) => new SoftmaxLayer(size: size.Count))
         );
     }

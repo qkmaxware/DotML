@@ -184,7 +184,7 @@ public class Fit : BaseCommand {
             foreach (PropertyInfo property in trainer.GetType().GetProperties()) {
                 object? value = property.CanRead ? property.GetValue(trainer, null) : null;
                 if (value is LossFunction loss)
-                    value = loss.Method.Name;
+                    value = loss.Name;
                 else 
                     value = value?.ToString() ?? "n/a";
                 trainer_prop_writer.Write("    "); trainer_prop_writer.Write(property.Name); trainer_prop_writer.Write(": "); trainer_prop_writer.WriteLine(value);
@@ -278,7 +278,7 @@ public class Fit : BaseCommand {
         Console.WriteLine();
 
         ProgressBar? current_progress = null;
-        var has_cancelled = false;
+        //var has_cancelled = false;
         session.OnEpochStart += (int epoch, int epochCount) => {
             current_progress?.Update(0, iteration_count);
             
@@ -319,7 +319,7 @@ public class Fit : BaseCommand {
         var has_next = true;
         Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
             has_next = false;                   // Stop at end of next iteration
-            has_cancelled = true;               // Indicate that we have cancelled it
+            //has_cancelled = true;               // Indicate that we have cancelled it
             UpdateMode = UpdateModeType.none;   // We don't want to preserve weights if cancelled
             Console.WriteLine(); Console.WriteLine();
             Console.WriteLine("<!-- Training Cancelled by User -->");
@@ -480,13 +480,11 @@ public class Fit : BaseCommand {
     private LossFunction smart_pick_loss(FeedforwardNetwork network) {
         // User provided loss function, use that if it matches one
         if (!string.IsNullOrEmpty(LossFunctionName)) {
-            var loss_function = 
-                typeof(LossFunctions)
-                .GetMethods(BindingFlags.Static | BindingFlags.Public)
-                .Select(func => Delegate.CreateDelegate(typeof(LossFunction), func, false))
-                .Where(@delegate => @delegate is not null && @delegate.Method.Name.Contains(LossFunctionName, StringComparison.CurrentCultureIgnoreCase))
-                .Cast<LossFunction>()
+            var loss_function = LossFunctions
+                .EnumerateAll()
+                .Where(@delegate => @delegate.Name.Contains(LossFunctionName, StringComparison.CurrentCultureIgnoreCase))
                 .FirstOrDefault();
+                
             if (loss_function is not null)
                 return loss_function;
         }
@@ -558,7 +556,7 @@ public class Fit : BaseCommand {
                 var @true = batch[batchIndex].Out;
                 var predicted =  Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
                 
-                var loss = loss_fn(predicted, @true);
+                var loss = loss_fn.Invoke(predicted, @true);
                 max_error = Math.Max(max_error, loss);
                 var passed = loss < pass_threshold;
                 all_less_threshold &= passed;

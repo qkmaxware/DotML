@@ -26,10 +26,14 @@
             <option>@value</option>
         }
     </select>
-} else if (Property.PropertyType.IsAssignableTo(typeof(DotML.Network.LossFunction))) {
+} else if (Property.PropertyType.IsAssignableTo(typeof(DotML.Network.Training.LossFunction))) {
     <select class="form-control" @bind=lossFunction>
-        @for (var i = 0; i < lossFunctions.Count; i++) {
-            <option value="@i">@lossFunctions[i].Method.Name</option>
+        @{
+            var i = 0;
+            foreach (var loss in LossFunctions.EnumerateAll()) {
+                <option value="@i">@loss.Name</option>
+                i++;
+            }
         }
     </select>
 } else if (Property.PropertyType.IsAssignableTo(typeof(IInitializer))) {
@@ -40,8 +44,12 @@
     </select>
 } else if (Property.PropertyType.IsAssignableTo(typeof(ActivationFunction))) {
     <select class="form-control" @bind=activation>
-        @for (var i = 0; i < activations.Count; i++) {
-            <option value="@i">@activations[i]</option>
+        @{
+            var i = 0;
+            foreach (var func in ActivationFunctions.EnumerateAll()) {
+                <option value="@i">@func</option>
+                i++;
+            }
         }
     </select>
 } else if (Property.PropertyType.IsAssignableTo(typeof(ILearningRateOptimizer))) {
@@ -143,39 +151,25 @@
             Property.SetValue(Owner, value >= 0 && value < regularizations.Count ? regularizations[value] : null);
         }
     }
-    private static List<ActivationFunction> activations = [
-        Identity.Instance,
-        BinaryStep.Instance,
-        ReLU.Instance,
-        LeakyReLU.Instance,
-        new PReLU(0.01),
-        new PReLU(0.005),
-        new PReLU(0.1), 
-        new PReLU(0.3), 
-        new PReLU(0.5), 
-        Sigmoid.Instance,
-        HyperbolicTangent.Instance,
-    ];
+
+    private static int IndexOf<T>(IEnumerable<T> items, T item) {
+        return items.Select((a, i) => a.Equals(item) ? i : -1).Max();
+    }
+
     private int activation {
         get {
             var loss = (ActivationFunction?)Property.GetValue(Owner);
-            return loss is null ? -1 : activations.IndexOf(loss);
+            return loss is null ? -1 : IndexOf(ActivationFunctions.EnumerateAll(), loss);
         }
-        set => Property.SetValue(Owner, value >= 0 && value < activations.Count ? activations[value] : null);
+        set => Property.SetValue(Owner, value >= 0 && value < ActivationFunctions.EnumerateAll().Count() ? ActivationFunctions.EnumerateAll().ElementAt(value) : null);
     }
 
-    private static List<LossFunction> lossFunctions = [
-        LossFunctions.MeanSquaredError,
-        LossFunctions.RootMeanSquaredError,
-        LossFunctions.MeanAbsoluteError,
-        LossFunctions.CategoricalCrossEntropy
-    ];
     private int lossFunction {
         get {
             var loss = (LossFunction?)Property.GetValue(Owner);
-            return loss is null ? -1 : lossFunctions.IndexOf(loss);
+            return loss is null ? -1 : IndexOf(LossFunctions.EnumerateAll(), loss);
         }
-        set => Property.SetValue(Owner, value >= 0 && value < lossFunctions.Count ? lossFunctions[value] : null);
+        set => Property.SetValue(Owner, value >= 0 && value < LossFunctions.EnumerateAll().Count() ? LossFunctions.EnumerateAll().ElementAt(value) : null);
     }
 
     private static List<IInitializer> initializers = [

@@ -215,8 +215,8 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
         return new LayerUpdateReturns {};
     }
 
-    public LayerUpdateReturns Visit(FullyConnectedLayer layer, LayerUpdateArgs args) {
-        if (args.Gradients is null || args.Gradients is not FullyConnectedLayer.Gradients gradients)
+    public LayerUpdateReturns Visit(DenseLinearLayer layer, LayerUpdateArgs args) {
+        if (args.Gradients is null || args.Gradients is not DenseLinearLayer.Gradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));
 
         var param_offset = args.ParameterOffset;
@@ -227,7 +227,7 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
         layer.Weights.SubtractWithInplace(weight_update);
         foreach (var elem in layer.Weights) {
             if (double.IsNaN(elem)) {
-                throw new ArithmeticException($"NaN detected while updating weights of a FullyConnectedLayer");
+                throw new ArithmeticException($"NaN detected while updating weights of a DenseLinearLayer");
             }
         }
         //var weight_update = gradients.WeightGradients.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Weights[index.Row, index.Column], grad, param_offset + index.Column + index.Row * weight_width));
@@ -238,7 +238,7 @@ private class LayerUpdateActions: ILayerVisitor<BatchTrainerEnumerator<TNetwork>
         Vec<double>.SubInplace(layer.Biases, layer.Biases, bias_update);
         foreach (var elem in layer.Biases) {
             if (double.IsNaN(elem)) {
-                throw new ArithmeticException($"NaN detected while updating biases of a FullyConnectedLayer");
+                throw new ArithmeticException($"NaN detected while updating biases of a DenseLinearLayer");
             }
         }
         //var bias_update = gradients.BiasGradients.Transform((index, grad) => gradient_update(args.UpdateTimestep, LearningRate, layer.Biases[index.Value], grad, param_offset + weight_count + index.Value));

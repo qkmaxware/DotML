@@ -145,7 +145,7 @@ public class FeedforwardNetwork:
         }
     }
 
-    public BatchedFeatureSet<double> PredictSync(BatchedFeatureSet<double> values) {
+    public BatchedFeatureSet<double> PredictSync(BatchedFeatureSet<double> values, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<double>>? before_layer, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<double>>? after_layer) {
         var ishape = this.InputShape;
 
         if (values.Channels != ishape.Channels) {
@@ -162,11 +162,17 @@ public class FeedforwardNetwork:
         foreach (var layer in this.layers) {
             if (!layer.DoesShapeMatchInputShape(ishape))
                 throw new ArithmeticException($"Input of shape {input.Channels}x{ishape.Rows}x{ishape.Columns} is incompatible with layer {layer_index} input's of shape {layer.InputShape}.");
+            before_layer?.Invoke(layer, input);
             input = layer.EvaluateSync(input);
+            after_layer?.Invoke(layer, input);
             ishape = new Shape3D(input.Channels, input.Rows, input.Columns);
             layer_index++;
         }
         return input;
+    }
+
+    public BatchedFeatureSet<double> PredictSync(BatchedFeatureSet<double> values) {
+        return PredictSync(values, null, null);
     }
 
     public Vec<double> PredictSync(FeatureSet<double> values) {
@@ -244,7 +250,7 @@ public class FeedforwardNetwork:
                     break;
                 case PoolingLayer pool:
                     break;
-                case FullyConnectedLayer connect:
+                case DenseLinearLayer connect:
                     max_outputs_matrices = Math.Max(max_outputs_matrices, connect.OutputShape.Count);
                     last_output_matrices = 1;
                     break;
@@ -338,7 +344,7 @@ public class FeedforwardNetwork:
                         layer_midpoint_y = last_layer_midpoint_y;
                     }
                     break;
-                case FullyConnectedLayer connect:
+                case DenseLinearLayer connect:
                     for (var i = 0; i < connect.OutputShape.Count; i++) {
                         var neuron_offset = (matrix_size - 2*neuron_radius) / 2;
                         var center_x = matrix_offset + layer_start_x + matrix_size / 2;
@@ -378,7 +384,7 @@ public class FeedforwardNetwork:
                     layer_midpoint_y = last_layer_midpoint_y;
                     last_layer_was_fully_connected = false;
                     break;
-                case FullyConnectedLayer connect:
+                case DenseLinearLayer connect:
                     last_output_matrices = 1;
                     last_layer_was_fully_connected = true;
                     break;

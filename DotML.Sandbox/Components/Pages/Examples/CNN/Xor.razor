@@ -38,17 +38,17 @@
         <hr> 
         <label>Hidden Layer</label><br>
         <label>Weights:</label>
-        <MatrixTable Matrix=@(((FullyConnectedLayer)network.GetLayer(0)).Weights)></MatrixTable>
+        <MatrixTable Matrix=@(((DenseLinearLayer)network.GetLayer(0)).Weights)></MatrixTable>
         <label>Biases:</label>
-        <VectorTable Vector=@(((FullyConnectedLayer)network.GetLayer(0)).Biases)></VectorTable>
+        <VectorTable Vector=@(((DenseLinearLayer)network.GetLayer(0)).Biases)></VectorTable>
         <label>Activation:</label><br>
         <span>@(((ActivationLayer)network.GetLayer(1)).ActivationFunction.GetType().Name)</span>
         <hr>
         <label>Output Layer</label><br>
         <label>Weights:</label>
-        <MatrixTable Matrix=@(((FullyConnectedLayer)network.GetLayer(2)).Weights)></MatrixTable>
+        <MatrixTable Matrix=@(((DenseLinearLayer)network.GetLayer(2)).Weights)></MatrixTable>
         <label>Biases:</label>
-        <VectorTable Vector=@(((FullyConnectedLayer)network.GetLayer(2)).Biases)></VectorTable>
+        <VectorTable Vector=@(((DenseLinearLayer)network.GetLayer(2)).Biases)></VectorTable>
         <label>Activation:</label><br>
         <span>@(((ActivationLayer)network.GetLayer(3)).ActivationFunction.GetType().Name)</span> 
     </NetworkVisualization>
@@ -67,12 +67,12 @@
     private FeedforwardNetwork network = new FeedforwardNetwork(
         [
             // 2 - 2 - 1
-            new FullyConnectedLayer(
+            new DenseLinearLayer(
                 input_size: 2, 
                 neurons: 2
             ),
             new ActivationLayer(new Shape3D(1, 2, 1), HyperbolicTangent.Instance),
-            new FullyConnectedLayer(
+            new DenseLinearLayer(
                 input_size: 2, 
                 neurons: OUT_CLASSES
             ),

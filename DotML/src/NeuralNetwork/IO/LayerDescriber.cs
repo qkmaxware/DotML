@@ -32,7 +32,7 @@ public class LayerDescriber : ILayerVisitor<string> {
         return $"Normalize the inputs across the entire batch";
     }
 
-    public string Visit(FullyConnectedLayer layer) {
+    public string Visit(DenseLinearLayer layer) {
         return $"Fully connected layer of {layer.NeuronCount} neurons";
     }
 

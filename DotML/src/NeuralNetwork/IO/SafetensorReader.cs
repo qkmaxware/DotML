@@ -98,7 +98,7 @@ public class LayerSafetensorReader : ILayerVisitor<int, bool> {
         return true;
     }
 
-    public bool Visit(FullyConnectedLayer conn, int layerIndex) {
+    public bool Visit(DenseLinearLayer conn, int layerIndex) {
         var wkey = $"Layers[{layerIndex}].Weights";
         if (sb.ContainsKey(wkey)) {
             conn.Weights = sb.GetTensor<double>(wkey);

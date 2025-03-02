@@ -161,14 +161,14 @@ public static class VGGNet {
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new LocalMaxPoolingLayer(ishape, size: 2, stride: 2))
             // FCs
-            .Then(ishape => new FullyConnectedLayer(ishape.Count, neurons))
+            .Then(ishape => new DenseLinearLayer(ishape.Count, neurons))
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new DropoutLayer(ishape))
-            .Then(ishape => new FullyConnectedLayer(ishape.Count, neurons))
+            .Then(ishape => new DenseLinearLayer(ishape.Count, neurons))
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new DropoutLayer(ishape))
             // Output layer
-            .Then(ishape => new FullyConnectedLayer(ishape.Count, output_classes))
+            .Then(ishape => new DenseLinearLayer(ishape.Count, output_classes))
             .Then(ishape => new SoftmaxLayer(ishape.Count))
         );
     }

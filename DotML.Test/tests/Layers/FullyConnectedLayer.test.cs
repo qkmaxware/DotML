@@ -4,10 +4,10 @@ using DotML.Network.Training;
 namespace DotML.Test.Layers;
 
 [TestClass]
-public class FullyConnectedLayerTest {
+public class DenseLinearLayerTest {
     [TestMethod]
     public void TestInput5Output3() {
-        var layer = new FullyConnectedLayer(input_size: 5, neurons: 3);
+        var layer = new DenseLinearLayer(input_size: 5, neurons: 3);
 
         var X = Matrix<double>.FromFlattened(5, 1, [
             1.9631073474884033,
@@ -52,10 +52,10 @@ public class FullyConnectedLayerTest {
         Assert.AreEqual(Y_truth.Rows, Y_projected.Rows);
         Assert.AreEqual(Y_truth.Columns, Y_projected.Columns);
 
-        using (var writer = new StreamWriter("FullyConnectedLayerTest.TestInput5Output3.YProjected.txt")) {
+        using (var writer = new StreamWriter("DenseLinearLayerTest.TestInput5Output3.YProjected.txt")) {
             writer.Write(Y_projected);
         }
-        using (var writer = new StreamWriter("FullyConnectedLayerTest.TestInput5Output3.YTruth.txt")) {
+        using (var writer = new StreamWriter("DenseLinearLayerTest.TestInput5Output3.YTruth.txt")) {
             writer.Write(Y_truth);
         }
         foreach (var (projected, truth) in Y_projected.Zip(Y_truth)) {
@@ -103,29 +103,29 @@ public class FullyConnectedLayerTest {
             output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
             error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
         ));
-        Assert.IsInstanceOfType<FullyConnectedLayer.Gradients>(backprop_returns.Gradients);
-        var gradients = (FullyConnectedLayer.Gradients)backprop_returns.Gradients; 
+        Assert.IsInstanceOfType<DenseLinearLayer.Gradients>(backprop_returns.Gradients);
+        var gradients = (DenseLinearLayer.Gradients)backprop_returns.Gradients; 
 
         var dX_projected = backprop_returns.dX[0,0];
         var dW_projected = gradients.WeightGradients;
         var dB_projected = gradients.BiasGradients;
 
-        using (var writer = new StreamWriter("FullyConnectedLayerTest.TestInput5Output3.dWProjected.txt")) {
+        using (var writer = new StreamWriter("DenseLinearLayerTest.TestInput5Output3.dWProjected.txt")) {
             writer.Write(dW_projected);
         }
-        using (var writer = new StreamWriter("FullyConnectedLayerTest.TestInput5Output3.dWTruth.txt")) {
+        using (var writer = new StreamWriter("DenseLinearLayerTest.TestInput5Output3.dWTruth.txt")) {
             writer.Write(dW_truth);
         }
-        using (var writer = new StreamWriter("FullyConnectedLayerTest.TestInput5Output3.dBProjected.txt")) {
+        using (var writer = new StreamWriter("DenseLinearLayerTest.TestInput5Output3.dBProjected.txt")) {
             writer.Write(dB_projected);
         }
-        using (var writer = new StreamWriter("FullyConnectedLayerTest.TestInput5Output3.dBTruth.txt")) {
+        using (var writer = new StreamWriter("DenseLinearLayerTest.TestInput5Output3.dBTruth.txt")) {
             writer.Write(dB_truth);
         }
-        using (var writer = new StreamWriter("FullyConnectedLayerTest.TestInput5Output3.dXProjected.txt")) {
+        using (var writer = new StreamWriter("DenseLinearLayerTest.TestInput5Output3.dXProjected.txt")) {
             writer.Write(dX_projected);
         }
-        using (var writer = new StreamWriter("FullyConnectedLayerTest.TestInput5Output3.dXTruth.txt")) {
+        using (var writer = new StreamWriter("DenseLinearLayerTest.TestInput5Output3.dXTruth.txt")) {
             writer.Write(dX_truth);
         }
 

@@ -205,7 +205,7 @@
                         if (data is not null) {
                         foreach (var pair in data) {
                             var output = Network.PredictSync(pair.Input);
-                            var loss = LossFunctions.MeanSquaredError(output, pair.Output);
+                            var loss = LossFunctions.MeanSquaredError.Invoke(output, pair.Output);
                             var passed = loss < ACCURACY_TOLERANCE;
                             if (passed) {
                                 tests_passed ++;
@@ -410,7 +410,7 @@ else if (state == State.Playground) {
             var loss_count = 0;
             foreach (var pair in data) {
                 var output = Network.PredictSync(pair.Input);
-                var loss = LossFunctions.MeanSquaredError(output, pair.Output);
+                var loss = LossFunctions.MeanSquaredError.Invoke(output, pair.Output);
                 loss_sum += loss;
                 loss_count ++;
             }

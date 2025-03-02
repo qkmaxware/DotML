@@ -32,18 +32,26 @@ public class Graphics {
             }
         }
     }
-    
-    //public void ClearRect(int x, int y, int width, int height) { }
 
-    public void SetPixel(int x, int y, ConsoleColor color) {
+    public void ClearRect(int x, int y, int width, int height) {
+        for (var r = 0; r < height; r++) {
+            for (var c = 0; c < width; c++) {
+                SetPixel(c + x, r + y, false);
+            }
+        }
+    }
+    public void ClearRect(Rectangle rect) => ClearRect(rect.X, rect.Y, rect.Width, rect.Height);
+    
+    public void SetPixel(int x, int y, ConsoleColor colour) {
         if (x >= 0 && y >= 0 && x < Width && y < Height) {
             Console.SetCursorPosition(left + x, top + y);
             var prev = Console.ForegroundColor;
-            Console.ForegroundColor = color;
+            Console.ForegroundColor = colour;
             Console.Write(Filled);
             Console.ForegroundColor = prev;
         }
     }
+    public void SetPixel(Point p, ConsoleColor colour) => SetPixel(p.X, p.Y, colour);
 
     public void SetPixel(int x, int y, bool filled) {
         if (x >= 0 && y >= 0 && x < Width && y < Height) {
@@ -51,10 +59,11 @@ public class Graphics {
             Console.Write(filled ? Filled : Empty);
         }
     }
+    public void SetPixel(Point p, bool filled) => SetPixel(p.X, p.Y, filled);
 
     // TODO more drawing methods like DrawCircle, DrawOval, DrawPoint, etc etc
-
-    public void DrawLine((int X, int Y) from, (int X, int Y) to) {
+    public void DrawLine((int X, int Y) from, (int X, int Y) to) => DrawLine(new Point(from.X, from.Y), new Point(to.X, to.Y));
+    public void DrawLine(Point from, Point to) {
         // Bresenham's line algorithm
         var dx = Math.Abs(to.X - from.X);
         var sx = from.X < to.X ? 1 : -1;

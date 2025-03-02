@@ -208,7 +208,7 @@
                     </div>
                     <div class="col-sm">
                         <label class="summary-header">Loss</label>
-                        <p title="min: @last_results?.MinLoss, max: @last_results?.MaxLoss, avg: @last_results?.AverageLoss, function: @this.used_loss_function.Method.Name" class="summary-contents titled">@((last_results?.AverageLoss ?? 0.0).ToString("F2")) &plusmn; @(((last_results?.MaxLoss ?? 0.0 - last_results?.MinLoss ?? 0.0) / 2.0).ToString("F2"))</p>
+                        <p title="min: @last_results?.MinLoss, max: @last_results?.MaxLoss, avg: @last_results?.AverageLoss, function: @this.used_loss_function.Name" class="summary-contents titled">@((last_results?.AverageLoss ?? 0.0).ToString("F2")) &plusmn; @(((last_results?.MaxLoss ?? 0.0 - last_results?.MinLoss ?? 0.0) / 2.0).ToString("F2"))</p>
                     </div>
                     <div class="col-sm">
                         <label class="summary-header">Step Duration</label>

@@ -293,7 +293,7 @@ public class SimpleConvNetTrainer :
         };
     }
 
-    public BackpropagationReturns Visit(FullyConnectedLayer layer, BackpropagationArgs args) {
+    public BackpropagationReturns Visit(DenseLinearLayer layer, BackpropagationArgs args) {
         // Current layer deltas
         var flattened_inputs = args.Inputs.SelectMany(x => x.FlattenRows()).ToArray();
         var output = args.Outputs[0];                                       // Output vector
@@ -426,7 +426,7 @@ public class SimpleConvNetTrainer :
         return new WeightUpdateReturns {};
     }
 
-    public WeightUpdateReturns Visit(FullyConnectedLayer layer, WeightUpdateArgs args) {
+    public WeightUpdateReturns Visit(DenseLinearLayer layer, WeightUpdateArgs args) {
         if (args.Gradients is null || args.Gradients is not FullyConnectedGradients gradients)
             throw new NullReferenceException(nameof(args.Gradients));
         

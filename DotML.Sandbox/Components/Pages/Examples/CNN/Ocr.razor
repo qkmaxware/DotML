@@ -96,17 +96,17 @@
                 size: 2, 
                 stride: 2
             ),
-            new FullyConnectedLayer(
+            new DenseLinearLayer(
                 input_size: 400, 
                 neurons: 120
             ),
             new ActivationLayer(new Shape3D(1, 120, 1), HyperbolicTangent.Instance),
-            new FullyConnectedLayer(
+            new DenseLinearLayer(
                 input_size: 120, 
                 neurons: 84
             ),
             new ActivationLayer(new Shape3D(1, 84, 1), HyperbolicTangent.Instance),
-            new FullyConnectedLayer(
+            new DenseLinearLayer(
                 input_size: 84, 
                 neurons: OUT_CLASSES
             ),

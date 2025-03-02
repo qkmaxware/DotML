@@ -752,7 +752,7 @@ public class BackpropagationActions {
         };
     }
 
-    public BackpropagationReturns Visit(FullyConnectedLayer layer, BackpropagationArgs args) {
+    public BackpropagationReturns Visit(DenseLinearLayer layer, BackpropagationArgs args) {
         // Form X input matrix for all flattened input batch vectors
         var xT = new Matrix<double>(args.InputBatch.Batches, layer.InputShape.Count);
         for (var i = 0; i < args.InputBatch.Batches; i++) {

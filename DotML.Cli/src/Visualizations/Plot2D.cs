@@ -17,7 +17,7 @@ public class Plot2D {
 
     public void Draw(IEnumerable<Vector2> points) {
         // TODO make this more "dynamic"
-        var width = 320;
+        var width = Console.WindowWidth - 3;
         var height = 32;
         var empty_line = new string(' ', width);
 
@@ -49,7 +49,7 @@ public class Plot2D {
         Graphics graphics = new Graphics(
             top: chart_start.Top, 
             left: vline.Length,
-            width: width,
+            width: width - 1,
             height: height
         );
         foreach (var point in points.OrderBy(x => x.X)) {
@@ -58,11 +58,11 @@ public class Plot2D {
                 continue;
             }
 
-            var x = (int)(point.X / width);
-            var y = height - (int)(point.Y / height);
+            var x = Math.Clamp((int)(point.X / width), 0, width);
+            var y = Math.Clamp(height - (int)(point.Y / height), 0, height);
 
-            var _x = (int)(last_point.Value.X / width);
-            var _y = height - (int)(last_point.Value.Y / height);
+            var _x = Math.Clamp((int)(last_point.Value.X / width), 0, width);
+            var _y = Math.Clamp(height - (int)(last_point.Value.Y / height), 0, height);
 
             graphics.DrawLine((_x, _y), (x, y));
             last_point = point;

@@ -9,7 +9,7 @@ namespace DotML.Network;
 /// <summary>
 /// Fully connected layer which flattens it's inputs before processing and returns a column vector from the output neurons
 /// </summary>
-public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
+public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
 
     private int inputs;
     private int outputs;
@@ -34,8 +34,8 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
     /// Neuron interface to access individual neuron properties from matrix and vector data
     /// </summary>
     public class NeuronRef : INeuron {
-        FullyConnectedLayer parent; int index;
-        internal NeuronRef(FullyConnectedLayer parent, int index) {
+        DenseLinearLayer parent; int index;
+        internal NeuronRef(DenseLinearLayer parent, int index) {
             this.index = index;
             this.parent = parent;
         }
@@ -70,7 +70,7 @@ public class FullyConnectedLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
 
     private NeuronRef[] neurons;
 
-    public FullyConnectedLayer(int input_size, int neurons) {
+    public DenseLinearLayer(int input_size, int neurons) {
         this.inputs = input_size;
         this.outputs = neurons;
         this.neuronc = neurons;
