@@ -6,8 +6,12 @@ Machine Learning practice implementations.
 |------|---------|
 | Data | Raw data used to create datasets |
 | DotML | Core library with ML implementations |
+| DotML.Benchmark | Benchmarks for different components |
 | DotML.Cli | A Command line utility for training and experimenting with networks |
-| DotML.LinearAlgebra | Library contains all linear algebra implementations. Separate Benchmarking and testing projects included. |
+| DotML.Example | An example project showing how to create/train a network |
+| DotML.LinearAlgebra | Library contains all linear algebra implementations |
+| DotML.LinearAlgebra.Benchmark | Benchmarks for linear algebra implementations |
+| DotML.LinearAlgebra.Test | Tests for validating implementations of the linear algebra library |
 | DotML.Sandbox | Blazor Server app for training and experimenting with networks |
-| DotML.Test | Test library for validating parts of the code non-experimentally |
+| DotML.Test | Tests for validating parts of the code non-experimentally |
 | DotML.Utils | Utility projects, often to create training data sets |
