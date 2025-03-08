@@ -156,7 +156,8 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
         // input is a 2D matrix processed from prior layers like a pooling layer
-        var x = inputs.Channels == 1 && inputs[0].IsColumnMatrix ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
+        var x = FlatteningLayer.Flatten(inputs)[0];
+        //var x = inputs.Channels == 1 && inputs[0].IsColumnMatrix ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
         //var x = Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray()); 
         //var mul  = Weights * x; 
         //AddMatVecInplace(mul, mul, bias_values);

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
@@ -75,15 +76,20 @@ public class ReshapeLayer : FeedforwardNetworkLayer {
 public class FlatteningLayer : ReshapeLayer {
     public FlatteningLayer(Shape3D input_size) : base(input_size, new Shape3D(1, input_size.Count, 1)) { }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static FeatureSet<double> Flatten(FeatureSet<double> channels) {
+        if (channels.Channels == 1 && channels[0].IsColumnMatrix) {
+            return channels;
+        } else {
+            Matrix<double> output = new Matrix<double>(channels.Shape.Count, 1, channels.SelectMany(x => x.FlattenRows()));
+            return new FeatureSet<double>(output);
+        }
+    }
+
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
         // Input is a 2D matrix processed from prior layers like a pooling layer
         // If the input is already flattened, use that; otherwise, flatten the input.
-        if (inputs.Shape == OutputShape) {
-            return inputs;
-        } else {
-            Matrix<double> output = new Matrix<double>(this.OutputShape.Rows, this.OutputShape.Columns, inputs.SelectMany(x => x.FlattenRows()));
-            return new FeatureSet<double>(output);
-        }
+        return Flatten(inputs);
     }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
