@@ -9,7 +9,8 @@ namespace DotML;
 /// </summary>
 /// <typeparam name="T">feature value type</typeparam>
 public class BatchedFeatureSet<T> :
-    IEnumerable<FeatureSet<T>>
+    IEnumerable<FeatureSet<T>>,
+    IMutableTensorLike<T>
     where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T> 
 {
     private FeatureSet<T>[] batches;
@@ -48,6 +49,48 @@ public class BatchedFeatureSet<T> :
             batches[batch] = new FeatureSet<T>(subshape);
         }
         this.batches = batches;
+    }
+
+    /// <summary>
+    /// Create a batched feature set from a rectangular array with the first dimension being the number of batches, then features/channels and lastly the rows and columns
+    /// </summary>
+    /// <param name="tensor">4d tensor as a rectangular array</param>
+    /// <returns>batched feature set</returns>
+    public static BatchedFeatureSet<T> FromRectangular(T[,,,] tensor) {
+        var batch_count = tensor.GetLength(0);
+        var channel_count = tensor.GetLength(1);
+        var rows = tensor.GetLength(2);
+        var cols = tensor.GetLength(3);
+        var batches = new FeatureSet<T>[batch_count];
+
+        for (var b = 0; b < batch_count; b++) {
+            var channels = new Matrix<T>[channel_count];
+            for (var c = 0; c < channel_count; c++) {
+                var channel = new Matrix<T>(rows, cols);
+                for (var row = 0; row < rows; row++) {
+                    for (var col = 0; col < cols; col++) {
+                        channel[row, col] = tensor[b, c, row, col];
+                    }
+                }
+                channels[c] = channel;
+            }
+            batches[b] = new FeatureSet<T>(channels);
+        }
+        return new BatchedFeatureSet<T>(batches);
+    }
+
+    /// <summary>
+    /// Create a batched feature set from a jagged array with the first dimension being the number of batches, then features/channels and lastly the rows and columns
+    /// </summary>
+    /// <param name="tensor">4d tensor as a jagged array</param>
+    /// <returns>batched feature set</returns>
+    public static BatchedFeatureSet<T> FromJagged(T[][][][] tensor) {
+        var batch_count = tensor.Length;
+        var batches = new FeatureSet<T>[batch_count];
+        for (var b = 0; b < batch_count; b++) {
+            batches[b] = FeatureSet<T>.FromJagged(tensor[b]);
+        }
+        return new BatchedFeatureSet<T>(batches);
     }
 
     /// <summary>
@@ -114,9 +157,141 @@ public class BatchedFeatureSet<T> :
     /// </summary>
     public Shape4D Shape => new Shape4D(Batches, Channels, Rows, Columns);
 
+    /// <summary>
+    /// Number of dimensions in this tensor
+    /// </summary>
+    public int Dimensions => 4;
+
+    /// <summary>
+    /// Get the length of the given tensor dimension by index
+    /// </summary>
+    /// <param name="index">dimension index</param>
+    /// <returns>Dimension length</returns>
+    public int GetDimension(int index) {
+        return index switch {
+            0 => Batches,
+            1 => Channels,
+            2 => Rows,
+            3 => Columns,
+            _ => 1
+        };
+    }
+
+    /// <summary>
+    /// Get the element at the given index
+    /// </summary>
+    /// <param name="indices">Set of indices across all 4 dimensions</param>
+    /// <returns>Element</returns>
+    public T GetElementAt(params int[] indices) {
+        return this[indices[0],indices[1],indices[2],indices[3]];
+    }
+
+    /// <summary>
+    /// Set the element at the given index
+    /// </summary>
+    /// <param name="value">Value to set</param>
+    /// <param name="indices">Set of indices across all 4 dimensions</param>
+    public void SetElementAt(T value, params int[] indices) {
+        this[indices[0],indices[1],indices[2],indices[3]] = value;
+    }
+
     public IEnumerator<FeatureSet<T>> GetEnumerator() => ((IEnumerable<FeatureSet<T>>)batches).GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => batches.GetEnumerator();
+
+    /// <summary>
+    /// Enumerate over all elements in the batched feature set
+    /// </summary>
+    /// <returns>Enumerable of all elements across all batches and channels</returns>
+    public IEnumerable<T> FlattenElements() {
+        foreach (var batch in batches) {
+            foreach (var element in batch.FlattenElements()) {
+                yield return element;
+            }
+        }
+    }
+
+    private static T GetNextItem(IEnumerator<T> enumerator) {
+        if (enumerator.MoveNext()) {
+            return enumerator.Current;
+        } else {
+            return T.Zero;
+        }
+    }
+
+    /// <summary>
+    /// Reshape this 4d tensor into another 4d shape
+    /// </summary>
+    /// <param name="shape">Shape to reshape into</param>
+    /// <returns>Newly shaped tensor</returns>
+    public BatchedFeatureSet<T> Reshape(Shape4D shape) {
+        var batches = new BatchedFeatureSet<T>(shape);
+
+        var item_generator = FlattenElements().GetEnumerator();
+
+        foreach (var batch in batches) {
+            foreach (var feature in batch) {
+                var matrix = feature;
+                for (var row = 0; row < matrix.Rows; row++) {
+                    for (var col = 0; col < matrix.Columns; col++) {
+                        matrix[row, col] = GetNextItem(item_generator);
+                    }
+                }
+            }
+        }
+
+        return batches;
+    }
+
+    /// <summary>
+    /// Reshape this 4d tensor into another 3d shape
+    /// </summary>
+    /// <param name="shape">Shape to reshape into</param>
+    /// <returns>Newly shaped tensor</returns>
+    public FeatureSet<T> Reshape(Shape3D shape) {
+        var features = new FeatureSet<T>(shape);
+
+        var item_generator = FlattenElements().GetEnumerator();
+
+        foreach (var feature in features) {
+            var matrix = feature;
+            for (var row = 0; row < matrix.Rows; row++) {
+                for (var col = 0; col < matrix.Columns; col++) {
+                    matrix[row, col] = GetNextItem(item_generator);
+                }
+            }
+        }
+
+        return features;
+    }
+
+    /// <summary>
+    /// Reshape this 4d tensor into a single 2d matrix
+    /// </summary>
+    /// <param name="shape">Shape to reshape into</param>
+    /// <returns>Newly shaped tensor</returns>
+    public Matrix<T> Reshape(Shape2D shape) {
+        Matrix<T> matrix = new Matrix<T>(shape);
+        var item_generator = FlattenElements().GetEnumerator();
+        for (var row = 0; row < matrix.Rows; row++) {
+            for (var col = 0; col < matrix.Columns; col++) {
+                matrix[row, col] = GetNextItem(item_generator);
+            }
+        }
+        return matrix;
+    }
+
+    /// <summary>
+    /// Fetch the underlying feature set array
+    /// </summary>
+    /// <returns>feature set array</returns>
+    public FeatureSet<T>[] AsArray() => this.batches;
+
+    /// <summary>
+    /// Convert the batched feature set matrices to a single flattened vector
+    /// </summary>
+    /// <returns></returns>
+    public Vec<T> ToVector() => Vec<T>.Wrap(FlattenElements().ToArray());
 }
 
 /// <summary>
@@ -124,7 +299,8 @@ public class BatchedFeatureSet<T> :
 /// </summary>
 /// <typeparam name="T">feature value type</typeparam>
 public class FeatureSet<T> :  
-    IEnumerable<Matrix<T>>
+    IEnumerable<Matrix<T>>,
+    IMutableTensorLike<T>
     where T:INumber<T>,IExponentialFunctions<T>,IRootFunctions<T> 
 {
     private Matrix<T>[] channels; // The feature channels
@@ -166,6 +342,42 @@ public class FeatureSet<T> :
         this.channels = channels;
     }
 
+    /// <summary>
+    /// Create a feature set from a rectangular array with the first dimension being the number of features/channels and the next 2 being the rows and columns
+    /// </summary>
+    /// <param name="tensor">3d tensor as a rectangular array</param>
+    /// <returns>feature set</returns>
+    public static FeatureSet<T> FromRectangular(T[,,] tensor) {
+        var channel_count = tensor.GetLength(0);
+        var rows = tensor.GetLength(1);
+        var cols = tensor.GetLength(2);
+        var channels = new Matrix<T>[channel_count];
+        for (var c = 0; c < channel_count; c++) {
+            var channel = new Matrix<T>(rows, cols);
+            for (var row = 0; row < rows; row++) {
+                for (var col = 0; col < cols; col++) {
+                    channel[row, col] = tensor[c, row, col];
+                }
+            }
+            channels[c] = channel;
+        }
+        return new FeatureSet<T>(channels);
+    }
+
+    /// <summary>
+    /// Create a feature set from a jagged array with the first dimension being the number of features/channels and the next 2 being the rows and columns
+    /// </summary>
+    /// <param name="tensor">3d tensor as a jagged array</param>
+    /// <returns>feature set</returns>
+    public static FeatureSet<T> FromJagged(T[][][] tensor) {
+        var channel_count = tensor.Length;
+        var channels = new Matrix<T>[channel_count];
+        for (var c = 0; c < channel_count; c++) {
+            channels[c] = Matrix<T>.FromJagged(tensor[c]);
+        }
+        return new FeatureSet<T>(channels);
+    }
+
     #endregion
 
     #region Shape
@@ -189,6 +401,43 @@ public class FeatureSet<T> :
     /// Shape of the feature set
     /// </summary>
     public Shape3D Shape => new Shape3D(Channels, Rows, Columns);
+
+    /// <summary>
+    /// Number of dimensions in this tensor
+    /// </summary>
+    public int Dimensions => 3;
+
+    /// <summary>
+    /// Get the length of the given tensor dimension by index
+    /// </summary>
+    /// <param name="index">dimension index</param>
+    /// <returns>Dimension length</returns>
+    public int GetDimension(int index) {
+        return index switch {
+            0 => Channels,
+            1 => Rows,
+            2 => Columns,
+            _ => 1
+        };
+    }
+
+    /// <summary>
+    /// Get the element at the given index
+    /// </summary>
+    /// <param name="indices">Set of indices across all 4 dimensions</param>
+    /// <returns>Element</returns>
+    public T GetElementAt(params int[] indices) {
+        return this[indices[0],indices[1],indices[2]];
+    }
+
+    /// <summary>
+    /// Set the element at the given index
+    /// </summary>
+    /// <param name="value">Value to set</param>
+    /// <param name="indices">Set of indices across all 4 dimensions</param>
+    public void SetElementAt(T value, params int[] indices) {
+        this[indices[0],indices[1],indices[2]] = value;
+    }
 
     #endregion
 
@@ -243,17 +492,17 @@ public class FeatureSet<T> :
     /// </summary>
     public Matrix<T> Red => channels.ElementAt(0);
     /// <summary>
-    /// The Green image channel (channel 0)
+    /// The Green image channel (channel 1)
     /// </summary>
     public Matrix<T> Green => channels.ElementAt(1);
     /// <summary>
-    /// The Blue image channel (channel 0)
+    /// The Blue image channel (channel 2)
     /// </summary>
     public Matrix<T> Blue => channels.ElementAt(2);
     /// <summary>
-    /// The Alpha image channel (channel 0)
+    /// The Alpha image channel (channel 3)
     /// </summary>
-    public Matrix<T> Alpha => channels.ElementAt(2);
+    public Matrix<T> Alpha => channels.ElementAt(3);
 
     #endregion
 
@@ -274,6 +523,64 @@ public class FeatureSet<T> :
     IEnumerator IEnumerable.GetEnumerator() => channels.GetEnumerator();
 
     /// <summary>
+    /// Enumerate over all elements in the feature set
+    /// </summary>
+    /// <returns>Enumerable of all elements across all channels</returns>
+    public IEnumerable<T> FlattenElements() {
+        foreach (var feature in this.channels) {
+            foreach (var element in feature.FlattenRows()) {
+                yield return element;
+            }
+        }
+    }
+
+    private static T GetNextItem(IEnumerator<T> enumerator) {
+        if (enumerator.MoveNext()) {
+            return enumerator.Current;
+        } else {
+            return T.Zero;
+        }
+    }
+
+    /// <summary>
+    /// Reshape this 3d tensor into another 3d shape
+    /// </summary>
+    /// <param name="shape">Shape to reshape into</param>
+    /// <returns>Newly shaped tensor</returns>
+    public FeatureSet<T> Reshape(Shape3D shape) {
+        var features = new FeatureSet<T>(shape);
+
+        var item_generator = FlattenElements().GetEnumerator();
+
+        foreach (var feature in features) {
+            var matrix = feature;
+            for (var row = 0; row < matrix.Rows; row++) {
+                for (var col = 0; col < matrix.Columns; col++) {
+                    matrix[row, col] = GetNextItem(item_generator);
+                }
+            }
+        }
+
+        return features;
+    }
+
+    /// <summary>
+    /// Reshape this 3d tensor into a single 2d matrix
+    /// </summary>
+    /// <param name="shape">Shape to reshape into</param>
+    /// <returns>Newly shaped tensor</returns>
+    public Matrix<T> Reshape(Shape2D shape) {
+        Matrix<T> matrix = new Matrix<T>(shape);
+        var item_generator = FlattenElements().GetEnumerator();
+        for (var row = 0; row < matrix.Rows; row++) {
+            for (var col = 0; col < matrix.Columns; col++) {
+                matrix[row, col] = GetNextItem(item_generator);
+            }
+        }
+        return matrix;
+    }
+
+    /// <summary>
     /// Convert a matrix array to feature set
     /// </summary>
     /// <param name="channels">array of feature channels</param>
@@ -292,8 +599,8 @@ public class FeatureSet<T> :
     public Matrix<T>[] AsArray() => this.channels;
 
     /// <summary>
-    /// Convert the feature set matrices to a flattened vector
+    /// Convert the feature set matrices to a single flattened vector
     /// </summary>
     /// <returns></returns>
-    public Vec<T> ToVector() => Vec<T>.Wrap(this.SelectMany(x => x.FlattenRows()).ToArray());
+    public Vec<T> ToVector() => Vec<T>.Wrap(FlattenElements().ToArray());
 }

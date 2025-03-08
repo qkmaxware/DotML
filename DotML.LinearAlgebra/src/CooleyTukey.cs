@@ -2,7 +2,8 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using DotML;
+
+namespace DotML;
 
 /// <summary>
 /// Cooly-Tukey Fast Fourier Transform implementation

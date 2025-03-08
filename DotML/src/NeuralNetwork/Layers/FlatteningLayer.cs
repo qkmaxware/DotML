@@ -6,22 +6,24 @@ using DotML.Network.Training;
 namespace DotML.Network;
 
 /// <summary>
-/// Layer which flattens inputs into a column vector (not-necessary as FullConnectedLayer will auto-flatten)
+/// Layer which reshapes the input into an new shape
 /// </summary>
 [Untested()]
-public class FlatteningLayer : FeedforwardNetworkLayer {
-    public override void Initialize(IInitializer initializer) { }
-    public override int TrainableParameterCount() => 0;
-
-    public FlatteningLayer(Shape3D input_size) {
-        this.InputShape = input_size;
-        this.OutputShape = new Shape3D(1, input_size.Count, 1);
+public class ReshapeLayer : FeedforwardNetworkLayer {
+    /// <summary>
+    /// Create a new reshape layer
+    /// </summary>
+    /// <param name="input_shape">The shape of allowed input</param>
+    /// <param name="output_shape">The resulting shape of the input after reshaping</param>
+    public ReshapeLayer(Shape3D input_shape, Shape3D output_shape) {
+        this.InputShape = input_shape;
+        this.OutputShape = output_shape;
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
-        // input is a 2D matrix processed from prior layers like a pooling layer
-        var x = inputs.Channels == 1 && inputs[0].IsColumnMatrix ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
-        return new FeatureSet<double>(x);
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
+        if (channels.Shape != OutputShape)
+            return channels.Reshape(OutputShape);
+        return channels;
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
@@ -31,16 +33,14 @@ public class FlatteningLayer : FeedforwardNetworkLayer {
             var error = args.OutputErrors[batchIndex];
             var input = args.InputBatch[batchIndex];
 
-            Matrix<double>[] input_errors;
-            if (input.Channels == 1 && input.Shape == error.Shape) {
-                input_errors = error.AsArray();                             // Same shape, no need to reshape
+            FeatureSet<double> input_errors;
+            if (input.Shape == error.Shape) {
+                input_errors = error;                             // Same shape, no need to reshape
             } else {
-                input_errors = error[0].Reshape(                            // Reshape to un-flatten error vector to match the input dimensions (in case next layer is not a fully connected layer)
-                    input.Select(x => x.Shape))
-                .ToArray();
+                input_errors = error.Reshape(this.InputShape);    // Reshape the output to match the input shape
             } 
 
-            batched_input_errors[batchIndex] = new FeatureSet<double>(input_errors);
+            batched_input_errors[batchIndex] = input_errors;
         });
 
         return new BackpropagationReturns(
@@ -49,7 +49,42 @@ public class FlatteningLayer : FeedforwardNetworkLayer {
         );
     }
 
+    public override void Initialize(IInitializer initializer) { }
+
     public override void SubtractGradients(LayerGradients? gradients) { }
+
+    public override int TrainableParameterCount() => 0;
+
+    public override void Visit(ILayerVisitor visitor) {
+        throw new NotImplementedException();
+    }
+
+    public override T Visit<T>(ILayerVisitor<T> visitor) {
+        throw new NotImplementedException();
+    }
+
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Layer which flattens inputs into a column vector (not-necessary as FullConnectedLayer will auto-flatten)
+/// </summary>
+[Untested()]
+public class FlatteningLayer : ReshapeLayer {
+    public FlatteningLayer(Shape3D input_size) : base(input_size, new Shape3D(1, input_size.Count, 1)) { }
+
+    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
+        // Input is a 2D matrix processed from prior layers like a pooling layer
+        // If the input is already flattened, use that; otherwise, flatten the input.
+        if (inputs.Shape == OutputShape) {
+            return inputs;
+        } else {
+            Matrix<double> output = new Matrix<double>(this.OutputShape.Rows, this.OutputShape.Columns, inputs.SelectMany(x => x.FlattenRows()));
+            return new FeatureSet<double>(output);
+        }
+    }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
     public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);

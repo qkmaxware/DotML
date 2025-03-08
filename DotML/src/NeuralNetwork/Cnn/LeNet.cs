@@ -37,7 +37,7 @@ public static class LeNet {
 
 
     /// <summary>
-    /// Construct a LeNet network
+    /// Construct a custom LeNet network
     /// </summary>
     /// <param name="version">network architecture version</param>
     /// <param name="output_classes">number of output classifications</param>

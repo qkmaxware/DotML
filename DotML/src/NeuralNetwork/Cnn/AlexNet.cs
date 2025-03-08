@@ -35,7 +35,7 @@ public static class AlexNet {
     public const int IMG_HEIGHT = 227;
 
     /// <summary>
-    /// Construct an AlexNet network
+    /// Construct a custom AlexNet network
     /// </summary>
     /// <param name="version">network architecture version</param>
     /// <param name="output_classes">number of output classifications</param>

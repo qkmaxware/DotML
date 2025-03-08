@@ -9,14 +9,14 @@ public class Program {
 
 public static void Main() {
     #region Network
-    var output_labels = new string[]{ "Apple", "Orange" };
+    var output_labels = new string[]{ "Apple", "Orange" };      // Labels for each output class
     var network = AlexNet.Make(
-        AlexNet.Version.V1, 
+        AlexNet.Version.V1,                                     // AlexNet architecture version to copy
         output_classes: output_labels.Length,                   // Number of output classes
-        img_channels: 3, img_width: 224, img_height: 224,       // Image size 3 channels is RGB
+        img_channels: 3, img_width: 224, img_height: 224,       // Image size, 3 channels is RGB
         activation: ActivationFunctions.ReLU
     );
-    Console.WriteLine($"Created network: {network.Name} ({network.InputShape} -> {network.OutputShape})");
+    Console.WriteLine($"Created network: {network.Name} (shape: {network.InputShape} -> {network.OutputShape})");
     Console.WriteLine();
     #endregion
 
@@ -24,12 +24,12 @@ public static void Main() {
     var validation_report = new DefaultValidationReport();
     var performance_report = new DefaultProfilingReport();
     var trainer = new EnumerableBatchTrainer<FeedforwardNetwork> {
-        Epochs = 100,                                           // Max epochs
+        Epochs = 100,                                           // Max epochs to train for
         LearningRate = 0.001,                                   // Default weight adjustment rate
-        LearningRateOptimizer = new AdamOptimizer(),            // Weight update optimizer
+        LearningRateOptimizer = Optimizers.Adam,                // Weight update optimizer
         LossFunction = LossFunctions.CategoricalCrossEntropy,   // Loss function 
-        NetworkInitializer = new HeInitialization(),            // Initialization method
-        Regularization = new NoRegularization(),                // Regularization method
+        NetworkInitializer = Initializers.He,                   // Initialization method
+        Regularization = Regularization.None,                   // Regularization method
         BatchSize = 8,                                          // Batches to execute in parallel (CPU logical cores)
         EnableGradientClipping = false,                         // Check if gradient clipping should be used
         ClippingThresholdSynapses = 10,                         // If gradient clipping, clip weights to this value
@@ -40,28 +40,45 @@ public static void Main() {
         ValidationReport = validation_report,
         Profiler = performance_report
     };
-    Console.WriteLine($"Trainer configured: {trainer.GetType().Name}");
+    Console.WriteLine($"Trainer configured: {trainer.GetType().Name} (epochs: {trainer.Epochs})");
     Console.WriteLine();
     #endregion
 
     #region Data
-    var input_filename = "fruits.224px.training.bin";
+    var input_filename = "../Data/Fruits/apple-or-banana.training.bin";
     var data = ReadSerializedTrainingSet(input_filename);       // Data to use for training
     var validation = data;                                      // Data to use for validation and early stop
-    Console.WriteLine($"Training data loaded: {input_filename} ({data.Size})");
+    var first = data[0];
+    Console.WriteLine($"Training data loaded: {input_filename} (items: {data.Size}, input size: {first.Input.Dimensionality}, output size: {first.Output.Dimensionality})");
+    if (network.InputShape.Count != first.Input.Dimensionality) {
+        Console.Write("    ");
+        Console.Write($"Input shape mismatch between network input {network.InputShape} ({network.InputShape.Count}) and training input size {first.Input.Dimensionality}");
+        Console.WriteLine();
+    }
     Console.WriteLine();
     #endregion
 
+    Console.Write("Begin training (y/n)? "); 
+    var confirm = Console.ReadLine()?.ToLower() switch {
+        "y" => true,
+        "yes" => true,
+        "true" => true,
+        _ => false
+    };
+    if (!confirm)
+        return;
+
     #region Training Steps
     var session = trainer.EnumerateTraining(
-        network, 
+        network,                                                // Network to train
         data.SampleRandomly(),                                  // Sample the training data in no particular order
         validation.SampleSequentially()                         // Sample the validation data sequentially
     );
     session.Reset();
     var has_next = true;
+    var total_time = Stopwatch.StartNew();
     Console.WriteLine("Training:");
-    while (has_next) {
+    while (has_next) {                                          // Loop until training all epochs complete (or early stop)
         Console.Write("    ");
         Console.Write($"Epoch {session.CurrentEpoch + 1:000}... ");
 
@@ -72,11 +89,14 @@ public static void Main() {
 
         Console.WriteLine("done (elapsed: " + elapsed + ", avg loss: " + trainer.ValidationReport.AverageLoss + ")");
     }
+    total_time.Stop();
+    Console.Write("    ");
+    Console.WriteLine($"Done: (elapsed: {total_time.Elapsed}, min loss: {validation_report.MinLoss}, max loss: {validation_report.MaxLoss}, avg loss: {validation_report.AverageLoss}, accuracy: {validation_report.Accuracy}, recall: {validation_report.Recall}, precision: {validation_report.Precision}, f1: {validation_report.F1Score})");
     Console.WriteLine();
     #endregion
 
-    #region Save
-    var output_filename = $"{network.Name}.weights.safetensors";
+    #region Save Weights
+    var output_filename = $"{network.Name}.weights.safetensors";// Desired output filename for trained weights
     var weights = network.ToSafetensor();                       // Store all weights in a safetensors file
     weights.WriteToFile(output_filename);                       // Dump safetensor file to disc
     Console.WriteLine($"Weights saved: '{output_filename}'");

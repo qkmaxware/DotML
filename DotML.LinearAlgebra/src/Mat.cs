@@ -173,6 +173,22 @@ where T:INumber<T> {
     }
 
     /// <summary>
+    /// Create a new matrix with the given shape where elements are drawn from the given enumerable
+    /// </summary>
+    /// <param name="rows">number of rows</param>
+    /// <param name="columns">number of columns</param>
+    /// <param name="value">Enumerable of elements</param>
+    public Matrix(int rows, int columns, IEnumerable<T> values) : this(rows, columns) {
+        var arr = this.values;
+        var size = arr.Length;
+        var i = 0;
+        var enumerator = values.GetEnumerator();
+        while ((i < size) && enumerator.MoveNext()) {
+            arr[i++] = enumerator.Current;
+        }
+    }
+
+    /// <summary>
     /// Create a 0x0 empty matrix
     /// </summary>
     public Matrix() : this(0, 0, Array.Empty<T>()) {}
@@ -1229,6 +1245,36 @@ where T:INumber<T> {
     /// <returns>true if the matrices are equivalent</returns>
     public bool Equals(Matrix<T> other) {
         return this.SequenceEqual(other);
+    }
+
+    /// <summary>
+    /// Test if this matrix is equal to another matrix allowing for some loss of precision
+    /// </summary>
+    /// <param name="other">second matrix</param>
+    /// <param name="tolerance">tolerance for equality comparison</param>
+    /// <returns>true if the matrices are approximately equivalent</returns>
+    public bool Equals(Matrix<T> other, T tolerance) {
+        if (this.Rows != other.Rows || this.Columns != other.Columns)
+            return false;
+
+        var s = values.AsSpan();
+        var o = other.values.AsSpan();
+        for (var i = 0; i < s.Length; i++) {
+            var a = s[i];
+            var b = o[i];
+
+            if (a == b) {
+                continue;
+            }
+
+            var diff = T.Abs(a - b);
+            if (diff < tolerance) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;   
     }
 
     /// <summary>

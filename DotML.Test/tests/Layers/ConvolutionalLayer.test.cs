@@ -8,20 +8,6 @@ public class ConvolutionalLayerTest {
 
     private const double epsilon = 0.001;
 
-    private static void AssertEqual(BatchedFeatureSet<double> Y_truth, BatchedFeatureSet<double> Y_projected) {
-        Assert.AreEqual(Y_truth.Batches, Y_projected.Batches);
-        foreach (var (batch_predicted, batch_truth) in Y_projected.Zip(Y_truth)) {
-            Assert.AreEqual(batch_predicted.Channels, batch_truth.Channels);
-            foreach (var (channel_predicted, channel_truth) in batch_predicted.Zip(batch_truth)) {
-                Assert.AreEqual(channel_truth.Rows, channel_predicted.Rows);
-                Assert.AreEqual(channel_truth.Columns, channel_predicted.Columns);
-                foreach (var (predicted, truth) in channel_predicted.Zip(channel_truth)) {
-                    Assert.AreEqual(truth, predicted, epsilon);
-                }    
-            }
-        }
-    }
-
     [TestMethod]
     public void TestConvolutionalLayerValidPadding() {
         var kernels = new Matrix<double>[]{
@@ -1002,7 +988,7 @@ public class ConvolutionalLayerTest {
             ])
         ));
         // Compare output values
-        AssertEqual(Y_truth, Y_projected);
+        AssertExt.AreEqual(Y_truth, Y_projected);
 
         var dY = new BatchedFeatureSet<double>(new FeatureSet<double>(Matrix<double>.FromJagged(
             [
@@ -1114,7 +1100,7 @@ public class ConvolutionalLayerTest {
                 ]
             ])
         ));
-        AssertEqual(dW_truth, dW_projected);
+        AssertExt.AreEqual(dW_truth, dW_projected);
 
         var dX_projected = backprop_returns.dX;
         var dX_truth = new BatchedFeatureSet<double>(new FeatureSet<double>(
@@ -1230,6 +1216,6 @@ public class ConvolutionalLayerTest {
                 ]
             ])
         ));
-        AssertEqual(dX_truth, dX_projected);
+        AssertExt.AreEqual(dX_truth, dX_projected);
     }
 }

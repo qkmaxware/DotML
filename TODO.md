@@ -2,7 +2,7 @@
     [x] Fix ReLU never working
     [ ] Increase performance to acceptable levels
     [ ] How to handle NaNs appearing in deeper networks
-    [ ] Slow convergence with deeper networks
+    [ ] Slow or non-existent convergence with deeper networks
 [ ] Create CNN Test Cases like recognizing fruits
 [ ] Learn RNNs (https://en.wikipedia.org/wiki/Residual_neural_network)
     [ ] Create Residual Layer as input + output of X hidden layer

@@ -13,6 +13,38 @@ public abstract class RegularizationFunction {
 }
 
 /// <summary>
+/// Container for various regularization functions
+/// </summary>
+public static class Regularization {
+    /// <summary>
+    /// Enumerate over all learning rate optimizers
+    /// </summary>
+    /// <returns>enumerable of learning rate optimizers</returns>
+    public static IEnumerable<RegularizationFunction> EnumerateAll() {
+        return typeof(Regularization)
+            .GetProperties(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public)
+            .Where(prop => prop.CanRead && prop.PropertyType.IsAssignableTo(typeof(RegularizationFunction)))
+            .Select(prop => prop.GetValue(null))
+            .OfType<RegularizationFunction>();
+    }
+
+    /// <summary>
+    /// No regularization
+    /// </summary>
+    public static RegularizationFunction None {get; private set;} = new NoRegularization();
+
+    /// <summary>
+    /// L1 regularization
+    /// </summary>
+    public static RegularizationFunction L1 {get; private set;} = new L1Regularization();
+
+    /// <summary>
+    /// L2 regularization
+    /// </summary>
+    public static RegularizationFunction L2 {get; private set;} = new L2Regularization();
+}
+
+/// <summary>
 /// No Regularization function
 /// </summary>
 public class NoRegularization : RegularizationFunction {

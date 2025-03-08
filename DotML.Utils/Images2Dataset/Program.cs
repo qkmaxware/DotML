@@ -126,7 +126,7 @@ public class ImagePreprocessor {
             //var categories_vectors = categories.Select((cat, i) => MakeVector(i, categories)).ToArray(); // [-1,-1,...1,...-1,-1]
 
             Directory.CreateDirectory(Path.Combine("data", "images", "processed"));
-            using var binary = new BinaryWriter(File.Open(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".trainingset.bin"), FileMode.Create));
+            using var binary = new BinaryWriter(File.Open(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".training.bin"), FileMode.Create));
             using var labelWriter = new StreamWriter(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".labels.csv"));
 
             List<Transform> transforms = [
@@ -150,10 +150,6 @@ public class ImagePreprocessor {
                 transforms.Add(new Scale(options.AugmentScale.ToArray()).Named("scaled"));
             }
 
-            //new Scale(1.5f, 2.0f, step: 0.5f).Named("scaled"),    
-            //new Rotate(-6.0f, -2.0f, step: 2.0f).Named("rneg") ,
-            //new Rotate(2.0f, 6.0f, step: 2.0f).Named("rpos") 
-
             // Write binary header
             binary.Write([(byte)'v', (byte)'e', (byte)'c']);
             binary.Write((byte)0b0001_0000);                                   // U8 As per VectorStorageType in DotML\src\NeuralNetwork\Training\TrainingData.cs
@@ -162,6 +158,7 @@ public class ImagePreprocessor {
             binary.Write((Int32)(file_count * transforms.Select(x => x.CreatedImageCount()).Sum())); // Input count
 
             // Write output vectors
+            int? output_length = categories.Length;
             for (var i = 0; i < categories.Length; i++) {
                 var vector = new byte[categories.Length];
                 vector[i] = 255; // Write the max value here so it will get scaled to 1 when loaded
@@ -170,6 +167,8 @@ public class ImagePreprocessor {
             binary.Flush();
 
             // Write input/output vector pairs
+            int total_pairs = 0;
+            int? input_length = null;
             for (var i = 0; i < categories.Length; i++) {
                 if (i > byte.MaxValue) {
                     throw new ArgumentException("Too many categories for binary encoding of images");
@@ -211,10 +210,16 @@ public class ImagePreprocessor {
 
                             // Okay, do stuff with the final bitmap
                             var input_vec = MakeVector(processed, options.Channels);   // Create vector representation [RRRRRR, GGGGGG, BBBBBB] or whatever is selected via the channels option
+                            if (!input_length.HasValue) {
+                                input_length = input_vec.Length;
+                            } else {
+                                input_length = Math.Max(input_length.Value, input_vec.Length);
+                            }
 
                             // Save data
                             processed.Save(Path.Combine("data", "images", "processed", category.Name, Path.GetFileNameWithoutExtension(file.Name) + "." + transform.Name + "." + (transform_index++) + file.Extension));
                             WriteVector(categoryIndex, input_vec, binary);
+                            total_pairs++;
                             binary.Flush();
                             
                             labelWriter.WriteLine(categoryIndex + ", \""+category.Name+"\"");
@@ -230,6 +235,13 @@ public class ImagePreprocessor {
                 }
             }
             binary.Flush();
+
+            Console.WriteLine();
+
+            Console.WriteLine($"Total Training Pairs: {total_pairs}");
+            Console.WriteLine($"Input Image Size: {ChannelCount(options.Channels)}x{options.ImageHeight}x{options.ImageWidth}");
+            Console.WriteLine($"Input Vector Size: {input_length}");
+            Console.WriteLine($"Output Vector Size: {output_length}");
         });
     }
 }

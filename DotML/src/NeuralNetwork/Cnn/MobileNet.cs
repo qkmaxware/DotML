@@ -52,7 +52,7 @@ public static class MobileNet {
     }
 
     /// <summary>
-    /// Construct a MobileNet network
+    /// Construct a custom MobileNet network
     /// </summary>
     /// <param name="version">network architecture version</param>
     /// <param name="output_classes">number of output classifications</param>

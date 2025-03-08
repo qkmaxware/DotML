@@ -2,7 +2,7 @@
 A command line utility for:
 1. Building Neural Networks
 ```ps
-> netflow build my_network.netbuild --tag alexnet
+> netflow build my_network.netbuild --tag my_network
 ```
 2. Managing Neural Networks
 ```ps
@@ -16,9 +16,9 @@ A command line utility for:
 ```ps
 > netflow fit my_network --data-training "training-vectors.bin"
 ```
-4. Locally run Neural Networks
+4. Locally run saved/trained Neural Networks
 ```ps
-> netflow run my_network -f "image.png" --embedding rgbimage --decoder probability 
+> netflow run my_network -f "image.png" --embedding image --decoder probability 
 ```
 
 ## Install

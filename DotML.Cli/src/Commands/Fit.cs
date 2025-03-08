@@ -206,6 +206,39 @@ public class Fit : BaseCommand {
         TrainingSet trainingPairs   = ReadData(training_file);                                                      // Data used in backpropagation
         TrainingSet validationPairs = validation_file is not null ? ReadData(validation_file) : new TrainingSet(trainingPairs.SampleRandomly((int)Math.Max(1, 0.25 * trainingPairs.Size)).AsEnumerable());    // Data used in early-stop & validation
         TrainingSet testingPairs    = testing_file is not null ? ReadData(testing_file) : trainingPairs;             // Data used in verify model "generality"
+        if (trainingPairs.Size != 0) {
+            var first = trainingPairs[0];
+            if (first.Input.Dimensionality != network.InputShape.Count) {
+                Console.WriteLine($"The input shape of the network ({network.InputShape.Count}={network.InputShape}) does not match the input shape of the training data ({first.Input.Dimensionality}).");
+                return;
+            }
+            if (first.Output.Dimensionality != network.OutputShape.Count) {
+                Console.WriteLine($"The output shape of the network ({network.OutputShape.Count}={network.OutputShape}) does not match the output shape of the training data ({first.Output.Dimensionality}).");
+                return;
+            }
+        }
+        if (validationPairs.Size != 0) {
+            var first = validationPairs[0];
+            if (first.Input.Dimensionality != network.InputShape.Count) {
+                Console.WriteLine($"The input shape of the network ({network.InputShape.Count}={network.InputShape}) does not match the input shape of the validation data ({first.Input.Dimensionality}).");
+                return;
+            }
+            if (first.Output.Dimensionality != network.OutputShape.Count) {
+                Console.WriteLine($"The output shape of the network ({network.OutputShape.Count}={network.OutputShape}) does not match the output shape of the validation data ({first.Output.Dimensionality}).");
+                return;
+            }
+        }
+        if (testingPairs.Size != 0) {
+            var first = testingPairs[0];
+            if (first.Input.Dimensionality != network.InputShape.Count) {
+                Console.WriteLine($"The input shape of the network ({network.InputShape.Count}={network.InputShape}) does not match the input shape of the testing data ({first.Input.Dimensionality}).");
+                return;
+            }
+            if (first.Output.Dimensionality != network.OutputShape.Count) {
+                Console.WriteLine($"The output shape of the network ({network.OutputShape.Count}={network.OutputShape}) does not match the output shape of the testing data ({first.Output.Dimensionality}).");
+                return;
+            }
+        }
         var batch_size              = trainer.BatchSize;
         var batch_count             = (trainingPairs.Size + trainer.BatchSize - 1) / trainer.BatchSize;
         var validation_batch_count  = (validationPairs.Size + trainer.BatchSize - 1) / trainer.BatchSize;

@@ -28,6 +28,38 @@ public interface ILearningRateOptimizer {
 }
 
 /// <summary>
+/// Container for various learning rate optimizers
+/// </summary>
+public static class Optimizers {
+    /// <summary>
+    /// Enumerate over all learning rate optimizers
+    /// </summary>
+    /// <returns>enumerable of learning rate optimizers</returns>
+    public static IEnumerable<ILearningRateOptimizer> EnumerateAll() {
+        return typeof(Optimizers)
+            .GetProperties(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public)
+            .Where(prop => prop.CanRead && prop.PropertyType.IsAssignableTo(typeof(ILearningRateOptimizer)))
+            .Select(prop => prop.GetValue(null))
+            .OfType<ILearningRateOptimizer>();
+    }
+
+    /// <summary>
+    /// Optimizer that maintains a constant learning rate
+    /// </summary>
+    public static ILearningRateOptimizer ConstantRate {get; private set;} = new ConstantRate();
+
+    /// <summary>
+    /// Optimizer that uses RMS prop to adjust the learning rate
+    /// </summary>
+    public static ILearningRateOptimizer RMSProp {get; private set;} = new RMSPropOptimizer();
+
+    /// <summary>
+    /// Optimizer that uses the ADAM technique to adjust the learning rate
+    /// </summary>
+    public static ILearningRateOptimizer Adam {get; private set;} = new AdamOptimizer();
+}
+
+/// <summary>
 /// Static rate optimizer. Keeps the learning rate static across the entire training session.
 /// </summary>
 public class ConstantRate : ILearningRateOptimizer {

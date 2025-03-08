@@ -72,11 +72,9 @@ public class Run : BaseCommand {
         Console.Write($"Vectorizing '{(string.IsNullOrEmpty(InputFile) ? "stdin" : InputFile)}'...");
         BatchedFeatureSet<double> input_vector;
         if (string.IsNullOrEmpty(InputFile)) {
-            StringBuilder sb = new StringBuilder();
-            while (Console.In.Peek() != -1) {
-                sb.Append(Console.In.ReadLine());
-            }
-            input_vector = embedder.CreateEmbedding(network, sb.ToString());
+            using var reader = new StreamReader(Console.OpenStandardInput(), Console.InputEncoding);
+            var input = reader.ReadToEnd();
+            input_vector = embedder.CreateEmbedding(network, input);
         } else {
             FileInfo input = new FileInfo(InputFile);
             if (!input.Exists) {

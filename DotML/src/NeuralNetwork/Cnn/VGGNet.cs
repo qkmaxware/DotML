@@ -34,7 +34,7 @@ public static class VGGNet {
     public const int IMG_HEIGHT = 224;
 
     /// <summary>
-    /// Construct an VGGNet network
+    /// Construct a custom VGGNet network
     /// </summary>
     /// <param name="version">network architecture version</param>
     /// <param name="output_classes">number of output classifications</param>
