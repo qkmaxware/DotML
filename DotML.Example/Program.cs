@@ -16,8 +16,11 @@ public static void Main() {
         img_channels: 3, img_width: 224, img_height: 224,       // Image size, 3 channels is RGB
         activation: ActivationFunctions.ReLU
     );
-    network.InsertLayerBefore((after) => new LayerNorm(after.InputShape), (index, layer) => layer is PoolingLayer);
-    network.InsertLayerAfter((after) => new LayerNorm(after.OutputShape), (index, layer) => layer is DenseLinearLayer);
+    network.InsertLayersBefore((after) => new LayerNorm(after.InputShape), (index, layer) => layer is LocalMaxPoolingLayer);
+    network.InsertLayersAfter((after) => new LayerNorm(after.OutputShape), (index, layer) => layer is DenseLinearLayer);
+    for (var i = 0; i < network.LayerCount; i++) {
+        Console.WriteLine(network.GetLayer(i).ToString());
+    }
     Console.WriteLine($"Created network: {network.Name} (layers: {network.LayerCount}, shape: {network.InputShape} -> {network.OutputShape})");
     Console.WriteLine();
     #endregion
@@ -26,7 +29,7 @@ public static void Main() {
     var validation_report = new DefaultValidationReport();
     var performance_report = new DefaultProfilingReport();
     var trainer = new EnumerableBatchTrainer<FeedforwardNetwork> {
-        Epochs = 100,                                           // Max epochs to train for
+        Epochs = 500,                                           // Max epochs to train for
         LearningRate = 0.001,                                   // Default weight adjustment rate
         LearningRateOptimizer = Optimizers.Adam,                // Weight update optimizer
         LossFunction = LossFunctions.CategoricalCrossEntropy,   // Loss function 
@@ -86,6 +89,8 @@ public static void Main() {
     before.Stop();
     Console.WriteLine("done (elapsed: " + before.Elapsed + ", avg loss: " + trainer.ValidationReport.AverageLoss + ")");
     session.Reset();
+    var mid_output_filename = $"{network.Name}.best.weights.safetensors";// Desired output filename for trained weights
+    var last_loss = double.MaxValue;
     while (has_next) {                                          // Loop until training all epochs complete (or early stop)
         Console.Write("    ");
         Console.Write($"Epoch {session.CurrentEpoch + 1:000}... ");
@@ -94,6 +99,12 @@ public static void Main() {
         has_next = session.MoveNext();                          // Advance the training by 1 epoch
         timer.Stop();
         var elapsed = timer.Elapsed;
+
+        if (trainer.ValidationReport.AverageLoss < last_loss) {
+            last_loss = trainer.ValidationReport.AverageLoss;
+            var mid_weights = network.ToSafetensor();                       // Store all weights in a safetensors file
+            mid_weights.WriteToFile(mid_output_filename);                   // Dump safetensor file to disc
+        }
 
         Console.WriteLine("done (elapsed: " + elapsed + ", avg loss: " + trainer.ValidationReport.AverageLoss + ")");
     }
@@ -104,7 +115,7 @@ public static void Main() {
     #endregion
 
     #region Save Weights
-    var output_filename = $"{network.Name}.weights.safetensors";// Desired output filename for trained weights
+    var output_filename = $"{network.Name}.final.weights.safetensors";// Desired output filename for trained weights
     var weights = network.ToSafetensor();                       // Store all weights in a safetensors file
     weights.WriteToFile(output_filename);                       // Dump safetensor file to disc
     Console.WriteLine($"Weights saved: '{output_filename}'");

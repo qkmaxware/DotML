@@ -158,6 +158,7 @@ public class FeedforwardNetwork:
         for (var i = 0; i < this.layers.Count; i++) {
             if (selector(i, this.layers[i])) {
                 InsertLayer(i, layer);
+                i++;
                 return;
             }
         }
@@ -168,11 +169,11 @@ public class FeedforwardNetwork:
     /// </summary>
     /// <param name="layer">Layer to insert</param>
     /// <param name="selector">Predicate function to indicate when a layer should be inserted</param>
-    public void InsertLayerBefore(Func<IFeedforwardNetworkLayer, IFeedforwardNetworkLayer> layer_generator, Func<int, IFeedforwardNetworkLayer, bool> selector) {
+    public void InsertLayersBefore(Func<IFeedforwardNetworkLayer, IFeedforwardNetworkLayer> layer_generator, Func<int, IFeedforwardNetworkLayer, bool> selector) {
         for (var i = 0; i < this.layers.Count; i++) {
             if (selector(i, this.layers[i])) {
                 InsertLayer(i, layer_generator(this.layers[i]));
-                return;
+                i++;
             }
         }
     }
@@ -197,12 +198,11 @@ public class FeedforwardNetwork:
     /// </summary>
     /// <param name="layer">Layer to insert</param>
     /// <param name="selector">Predicate function to indicate when a layer should be inserted</param>
-    public void InsertLayerAfter(Func<IFeedforwardNetworkLayer, IFeedforwardNetworkLayer> layer_generator, Func<int, IFeedforwardNetworkLayer, bool> selector) {
+    public void InsertLayersAfter(Func<IFeedforwardNetworkLayer, IFeedforwardNetworkLayer> layer_generator, Func<int, IFeedforwardNetworkLayer, bool> selector) {
         for (var i = 0; i < this.layers.Count; i++) {
             if (selector(i, this.layers[i])) {
                 InsertLayer(i + 1, layer_generator(this.layers[i]));
                 i++; // Skip the layer we just inserted
-                return;
             }
         }
     }
