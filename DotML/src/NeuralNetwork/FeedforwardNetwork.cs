@@ -58,6 +58,12 @@ public class FeedforwardNetwork:
         this.layers.AddRange(layers);
     }
 
+    /// <summary>
+    /// Remove the layer at the given index
+    /// </summary>
+    /// <param name="index">index of the layer to delete</param>
+    /// <returns>removed layer</returns>
+    /// <exception cref="ArgumentException">thrown if the shape of remaining layers will be incompatible once the layer is deleted</exception>
     public IFeedforwardNetworkLayer? RemoveLayer(int index) {
         if (index < 0)
             return null;
@@ -80,18 +86,26 @@ public class FeedforwardNetwork:
         return layer;
     }
 
-    public void ReplaceLayer(int index, IFeedforwardNetworkLayer layer) {
+    /// <summary>
+    /// Replace the layer at the given index with a new layer
+    /// </summary>
+    /// <param name="index">index to replace layer at</param>
+    /// <param name="layer">layer to replace with</param>
+    /// <returns>The previous layer at that position</returns>
+    /// <exception cref="ArgumentException">thrown when the new layer has an incompatible shape with the existing layer</exception>
+    public IFeedforwardNetworkLayer? ReplaceLayer(int index, IFeedforwardNetworkLayer layer) {
         if (index < 0)
-            return;
+            return null;
         
         if (index >= this.layers.Count)
-            return;
+            return null;
 
         var current = this.layers[index];
         if (current.InputShape != layer.InputShape || current.OutputShape != layer.OutputShape) {
             throw new ArgumentException("Cannot replace layer as layer shapes will no longer be compatible");
         }
         this.layers[index] = layer;
+        return current;
     }
 
     /// <summary>
@@ -107,6 +121,90 @@ public class FeedforwardNetwork:
             }
         }
         this.layers.Add(layer);
+    }
+
+    /// <summary>
+    /// Insert a new layer at the given position
+    /// </summary>
+    /// <param name="index">index to insert at</param>
+    /// <param name="layer">layer to insert</param>
+    /// <exception cref="ArgumentException">thrown when the layer has an incompatible shape with the prior and next layers</exception>
+    public void InsertLayer(int index, IFeedforwardNetworkLayer layer) {
+        if (index < 0)
+            return;
+        if (index >= this.layers.Count)
+            return;
+
+        var prev_index = index - 1;
+        var current = layers[index];
+        if (prev_index >= 0) {
+            if (!layer.DoesShapeMatchInputShape(layers[prev_index].OutputShape)) {
+                throw new ArgumentException("Layer input shape is incompatible with prior layers");
+            }
+        }
+        if (!current.DoesShapeMatchInputShape(layer.OutputShape)) {
+            throw new ArgumentException("Layer output shape is incompatible with next layers");
+        }
+
+        this.layers.Insert(index, layer);
+    }
+
+    /// <summary>
+    /// Insert a layer before any layers that meet the given condition
+    /// </summary>
+    /// <param name="layer">Layer to insert</param>
+    /// <param name="selector">Predicate function to indicate when a layer should be inserted</param>
+    public void InsertLayerBefore(IFeedforwardNetworkLayer layer, Func<int, IFeedforwardNetworkLayer, bool> selector) {
+        for (var i = 0; i < this.layers.Count; i++) {
+            if (selector(i, this.layers[i])) {
+                InsertLayer(i, layer);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Insert a layer before any layers that meet the given condition
+    /// </summary>
+    /// <param name="layer">Layer to insert</param>
+    /// <param name="selector">Predicate function to indicate when a layer should be inserted</param>
+    public void InsertLayerBefore(Func<IFeedforwardNetworkLayer, IFeedforwardNetworkLayer> layer_generator, Func<int, IFeedforwardNetworkLayer, bool> selector) {
+        for (var i = 0; i < this.layers.Count; i++) {
+            if (selector(i, this.layers[i])) {
+                InsertLayer(i, layer_generator(this.layers[i]));
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Insert a layer after any layers that meet the given condition
+    /// </summary>
+    /// <param name="layer">Layer to insert</param>
+    /// <param name="selector">Predicate function to indicate when a layer should be inserted</param>
+    public void InsertLayerAfter(IFeedforwardNetworkLayer layer, Func<int, IFeedforwardNetworkLayer, bool> selector) {
+        for (var i = 0; i < this.layers.Count; i++) {
+            if (selector(i, this.layers[i])) {
+                InsertLayer(i + 1, layer);
+                i++; // Skip the layer we just inserted
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Insert a layer after any layers that meet the given condition
+    /// </summary>
+    /// <param name="layer">Layer to insert</param>
+    /// <param name="selector">Predicate function to indicate when a layer should be inserted</param>
+    public void InsertLayerAfter(Func<IFeedforwardNetworkLayer, IFeedforwardNetworkLayer> layer_generator, Func<int, IFeedforwardNetworkLayer, bool> selector) {
+        for (var i = 0; i < this.layers.Count; i++) {
+            if (selector(i, this.layers[i])) {
+                InsertLayer(i + 1, layer_generator(this.layers[i]));
+                i++; // Skip the layer we just inserted
+                return;
+            }
+        }
     }
 
     public void Initialize(IInitializer initializer) {

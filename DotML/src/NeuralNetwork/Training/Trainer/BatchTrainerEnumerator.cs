@@ -150,7 +150,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
     #region Validation Step
 
-    private bool ValidateStep() {
+    public bool ValidateStep() {
         bool stopEarly = false;
         if (EnableEarlyStop) {
             ValidationReport?.Reset();

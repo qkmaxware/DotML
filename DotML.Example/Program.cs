@@ -16,7 +16,9 @@ public static void Main() {
         img_channels: 3, img_width: 224, img_height: 224,       // Image size, 3 channels is RGB
         activation: ActivationFunctions.ReLU
     );
-    Console.WriteLine($"Created network: {network.Name} (shape: {network.InputShape} -> {network.OutputShape})");
+    network.InsertLayerBefore((after) => new LayerNorm(after.InputShape), (index, layer) => layer is PoolingLayer);
+    network.InsertLayerAfter((after) => new LayerNorm(after.OutputShape), (index, layer) => layer is DenseLinearLayer);
+    Console.WriteLine($"Created network: {network.Name} (layers: {network.LayerCount}, shape: {network.InputShape} -> {network.OutputShape})");
     Console.WriteLine();
     #endregion
 
@@ -69,15 +71,21 @@ public static void Main() {
         return;
 
     #region Training Steps
-    var session = trainer.EnumerateTraining(
+    var session = (BatchTrainerEnumerator<FeedforwardNetwork>)trainer.EnumerateTraining(
         network,                                                // Network to train
         data.SampleRandomly(),                                  // Sample the training data in no particular order
         validation.SampleSequentially()                         // Sample the validation data sequentially
     );
-    session.Reset();
     var has_next = true;
     var total_time = Stopwatch.StartNew();
     Console.WriteLine("Training:");
+    Console.Write("    ");
+    Console.Write($"Epoch {session.CurrentEpoch + 0:000}... ");
+    var before = Stopwatch.StartNew();
+    session.ValidateStep();                                     // Validate the network before training starts
+    before.Stop();
+    Console.WriteLine("done (elapsed: " + before.Elapsed + ", avg loss: " + trainer.ValidationReport.AverageLoss + ")");
+    session.Reset();
     while (has_next) {                                          // Loop until training all epochs complete (or early stop)
         Console.Write("    ");
         Console.Write($"Epoch {session.CurrentEpoch + 1:000}... ");
