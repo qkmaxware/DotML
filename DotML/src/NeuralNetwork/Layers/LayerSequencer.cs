@@ -59,6 +59,18 @@ public static class LayerSequencingExtensions {
     }
 
     /// <summary>
+    /// Create a sequence of layers starting with this layer and continuing with the next layer if the condition is true
+    /// </summary>
+    /// <param name="layer">Starting layer</param>
+    /// <param name="next">Next layer if the condition is true</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenIf(this IFeedforwardNetworkLayer layer, bool condition, IFeedforwardNetworkLayer next) {
+        if (condition)
+            return Then(layer, next);
+        return BeginSequence(layer);
+    }
+
+    /// <summary>
     /// Create a sequence of layers starting with this layer and continuing with the next layer
     /// </summary>
     /// <param name="layer">Starting layer</param>
@@ -67,6 +79,18 @@ public static class LayerSequencingExtensions {
     public static LayerSequence Then(this IFeedforwardNetworkLayer layer, NetworkLayerGenerator next) {
         yield return layer;
         yield return next(layer.OutputShape);
+    }
+
+    /// <summary>
+    /// Create a sequence of layers starting with this layer and continuing with the next layer if the condition is true
+    /// </summary>
+    /// <param name="layer">Starting layer</param>
+    /// <param name="next">Generator that produces the next layer given a specific input size</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenIf(this IFeedforwardNetworkLayer layer, bool condition, NetworkLayerGenerator next) {
+        yield return layer;
+        if (condition)
+            yield return next(layer.OutputShape);
     }
 
     /// <summary>
@@ -83,6 +107,21 @@ public static class LayerSequencingExtensions {
     }
 
     /// <summary>
+    /// Create a sequence of layers starting with this layer and continuing with the next layers if the condition is true
+    /// </summary>
+    /// <param name="seq">initial sequence</param>
+    /// <param name="next">next layers</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenIf(this IFeedforwardNetworkLayer layer, bool condition, LayerSequence next) {
+        yield return layer;
+        if (condition) {
+            foreach (var l in next) {
+                yield return l;
+            }
+        }
+    }
+
+    /// <summary>
     /// Create a sequence of layers starting with this layer and continuing with the next layers
     /// </summary>
     /// <param name="layer">Starting layer</param>
@@ -92,6 +131,21 @@ public static class LayerSequencingExtensions {
         yield return layer;
         foreach (var nextLayer in next(layer.OutputShape)) {
             yield return nextLayer;
+        }
+    }
+
+    /// <summary>
+    /// Create a sequence of layers starting with this layer and continuing with the next layers if the condition is true
+    /// </summary>
+    /// <param name="layer">Starting layer</param>
+    /// <param name="next">Generator that produces subsequent layers given a specific input size for the next layer</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenIf(this IFeedforwardNetworkLayer layer, bool condition, NetworkBlockGenerator next) {
+        yield return layer;
+        if (condition) {
+            foreach (var nextLayer in next(layer.OutputShape)) {
+                yield return nextLayer;
+            }
         }
     }
 
@@ -133,6 +187,20 @@ public static class LayerSequencingExtensions {
     }
 
     /// <summary>
+    /// Add a layer to the sequence if the condition is true
+    /// </summary>
+    /// <param name="seq">initial sequence</param>
+    /// <param name="next">next layer</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenIf(this LayerSequence seq, bool condition, IFeedforwardNetworkLayer next) {
+        foreach (var layer in seq) {
+            yield return layer;
+        }
+        if (condition)
+            yield return next;
+    }
+
+    /// <summary>
     /// Add a layer to the sequence
     /// </summary>
     /// <param name="seq">initial sequence</param>
@@ -146,6 +214,23 @@ public static class LayerSequencingExtensions {
         }
 
         yield return next(shape);
+    }
+
+    /// <summary>
+    /// Add a layer to the sequence if the condition is true
+    /// </summary>
+    /// <param name="seq">initial sequence</param>
+    /// <param name="next">generator that produces the next layer with the given input size</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenIf(this LayerSequence seq, bool condition, NetworkLayerGenerator next) {
+        Shape3D shape = new Shape3D();
+        foreach (var layer in seq) {
+            yield return layer;
+            shape = layer.OutputShape;
+        }
+
+        if (condition)
+            yield return next(shape);
     }
 
     /// <summary>
@@ -164,6 +249,23 @@ public static class LayerSequencingExtensions {
     }
 
     /// <summary>
+    /// Add several layers to the sequence if the condition is true
+    /// </summary>
+    /// <param name="seq">initial sequence</param>
+    /// <param name="next">next layers</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenIf(this LayerSequence seq, bool condition, LayerSequence next) {
+        foreach (var layer in seq) {
+            yield return layer;
+        }
+        if (condition) {
+            foreach (var layer in next) {
+                yield return layer;
+            }
+        }
+    }
+
+    /// <summary>
     /// Add several layers to the sequence
     /// </summary>
     /// <param name="seq">initial sequence</param>
@@ -178,6 +280,26 @@ public static class LayerSequencingExtensions {
 
         foreach (var layer in next(shape)) {
             yield return layer;
+        }
+    }
+
+    /// <summary>
+    /// Add several layers to the sequence of the condition is true
+    /// </summary>
+    /// <param name="seq">initial sequence</param>
+    /// <param name="next">next layer generator starting from the given input size</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenIf(this LayerSequence seq, bool condition, NetworkBlockGenerator next) {
+        Shape3D shape = new Shape3D();
+        foreach (var layer in seq) {
+            yield return layer;
+            shape = layer.OutputShape;
+        }
+
+        if (condition) {
+            foreach (var layer in next(shape)) {
+                yield return layer;
+            }
         }
     }
 
@@ -217,6 +339,9 @@ public static class LayerSequencingExtensions {
 /*
 // Sequence already made objects
 layer1.Then(layer2).Then(layer3);
+
+// Conditionally include layers
+layer1.ThenIf(this.include_dropout, new DropoutLayer(0.25));
 
 // Sequence a new object, ensure the size is compatible
 layer1.Then(i => new Layer(i));

@@ -40,18 +40,19 @@ public static class AlexNet {
     /// <param name="version">network architecture version</param>
     /// <param name="output_classes">number of output classifications</param>
     /// <param name="activation">activation function</param>
+    /// <param name="normalize_layers">flag to indicate if layer normalization is to be used/param>
     /// <returns>network</returns>
     /// <exception cref="ArgumentException">thrown when an unsupported version is supplied</exception>
-    public static FeedforwardNetwork Make(Version version, int output_classes, int img_channels = IMG_CHANNELS, int img_width = IMG_WIDTH, int img_height = IMG_HEIGHT, ActivationFunction? activation = null) {
+    public static FeedforwardNetwork Make(Version version, int output_classes, int img_channels = IMG_CHANNELS, int img_width = IMG_WIDTH, int img_height = IMG_HEIGHT, ActivationFunction? activation = null, bool normalize_layers = false) {
         var net = version switch {
-            Version.V1 => MakeV1(output_classes, img_channels, img_width, img_height, activation),
+            Version.V1 => MakeV1(output_classes, img_channels, img_width, img_height, activation, normalize_layers),
             _ => throw new ArgumentException(nameof(version))
         };
         net.Name = "AlexNet-v" + ((int)version);
         return net;
     }
 
-    private static FeedforwardNetwork MakeV1(int output_classes, int img_channels, int img_width, int img_height, ActivationFunction? activation) {
+    private static FeedforwardNetwork MakeV1(int output_classes, int img_channels, int img_width, int img_height, ActivationFunction? activation, bool normalize_layers) {
         activation = activation ?? ReLU.Instance;
 
         double scalingFactor = Math.Max(1, (img_width * img_height) / (double)(IMG_WIDTH * IMG_HEIGHT));
@@ -66,6 +67,7 @@ public static class AlexNet {
                 filters: ConvolutionFilter.Make(96, img_channels, 11)
             )
             .Then(ishape => new ActivationLayer(ishape, activation))
+            .ThenIf(normalize_layers, ishape => new LayerNorm(ishape))
             .Then(ishape => new LocalMaxPoolingLayer(ishape, stride: 2, size: 3))
             // Convo 2
             .Then(ishape => new ConvolutionLayer(
@@ -75,6 +77,7 @@ public static class AlexNet {
                 filters: ConvolutionFilter.Make(256, ishape.Channels, 5)
             ))
             .Then(ishape => new ActivationLayer(ishape, activation))
+            .ThenIf(normalize_layers, ishape => new LayerNorm(ishape))
             .Then(ishape => new LocalMaxPoolingLayer(ishape, stride: 2, size: 3))
             // Set of 3 Convo
             .Then(ishape => new ConvolutionLayer(
@@ -98,11 +101,14 @@ public static class AlexNet {
                 filters: ConvolutionFilter.Make(256, ishape.Channels, 3)
             ))
             .Then(ishape => new ActivationLayer(ishape, activation))
+            .ThenIf(normalize_layers, ishape => new LayerNorm(ishape))
             .Then(ishape => new LocalMaxPoolingLayer(ishape, stride: 2, size: 3))
             // Flattening
             .Then(ishape => new DenseLinearLayer(ishape.Count, neurons))
+            .ThenIf(normalize_layers, ishape => new LayerNorm(ishape))
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new DenseLinearLayer(ishape.Count, neurons))
+            .ThenIf(normalize_layers, ishape => new LayerNorm(ishape))
             .Then(ishape => new ActivationLayer(ishape, activation))
             .Then(ishape => new DenseLinearLayer(ishape.Count, output_classes))
             .Then(ishape => new SoftmaxLayer(ishape.Count))

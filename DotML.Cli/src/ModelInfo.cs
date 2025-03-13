@@ -127,6 +127,14 @@ public class ModelInfo {
         tensors.WriteTo(writer);
     }
 
+    public void UpdateWeights(FileInfo tensors) {
+        if (weights_file is null)
+            return;
+
+        using var stream = weights_file.OpenWrite();
+        tensors.OpenRead().CopyTo(stream);
+    }
+
     public void UpdateBuildScript(string text) {
         if (network_file is null)
             return;

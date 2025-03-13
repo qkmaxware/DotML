@@ -158,7 +158,7 @@ where T:INumber<T> {
     }
 
     #endregion
-    #region Constuctors
+    #region Constructors
 
     /// <summary>
     /// Create a matrix with the given shape and elements
