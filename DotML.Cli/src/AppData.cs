@@ -23,6 +23,7 @@ public class AppData {
     }
 
     public DirectoryInfo ModelDirectory => new DirectoryInfo(this.model_dir);
+    public DirectoryInfo TrainingDirectory => new DirectoryInfo(this.training_dir);
 
     public IEnumerable<ModelInfo> ListModels() {
         foreach (var file in ModelDirectory.GetFiles("*.xml")) {

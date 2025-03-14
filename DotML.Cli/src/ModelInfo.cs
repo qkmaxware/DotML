@@ -131,8 +131,9 @@ public class ModelInfo {
         if (weights_file is null)
             return;
 
-        using var stream = weights_file.OpenWrite();
-        tensors.OpenRead().CopyTo(stream);
+        using var ostream = weights_file.OpenWrite();
+        using var istream = tensors.OpenRead();
+        istream.CopyTo(ostream);
     }
 
     public void UpdateBuildScript(string text) {

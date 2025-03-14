@@ -5,7 +5,7 @@ using DotML.Network.Training;
 
 namespace DotML.Cli.Commands;
 
-[Verb("test", HelpText = "Test an model against a dataset")]
+[Verb("test", HelpText = "Test a model against a dataset")]
 public class Test : BaseCommand {
 
     [Value(0, MetaName = "name", HelpText = "Model name", Required = true)]

@@ -3,19 +3,6 @@ using DotML.Network.Training;
 
 namespace DotML.Network;
 
-// Desired usage
-/*
-    new Network (
-        ...
-        .Then(init_shape => ResidualConnection.Block(
-            new ConvolutionLayer(init_shape)
-            .Then((ishape) => new LocalMaxPoolingLayer(ishape))
-            .Then((ishape) => new ActivationLayer(ishape))
-        ))
-        ...
-    )
-*/
-
 /// <summary>
 /// A layer which captures (caches) it's inputs so that other layers like those use for skip connections can reference the inputs later
 /// </summary>
@@ -23,6 +10,11 @@ namespace DotML.Network;
 public class InputCapture : FeedforwardNetworkLayer {
 
     public BatchedFeatureSet<double>? CapturedInput;
+
+    public InputCapture(Shape3D input_shape) {
+        this.InputShape = input_shape;
+        this.OutputShape = input_shape;
+    }
 
     /// <summary>
     /// Cache the given feature set

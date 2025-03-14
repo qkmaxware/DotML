@@ -1,7 +1,10 @@
+using DotML.Network.Initialization;
+using DotML.Network.Training;
+
 namespace DotML.Network;
 
 public abstract class AdditionSkipConnection : SkipConnection {
-    public AdditionSkipConnection(InputCapture captureSource) : base(captureSource) { }
+    public AdditionSkipConnection(Shape3D input_shape, InputCapture captureSource) : base(input_shape, input_shape, captureSource) { }
 
     /// <summary>
     /// Combine the features from the capture source with the features passed into this connection as input
@@ -31,5 +34,26 @@ public abstract class AdditionSkipConnection : SkipConnection {
         }
 
         return new BatchedFeatureSet<double>(values);
+    }
+
+    public override void Initialize(IInitializer initializer) { }
+
+    public override int TrainableParameterCount() => 0;
+
+    public override void SubtractGradients(LayerGradients? gradients) { }
+
+    public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
+        // Loss is a function of L(y(residual, x))
+        // dL/dx = dL/dy * dy/dx
+        // Soooo
+        // remember y(residual, x) := x + residual
+        // dL/dy = given
+        // dy/dx = d/dx(x) + d/dx(residual) => 1 + 0 => 1 where residual is considered a constant here
+        // dL/dx = dL/dy * 1
+
+        return new BackpropagationReturns (
+            error: args.dY, 
+            gradients: null
+        );
     }
 }

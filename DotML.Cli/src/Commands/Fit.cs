@@ -506,7 +506,7 @@ public class Fit : BaseCommand {
 
     private void PrintDone(DirectoryInfo training_dir) {
         Console.WriteLine($"Reports saved to '{training_dir.FullName}'.");
-        Console.WriteLine($"Review manually or use '{typeof(Fit).Assembly.GetName().Name} report {training_dir.Name}'.");
+        Console.WriteLine($"Use '{typeof(Fit).Assembly.GetName().Name} reports to review data.");
     }
 
     #region Utility Functions

@@ -97,7 +97,7 @@ public class Describe : BaseCommand {
         for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
             var layer = network.GetLayer(layerIndex);
             Console.Write(" | ");
-            Console.Write(ColumnValue(layer.GetType().Name.Replace("Layer", string.Empty), arch_len[0]));
+            Console.Write(ColumnValue(TrimEnd(layer.GetType().Name, "Layer"), arch_len[0]));
             Console.Write(' ');
             Console.Write(ColumnValue(layer.InputShape, arch_len[1]));
             Console.Write(' ');
@@ -111,5 +111,12 @@ public class Describe : BaseCommand {
             Console.WriteLine();
         }
         Console.WriteLine();
+    }
+
+    private static string TrimEnd(string src, string postfix) {
+        if (!src.EndsWith(postfix))
+            return src;
+
+        return src.Remove(src.LastIndexOf(postfix));
     }
 }

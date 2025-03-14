@@ -84,46 +84,6 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
 
     public override int TrainableParameterCount() => filters.Select(filter => filter.Select(kernel => kernel.Rows * kernel.Columns).Sum()).Sum() + filters.Length; 
 
-    public Matrix<double> Convolve(Matrix<double> input, Matrix<double> kernel, double bias) {
-        // Compute output size taking into account padding & stride                                     // Same
-        var filterRows          = this.filterRows;                                                        // 3
-        var filterColumns       = this.filterColumns;                                                         // 3
-        var paddingRows         = this.RowsPadding;                   // 1 
-        var paddingColumns      = this.ColumnsPadding;                // 1
-        var outputRows          = this.OutputShape.Rows;             // 32 (good)
-        var outputColumns       = this.OutputShape.Columns;    // 32 (good)
-        var stridex             = this.StrideX;
-        var stridey             = this.StrideY;
-
-        // Allocate output
-        var output = new Matrix<double>(outputRows, outputColumns, bias);
-
-        // Slide over output
-        for (var outY = 0; outY < outputRows; outY++) {
-            var startY = outY * stridey - paddingRows;
-            for (var outX = 0; outX < outputColumns; outX++) {
-                var total_sum = 0.0;
-                var startX = outX * stridex - paddingColumns;
-
-                // Compute value by applying the kernel to the input region associated with this output
-                for (int ky = 0; ky < filterRows; ky++) {
-                    var inY = startY + ky;
-                    for (int kx = 0; kx < filterColumns; kx++) {
-                        var inX = startX + kx;
-                        
-                        total_sum += input[inY, inX] * kernel[ky, kx];
-                    }
-                }
-
-                // Set the output position's value
-                output[outY, outX] = total_sum;
-            }
-        }
-
-        // Exit
-        return output;
-    }
-
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
         var len = channels.Channels;
         var outputs = new Matrix<double>[len];
@@ -178,8 +138,7 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
         var filter_shape = new Shape4D(filters.Length, 1, filterRows, filterColumns);
         var dW = BackpropagateWrtWeights(args.InputBatch, args.OutputErrors, filter_shape);
         var dB = BackpropagateWrtBias   (args.OutputErrors);
-        //var dX = BackpropagateWrtInput  (args.InputBatch, args.OutputErrors);
-        var dX = DepthwiseTransposeConvolve2(args.InputBatch, args.OutputBatch, args.OutputErrors);
+        var dX = BackpropagateWrtInput  (args.InputBatch, args.OutputBatch, args.OutputErrors);
 
         return new BackpropagationReturns(
             dX,
@@ -210,57 +169,38 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
     }
 
     private BatchedFeatureSet<double> BackpropagateWrtWeights(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
-        // This is essentially the convolution of the input region X with the error term from the output Y for each filter.
-        /*var (batches, in_channels, in_rows, in_columns) = X.Shape;
-
-        var results = new BatchedFeatureSet<double>(new Shape4D(in_channels, 1, filterRows, filterColumns)); // output channels = input channels, kernels, kernel rows, kernel columns
-
-        for (var channel = 0; channel < in_channels; channel++) {
-            // For each channel, convolve X with Y and sum over all batches
-            var channel_matrix = results[channel, 0];
-
-            for(var batch = 0; batch < batches; batch++) {
-                channel_matrix.AddWithInplace(
-                    X[batch, channel].Convolve(dY[batch, channel], strideX: StrideX, strideY: StrideY, paddingX: 0, paddingY: 0)
-                );
-            }
-        }*/
-
-        // Kernel/Weight Gradients
-        // dW(filter, kernel, row, col) = dy(filter, i, j) * input(c, i+k-1, j+l-1)
-        // ----------------------------------------------------------------------------
         var (batch_size, in_channels, height, width) = X.Shape;
         var (_, _, output_height, output_width) = dY.Shape;
-        var (out_channels, _, filter_height, filter_width) = filter_shape;
+        var (filter_count, _, filter_height, filter_width) = filter_shape;
 
-        var dW = new BatchedFeatureSet<double>(filter_shape); // (out_channels, kernel_count, filter_height, filter_width)
+        var dW = new BatchedFeatureSet<double>(filter_shape); // (filter_count, 1, filter_height, filter_width)
 
-        // Iterate through each batch and output channel
-        for (var batch = 0; batch < batch_size; batch++) {
-            for (var out_channel = 0; out_channel < out_channels; out_channel++) {
-                // Apply a valid convolution of the input image and dY
-                // Iterate over the positions of the kernel in the output feature map
-                for (var oy = 0; oy < output_height; oy++) {
-                    var startY = oy * this.StrideY;
+        for (var oY = 0; oY < output_height; oY++) {
+            for (var oX = 0; oX < output_width; oX++) {
+                // Region on the input which was used to compute this value on the output
+                var x_start = oX * StrideX - ColumnsPadding;
+                var x_end = x_start + filter_width;
+                var y_start = oY * StrideY - RowsPadding;
+                var y_end = y_start + filter_height;
 
-                    for (var ox = 0; ox < output_width; ox++) {
-                        // The start and end coordinates in the input based on stride
-                        var startX = ox * this.StrideX;
+                for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
+                    for (var filterIndex = 0; filterIndex < filter_count; filterIndex++) {
+                        var grad = dY[batchIndex, filterIndex, oY, oX];
 
-                        for (var ky = 0; ky < filter_height; ky++) {
-                            for (var kx = 0; kx < filter_width; kx++) {
-                                // Ensure we stay within bounds
-                                if (startY + ky < height && startX + kx < width) {
-                                    // Access the input values manually
-                                    double input_value = X[batch, out_channel, startY + ky, startX + kx];
-                                    double dY_value = dY[batch, out_channel, oy, ox];
+                        var dk = dW[filterIndex, 0];
+                        var x = X[batchIndex, filterIndex];
 
-                                    // Accumulate the weight gradient
-                                    var kernel = dW[out_channel, out_channel];
-                                    kernel[ky, kx] += input_value * dY_value;
-                                }
+                        for (int iY = y_start, ky = 0; iY < y_end; iY++, ky++) {
+                            if (iY < 0 || iY >= height)
+                                continue;
+
+                            for (int iX = x_start, kx = 0; iX < x_end; iX++, kx++) {
+                                if (iX < 0 || iX >= width)
+                                    continue;
+
+                                dk[ky, kx] += grad * x[iY, iX];
                             }
-                        } 
+                        }
                     }
                 }
             }
@@ -283,113 +223,68 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
         return results;
     }
 
-    private BatchedFeatureSet<double> BackpropagateWrtInput(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY) {
-        var (batches, in_channels, in_rows, in_columns) = X.Shape;
-        var (_, _, out_rows, out_columns) = dY.Shape;
+    private BatchedFeatureSet<double> BackpropagateWrtInput(BatchedFeatureSet<double> X, BatchedFeatureSet<double> Y, BatchedFeatureSet<double> dY) {
+        // Input Gradient
+        // To compute the gradients w.r.t. the input (dinput), you perform a convolution of dY with the filter weights, flipping them. 
+        // This is the same process used to calculate the forward pass convolution but with flipped weights
+        // ---------------------------------------------------------------
+        var (batch_size, in_channels, out_rows, out_columns) = X.Shape; // In and out rows/columns flipped here since the "input" is dY and the output is "dX"
+        var (_, out_channels, in_rows, in_columns) = dY.Shape;
+        var (filter_count, kernel_height, kernel_width) = (this.filters.Length, this.filterRows, this.filterColumns);
+        var kernel_rows_m1 = kernel_height - 1;
+        var kernel_cols_m1 = kernel_width - 1;
 
-        var results = new BatchedFeatureSet<double>(X.Shape);
+        var dX = new BatchedFeatureSet<double>(X.Shape);
+        const bool flip_kernel = false;
+        
+        // How it worked.
+        // Each filter was an output channel
+        // Each kernel applied to a single input
+        // So to go backwards we need to take the output from each filter and distribute it with each kernel back to the associated input
+        for (var batch = 0; batch < batch_size; batch++) {
+            for (var output_index = 0; output_index < out_channels; output_index++) {
+                var filter = this.filters[output_index];
+                var output = dY[batch, output_index];
 
-        for (var batch_index = 0; batch_index < batches; batch_index++) {
-            for (var channel = 0; channel < in_channels; channel++) {
-                var dX_matrix = results[batch_index, channel];
-                var dY_matrix = dY[batch_index, channel];
-                var kernel = filters[channel][0];
+                var kernel = filter[0];
+                var result = dX[batch, output_index];
 
-                for (var row = 0; row < out_rows; row++) {
-                    for (var col = 0; col < out_columns; col++) {
-                        for (var krow = 0; krow < kernel.Rows; krow++) {
-                            for (var kcol = 0; kcol < kernel.Columns; kcol++) {
-                                dX_matrix[row + krow, col + kcol] += dY_matrix[row, col] * kernel[krow, kcol];
+                // --------------------------------------
+                // COPIED FROM Matrix<double>.TransposeConvolve();
+                // --------------------------------------
+                for (var r = 0; r < in_rows; r++) {
+                    var region_start_y = r * StrideY - RowsPadding;
+                    var region_end_y = region_start_y + kernel_height;
+
+                    for (var c = 0; c < in_columns; c++) {
+                        var region_start_x = c * StrideX - ColumnsPadding;
+                        var region_end_x = region_start_x + kernel_width;
+
+                        var i = output[r, c];
+
+                        for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
+                            if (out_y < 0 || out_y >= out_rows)
+                                continue;
+
+                            for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
+                                if (out_x < 0 || out_x >= out_columns)
+                                    continue;
+
+                                if (flip_kernel) {
+                                    result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
+                                } else {
+                                    result[out_y, out_x] += i * kernel[ky, kx];
+                                }
                             }
                         }
                     }
                 }
+                // --------------------------------------
             }
         }
 
-        return results;
+        return new BatchedFeatureSet<double>(dX);
     }
-
-    private BatchedFeatureSet<double> DepthwiseTransposeConvolve2(BatchedFeatureSet<double> X, BatchedFeatureSet<double> Y , BatchedFeatureSet<double> dY) {
-        // dx = dy_0 * w'
-        var (batch_count, channel_count, input_height, input_width) = X.Shape;
-        var (_, _, output_height, output_width) = Y.Shape;
-        var stride_x = this.StrideX;
-        var stride_y = this.StrideY;
-
-        var padding_rows = this.RowsPadding;
-        var padding_cols = this.ColumnsPadding;
-
-        var input_to_output_padding_rows = (input_height - output_height) / 2;
-        var input_to_output_padding_cols = (input_width - output_width) / 2;
-
-        var result_features = new FeatureSet<double>[batch_count];
-
-        Parallel.For(0, batch_count, batchIndex => {
-            var batch_inputs = X[batchIndex];
-            var batch_outputs = Y[batchIndex];
-            var batch_errors = dY[batchIndex];
-
-            var batch_features = new Matrix<double>[channel_count];
-
-            var filters = this.filters;
-            var filter_width = filterColumns;
-            var filter_height = filterRows;
-
-            var filter_height_m1 = filter_height - 1;
-            var filter_width_m1 = filter_width - 1;
-
-            var input_padding_rows = (filter_height_m1) / 2;
-            var input_padding_cols = (filter_width_m1) / 2;
-
-            var input_width_padded = input_width + 2 * input_padding_rows;
-            var input_height_padded = input_height + 2 * input_padding_rows;
-
-            for (var channelIndex = 0; channelIndex < channel_count; channelIndex++) {
-                var input_error = new Matrix<double>(input_height, input_width);
-                    
-                var kernel = filters[channelIndex][0];
-                var error = batch_errors[channelIndex];
-                
-                // Slide kernel over input
-                for (var inputY = 0; inputY < input_height_padded; inputY++) {
-                    var outY = (inputY - input_padding_rows - input_to_output_padding_rows) / stride_y;  // This assumes the output is "centered" in the middle of the input
-
-                    for (var inputX = 0; inputX < input_width_padded; inputX++) {
-                        var outX = (inputX - input_padding_cols - input_to_output_padding_cols) / stride_x; // This assumes the output is "centered" in the middle of the input
-
-                        var sum = 0.0;
-                        for (var kernelY = 0; kernelY < filter_height; kernelY++) {
-                            //var inv_kernelY = filter_height_m1 - kernelY;
-                            var outY_plus_kernel = outY + kernelY;
-                            if (outY_plus_kernel < 0 || outY_plus_kernel >= output_height) continue; // Skip out-of-bounds rows
-                            
-                            for (var kernelX = 0; kernelX < filter_width; kernelX++) {
-                                //var inv_kernelX = filter_width_m1 - kernelX;
-                                var outX_plus_kernel = outX + kernelX;
-                                if (outX_plus_kernel < 0 || outX_plus_kernel >= output_width) continue; // Skip out-of-bounds columns
-
-                                var kernel_value = kernel[kernelY, kernelX]; // Kernel is NOT inverted here according to chatgpt
-                                var output_value = error[outY_plus_kernel, outX_plus_kernel];
-                                var result = kernel_value * output_value;
-
-                                sum += result;      
-                            }
-                        }
-
-                        if (inputX >= 0 && inputX < input_width && inputY >= 0 && inputY < input_height)
-                            input_error[inputY, inputX] += sum;
-                    }
-                }
-
-                batch_features[channelIndex] = input_error;
-            } 
-            result_features[batchIndex] = new FeatureSet<double>(batch_features);
-        });
-
-        return new BatchedFeatureSet<double>(result_features);
-    }
-
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
     public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);

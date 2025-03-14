@@ -72,7 +72,13 @@ public class Modify : BaseCommand {
     #endregion
 
     #region Weight-transfer
-    [Option("transfer", Required = false, HelpText = "In 'weight' mode, transfer the given weights to the model", Separator = ' ')]
+    [Option("import", Required = false, HelpText = "In 'weight' mode, import the given weights to the model", Separator = ' ')]
+    public string? WeightsToImport {get; set;}
+
+    [Option("export", Required = false, HelpText = "In 'weight' mode, export the given weights to the model", Separator = ' ')]
+    public string? WeightsToExport {get; set;}
+
+    [Option("transfer", Required = false, HelpText = "In 'weight' mode, transfer weights to another model", Separator = ' ')]
     public string? WeightsToTransfer {get; set;}
 
     public void WeightsAction(AppData appData) {
@@ -82,16 +88,34 @@ public class Modify : BaseCommand {
             return;
         }
         
-        if (string.IsNullOrEmpty(WeightsToTransfer)) {
-            return;
-        }
-        var weight_file = new FileInfo(WeightsToTransfer);
-        if (!weight_file.Exists) {
-            return;
+        if (!string.IsNullOrEmpty(WeightsToImport)) {
+            var weight_file = new FileInfo(WeightsToImport);
+            if (weight_file.Exists) {
+                model.UpdateWeights(weight_file);
+                Console.WriteLine($"Successfully imported weights '{WeightsToImport}' to {model.Guid}");
+            }
         }
 
-        model.UpdateWeights(weight_file);
-        Console.WriteLine($"Successfully transferred weights 'WeightsToTransfer']' to {model.Guid}");
+        if (!string.IsNullOrEmpty(WeightsToExport) && model.Status() == ModelTrainingStatus.Trained) {
+            var weights = model.GetWeightsFile();
+
+            if (weights is not null && weights.Exists) {
+                using var ostream = new FileStream(WeightsToExport, FileMode.Create);
+                using var istream = weights.OpenRead();
+                istream.CopyTo(ostream);
+
+                Console.WriteLine($"Successfully exported weights from {model.Guid} to '{WeightsToExport}'");
+            }
+        }
+
+        if (!string.IsNullOrEmpty(WeightsToTransfer)) {
+            var model_to = appData.GetModel(WeightsToTransfer);
+            var weights_from = model.GetWeightsFile();
+            if (weights_from is not null && weights_from.Exists && model_to is not null) {
+                model_to.UpdateWeights(weights_from);
+                Console.WriteLine($"Successfully transferred weights from {model.Guid} to {model_to.Guid}");
+            }   
+        }
     }
     #endregion
 

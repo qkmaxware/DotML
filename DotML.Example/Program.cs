@@ -5,6 +5,26 @@ using DotML.Network.Initialization;
 using System.Reflection;
 using System.Diagnostics;
 
+public class Logger {
+    private TextWriter writer;
+    public Logger(TextWriter writer) {
+        this.writer = writer;
+    } 
+    public void Write(object? o) {
+        var s = o?.ToString() ?? string.Empty;
+        writer.Write(s); writer.Flush();
+        Console.Write(s);
+    }
+    public void WriteLine() {
+        writer.WriteLine(); writer.Flush();
+        Console.WriteLine();
+    }
+    public void WriteLine(object? o) {
+        var s = o?.ToString() ?? string.Empty;
+        writer.WriteLine(s); writer.Flush();
+        Console.WriteLine(s);
+    }
+}
 public class Program {
 
 public static void Main() {
@@ -16,20 +36,23 @@ public static void Main() {
         img_channels: 3, img_width: 224, img_height: 224,       // Image size, 3 channels is RGB
         activation: ActivationFunctions.ReLU
     );
-    network.InsertLayersBefore((after) => new LayerNorm(after.InputShape), (index, layer) => layer is LocalMaxPoolingLayer);
-    network.InsertLayersAfter((after) => new LayerNorm(after.OutputShape), (index, layer) => layer is DenseLinearLayer);
-    for (var i = 0; i < network.LayerCount; i++) {
-        Console.WriteLine(network.GetLayer(i).ToString());
+    network.InsertLayerBefore((after) => new LayerNorm(after.InputShape), (index, layer) => layer is PoolingLayer);
+    network.InsertLayerAfter((after) => new LayerNorm(after.OutputShape), (index, layer) => layer is DenseLinearLayer);
+    using var log_writer = new StreamWriter($"{network.Name}.log");
+    var logger = new Logger(log_writer);
+    using (var writer = new StreamWriter($"{network.Name}.netbuild")) {
+        var netbuilder = new NetBuildWriter(writer);
+        netbuilder.Encode(network);
     }
-    Console.WriteLine($"Created network: {network.Name} (layers: {network.LayerCount}, shape: {network.InputShape} -> {network.OutputShape})");
-    Console.WriteLine();
+    logger.WriteLine($"Created network: {network.Name} (layers: {network.LayerCount}, shape: {network.InputShape} -> {network.OutputShape})");
+    logger.WriteLine();
     #endregion
 
     #region Trainer
     var validation_report = new DefaultValidationReport();
     var performance_report = new DefaultProfilingReport();
     var trainer = new EnumerableBatchTrainer<FeedforwardNetwork> {
-        Epochs = 500,                                           // Max epochs to train for
+        Epochs = 250,                                           // Max epochs to train for
         LearningRate = 0.001,                                   // Default weight adjustment rate
         LearningRateOptimizer = Optimizers.Adam,                // Weight update optimizer
         LossFunction = LossFunctions.CategoricalCrossEntropy,   // Loss function 
@@ -45,8 +68,8 @@ public static void Main() {
         ValidationReport = validation_report,
         Profiler = performance_report
     };
-    Console.WriteLine($"Trainer configured: {trainer.GetType().Name} (epochs: {trainer.Epochs})");
-    Console.WriteLine();
+    logger.WriteLine($"Trainer configured: {trainer.GetType().Name} (epochs: {trainer.Epochs})");
+    logger.WriteLine();
     #endregion
 
     #region Data
@@ -54,16 +77,16 @@ public static void Main() {
     var data = ReadSerializedTrainingSet(input_filename);       // Data to use for training
     var validation = data;                                      // Data to use for validation and early stop
     var first = data[0];
-    Console.WriteLine($"Training data loaded: {input_filename} (items: {data.Size}, input size: {first.Input.Dimensionality}, output size: {first.Output.Dimensionality})");
+    logger.WriteLine($"Training data loaded: {input_filename} (items: {data.Size}, input size: {first.Input.Dimensionality}, output size: {first.Output.Dimensionality})");
     if (network.InputShape.Count != first.Input.Dimensionality) {
-        Console.Write("    ");
-        Console.Write($"Input shape mismatch between network input {network.InputShape} ({network.InputShape.Count}) and training input size {first.Input.Dimensionality}");
-        Console.WriteLine();
+        logger.Write("    ");
+        logger.Write($"Input shape mismatch between network input {network.InputShape} ({network.InputShape.Count}) and training input size {first.Input.Dimensionality}");
+        logger.WriteLine();
     }
-    Console.WriteLine();
+    logger.WriteLine();
     #endregion
 
-    Console.Write("Begin training (y/n)? "); 
+    logger.Write("Begin training (y/n)? "); 
     var confirm = Console.ReadLine()?.ToLower() switch {
         "y" => true,
         "yes" => true,
@@ -81,48 +104,51 @@ public static void Main() {
     );
     var has_next = true;
     var total_time = Stopwatch.StartNew();
-    Console.WriteLine("Training:");
-    Console.Write("    ");
-    Console.Write($"Epoch {session.CurrentEpoch + 0:000}... ");
+    logger.WriteLine("Training:");
+    logger.Write("    ");
+    logger.Write($"Epoch {session.CurrentEpoch + 0:000}... ");
     var before = Stopwatch.StartNew();
     session.ValidateStep();                                     // Validate the network before training starts
     before.Stop();
-    Console.WriteLine("done (elapsed: " + before.Elapsed + ", avg loss: " + trainer.ValidationReport.AverageLoss + ")");
+    logger.WriteLine("done (elapsed: " + before.Elapsed + ", avg loss: " + trainer.ValidationReport.AverageLoss + ")");
     session.Reset();
-    var mid_output_filename = $"{network.Name}.best.weights.safetensors";// Desired output filename for trained weights
-    var last_loss = double.MaxValue;
+    double smallest_loss = double.PositiveInfinity;
     while (has_next) {                                          // Loop until training all epochs complete (or early stop)
-        Console.Write("    ");
-        Console.Write($"Epoch {session.CurrentEpoch + 1:000}... ");
+        logger.Write("    ");
+        logger.Write($"Epoch {session.CurrentEpoch + 1:000}... ");
 
         var timer = Stopwatch.StartNew();
         has_next = session.MoveNext();                          // Advance the training by 1 epoch
         timer.Stop();
         var elapsed = timer.Elapsed;
 
-        if (trainer.ValidationReport.AverageLoss < last_loss) {
-            last_loss = trainer.ValidationReport.AverageLoss;
-            var mid_weights = network.ToSafetensor();                       // Store all weights in a safetensors file
-            mid_weights.WriteToFile(mid_output_filename);                   // Dump safetensor file to disc
+        if (trainer.ValidationReport.AverageLoss < smallest_loss) {
+            Dump(network, "best-avg");
+            smallest_loss = trainer.ValidationReport.AverageLoss;
         }
 
-        Console.WriteLine("done (elapsed: " + elapsed + ", avg loss: " + trainer.ValidationReport.AverageLoss + ")");
+        logger.WriteLine("done (elapsed: " + elapsed + ", avg loss: " + trainer.ValidationReport.AverageLoss + ")");
     }
     total_time.Stop();
-    Console.Write("    ");
-    Console.WriteLine($"Done: (elapsed: {total_time.Elapsed}, min loss: {validation_report.MinLoss}, max loss: {validation_report.MaxLoss}, avg loss: {validation_report.AverageLoss}, accuracy: {validation_report.Accuracy}, recall: {validation_report.Recall}, precision: {validation_report.Precision}, f1: {validation_report.F1Score})");
-    Console.WriteLine();
+    logger.Write("    ");
+    logger.WriteLine($"training done (elapsed: {total_time.Elapsed}, min loss: {validation_report.MinLoss}, max loss: {validation_report.MaxLoss}, avg loss: {validation_report.AverageLoss}, accuracy: {validation_report.Accuracy}, recall: {validation_report.Recall}, precision: {validation_report.Precision}, f1: {validation_report.F1Score})");
+    logger.WriteLine();
     #endregion
 
     #region Save Weights
-    var output_filename = $"{network.Name}.final.weights.safetensors";// Desired output filename for trained weights
-    var weights = network.ToSafetensor();                       // Store all weights in a safetensors file
-    weights.WriteToFile(output_filename);                       // Dump safetensor file to disc
-    Console.WriteLine($"Weights saved: '{output_filename}'");
+    var output_filename = Dump(network, "final");
+    logger.WriteLine($"Weights saved: '{output_filename}'");
     #endregion
 }
 
 #region Utilities
+
+private static string Dump(FeedforwardNetwork network, string name) {
+    var output_filename = $"{network.Name}.{name}.safetensors"; // Desired output filename for trained weights
+    var weights = network.ToSafetensor();                       // Store all weights in a safetensors file
+    weights.WriteToFile(output_filename);                       // Dump safetensor file to disc
+    return output_filename;
+}
 
 private static Vec<double> VectorFromLabelIndex(int index, int classes, double off = -1, double on = 1) {
     double[] values = new double[classes];
