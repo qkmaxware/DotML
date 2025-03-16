@@ -11,7 +11,7 @@ public class Describe : BaseCommand {
     public string? ModelName {get; set;}
 
     public override void Action(AppData appData) {
-         var model = appData.GetModel(ModelName);
+        var model = appData.GetModel(ModelName);
         if (model is null) {
             Console.WriteLine($"No model exists with name '{ModelName}'.");
             return;

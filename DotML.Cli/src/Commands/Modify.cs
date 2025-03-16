@@ -5,8 +5,9 @@ namespace DotML.Cli.Commands;
 
 // Example usage
 /*
-dotml mod net2 tags --add "new-tag" 
-dotml mod net2 weights --transfer "my-weights.safetensors"
+netflow mod net2 tags --add "new-tag" 
+netflow mod net2 weights --transfer "my-weights.safetensors"
+netflow mod net2 labels --list apple banana orange
 */
 
 
@@ -16,6 +17,7 @@ public class Modify : BaseCommand {
     public enum SubCommand {
         none,
         tags,
+        labels,
         weights
     }
 
@@ -36,8 +38,9 @@ public class Modify : BaseCommand {
 
     public override void Action(AppData appData) {
         switch (Cmd) {
-            case SubCommand.tags: TagAction(appData); break;
-            case SubCommand.weights: WeightsAction(appData); break;
+            case SubCommand.tags:       TagAction(appData);     break;
+            case SubCommand.labels:     LabelAction(appData);   break;
+            case SubCommand.weights:    WeightsAction(appData); break;
         }
     }
 
@@ -71,7 +74,32 @@ public class Modify : BaseCommand {
     }
     #endregion
 
-    #region Weight-transfer
+    #region Class Labels
+    [Option("list", Required = false, HelpText = "In 'labeling' mode, list labels for all output classes", Separator = ' ')]
+    public IEnumerable<string>? LabelsForClasses {get; set;}
+
+    public void LabelAction(AppData appData) {
+        var model = appData.GetModel(ModelName);
+        if (model is null) {
+            Console.WriteLine($"No model exists with name '{ModelName}'.");
+            return;
+        }
+
+        if (LabelsForClasses is not null && LabelsForClasses.Any()) {
+            if (model.ClassLabels is null)
+                model.ClassLabels = new List<string>();
+
+            foreach (var label in LabelsForClasses)
+                model.ClassLabels.Add(label);
+            
+            Console.WriteLine($"Successfully labeled classes [{string.Join(',', LabelsForClasses)}] on {model.Guid}");
+        }
+
+        model.UpdateMetadata();
+    }
+    #endregion
+
+    #region Weight Transfer
     [Option("import", Required = false, HelpText = "In 'weight' mode, import the given weights to the model", Separator = ' ')]
     public string? WeightsToImport {get; set;}
 

@@ -38,6 +38,9 @@ public class Run : BaseCommand {
     [Option('o', "output", HelpText = "Save model output to a file at the given path", Required = false)]
     public string? OutputFile {get; set;}
 
+    [Option("labels", HelpText = "Labels for classifications/categories", Required = false)]
+    public IEnumerable<string>? Labels {get; set;}
+
     public override void Action(AppData appData) {
         // Verify options
         var assembly = typeof(Run).Assembly;
@@ -57,11 +60,16 @@ public class Run : BaseCommand {
             Console.WriteLine(".");
             return;
         }
-
+        
         var model = appData.GetModel(ModelName);
         if (model is null) {
             Console.WriteLine($"No model exists with name '{ModelName}'.");
             return;
+        }
+
+        if (decoder is IWithLabels labeled) {
+            var labels = this.Labels?.ToArray() ?? model.ClassLabels?.ToArray() ?? Array.Empty<string>();
+            labeled.Labels = labels;
         }
 
         // Do work

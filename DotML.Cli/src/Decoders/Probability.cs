@@ -3,12 +3,12 @@ namespace DotML.Cli.Decodings;
 /// <summary>
 /// Treat the output as a probability distribution
 /// </summary>
-public class Probability : IDecoder {
+public class Probability : IDecoder, IWithLabels {
     public class Result : IDecodedResult {
         private ProbabilityDistribution[] dists;
 
-        public Result(Vec<double>[] vectors) {
-            this.dists = vectors.Select(x => new ProbabilityDistribution(x)).ToArray();
+        public Result(string[]? labels, Vec<double>[] vectors) {
+            this.dists = vectors.Select(x => new ProbabilityDistribution(x, labels)).ToArray();
         }
 
         public void ConsoleOutput() {
@@ -27,9 +27,12 @@ public class Probability : IDecoder {
 
         public void Dispose() { }
     }
+    
+    public string[]? Labels {get; set;}
 
-    public IDecodedResult Decode(BatchedFeatureSet<double>  output) {
+    public IDecodedResult Decode(BatchedFeatureSet<double> output) {
         return new Result(
+            this.Labels,
             output.Select(
                 b => Vec<double>.Wrap(b.SelectMany(f => f.FlattenRows()).ToArray())
             ).ToArray()
