@@ -102,6 +102,20 @@ public class Fit : BaseCommand {
     [Option("notify", HelpText = "Url, endpoint, or address to send notification updates to.", Required = false, Default = null)]
     public string? NotifyEndpoint {get; set;}
 
+    [Option("notify-on", HelpText = "A list of events which trigger notifications", Required = false, Default = new NotificationEvent[]{ NotificationEvent.all })]
+    public IEnumerable<NotificationEvent>? NotificationEvents {get; set;}
+    private int NotificationTrigger {
+        get {
+            int trigger = 0;
+            if (NotificationEvents is not null) {
+                foreach (var evt in NotificationEvents) {
+                    trigger |= (int)evt;
+                }
+            }
+            return trigger;
+        }
+    }
+
     public override void Action(AppData appData) {
         #region Validate Args
         var model = appData.GetModel(ModelName);
@@ -358,8 +372,13 @@ public class Fit : BaseCommand {
             Console.WriteLine("<!-- Training Cancelled by User -->");
             DrawDivider(divider_len);
             PrintDone(dir);
+            if (IsSet(NotificationEvent.cancelled)) {
+                notifier?.NotifyTrainingCancelled(network, session.CurrentEpoch);
+            }
         };
-        notifier?.NotifyTrainingStarted(network);
+        if (IsSet(NotificationEvent.started)) {
+            notifier?.NotifyTrainingStarted(network);
+        }
         
         // Do an initial status test to see "how good it is" originally
         validation_report.Reset();
@@ -398,7 +417,9 @@ public class Fit : BaseCommand {
             #region Training / Epoch End
             // Print the rest of the epoch entry to the CLI 
             var report = validation_report;
-            notifier?.NotifyTrainingStep(network, epoch_id, trainer.Epochs, validation_report);
+            if (IsSet(NotificationEvent.step)) {
+                notifier?.NotifyTrainingStep(network, epoch_id, trainer.Epochs, validation_report);
+            }
             var def_colour = Console.ForegroundColor;
             Console.ForegroundColor = !prev_report.HasValue ? def_colour : (prev_report.Value.accuracy <= report.Accuracy ? ConsoleColor.Green : ConsoleColor.Red); // Accuracy should be higher
             Console.Write(ColumnValue(report.Accuracy, training_header_len[2]));
@@ -409,6 +430,7 @@ public class Fit : BaseCommand {
             Console.ForegroundColor = def_colour;
             Console.Write(ColumnValue(report.Recall, training_header_len[4]));
             Console.Write(' '); 
+            var isBetterAverageLoss = prev_report.HasValue && report.AverageLoss < prev_report.Value.avgloss;
             Console.ForegroundColor = !prev_report.HasValue ? def_colour : (prev_report.Value.avgloss >= report.AverageLoss ? ConsoleColor.Green : ConsoleColor.Red); // Loss should be smaller
             Console.Write(ColumnValue(report.AverageLoss, training_header_len[5]));
             Console.Write(' '); 
@@ -423,6 +445,10 @@ public class Fit : BaseCommand {
             // Save validation report entry
             validation_writer.WriteLine($"{epoch_id}, {report.TestsPassedCount}, {report.TestsFailedCount}, {report.AverageLoss}, {report.MaxLoss}, {report.MinLoss}, {report.Accuracy}, {report.Precision}, {report.Recall}, {report.F1Score}, \"{elapsed}\"");
             validation_writer.Flush();
+
+            if (IsSet(NotificationEvent.best)) {
+                notifier?.NotifyNewBest(network, epoch_id, trainer.Epochs, validation_report);
+            }
 
             // Save testing report entry (currently no UI to monitor this)
             if (!SkipTesting && testing_report is not null) {
@@ -451,7 +477,9 @@ public class Fit : BaseCommand {
             } catch {}
             #endregion
         }
-        notifier?.NotifyTrainingDone(network, session.CurrentEpoch, validation_report);
+        if (IsSet(NotificationEvent.done)) {
+            notifier?.NotifyTrainingDone(network, session.CurrentEpoch, validation_report);
+        }
         start_timer.Stop();
         } catch (Exception e) {
             using (var writer = new StreamWriter(File.Open(Path.Combine(dir.FullName, "errors.log"), FileMode.Append))) {
@@ -622,6 +650,9 @@ public class Fit : BaseCommand {
                 return notifier.Make(endpoint);
         }
         return null;
+    }
+    private bool IsSet(NotificationEvent evt) {
+        return (this.NotificationTrigger & ((int)evt)) != 0;
     }
 
     private static ITrainingDataFormat[] formats = [

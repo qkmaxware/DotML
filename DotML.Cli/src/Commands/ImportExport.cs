@@ -51,7 +51,7 @@ public class Export : BaseCommand {
             }
         }
 
-        Console.WriteLine($"Model {model.Guid} exported to 'result'.");
+        Console.WriteLine($"Model {model.Guid} exported to '{result}'.");
     }
 }
 

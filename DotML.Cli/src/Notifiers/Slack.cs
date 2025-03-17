@@ -34,6 +34,15 @@ public class Slack : INotifier {
 > Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AverageLoss})"
 );
     }
+    public void NotifyNewBest(FeedforwardNetwork network, int epoch, int epochs, IValidationReport status) {
+        SendMessage(
+@$"New best weights found for network {network.Name}. 
+
+> **Epoch {epoch}/{epochs}**
+> Tests: {status.TestsPassedCount}/{status.TestCount}
+> Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AverageLoss})"
+);
+    }
     public void NotifyTrainingDone(FeedforwardNetwork network, int epochs, IValidationReport final_status) {
         SendMessage(
 @$"Training completed for network {network.Name}. 
@@ -41,6 +50,12 @@ public class Slack : INotifier {
 > **Epoch epochs**
 > Tests: {final_status.TestsPassedCount}/{final_status.TestCount}
 > Loss: {final_status.MinLoss}-{final_status.MaxLoss} (avg: {final_status.AverageLoss})"
+);
+    }
+
+    public void NotifyTrainingCancelled(FeedforwardNetwork network, int epochs) {
+        SendMessage(
+@$"Training cancelled by user for network {network.Name} on epoch {epochs}."
 );
     }
 
