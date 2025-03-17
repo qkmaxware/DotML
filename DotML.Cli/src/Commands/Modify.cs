@@ -24,7 +24,7 @@ public class Modify : BaseCommand {
     [Value(0, MetaName = "name", HelpText = "Model name", Required = true)]
     public string? ModelName {get; set;}
 
-    [Value(1, MetaName = "sub-command", HelpText = "Modification type (tags, weights)", Required = true)]
+    [Value(1, MetaName = "sub-command", HelpText = "Modification type (tags, labels, weights)", Required = true)]
     public SubCommand Cmd {get; set;}
 
     /*[Usage()]
