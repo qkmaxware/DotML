@@ -68,7 +68,14 @@ public class Run : BaseCommand {
         }
 
         if (decoder is IWithLabels labeled) {
-            var labels = this.Labels?.ToArray() ?? model.ClassLabels?.ToArray() ?? Array.Empty<string>();
+            string[] labels;
+            if (this.Labels is not null && this.Labels.Any()) {
+                labels = this.Labels.ToArray();
+            } else if (model.ClassLabels is not null && model.ClassLabels.Any()) {
+                labels = model.ClassLabels.ToArray();
+            } else {
+                labels = Array.Empty<string>();
+            }
             labeled.Labels = labels;
         }
 
