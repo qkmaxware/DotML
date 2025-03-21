@@ -1,13 +1,13 @@
-namespace DotML.Network;
+namespace DotML.Network.IO.Netbuild;
 
 /// <summary>
 /// Writer to encode network architecture to a NetBuild file
 /// </summary>
-public class NetBuildWriter : ILayerVisitor {
+public class NetbuildLayerEncoder : ILayerVisitor {
 
     protected TextWriter sb;
 
-    public NetBuildWriter(TextWriter writer) {
+    public NetbuildLayerEncoder(TextWriter writer) {
         this.sb = writer;
     }
 
@@ -33,7 +33,7 @@ public class NetBuildWriter : ILayerVisitor {
     }
 
     public void Visit(DepthwiseConvolutionLayer layer) {
-        throw new NotImplementedException();
+        sb.WriteLine($"ADD depthwise stride-x={layer.StrideX} stride-y={layer.StrideY} padding={layer.Padding} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
     }
 
     public void Visit(PoolingLayer layer) {

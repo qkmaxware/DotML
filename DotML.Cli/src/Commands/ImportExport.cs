@@ -19,7 +19,7 @@ public class Export : BaseCommand {
             return;
         }
 
-        var def_name = (model.Tags?.FirstOrDefault() ?? model.Guid ?? "model");
+        var def_name = (model.Tags?.FirstOrDefault() ?? model.Guid ?? "netflow") + ".model";
         var result = OutPath ?? def_name;
         if (!result.EndsWith(".zip")) {
             result += ".zip";

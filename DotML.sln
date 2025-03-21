@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.Benchmark", "DotML.Be
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.Example", "DotML.Example\DotML.Example.csproj", "{714EF4E0-78CB-415C-A472-79A6F7A81F4D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.Netbuild", "DotML.Netbuild\DotML.Netbuild.csproj", "{ABE5ED92-7BD8-4E3E-BCC9-04B927BDAAF6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -98,6 +100,10 @@ Global
 		{714EF4E0-78CB-415C-A472-79A6F7A81F4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{714EF4E0-78CB-415C-A472-79A6F7A81F4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{714EF4E0-78CB-415C-A472-79A6F7A81F4D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABE5ED92-7BD8-4E3E-BCC9-04B927BDAAF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABE5ED92-7BD8-4E3E-BCC9-04B927BDAAF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABE5ED92-7BD8-4E3E-BCC9-04B927BDAAF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABE5ED92-7BD8-4E3E-BCC9-04B927BDAAF6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{77B59DD2-CBC5-4ECD-8531-B18626262C52} = {96CE2825-D8B7-4981-AC95-75F67B1B3D6C}

@@ -17,17 +17,24 @@ public class Describe : BaseCommand {
             return;
         }
 
-        Console.WriteLine("GUID");
+        Console.WriteLine("IDENTIFIERS");
         Console.WriteLine(" | " + (model.Guid ?? "?"));
-        Console.WriteLine();
-
-        Console.WriteLine("TAGS");
         foreach (var tag in model.Tags.Select((t, i) => (i, t))) {
             Console.Write(" | ");
             Console.Write('\''); Console.Write(tag.t); Console.Write('\'');
             Console.WriteLine();
         }
         Console.WriteLine();
+
+        if (model.ClassLabels.Any()) {
+        Console.WriteLine("OUTPUT-CLASSES");
+        foreach (var label in model.ClassLabels.Select((t, i) => (i, t))) {
+            Console.Write(" | ");
+            Console.Write('\''); Console.Write(label.t); Console.Write('\'');
+            Console.WriteLine();
+        }
+        Console.WriteLine();
+        }
 
         Console.WriteLine("BUILD-SCRIPT");
         foreach (var line in model.GetBuildScript().Split('\n')) {

@@ -5,11 +5,11 @@ namespace DotML.Network;
 /// </summary>
 public class LayerDescriber : ILayerVisitor<string> {
     public string Visit(ConvolutionLayer layer) {
-        return $"{layer.FilterCount} filters of size {layer.Filters.FirstOrDefault()?.FirstOrDefault().Shape}";
+        return $"Convolution of {layer.FilterCount} filters of size {layer.Filters.FirstOrDefault()?.FirstOrDefault().Shape}";
     }
 
     public string Visit(DepthwiseConvolutionLayer layer) {
-        return $"{layer.Filters.Count} kernels of size {layer.Filters?.FirstOrDefault()?.FirstOrDefault().Shape}";
+        return $"Depth-wise convolution of {layer.Filters.Count} kernels of size {layer.Filters?.FirstOrDefault()?.FirstOrDefault().Shape}";
     }
 
     public string Visit(PoolingLayer layer) {

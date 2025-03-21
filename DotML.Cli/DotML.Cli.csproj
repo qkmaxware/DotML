@@ -27,8 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Readme.md" Pack="true" PackagePath="\"/>
+    <None Include="Readme.md" Pack="true" PackagePath="\" />
     <ProjectReference Include="..\DotML\DotML.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotML.Netbuild\DotML.Netbuild.csproj" />
   </ItemGroup>
 
 </Project>

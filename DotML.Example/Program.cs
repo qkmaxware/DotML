@@ -4,6 +4,7 @@ using DotML.Network.Training;
 using DotML.Network.Initialization;
 using System.Reflection;
 using System.Diagnostics;
+using DotML.Network.IO;
 
 public class Logger {
     private TextWriter writer;
@@ -41,8 +42,8 @@ public static void Main() {
     using var log_writer = new StreamWriter($"{network.Name}.log");
     var logger = new Logger(log_writer);
     using (var writer = new StreamWriter($"{network.Name}.netbuild")) {
-        var netbuilder = new NetBuildWriter(writer);
-        netbuilder.Encode(network);
+        var netbuilder = new NetbuildSerializer();
+        netbuilder.Serialize(network, writer);
     }
     logger.WriteLine($"Created network: {network.Name} (layers: {network.LayerCount}, shape: {network.InputShape} -> {network.OutputShape})");
     logger.WriteLine();

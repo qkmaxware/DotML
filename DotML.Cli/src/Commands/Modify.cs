@@ -103,7 +103,7 @@ public class Modify : BaseCommand {
     [Option("import", Required = false, HelpText = "In 'weight' mode, import the given weights to the model", Separator = ' ')]
     public string? WeightsToImport {get; set;}
 
-    [Option("export", Required = false, HelpText = "In 'weight' mode, export the given weights to the model", Separator = ' ')]
+    [Option("export", Required = false, HelpText = "In 'weight' mode, export the given weights from the model", Separator = ' ')]
     public string? WeightsToExport {get; set;}
 
     [Option("transfer", Required = false, HelpText = "In 'weight' mode, transfer weights to another model", Separator = ' ')]

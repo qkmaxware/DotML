@@ -36,14 +36,14 @@ public static class MobileNet {
     private static IEnumerable<IFeedforwardNetworkLayer> DepthwiseBlock(Shape3D size, int stride, int kernel_size=3, Padding padding = Padding.Same, ActivationFunction? activation = null) {
         var first = new DepthwiseConvolutionLayer(input_size: size, padding: padding, stride: stride, filter: ConvolutionFilter.Make(size.Channels, 1, kernel_size));
         yield return first;
-        yield return new BatchNorm(input_size: first.OutputShape);
+        yield return new LayerNorm(input_size: first.OutputShape);
         yield return new ActivationLayer(input_size: first.OutputShape, activation: activation ?? ReLU.Instance);
     }
 
     private static IEnumerable<IFeedforwardNetworkLayer> PointwiseBlock(Shape3D size, int filter_count, int kernel_size = 1, int stride=1, Padding padding = Padding.Same, bool dropout = false, double dropout_percent = 0.1, ActivationFunction? activation = null) {
         var first = new ConvolutionLayer(input_size: size, padding: padding, stride: stride, filters: ConvolutionFilter.Make(filter_count, size.Channels, kernel_size));
         yield return first;
-        yield return new BatchNorm(input_size: first.OutputShape);
+        yield return new LayerNorm(input_size: first.OutputShape);
         yield return new ActivationLayer(input_size: first.OutputShape, activation: activation ?? ReLU.Instance);
 
         if (dropout) {
@@ -79,7 +79,7 @@ public static class MobileNet {
         return new FeedforwardNetwork(
             // Input layer & first convolution
             new ConvolutionLayer(input_size: new Shape3D(IMG_CHANNELS, IMG_HEIGHT, IMG_WIDTH), padding: Padding.Same, stride: 2, filters: ConvolutionFilter.Make(32, 3, 3))
-            .Then((size) => new BatchNorm(input_size: size))
+            .Then((size) => new LayerNorm(input_size: size))
             .Then((size) => new ActivationLayer(input_size: size, activation: activation))
             // First depthwise separable convolution block
             .Then((size) => DepthwiseBlock(size, stride: 1, kernel_size: 3, activation: activation))

@@ -18,8 +18,8 @@ NAME '221-Network'
 ADD dense neurons=2
 ADD dense neurons=1";
 
-        var lang = new NetBuild();
-        var network = lang.ParseAndBuild(network_221);
+        var lang = new NetbuildSerializer();
+        var network = lang.Deserialize(network_221);
 
         Assert.AreEqual(new Shape3D(1, 2, 1), network.InputShape);
         Assert.AreEqual("221-Network", network.Name);

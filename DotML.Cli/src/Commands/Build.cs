@@ -1,5 +1,6 @@
 using CommandLine;
 using DotML.Network.IO;
+using DotML.Network.IO.Netbuild;
 
 namespace DotML.Cli.Commands;
 
@@ -10,7 +11,10 @@ public class Build : BaseCommand {
     public string? FilePath {get; set;}
 
     [Option("tag", HelpText = "Tag to use to uniquely identify this network once built", Required = false)]
-    public string? Tag {get; set;}
+    public IEnumerable<string>? TagsToAdd {get; set;}
+
+    [Option("labels", Required = false, HelpText = "Labels for all output classes", Separator = ' ')]
+    public IEnumerable<string>? LabelsForClasses {get; set;}
 
     public override void Action(AppData appData) {
         FileInfo file;
@@ -19,8 +23,12 @@ public class Build : BaseCommand {
             return;
         }
 
-        NetBuild builder = new NetBuild();
+        NetbuildSerializer builder = new NetbuildSerializer();
         Console.Write($"Loading build context {DataSize.FromValue(file.Length)}...");
+        var model_scripts = appData.ListModels();
+        var scoped_networks = model_scripts
+            .SelectMany(model => (model.Tags ?? Enumerable.Empty<string>()).Prepend(model.Guid).Cast<string>().Select(key => new KeyValuePair<string, ModelInfo>(key, model)))
+            .ToDictionary((model) => model.Key, (model) => (Func<string>)(model.Value.GetBuildScript));
         using var reader = new StreamReader(file.OpenRead());
         var text = reader.ReadToEnd();
         Console.WriteLine("done");
@@ -32,9 +40,15 @@ public class Build : BaseCommand {
         Console.WriteLine();
 
         Console.WriteLine($"Building network...");
-        var network = ast.Make((index, count, statement) => {
-            Console.WriteLine($"Step {index + 1}/{count} : {statement}");
-        });
+        var network = ast.Make(
+            new BuildEnvironment {
+                Serializer = builder,
+                ScopedNetworks = scoped_networks
+            },
+            (index, count, statement) => {
+                Console.WriteLine($"Step {index + 1}/{count} : {statement}");
+            }
+        );
         Console.WriteLine();
 
         Console.Write($"Validating network...");
@@ -51,16 +65,29 @@ public class Build : BaseCommand {
         Console.WriteLine();
 
         var guid = Guid.NewGuid().ToString();
-        var name = Tag ?? network.Name;
+        var name = TagsToAdd?.FirstOrDefault() ?? network.Name;
 
         if (is_valid) {
             var network_file = new FileInfo(Path.Combine(appData.ModelDirectory.FullName, guid + ".netbuild"));
+            using (var writer = new StreamWriter(network_file.FullName)) {
+                builder.Serialize(network, writer);
+            }
+
             var meta_file = new FileInfo(Path.Combine(appData.ModelDirectory.FullName, guid + ".xml"));
-            File.Copy(file.FullName, network_file.FullName);
             using (var writer = new StreamWriter(meta_file.FullName)) {
                 var info = new ModelInfo(meta_file);
-                if (name is not null)
-                    info.Tags.Add(name);
+                if (TagsToAdd is not null) {
+                    info.Tags = new List<string>();
+                    foreach (var tag in TagsToAdd) {
+                        info.Tags.Add(tag);
+                    }
+                }
+                if (LabelsForClasses is not null) {
+                    info.ClassLabels = new List<string>();
+                    foreach (var label in LabelsForClasses) {
+                        info.ClassLabels.Add(label);
+                    }
+                }
                 writer.Write(info.ToXml());
             }
             Console.WriteLine($"Successfully built model {guid}.");

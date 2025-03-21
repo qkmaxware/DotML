@@ -77,7 +77,7 @@ public class Fit : BaseCommand {
     public string? ContinueStr {get; set;}
     public bool ContinueFromExisting => IsSet(ContinueStr);
 
-    [Option("retry", HelpText = "Number of times to retry training if an exception occurs", Required = false)]
+    [Option("retry", HelpText = "Number of times to retry training if an exception occurs", Required = false, Default = 0)]
     public int? RetryCount {get; set;}
 
     public enum UpdateModeType {
@@ -641,6 +641,7 @@ public class Fit : BaseCommand {
     private static INotifierFactory[] notifiers = [
         new DiscordFactory(),
         new SlackFactory(),
+        new FileFactory(),
     ];
     private INotifier? GetNotifierFor(string? endpoint) {
         if (string.IsNullOrEmpty(endpoint))

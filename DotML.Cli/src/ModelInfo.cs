@@ -98,8 +98,8 @@ public class ModelInfo {
         if (this.network_file is null)
             throw new FileNotFoundException();
             
-        NetBuild builder = new NetBuild();
-        var network = builder.ParseAndBuild(File.ReadAllText(this.network_file.FullName));
+        NetbuildSerializer builder = new NetbuildSerializer();
+        var network = builder.Deserialize(File.ReadAllText(this.network_file.FullName));
         if (network is INamedNetwork named) {
             network.Name = Guid;
         }

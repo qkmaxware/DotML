@@ -12,6 +12,7 @@ Machine Learning practice implementations.
 | DotML.LinearAlgebra | Library contains all linear algebra implementations |
 | DotML.LinearAlgebra.Benchmark | Benchmarks for linear algebra implementations |
 | DotML.LinearAlgebra.Test | Tests for validating implementations of the linear algebra library |
+| DotML.Netbuild | Language for describing feed-forward network architectures |
 | DotML.Sandbox | Blazor Server app for training and experimenting with networks |
 | DotML.Test | Tests for validating parts of the code non-experimentally |
 | DotML.Utils | Utility projects, often to create training data sets |

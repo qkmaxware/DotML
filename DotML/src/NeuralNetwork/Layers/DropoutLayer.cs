@@ -25,15 +25,13 @@ public class DropoutLayer : FeedforwardNetworkLayer {
     public override void Initialize(IInitializer initializer) { }
 
     protected override void OnTrainingBegin() {
-        // Start using a shared mask
-        this.UseSharedMask = true;
-        this.ClearSharedMask();
+        // Start using a mask at the beginning of a new FF batch
+        // This mask is cleared after the end of the batch (including backpropagation)
+        this.RegenerateMask();
     }
 
     protected override void OnTrainingEnd() {
-        // Stop using a shared mask
-        this.UseSharedMask = false;
-        this.ClearSharedMask();
+        this.ClearMask();
     }
 
     public override int TrainableParameterCount() => 0;
@@ -41,40 +39,41 @@ public class DropoutLayer : FeedforwardNetworkLayer {
     private Random rng = new Random();
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) { 
+        if (this.IsInference)
+            return inputs; // No dropout at runtime
+        
+        // Dropout at training time
         var channelCount = inputs.Channels;
         var outputs = new Matrix<double>[channelCount];
+        var mask = this.mask;
 
-        if (channelCount > 0) {
-            var first = inputs[0];
-            var mask = GetMask(first.Rows, first.Columns); // Assumes all channels are the same length
+        if (channelCount < 1 || mask is null)
+            return inputs;
 
-            for (var channel = 0; channel < channelCount; channel++) {
-                var input = inputs[channel];
-                outputs[channel] = inputs[channel].HadamardWith(mask); // Elementwise multiplication with the mask
-            }
+        for (var channel = 0; channel < channelCount; channel++) {
+            var input = inputs[channel];
+            outputs[channel] = input.HadamardWith(mask[channel]); // Elementwise multiplication with the mask
         }
 
-        return (FeatureSet<double>)outputs;
+        return new FeatureSet<double>(outputs);
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
-        Matrix<double>? mask = this.GetSharedMask();
-        if (!mask.HasValue) {
+        FeatureSet<double>? mask = this.mask;
+        if (mask is null) {
             return new BackpropagationReturns(
                 args.OutputErrors, // Just pass the errors to the next layer if no mask was assigned
                 null
             );
         }
 
-        var mask_matrix = mask.Value;
-
         FeatureSet<double>[] input_errors = new FeatureSet<double>[args.OutputErrors.Batches];
         for (var batchIndex = 0; batchIndex < args.OutputBatch.Batches; batchIndex++) {
             var batch = args.OutputErrors[batchIndex];
 
             var matrices = new Matrix<double>[batch.Channels];
-            for (var i = 0; i < batch.Channels; i++) {
-                matrices[i] = batch[i].HadamardWith(mask_matrix);
+            for (var channelIndex = 0; channelIndex < batch.Channels; channelIndex++) {
+                matrices[channelIndex] = batch[channelIndex].HadamardWith(mask[channelIndex]);
             }
             input_errors[batchIndex] = new FeatureSet<double>(matrices);
         }
@@ -87,32 +86,25 @@ public class DropoutLayer : FeedforwardNetworkLayer {
 
     public override void SubtractGradients(LayerGradients? gradients) { }
 
-    public bool UseSharedMask {get; set;}
-    private Matrix<double>? batchMask = null;
-    public void ClearSharedMask() { batchMask = null; }
-    public Matrix<double>? GetSharedMask() => this.batchMask;
+    private FeatureSet<double>? mask;
 
-    private Matrix<double> GetMask(int rows, int cols) {
-        // Not using a shared mask, just generate a new one
-        if (!this.UseSharedMask) {
-            return Matrix<double>.Generate(rows, cols, () => rng.NextDouble() < DropoutRate ? 0.0 : 1.0);
-        }
-
-        // Using a shared mask, see if one already exists, or generate a new one
-        lock(this) {
-            if (this.batchMask.HasValue) {
-                // Return the existing mask
-                return this.batchMask.Value;
-            } else {
-                // Generate a new mask and save it for sharing
-                var matrix = Matrix<double>.Generate(rows, cols, () => rng.NextDouble() < DropoutRate ? 0.0 : 1.0);
-                this.batchMask = matrix;
-                return matrix;
-            }
-        }
+    public void ClearMask() {
+        this.mask = null;
     }
 
-     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public void RegenerateMask() {
+        var features = new Matrix<double>[this.InputShape.Channels];
+        for (var i = 0; i < this.InputShape.Channels; i++) {
+            features[i] = Matrix<double>.Generate(
+                this.InputShape.Rows, 
+                this.InputShape.Columns, 
+                () => rng.NextDouble() < DropoutRate ? 0.0 : 1.0
+            );
+        }
+        this.mask = new FeatureSet<double>(features);
+    }
+
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
     public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
     public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 
