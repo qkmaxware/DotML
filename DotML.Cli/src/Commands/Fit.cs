@@ -372,6 +372,7 @@ public class Fit : BaseCommand {
         
         start_timer = Stopwatch.StartNew();
         (double accuracy, double precision, double recall, double minloss, double maxloss, double avgloss, int passed)? prev_report = null;
+        var best_loss = double.MaxValue;
         var has_next = true;
         Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
             has_next = false;                   // Stop at end of next iteration
@@ -455,9 +456,10 @@ public class Fit : BaseCommand {
             validation_writer.WriteLine($"{epoch_id}, {report.TestsPassedCount}, {report.TestsFailedCount}, {report.AverageLoss}, {report.MaxLoss}, {report.MinLoss}, {report.Accuracy}, {report.Precision}, {report.Recall}, {report.F1Score}, \"{elapsed}\"");
             validation_writer.Flush();
 
-            if (IsSet(NotificationEvent.best)) {
+            if (IsSet(NotificationEvent.best) && (report.AverageLoss < best_loss)) {
                 notifier?.NotifyNewBest(network, epoch_id, trainer.Epochs, validation_report);
             }
+            best_loss = Math.Min(report.AverageLoss, best_loss);
 
             // Save testing report entry (currently no UI to monitor this)
             if (!SkipTesting && testing_report is not null) {
