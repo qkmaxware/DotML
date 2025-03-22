@@ -95,7 +95,7 @@ public class Fit : BaseCommand {
         smallest_loss,
         most_passed,
     }
-    [Option("retention", HelpText = "Flag to indicate how intermediate weights should be retained (none, all, most_recent, last5, last10, smallest_loss)", Default = RetentionPolicy.all)]
+    [Option("retention", HelpText = "Flag to indicate how intermediate weights should be retained (none, all, most_recent, last5, last10, smallest_loss)", Default = RetentionPolicy.none)]
     public RetentionPolicy Retention {get; set;}
     
 
@@ -260,7 +260,7 @@ public class Fit : BaseCommand {
         #endregion
 
         // TODO print header
-        string[] main_headers = ["NETWORK", "DATA"];
+        string[] main_headers = ["NETWORK", "TRAINING-DATA"];
         int[] main_headers_len = [60, 40];
         for (var col = 0; col < main_headers.Length; col++) {
             var name = main_headers[col];
@@ -289,6 +289,15 @@ public class Fit : BaseCommand {
         Console.Write(ColumnValue($"Size: {network.StorageSize()}", main_headers_len[0]));
         Console.Write(' ');
         Console.Write(ColumnValue($"Output Size: {(trainingPairs.Size > 0 ? trainingPairs[0].Output.Dimensionality : 0)}", main_headers_len[1]));
+        Console.WriteLine();
+        Console.WriteLine();
+
+        Console.WriteLine("TRAINER");
+        foreach (var property in trainer.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public)) {
+            if (!property.CanRead)
+                continue;
+            Console.WriteLine($"{property.Name}: {property.GetValue(trainer)}");
+        }
         Console.WriteLine();
 
         Console.WriteLine();

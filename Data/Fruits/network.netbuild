@@ -1,0 +1,27 @@
+FROM scratch INPUT 3 224 224
+LABEL "fruits"
+
+ADD convolution stride-x=4 stride-y=4 padding=Valid filters=96 kernel=11
+ADD activation fn=ReLU
+ADD layernorm
+ADD maxpool stride-x=2 stride-y=2 kernel=3
+ADD convolution stride-x=1 stride-y=1 padding=Same filters=256 kernel=5
+ADD activation fn=ReLU
+ADD layernorm
+ADD maxpool stride-x=2 stride-y=2 kernel=3
+ADD convolution stride-x=1 stride-y=1 padding=Same filters=384 kernel=3
+ADD activation fn=ReLU
+ADD convolution stride-x=1 stride-y=1 padding=Same filters=384 kernel=3
+ADD activation fn=ReLU
+ADD convolution stride-x=1 stride-y=1 padding=Same filters=256 kernel=3
+ADD activation fn=ReLU
+ADD layernorm
+ADD maxpool stride-x=2 stride-y=2 kernel=3
+ADD dense neurons=4096
+ADD layernorm
+ADD activation fn=ReLU
+ADD dense neurons=4096
+ADD layernorm
+ADD activation fn=ReLU
+ADD dense neurons=5
+ADD softmax

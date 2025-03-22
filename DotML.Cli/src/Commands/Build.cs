@@ -81,6 +81,9 @@ public class Build : BaseCommand {
                     foreach (var tag in TagsToAdd) {
                         info.Tags.Add(tag);
                     }
+                    if (!string.IsNullOrEmpty(network.Name) && !info.Tags.Contains(network.Name)) {
+                        info.Tags.Add(network.Name);
+                    }
                 }
                 if (LabelsForClasses is not null) {
                     info.ClassLabels = new List<string>();
