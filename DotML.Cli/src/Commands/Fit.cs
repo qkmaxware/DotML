@@ -93,6 +93,7 @@ public class Fit : BaseCommand {
         last5,
         last10,
         smallest_loss,
+        highest_accuracy,
         most_passed,
     }
     [Option("retention", HelpText = "Flag to indicate how intermediate weights should be retained (none, all, most_recent, last5, last10, smallest_loss)", Default = RetentionPolicy.none)]
@@ -210,6 +211,7 @@ public class Fit : BaseCommand {
             RetentionPolicy.last5           => new LastNWeights(weights_dir, 5),
             RetentionPolicy.last10          => new LastNWeights(weights_dir, 10),
             RetentionPolicy.smallest_loss   => new SmallestLoss(weights_dir, validation_report),
+            RetentionPolicy.highest_accuracy=> new HighestAccuracy(weights_dir, validation_report),
             RetentionPolicy.most_passed     => new MostTestsPassed(weights_dir, validation_report),
             _                               => new NoWeights()
         };
@@ -545,7 +547,7 @@ public class Fit : BaseCommand {
 
     private void PrintDone(DirectoryInfo training_dir) {
         Console.WriteLine($"Reports saved to '{training_dir.FullName}'.");
-        Console.WriteLine($"Use '{typeof(Fit).Assembly.GetName().Name} reports to review data.");
+        Console.WriteLine($"Use '{typeof(Fit).Assembly.GetName().Name} reports open '{training_dir.Name}' to review training metrics.");
     }
 
     #region Utility Functions

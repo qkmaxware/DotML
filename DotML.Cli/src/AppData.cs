@@ -5,7 +5,7 @@ namespace DotML.Cli;
 public class AppData {
 
     private string root_dir;
-    private string training_dir;
+    private string report_dir;
     private string model_dir;
 
     public AppData() {
@@ -15,15 +15,15 @@ public class AppData {
         this.root_dir = home ?? app_data;
         Directory.CreateDirectory(root_dir);
 
-        this.training_dir = Path.Combine(root_dir, "Training");
-        Directory.CreateDirectory(training_dir);
+        this.report_dir = Path.Combine(root_dir, "Reports");
+        Directory.CreateDirectory(report_dir);
 
         this.model_dir = Path.Combine(root_dir, "Models");
         Directory.CreateDirectory(model_dir);
     }
 
     public DirectoryInfo ModelDirectory => new DirectoryInfo(this.model_dir);
-    public DirectoryInfo TrainingDirectory => new DirectoryInfo(this.training_dir);
+    public DirectoryInfo TrainingDirectory => new DirectoryInfo(this.report_dir);
 
     public IEnumerable<ModelInfo> ListModels() {
         foreach (var file in ModelDirectory.GetFiles("*.xml")) {
@@ -41,15 +41,33 @@ public class AppData {
         ).FirstOrDefault();
     }
 
-    public DirectoryInfo CreateTrainingDir() {
-        var now = DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss");
-        var path = Path.Combine(training_dir, now);
+    public DirectoryInfo CreateReportDir(string report_name) {
+        var path = Path.Combine(report_dir, report_name);
         Directory.CreateDirectory(path);
         return new DirectoryInfo(path);
     }
 
-    public IEnumerable<TrainingReport> EnumerateTrainingSessions() {
-        var info = Directory.CreateDirectory(training_dir);
-        return info.EnumerateDirectories().Select(x => new TrainingReport(x));
+    public DirectoryInfo CreateTrainingDir() {
+        var now = DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss");
+        return CreateReportDir("Training " + now);
+    }
+
+    public IEnumerable<GenericReport> EnumerateReports() {
+        var info = Directory.CreateDirectory(report_dir);
+        foreach (var report in info.EnumerateDirectories()) {
+            // Specialized reports
+            if (report.Name.StartsWith("Training")) {
+                yield return new TrainingSession(report);
+            } 
+            
+            // Generalized "unknown" report
+            else {
+                yield return new GenericReport(report);
+            }
+        }
+    }
+
+    public IEnumerable<TrainingSession> EnumerateTrainingSessions() {
+        return EnumerateReports().OfType<TrainingSession>();
     }
 }
