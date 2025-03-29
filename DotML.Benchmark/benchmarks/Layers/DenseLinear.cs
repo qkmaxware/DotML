@@ -1,4 +1,5 @@
 using BenchmarkDotNet.Attributes;
+using CommandLine;
 using DotML.Network;
 
 namespace DotML.Benchmark;
@@ -10,15 +11,38 @@ public class BenchmarkDenseLinearLayer {
     public int IMG_CHANNELS = 3;
     [Params(10)]
     public int OUT_CLASSES = 10;
-    [Params(32, 64, 128, 227)]
+    [Params(32, 64, 128, 256, 512, 1024)]
     public int LENGTH {get; set;}
 
-    [Benchmark]
-    public void TestConvolutionFF() {
+    private BatchedFeatureSet<double> input;
+    private BatchedFeatureSet<double> output;
+    private DenseLinearLayer layer;
+
+    [GlobalSetup]
+    public void Setup() {
         var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(LENGTH, LENGTH)).ToArray();
+        this.input = new BatchedFeatureSet<double>(new FeatureSet<double>(input));
+
+        var output = Matrix<double>.Column(new Vec<double>(OUT_CLASSES));
+        this.output = new BatchedFeatureSet<double>(new FeatureSet<double>(output));
+
         var layer = new DenseLinearLayer(input_size: new Shape3D(3, LENGTH, LENGTH).Count, OUT_CLASSES);
-        
-        var _result = layer.EvaluateSync(new FeatureSet<double>(input));
+        this.layer = layer;
+    }
+
+    [Benchmark]
+    public void TestForward() {
+        var _result = layer.EvaluateSync(input);
+    }
+
+    [Benchmark]
+    public void TestBackward() {
+        var gradients = layer.Backpropagate(new Network.Training.BackpropagationArgs(
+            layer: -1,
+            input: input,
+            output: output,
+            error: output
+        ));
     }
 
 }

@@ -1,3 +1,4 @@
+using System.Text;
 using DotML.Network;
 using DotML.Network.Training;
 
@@ -5,6 +6,37 @@ namespace DotML.Test.Layers;
 
 [TestClass]
 public class DenseLinearLayerTest {
+    /*
+    // Testing the automatic flattening and un-flattening for multi-channel indices
+    [TestMethod]
+    public void TestFlatteningUnflattening() {
+        var layer = new DenseLinearLayer(input_size: 4, neurons: 2);
+        var ifeatures = FeatureSet<double>.FromJagged([
+            [
+                [1, 2],
+                [3, 4]
+            ],
+            [
+                [5, 6],
+                [7, 8]
+            ]
+        ]);
+        var flat = FlatteningLayer.Flatten(ifeatures);
+        Assert.AreEqual(true, ifeatures.FlattenElements().SequenceEqual(flat.FlattenElements()));
+        var unflattened = layer.UnflattenInputGradients(new BatchedFeatureSet<double>(ifeatures), flat[0])[0];
+        Assert.AreEqual(ifeatures.Channels, unflattened.Channels);
+        Assert.AreEqual(ifeatures.Rows, unflattened.Rows);
+        Assert.AreEqual(ifeatures.Channels, unflattened.Channels);
+        StringBuilder sb = new StringBuilder();
+        for (var i = 0; i < unflattened.Channels; i++) {
+            sb.Append(i);
+            sb.Append(" = ");
+            sb.Append(unflattened[i]);
+            sb.AppendLine(";");
+        }
+        throw new Exception(sb.ToString());
+    }*/
+
     [TestMethod]
     public void TestInput5Output3() {
         var layer = new DenseLinearLayer(input_size: 5, neurons: 3);

@@ -70,7 +70,7 @@ public class Import : BaseCommand {
 
         var guid = Guid.NewGuid().ToString();
         bool has_build = false; bool has_meta = false;
-        using (ZipArchive archive = ZipFile.Open(FilePath, ZipArchiveMode.Create)) {
+        using (ZipArchive archive = ZipFile.Open(FilePath, ZipArchiveMode.Read)) {
             var network_file = new FileInfo(Path.Combine(appData.ModelDirectory.FullName, guid + ".netbuild"));
             var build_entry = archive.GetEntry("architecture.netbuild");
             if (build_entry is not null) {

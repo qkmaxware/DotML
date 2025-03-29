@@ -16,10 +16,44 @@ public class BatchedFeatureSet<T> :
     private FeatureSet<T>[] batches;
 
     /// <summary>
+    /// Number of batches of feature sets
+    /// </summary>
+    public int Batches {get; init;}
+
+    /// <summary>
+    /// Number of channels in the feature set
+    /// </summary>
+    public int Channels {get; init;}
+
+    /// <summary>
+    /// Number of rows in the feature set
+    /// </summary>
+    public int Rows {get; init;}
+
+    /// <summary>
+    /// Number of columns in the feature set
+    /// </summary>
+    public int Columns {get; init;}
+
+    /// <summary>
+    /// Shape of the feature set
+    /// </summary>
+    public Shape4D Shape => new Shape4D(Batches, Channels, Rows, Columns);
+
+    /// <summary>
+    /// Number of dimensions in this tensor
+    /// </summary>
+    public int Dimensions => 4;
+
+    /// <summary>
     /// Create a new empty batched feature set
     /// </summary>
     public BatchedFeatureSet() {
         batches = Array.Empty<FeatureSet<T>>();
+        Batches = 0;
+        Channels = 0;
+        Rows = 0;
+        Columns = 0;
     }
 
     /// <summary>
@@ -28,6 +62,10 @@ public class BatchedFeatureSet<T> :
     /// <param name="other"></param>
     public BatchedFeatureSet(BatchedFeatureSet<T> other) {
         this.batches = (FeatureSet<T>[])other.batches.Clone();
+        Batches = other.Batches;
+        Channels = other.Channels;
+        Rows = other.Rows;
+        Columns = other.Columns;
     }
 
     /// <summary>
@@ -35,7 +73,11 @@ public class BatchedFeatureSet<T> :
     /// </summary>
     /// <param name="batches">feature sets</param>
     public BatchedFeatureSet(params FeatureSet<T>[] batches) {
-        this.batches = batches;
+        this.batches    = batches;
+        Batches         = batches.Length;
+        Channels        = batches.Length > 0 ? batches[0].Channels : 0;
+        Rows            = batches.Length > 0 ? batches[0].Rows : 0;
+        Columns         = batches.Length > 0 ? batches[0].Columns : 0;
     }
 
     /// <summary>
@@ -48,7 +90,11 @@ public class BatchedFeatureSet<T> :
         for (var batch = 0; batch < shape.Batches; batch++) {
             batches[batch] = new FeatureSet<T>(subshape);
         }
-        this.batches = batches;
+        this.batches    = batches;
+        Batches         = shape.Batches;
+        Channels        = shape.Channels;
+        Rows            = shape.Rows;
+        Columns         = shape.Columns;
     }
 
     /// <summary>
@@ -131,36 +177,6 @@ public class BatchedFeatureSet<T> :
             m[row, col] = value;
         }
     }
-
-    /// <summary>
-    /// Number of batches of feature sets
-    /// </summary>
-    public int Batches => batches.Length;
-
-    /// <summary>
-    /// Number of channels in the feature set
-    /// </summary>
-    public int Channels => batches.Length > 0 ? batches[0].Channels : 0;
-
-    /// <summary>
-    /// Number of rows in the feature set
-    /// </summary>
-    public int Rows => batches.Length > 0 ? batches[0].Rows : 0;
-
-    /// <summary>
-    /// Number of columns in the feature set
-    /// </summary>
-    public int Columns => batches.Length > 0 ? batches[0].Columns : 0;
-
-    /// <summary>
-    /// Shape of the feature set
-    /// </summary>
-    public Shape4D Shape => new Shape4D(Batches, Channels, Rows, Columns);
-
-    /// <summary>
-    /// Number of dimensions in this tensor
-    /// </summary>
-    public int Dimensions => 4;
 
     /// <summary>
     /// Get the length of the given tensor dimension by index
@@ -312,6 +328,9 @@ public class FeatureSet<T> :
     /// </summary>
     public FeatureSet() {
         this.channels = Array.Empty<Matrix<T>>();
+        this.Channels = 0;
+        this.Rows = 0;
+        this.Columns = 0;
     }
 
     /// <summary>
@@ -320,6 +339,9 @@ public class FeatureSet<T> :
     /// <param name="other">feature set to copy</param>
     public FeatureSet(FeatureSet<T> other) {
         this.channels = (Matrix<T>[])other.channels.Clone();
+        this.Channels = other.Channels;
+        this.Rows = other.Rows;
+        this.Columns = other.Columns;
     }
 
     /// <summary>
@@ -327,7 +349,10 @@ public class FeatureSet<T> :
     /// </summary>
     /// <param name="channels">feature channels</param>
     public FeatureSet(params Matrix<T>[] channels) {
-        this.channels = channels;
+        this.channels   = channels;
+        this.Channels   = channels.Length;
+        this.Rows       = channels.Length > 0 ? channels[0].Rows : 0;
+        this.Columns    = channels.Length > 0 ? channels[0].Columns : 0;
     }
 
     /// <summary>
@@ -339,7 +364,10 @@ public class FeatureSet<T> :
         for (var c = 0; c < shape.Channels; c++) {
             channels[c] = new Matrix<T>(shape.Rows, shape.Columns);
         }
-        this.channels = channels;
+        this.channels   = channels;
+        this.Channels   = channels.Length;
+        this.Rows       = channels.Length > 0 ? channels[0].Rows : 0;
+        this.Columns    = channels.Length > 0 ? channels[0].Columns : 0;
     }
 
     /// <summary>
@@ -385,17 +413,17 @@ public class FeatureSet<T> :
     /// <summary>
     /// Number of channels in the feature set
     /// </summary>
-    public int Channels => channels.Length;
+    public int Channels {get; init;}
 
     /// <summary>
     /// Number of rows in the feature set
     /// </summary>
-    public int Rows => channels.Length > 0 ? channels[0].Rows : 0;
+    public int Rows {get; init;}
 
     /// <summary>
     /// Number of columns in the feature set
     /// </summary>
-    public int Columns => channels.Length > 0 ? channels[0].Columns : 0;
+    public int Columns {get; init;}
 
     /// <summary>
     /// Shape of the feature set

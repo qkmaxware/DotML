@@ -28,15 +28,19 @@ public class List : BaseCommand {
         Console.WriteLine();
 
         foreach (var model in appData.ListModels()) {
-            IEnumerable<string>? tags = model.Tags;
-            if (tags is null || tags.Count() < 1) {
-                if (model.Guid is not null)
-                    tags = [model.Guid];
-                else 
-                    tags = [];
-            }
+            string guid = model.Guid ?? string.Empty;
+            IEnumerable<string> tags = model.Tags ?? [];
             foreach (var tag in tags) {
-                if (tag is null || (!string.IsNullOrEmpty(Filter) && !tag.Contains(Filter, StringComparison.CurrentCultureIgnoreCase))) {
+                if (
+                    tag is null 
+                    || (
+                        !string.IsNullOrEmpty(Filter) 
+                        && !(
+                            tag.Contains(Filter, StringComparison.CurrentCultureIgnoreCase)
+                            || guid.Contains(Filter, StringComparison.CurrentCultureIgnoreCase)
+                        )
+                    )
+                ) {
                     // We were filtering (filter exists) but the name doesn't contain the filter. 
                     // Skip
                     continue;

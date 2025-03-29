@@ -32,25 +32,25 @@ public struct Shape4D : IShape {
     /// <summary>
     /// Number of batches
     /// </summary>
-    public readonly int Batches {get;}
+    public readonly int Batches {get; init;}
     /// <summary>
     /// Number of channels
     /// </summary>
-    public readonly int Channels {get;}
+    public readonly int Channels {get; init;}
     /// <summary>
     ///  Number of rows
     /// </summary>
-    public readonly int Rows {get;}
+    public readonly int Rows {get; init;}
     /// <summary>
     /// Number of columns
     /// </summary>
-    public readonly int Columns {get;}
+    public readonly int Columns {get; init;}
     /// <summary>
     /// Total number of tensor elements contained in the shape
     /// </summary>
     public readonly int Count => Channels * Rows * Columns;
 
-    public int Dimensions => 4;
+    public readonly int Dimensions => 4;
 
     public Shape4D() {}
 
@@ -109,21 +109,21 @@ public struct Shape3D : IShape {
     /// <summary>
     /// Number of channels
     /// </summary>
-    public readonly int Channels {get;}
+    public readonly int Channels {get; init;}
     /// <summary>
     ///  Number of rows
     /// </summary>
-    public readonly int Rows {get;} 
+    public readonly int Rows {get; init;} 
     /// <summary>
     /// Number of columns
     /// </summary>
-    public readonly int Columns {get;}
+    public readonly int Columns {get; init;}
     /// <summary>
     /// Total number of tensor elements contained in the shape
     /// </summary>
     public readonly int Count => Channels * Rows * Columns;
 
-    public int Dimensions => 3;
+    public readonly int Dimensions => 3;
 
     public Shape3D() {}
 
@@ -179,13 +179,13 @@ public struct Shape2D : IShape {
     /// <summary>
     ///  Number of rows
     /// </summary>
-    public readonly int Rows {get;}
+    public readonly int Rows {get; init;}
     /// <summary>
     /// Number of columns
     /// </summary>
-    public readonly int Columns {get;}
+    public readonly int Columns {get; init;}
 
-    public int Dimensions => 2;
+    public readonly int Dimensions => 2;
 
     public Shape2D() {}
 

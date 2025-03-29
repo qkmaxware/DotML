@@ -20,7 +20,7 @@ where T:INumber<T>
     private static T[] NONE = Array.Empty<T>();
     private T[] values; // Literally just a pointer to an array... so size of struct is just int or nint.
 
-    public int Dimensions => 1;
+    public readonly int Dimensions => 1;
     public int GetDimension(int index) => index switch {
         0 => Dimensionality,
         _ => 1

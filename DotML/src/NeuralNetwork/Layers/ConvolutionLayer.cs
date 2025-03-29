@@ -270,7 +270,6 @@ Mine
         var kernel_cols_m1 = kernel_width - 1;
 
         var dX = new BatchedFeatureSet<double>(X.Shape);
-        const bool flip_kernel = false;
         
         // How it worked.
         // Each filter was an output channel
@@ -306,11 +305,7 @@ Mine
                                     if (out_x < 0 || out_x >= out_columns)
                                         continue;
 
-                                    if (flip_kernel) {
-                                        result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
-                                    } else {
-                                        result[out_y, out_x] += i * kernel[ky, kx];
-                                    }
+                                    result[out_y, out_x] += i * kernel[ky, kx];
                                 }
                             }
                         }

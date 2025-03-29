@@ -25,7 +25,7 @@ where T:INumber<T> {
     /// <summary>
     /// Number of elements in the matrix
     /// </summary>
-    public int Size {
+    public readonly int Size {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => values.Length;
     }
@@ -33,17 +33,17 @@ where T:INumber<T> {
     /// <summary>
     /// Number of rows in the matrix
     /// </summary>
-    public int Rows {get; init;}
+    public readonly int Rows {get; init;}
 
     /// <summary>
     /// Number of columns in the matrix
     /// </summary>
-    public int Columns {get; init;}
+    public readonly int Columns {get; init;}
 
     /// <summary>
     /// Number of tensor dimensions
     /// </summary>
-    public int Dimensions => 2;
+    public readonly int Dimensions => 2;
 
     /// <summary>
     /// Matrix shape (rows & columns)
@@ -57,17 +57,17 @@ where T:INumber<T> {
     /// <summary>
     /// Check if the matrix is a column matrix (only one column)
     /// </summary> 
-    public bool IsColumnMatrix => this.Columns == 1;
+    public readonly bool IsColumnMatrix => this.Columns == 1;
 
     /// <summary>
     /// Check if the matrix is a row matrix (only one row)
     /// </summary> 
-    public bool IsRowMatrix => this.Rows == 1;
+    public readonly bool IsRowMatrix => this.Rows == 1;
 
     /// <summary>
     /// Check if the matrix is square
     /// </summary> 
-    public bool IsSquareMatrix => this.Rows == this.Columns;
+    public readonly bool IsSquareMatrix => this.Rows == this.Columns;
 
     #endregion
     #region Accessors
@@ -325,9 +325,9 @@ where T:INumber<T> {
     /// <returns>matrix</returns>
     public static Matrix<T> Generate(int rows, int cols, Func<T> generator) {
         var mat = new Matrix<T>(rows, cols);
-        for (int i = 0; i < rows; i++)
-            for (int j = 0; j < cols; j++)
-                mat[i, j] = generator();
+        var values = mat.values.AsSpan();
+        for (var i = 0; i < values.Length; i++)
+            values[i] = generator();
         return mat;
     }
 
@@ -569,13 +569,15 @@ where T:INumber<T> {
         if (this.Rows != other.Rows || this.Columns != other.Columns)
             throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {other.Shape}.");
 
-        var result = new Matrix<R>(this.Rows, this.Columns);
-        var r = result.values.AsSpan();
-        var s = values.AsSpan(); var o = other.values.AsSpan();
-        var len = s.Length;
+        var out_matrix = new Matrix<R>(this.Rows, this.Columns);
+        var out_values = out_matrix.values.AsSpan();
+        var lhs_values = values.AsSpan(); 
+        var rhs_values = other.values.AsSpan();
+        var len = lhs_values.Length;
+
         for (var i = 0; i < len; i++)
-            r[i] = operation(s[i], o[i]);
-        return result;
+            out_values[i] = operation(lhs_values[i], rhs_values[i]);
+        return out_matrix;
     }
 
     /// <summary>
@@ -608,10 +610,11 @@ where T:INumber<T> {
         if (this.Rows != other.Rows || this.Columns != other.Columns)
             throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {other.Shape}.");
 
-        var s = values.AsSpan(); var o = other.values.AsSpan();
-        var len = s.Length;
+        var lhs_values = values.AsSpan(); 
+        var rhs_values = other.values.AsSpan();
+        var len = lhs_values.Length;
         for (var i = 0; i < len; i++)
-            s[i] = operation(s[i], o[i]);
+            lhs_values[i] = operation(lhs_values[i], rhs_values[i]);
     }
 
     /// <summary>
@@ -626,11 +629,12 @@ where T:INumber<T> {
         if (result.Rows != lhs.Rows || result.Columns != lhs.Columns || result.Rows != rhs.Rows || result.Columns != rhs.Columns)
             throw new ArithmeticException($"Invalid dimensions for element-wise operation between {lhs.Shape} and {rhs.Shape}.");
         
-        var r = result.values.AsSpan();
-        var s = lhs.values.AsSpan(); var o = rhs.values.AsSpan();
+        var output_values = result.values.AsSpan();
+        var lhs_values = lhs.values.AsSpan(); 
+        var rhs_values = rhs.values.AsSpan();
         var len = result.Size;
         for (var i = 0; i < len; i++)
-            r[i] = operation(s[i], o[i]);
+            output_values[i] = operation(lhs_values[i], rhs_values[i]);
     }
 
     /// <summary>
@@ -803,25 +807,27 @@ where T:INumber<T> {
 
         var result              = new Matrix<T>(outputRows, outputColumns, bias ?? T.Zero);
         for (var y = 0; y < outputRows; y++) {
-        for (var x = 0; x < outputColumns; x++) {
             var startY = y * strideY - paddingRows;
-            var startX = x * strideX - paddingColumns;
 
-            var total_sum = T.Zero;
-            for (int ky = 0; ky < filterRows; ky++) {
-                var inY = startY + ky;
-                if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
+            for (var x = 0; x < outputColumns; x++) {
+                var startX = x * strideX - paddingColumns;
 
-                for (int kx = 0; kx < filterColumns; kx++) {
-                    var inX = startX + kx;
-                    if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
-                    
-                    total_sum += input[inY, inX] * kernel[ky, kx];
+                var total_sum = T.Zero;
+                for (int ky = 0; ky < filterRows; ky++) {
+                    var inY = startY + ky;
+                    if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
+
+                    for (int kx = 0; kx < filterColumns; kx++) {
+                        var inX = startX + kx;
+                        if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
+                        
+                        total_sum += input[inY, inX] * kernel[ky, kx];
+                    }
                 }
-            }
 
-            result[y, x] += total_sum;
-        }}
+                result[y, x] += total_sum;
+            }
+        }
 
         return result;
     }
@@ -854,25 +860,27 @@ where T:INumber<T> {
         var result              = new Matrix<T>(outputRows, outputColumns, bias ?? T.Zero);
         foreach (var (input, kernel) in inputs.Zip(kernels)) {
             for (var y = 0; y < outputRows; y++) {
-            for (var x = 0; x < outputColumns; x++) {
                 var startY = y * strideY - paddingRows;
-                var startX = x * strideX - paddingColumns;
 
-                var total_sum = T.Zero;
-                for (int ky = 0; ky < filterRows; ky++) {
-                    var inY = startY + ky;
-                    if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
+                for (var x = 0; x < outputColumns; x++) {
+                    var startX = x * strideX - paddingColumns;
 
-                    for (int kx = 0; kx < filterColumns; kx++) {
-                        var inX = startX + kx;
-                        if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
-                        
-                        total_sum += input[inY, inX] * kernel[ky, kx];
+                    var total_sum = T.Zero;
+                    for (int ky = 0; ky < filterRows; ky++) {
+                        var inY = startY + ky;
+                        if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
+
+                        for (int kx = 0; kx < filterColumns; kx++) {
+                            var inX = startX + kx;
+                            if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
+                            
+                            total_sum += input[inY, inX] * kernel[ky, kx];
+                        }
                     }
-                }
 
-                result[y, x] += total_sum;
-            }}
+                    result[y, x] += total_sum;
+                }
+            }
         }
 
         return result;
@@ -1342,11 +1350,15 @@ where T:INumber<T> {
     /// </summary>
     /// <returns>Matrix values as a single array</returns>
     public IEnumerable<T> FlattenRows() {
+        #if MATRIX_STORAGE_ROW_MAJOR
+        return values;
+        #else
         for (var row = 0; row < Rows; row++) {
             for (var col = 0; col < Columns; col++) {
                 yield return this[row, col];
             }
         }
+        #endif
     }
 
     /// <summary>
