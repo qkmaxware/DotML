@@ -34,47 +34,51 @@ public class LayerNorm : FeedforwardNetworkLayer {
     }
 
     public void ComputeMeansAndVariances(FeatureSet<double> features, out double mean_vec, out double variance_vec) {
-        var len = features.Channels;
+        var channels = features.Channels;
+        var item_count = channels * features.Rows * features.Columns;
+        var mean_sum = 0.0;
+        for (var c = 0; c < channels; c++) {
+            var arr = features[c].AsSpan();
+            for (var i = 0; i < arr.Length; i++) {
+                var x = arr[i];
+                mean_sum += x;
+            }
+        }
+        var layer_mean = mean_sum / item_count;
 
-        //var local_means = new double[len];
-        //var local_variances = new double[len];
-
-        var layer_mean = features.SelectMany(x => x).Average();
-        var layer_variance = features.SelectMany(x => x).Select(v => Math.Pow(v - layer_mean, 2)).Average();
+        var variance_sum = 0.0;
+        for (var c = 0; c < channels; c++) {
+            var arr = features[c].AsSpan();
+            for (var i = 0; i < arr.Length; i++) {
+                var x = arr[i];
+                var x_mean = x - layer_mean;
+                variance_sum += x_mean * x_mean;
+            }
+        }
+        var layer_variance = variance_sum / item_count;
+        
+        //var layer_mean = features.SelectMany(x => x).Average();
+        //var layer_variance = features.SelectMany(x => x).Select(v => Math.Pow(v - layer_mean, 2)).Average();
+        //var layer_variance = features.SelectMany(x => x).Select(v => ((v - layer_mean) * (v - layer_mean))).Average();
 
         mean_vec = layer_mean;
         variance_vec = layer_variance;
-
-        /*for (var i = 0; i < len; i++) {
-            var neurons = features[i];
-
-            var local_mean = neurons.Average();
-            var local_variance = neurons.Select(v => Math.Pow(v - local_mean, 2)).Average();
-
-            local_means[i] = local_mean;
-            local_variances[i] = local_variance;
-        }*/
-
-        //mean_vec = local_means;
-        //variance_vec = local_variances;
     }
+
+    const double epsilon = 1e-8;
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
         var len = channels.Channels;
         Matrix<double>[] outputs = new Matrix<double>[len];
 
         // Compute the mean and variance across all inputs 
-        ComputeMeansAndVariances(channels, out double means, out double variances);
+        ComputeMeansAndVariances(channels, out double mean, out double variance);
+        var sqrt = 1.0 / Math.Sqrt(variance + epsilon);
 
         // Perform the normalization for each feature
         for (var channel = 0; channel < len; channel++) {
             // Get feature at channel
             Matrix<double> features = channels[channel];
-
-            // Get mean, variance as computed
-            var mean = means;
-            var variance = variances;
-            var sqrt = 1.0 / Math.Sqrt(variance + 1e-8);
 
             // Normalize the channel using mean and variance
             var output = features.Transform(v => (v - mean) * sqrt);
@@ -96,7 +100,6 @@ public class LayerNorm : FeedforwardNetworkLayer {
         var rows = args.OutputErrors.Rows;
         var columns = args.OutputErrors.Columns;
         var one_over_features = 1.0 / (rows * columns);
-        const double epsilon = 1e-8;
     
         Matrix<double>[] gradient_betas = new Matrix<double>[channels];
         Matrix<double>[] gradient_gammas = new Matrix<double>[channels];
@@ -166,13 +169,15 @@ public class LayerNorm : FeedforwardNetworkLayer {
             var mean = mean_per_batch[batch];
             var m = InputShape.Count; // channels * x.Rows * x.Columns;
             var _m = 1.0 / m;
-            var sqrt = Math.Sqrt(var + epsilon);
+            var var_plus_epsilon = var + epsilon;
+            var inv_var_plus_epsilon = 1.0 / var_plus_epsilon;
+            var sqrt = Math.Sqrt(var_plus_epsilon);
             var _sqrt = 1.0 / sqrt;
             var sum_all_dl_dxhat = loss_wrt_xhats.SelectMany(xhat => xhat).Sum();
             var term2_scalar = -sum_all_dl_dxhat / (m * sqrt);
             var sum_all_dxHat_and_x = loss_wrt_xhats.Zip(args.InputBatch[batch]).SelectMany((xhat_x_pair) => xhat_x_pair.First.Zip(xhat_x_pair.Second)).Select((pair) => {
                 var (xhat, x) = pair;
-                return xhat * (x - mean) / (var + epsilon);
+                return xhat * (x - mean) * inv_var_plus_epsilon;
             }).Sum();
             for (var channel = 0; channel < channels; channel++) {
                 var x = xs[channel];
