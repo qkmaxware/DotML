@@ -88,7 +88,7 @@ public class Import : BaseCommand {
             var weights_file = new FileInfo(Path.Combine(appData.ModelDirectory.FullName, guid + ".safetensors"));
             var weights_entry = archive.GetEntry("weights.safetensors");
             if (weights_entry is not null) {
-                weights_entry.ExtractToFile(weights_entry.FullName);
+                weights_entry.ExtractToFile(weights_file.FullName);
             }
         }
 
