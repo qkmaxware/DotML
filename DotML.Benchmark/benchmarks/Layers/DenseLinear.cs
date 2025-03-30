@@ -12,7 +12,7 @@ public class BenchmarkDenseLinearLayer {
     [Params(10)]
     public int OUT_CLASSES = 10;
     [Params(32, 64, 128, 256, 512, 1024)]
-    public int LENGTH {get; set;}
+    public int DIM_LENGTH {get; set;}
 
     private BatchedFeatureSet<double> input;
     private BatchedFeatureSet<double> output;
@@ -20,23 +20,23 @@ public class BenchmarkDenseLinearLayer {
 
     [GlobalSetup]
     public void Setup() {
-        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(LENGTH, LENGTH)).ToArray();
+        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(DIM_LENGTH, DIM_LENGTH)).ToArray();
         this.input = new BatchedFeatureSet<double>(new FeatureSet<double>(input));
 
         var output = Matrix<double>.Column(new Vec<double>(OUT_CLASSES));
         this.output = new BatchedFeatureSet<double>(new FeatureSet<double>(output));
 
-        var layer = new DenseLinearLayer(input_size: new Shape3D(3, LENGTH, LENGTH).Count, OUT_CLASSES);
+        var layer = new DenseLinearLayer(input_size: new Shape3D(3, DIM_LENGTH, DIM_LENGTH).Count, OUT_CLASSES);
         this.layer = layer;
     }
 
     [Benchmark]
-    public void TestForward() {
+    public void Forward() {
         var _result = layer.EvaluateSync(input);
     }
 
     [Benchmark]
-    public void TestBackward() {
+    public void Backward() {
         var gradients = layer.Backpropagate(new Network.Training.BackpropagationArgs(
             layer: -1,
             input: input,

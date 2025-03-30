@@ -10,31 +10,74 @@ public class BenchmarkActivationLayer {
     public int IMG_CHANNELS = 3;
     [Params(10)]
     public int OUT_CLASSES = 10;
-    [Params(32, 64, 128, 227)]
-    public int LENGTH {get; set;}
+    [Params(32, 64, 128, 256, 512, 1024)]
+    public int DIM_LENGTH {get; set;}
 
-    [Benchmark]
-    public void TestReLUFF() {
-        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(LENGTH, LENGTH)).ToArray();
-        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, LENGTH, LENGTH), ActivationFunctions.ReLU);
-        
-        var _result = layer.EvaluateSync(new FeatureSet<double>(input));
+    private BatchedFeatureSet<double> input;
+    private BatchedFeatureSet<double> output;
+
+    [GlobalSetup]
+    public void Setup() {
+        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), ActivationFunctions.ReLU);
+        var input = new FeatureSet<double>(layer.InputShape);
+        var output = new FeatureSet<double>(layer.OutputShape);
+
+        this.input = new BatchedFeatureSet<double>(input);
+        this.output = new BatchedFeatureSet<double>(output);
     }
 
     [Benchmark]
-    public void TestSigmoidFF() {
-        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(LENGTH, LENGTH)).ToArray();
-        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, LENGTH, LENGTH), ActivationFunctions.Sigmoid);
+    public void ForwardReLU() {
+        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), ActivationFunctions.ReLU);
         
-        var _result = layer.EvaluateSync(new FeatureSet<double>(input));
+        var _result = layer.EvaluateSync(input);
+    }
+    [Benchmark]
+    public void BackwardReLU() {
+        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), ActivationFunctions.ReLU);
+        
+        var gradients = layer.Backpropagate(new Network.Training.BackpropagationArgs(
+            layer: -1,
+            input: input,
+            output: output,
+            error: output
+        ));
     }
 
     [Benchmark]
-    public void TestTanhFF() {
-        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(LENGTH, LENGTH)).ToArray();
-        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, LENGTH, LENGTH), ActivationFunctions.Tanh);
+    public void ForwardSigmoid() {
+        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), ActivationFunctions.Sigmoid);
         
-        var _result = layer.EvaluateSync(new FeatureSet<double>(input));
+        var _result = layer.EvaluateSync(input);
+    }
+    [Benchmark]
+    public void BackwardSigmoid() {
+        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), ActivationFunctions.Sigmoid);
+        
+        var gradients = layer.Backpropagate(new Network.Training.BackpropagationArgs(
+            layer: -1,
+            input: input,
+            output: output,
+            error: output
+        ));
+    }
+
+    [Benchmark]
+    public void ForwardTanh() {
+        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), ActivationFunctions.Tanh);
+        
+        var _result = layer.EvaluateSync(input);
+    }
+    [Benchmark]
+    public void BackwardTanh() {
+        var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), ActivationFunctions.Tanh);
+        
+        var gradients = layer.Backpropagate(new Network.Training.BackpropagationArgs(
+            layer: -1,
+            input: input,
+            output: output,
+            error: output
+        ));
     }
 
 }

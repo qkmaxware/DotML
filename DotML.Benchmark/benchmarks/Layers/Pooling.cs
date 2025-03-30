@@ -12,23 +12,54 @@ public class BenchmarkPoolingLayer {
     public int IMG_CHANNELS = 3;
     [Params(10)]
     public int OUT_CLASSES = 10;
-    [Params(32, 64, 128, 227)]
-    public int LENGTH {get; set;}
+    [Params(32, 64, 128, 256, 512, 1024)]
+    public int DIM_LENGTH {get; set;}
 
-    [Benchmark]
-    public void TestMaxPoolFF() {
-        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(LENGTH, LENGTH)).ToArray();
-        var layer = new LocalMaxPoolingLayer(new Shape3D(IMG_CHANNELS, LENGTH, LENGTH), KERNEL);
-        
-        var _result = layer.EvaluateSync(new FeatureSet<double>(input));
+    private FeedforwardNetworkLayer max;
+    private FeedforwardNetworkLayer avg;
+    private BatchedFeatureSet<double> input;
+    private BatchedFeatureSet<double> output;
+
+    [GlobalSetup]
+    public void Setup() {
+        var max = new LocalMaxPoolingLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), KERNEL);
+        var avg = new LocalAvgPoolingLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), KERNEL);
+
+        var input = new FeatureSet<double>(max.InputShape);
+        var output = new FeatureSet<double>(max.OutputShape);
+
+        this.max = max;
+        this.avg = avg;
+        this.input = new BatchedFeatureSet<double>(input);
+        this.output = new BatchedFeatureSet<double>(output);
     }
 
     [Benchmark]
-    public void TestAvgPoolFF() {
-        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(LENGTH, LENGTH)).ToArray();
-        var layer = new LocalAvgPoolingLayer(new Shape3D(IMG_CHANNELS, LENGTH, LENGTH), KERNEL);
-        
-        var _result = layer.EvaluateSync(new FeatureSet<double>(input));
+    public void ForwardMaxPool() {
+        var _result = max.EvaluateSync(input);
+    }
+    [Benchmark]
+    public void BackwardMaxPool() {
+        var gradient = max.Backpropagate(new Network.Training.BackpropagationArgs(
+            layer: -1,
+            input: input,
+            output: output,
+            error: output
+        ));
+    }
+
+    [Benchmark]
+    public void ForwardAvgPool() {
+        var _result = avg.EvaluateSync(input);
+    }
+    [Benchmark]
+    public void BackwardAvgPool() {
+        var gradient = avg.Backpropagate(new Network.Training.BackpropagationArgs(
+            layer: -1,
+            input: input,
+            output: output,
+            error: output
+        ));
     }
 
 }

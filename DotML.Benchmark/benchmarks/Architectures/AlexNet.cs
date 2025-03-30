@@ -24,15 +24,9 @@ public class BenchmarkAlexNet {
     }
 
     [Benchmark]
-    public void TestAlexNetFF() {
+    public void Forward() {
         var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(DimensionLength, DimensionLength)).ToArray();
 
         network.PredictSync(new FeatureSet<double>(input));
-    }
-
-    [Benchmark]
-    public void TestAlexNetReshapeFF() {
-        var matrix = new Matrix<double>(9216,1);
-        matrix.Reshape(Enumerable.Range(0, 256).Select(x => new Shape2D(6, 6)).ToArray());
     }
 }

@@ -32,18 +32,18 @@ public class BenchmarkLayerNorm {
         layer.Initialize(Initializers.He);
     }
 
-    [Benchmark]
-    public void TestComputeMeansAndVariances() {
+    //[Benchmark]
+    public void ComputeMeansAndVariances() {
         layer.ComputeMeansAndVariances(input[0], out var mean, out var variance);
     }
 
     [Benchmark]
-    public void TestForward() {
+    public void Forward() {
         var result = layer.EvaluateSync(input);
     }
 
     [Benchmark]
-    public void TestBackwards() {
+    public void Backward() {
         var gradients = layer.Backpropagate(new Network.Training.BackpropagationArgs(
             layer: -1,
             input: input, 
