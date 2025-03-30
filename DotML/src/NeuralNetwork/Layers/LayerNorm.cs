@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
@@ -69,6 +70,7 @@ public class LayerNorm : FeedforwardNetworkLayer {
 
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
         var len = channels.Channels;
+        Matrix<double>[] norms = new Matrix<double>[len];
         Matrix<double>[] outputs = new Matrix<double>[len];
 
         // Compute the mean and variance across all inputs 
@@ -81,17 +83,30 @@ public class LayerNorm : FeedforwardNetworkLayer {
             Matrix<double> features = channels[channel];
 
             // Normalize the channel using mean and variance
-            var output = features.Transform(v => (v - mean) * sqrt);
+            var norm = features.Transform(v => (v - mean) * sqrt);
+            norms[channel] = norm; // Save normalized feature
 
             // Apply scaling (gamma) and shifting (beta)
-            output.HadamardWithInplace(Gammas[channel]); // output = output .* gamma
+            var output = norm.HadamardWith(Gammas[channel]); // output = output .* gamma
             output.AddWithInplace(Betas[channel]); // output = output + beta
 
             // Save results
             outputs[channel] = output;                              
         }
 
-        return new FeatureSet<double>(outputs);
+        return new LayerNormFeatureSet(channels, mean, variance, new FeatureSet<double>(norms), outputs);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static double SumAll(Matrix<double>[] values) {
+        double sum = 0.0;
+        for (var i = 0; i < values.Length; i++) {
+            var arr = values[i].AsSpan();
+            for (var j = 0; j < arr.Length; j++) {
+                sum += arr[j];
+            }
+        }
+        return sum;
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
@@ -112,9 +127,17 @@ public class LayerNorm : FeedforwardNetworkLayer {
         var mean_per_batch = new double[batches];
         var variance_per_batch = new double[batches];
         for (var b = 0; b < batches; b++) {
-            ComputeMeansAndVariances(args.InputBatch[b], out var means, out var variances);
-            mean_per_batch[b] = means;
-            variance_per_batch[b] = variances;
+            if (args.OutputBatch[b] is LayerNormFeatureSet feats) {
+                // Fetch it
+                mean_per_batch[b] = feats.Mean;
+                variance_per_batch[b] = feats.Variance;
+                continue;
+            } else {
+                // Recompute it
+                ComputeMeansAndVariances(args.InputBatch[b], out var means, out var variances);
+                mean_per_batch[b] = means;
+                variance_per_batch[b] = variances;
+            }
         }
 
         // Compute the gradients of gamma & beta per channel
@@ -132,13 +155,18 @@ public class LayerNorm : FeedforwardNetworkLayer {
 
             // Gradient of L with respect to gamma
             // dL/dG = Sum_b ( dL/dY * xHat )
-            var xhats_c = new Matrix<double>[batches];
             var gradient_gamma = new Matrix<double>(rows, columns);
             for (var batchIndex = 0; batchIndex < batches; batchIndex++) {
                 // Compute xHat from y
-                var xhat_k = args.OutputBatch[batchIndex][channel] - beta; // Sucks that I have to re-compute this
-                xhat_k.ElementWiseInplace(gamma, (xhat, g) => xhat / (g + epsilon));
-                xhats_c[batchIndex] = xhat_k;
+                Matrix<double> xhat_k;
+                if (args.OutputBatch[batchIndex] is LayerNormFeatureSet feats) {
+                    // Fetch it
+                    xhat_k = feats.NormalizedInput[channel].Clone();
+                } else {
+                    // Recompute it
+                    xhat_k = args.OutputBatch[batchIndex][channel] - beta;
+                    xhat_k.ElementWiseInplace(gamma, (xhat, g) => xhat / (g + epsilon));
+                }
                 
                 var loss_wrt_y_k = args.OutputErrors[batchIndex][channel];
                 var loss_wrt_y_times_xHat = xhat_k;
@@ -173,12 +201,25 @@ public class LayerNorm : FeedforwardNetworkLayer {
             var inv_var_plus_epsilon = 1.0 / var_plus_epsilon;
             var sqrt = Math.Sqrt(var_plus_epsilon);
             var _sqrt = 1.0 / sqrt;
-            var sum_all_dl_dxhat = loss_wrt_xhats.SelectMany(xhat => xhat).Sum();
+            var sum_all_dl_dxhat = SumAll(loss_wrt_xhats); //loss_wrt_xhats.SelectMany(xhat => xhat).Sum();
             var term2_scalar = -sum_all_dl_dxhat / (m * sqrt);
-            var sum_all_dxHat_and_x = loss_wrt_xhats.Zip(args.InputBatch[batch]).SelectMany((xhat_x_pair) => xhat_x_pair.First.Zip(xhat_x_pair.Second)).Select((pair) => {
+
+            var sum_all_dxHat_and_x = 0.0;
+            {
+                var x_count = loss_wrt_xhats.Length;
+                for (var i = 0; i < x_count; i++) {
+                    var xhat = loss_wrt_xhats[i].AsSpan();
+                    var x = xs[i].AsSpan();
+                    var el_count = xhat.Length;
+                    for (var j = 0; j < el_count; j++) {
+                        sum_all_dxHat_and_x += xhat[j] * (x[j] - mean) * inv_var_plus_epsilon;
+                    }
+                }    
+            }
+            /*var sum_all_dxHat_and_x = loss_wrt_xhats.Zip(args.InputBatch[batch]).SelectMany((xhat_x_pair) => xhat_x_pair.First.Zip(xhat_x_pair.Second)).Select((pair) => {
                 var (xhat, x) = pair;
                 return xhat * (x - mean) * inv_var_plus_epsilon;
-            }).Sum();
+            }).Sum();*/
             for (var channel = 0; channel < channels; channel++) {
                 var x = xs[channel];
                 var y = ys[channel];
@@ -215,6 +256,29 @@ public class LayerNorm : FeedforwardNetworkLayer {
 
         for (var b = 0; b < this.Betas.Length; b++) {
             this.Betas[b].SubtractWithInplace(grads.BetaGradients[b]);
+        }
+    }
+
+    public override void Initialize(IInitializer initializer) { }
+
+    public override int TrainableParameterCount() {
+        return InputShape.Count * 2;
+    }
+
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+
+    private class LayerNormFeatureSet : FeatureSet<double> {
+        public FeatureSet<double> Input {get; set;}
+        public FeatureSet<double> NormalizedInput {get; set;}
+        public double Mean {get; set;}
+        public double Variance {get; set;}
+        public LayerNormFeatureSet(FeatureSet<double> x, double mean, double variance, FeatureSet<double> normalized_x, Matrix<double>[] features) : base(features) {
+            this.Input = x;
+            this.NormalizedInput = normalized_x;
+            this.Mean = mean;
+            this.Variance = variance;
         }
     }
 
@@ -261,14 +325,4 @@ public class LayerNorm : FeedforwardNetworkLayer {
             }
         }
     }
-
-    public override void Initialize(IInitializer initializer) { }
-
-    public override int TrainableParameterCount() {
-        return InputShape.Count * 2;
-    }
-
-    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

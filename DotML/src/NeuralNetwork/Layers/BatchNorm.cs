@@ -287,6 +287,26 @@ public class BatchNorm : FeedforwardNetworkLayer {
         }
     }
 
+    public override void Initialize(IInitializer initializer) {
+        // No need to initialize any weights
+    }
+
+    public override int TrainableParameterCount() {
+        return InputShape.Count * 2;
+    }
+
+    /// <summary>
+    /// Number of un-trainable parameters in this layer
+    /// </summary>
+    /// <returns>Number of un-trainable parameters</returns>
+    public override int UnTrainableParameterCount() => this.RunningVariance.Dimensionality + this.RunningMean.Dimensionality;
+
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+
+    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+
+    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+
     public class Gradients : LayerGradients {
         private Matrix<double>[] Gammas;
         private Matrix<double>[] Betas;
@@ -330,24 +350,4 @@ public class BatchNorm : FeedforwardNetworkLayer {
             }
         }
     }
-
-    public override void Initialize(IInitializer initializer) {
-        // No need to initialize any weights
-    }
-
-    public override int TrainableParameterCount() {
-        return InputShape.Count * 2;
-    }
-
-    /// <summary>
-    /// Number of un-trainable parameters in this layer
-    /// </summary>
-    /// <returns>Number of un-trainable parameters</returns>
-    public override int UnTrainableParameterCount() => this.RunningVariance.Dimensionality + this.RunningMean.Dimensionality;
-
-    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
-
-    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
-
-    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

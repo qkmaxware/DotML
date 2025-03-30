@@ -52,4 +52,15 @@ public class BenchmarkLayerNorm {
         ));
     }
 
+    [Benchmark]
+    public void ForwardThenBackward() {
+        var result = layer.EvaluateSync(input);
+        var gradients = layer.Backpropagate(new Network.Training.BackpropagationArgs(
+            layer: -1,
+            input: input, 
+            output: result,
+            error: result
+        ));
+    }
+
 }
