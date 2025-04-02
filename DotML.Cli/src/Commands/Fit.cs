@@ -47,7 +47,7 @@ public class Fit : BaseCommand {
     [Option("data-test", HelpText = "The data-set used for testing", Required = false)]
     public string? TestingDataPath {get; set;}
 
-    [Option("max-epochs", HelpText = "Maximum number of epochs to train for (min 1)", Required = false, Default = 100)]
+    [Option("epochs", HelpText = "Maximum number of epochs to train for (min 1)", Required = false, Default = 100)]
     public int MaxEpochs {get; set;}
 
     [Option("learning-rate", HelpText = "Initial learning rate", Required = false, Default = 0.01)]
@@ -96,7 +96,7 @@ public class Fit : BaseCommand {
         highest_accuracy,
         most_passed,
     }
-    [Option("retention", HelpText = "Flag to indicate how intermediate weights should be retained (none, all, most_recent, last5, last10, smallest_loss)", Default = RetentionPolicy.none)]
+    [Option("retention", HelpText = "Flag to indicate how intermediate weights should be retained (none, all, most_recent, last5, last10, smallest_loss, highest_accuracy, most_passed)", Default = RetentionPolicy.none)]
     public RetentionPolicy Retention {get; set;}
     
 
@@ -146,6 +146,18 @@ public class Fit : BaseCommand {
         Directory.CreateDirectory(weights_dir);
         using (var writer = new StreamWriter(Path.Combine(dir.FullName, $"model.{model.Guid}.xml"))) {
             writer.Write(model.ToXml());
+        }
+        using (var writer = new StreamWriter(Path.Combine(dir.FullName, $"command.sh"))) {
+            writer.WriteLine(Environment.CommandLine);
+        }
+        if (TryGetEmbeddedDoc("src/Docs/TrainingReports.md", out string? documentation)) {
+            using (var writer = new StreamWriter(Path.Combine(dir.FullName, $"readme.md"))) {
+                writer.Write(documentation);
+            }
+        } else {
+            foreach (var file in EnumerateEmbeddedDocs()) {
+                Console.WriteLine($"Failed to find embedded doc '{file}'");
+            }
         }
         #endregion
 

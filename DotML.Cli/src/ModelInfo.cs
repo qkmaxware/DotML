@@ -158,7 +158,7 @@ public class ModelInfo {
         if (metadata_file is null)
             return;
 
-        using (var writer = new StreamWriter(metadata_file.OpenWrite())) {
+        using (var writer = new StreamWriter(new FileStream(metadata_file.FullName, FileMode.Create))) {
             writer.Write(this.ToXml());
         }
     }

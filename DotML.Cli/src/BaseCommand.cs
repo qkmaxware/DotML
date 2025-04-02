@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace DotML.Cli;
 
 public abstract class BaseCommand {
@@ -52,6 +54,32 @@ public abstract class BaseCommand {
         
         // IE "some long string" becomes "some long str..."
         return str.Substring(0, maxLength - 3) + "...";
+    }
+
+    public IEnumerable<string> EnumerateEmbeddedDocs() {
+        var assembly = typeof(BaseCommand).Assembly;
+        foreach (var file in assembly.GetManifestResourceNames()) {
+            yield return file;
+        }
+    }
+
+    public bool TryGetEmbeddedDoc(string filename, [NotNullWhen(true)] out string? contents) {
+        var assembly = typeof(BaseCommand).Assembly;
+        var resource = "DotML.Cli." + filename.Replace(' ', '_').Replace('\\', '.').Replace('/', '.');
+        contents = null;
+        try {
+            using(var stream = assembly.GetManifestResourceStream(resource)) {
+                if (stream is null)
+                    return false;
+
+                using(var reader = new StreamReader(stream)) {
+                    contents = reader.ReadToEnd();
+                    return true;
+                }
+            }
+        } catch {
+            return false;
+        }
     }
 }
 

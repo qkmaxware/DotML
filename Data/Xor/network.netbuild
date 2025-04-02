@@ -1,0 +1,8 @@
+# 2-2-1 Neural Network for XOR problem
+FROM SCRATCH INPUT 1 2 1
+LABEL xor
+
+ADD dense neurons=2
+ADD activation fn=sigmoid
+ADD dense neurons=1
+ADD activation fn=sigmoid
