@@ -4,7 +4,7 @@ using DotML.Network.IO.Netbuild;
 
 namespace DotML.Cli.Commands;
 
-[Verb("build", HelpText = "Compile a netbuild script into a neural network")]
+[Verb("build", HelpText = "Compile a netbuild script into a network model")]
 public class Build : BaseCommand {
 
     [Value(0, MetaName = "name", HelpText = "File path to model to build", Required = true)]

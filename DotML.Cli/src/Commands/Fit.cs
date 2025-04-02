@@ -32,7 +32,7 @@ Training
 | 2     | [-------       ] 50%  |          |      |
 */
 
-[Verb("fit", HelpText = "Train a compiled network against a provided training data set")]
+[Verb("fit", HelpText = "Train a compiled model against a provided training data set")]
 public class Fit : BaseCommand {
 
     [Value(0, MetaName = "name", HelpText = "Model name", Required = true)]
@@ -153,10 +153,6 @@ public class Fit : BaseCommand {
         if (TryGetEmbeddedDoc("src/Docs/TrainingReports.md", out string? documentation)) {
             using (var writer = new StreamWriter(Path.Combine(dir.FullName, $"readme.md"))) {
                 writer.Write(documentation);
-            }
-        } else {
-            foreach (var file in EnumerateEmbeddedDocs()) {
-                Console.WriteLine($"Failed to find embedded doc '{file}'");
             }
         }
         #endregion
@@ -559,7 +555,7 @@ public class Fit : BaseCommand {
 
     private void PrintDone(DirectoryInfo training_dir) {
         Console.WriteLine($"Reports saved to '{training_dir.FullName}'.");
-        Console.WriteLine($"Use '{typeof(Fit).Assembly.GetName().Name} reports open '{training_dir.Name}' to review training metrics.");
+        Console.WriteLine($"Use \"{typeof(Fit).Assembly.GetName().Name} reports open '{training_dir.Name}'\" to review training metrics.");
     }
 
     #region Utility Functions

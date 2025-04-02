@@ -20,7 +20,7 @@ class 1: |             | 0%
 
 */
 
-[Verb("run", HelpText = "Run a compiled network against a given input")]
+[Verb("run", HelpText = "Run a compiled model against a given input")]
 public class Run : BaseCommand {
 
     [Value(0, MetaName = "name", HelpText = "Model name", Required = true)]

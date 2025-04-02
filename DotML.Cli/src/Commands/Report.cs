@@ -17,7 +17,7 @@ public class Report : BaseCommand {
         clear
     }
 
-    [Value(0, MetaName = "sub-command", HelpText = "Report action (list, open, delete, clear)", Required = false, Default = SubCommand.none)]
+    [Value(0, MetaName = "sub-command", HelpText = "Report action (list, open, rm, clear)", Required = false, Default = SubCommand.none)]
     public SubCommand Cmd {get; set;}
 
     [Value(1, MetaName = "name", HelpText = "Report name", Required = false)]
@@ -40,11 +40,11 @@ public class Report : BaseCommand {
     }
 
     private void open_reports_dir(AppData appData) {
-        if (!TryShowInExplorer(appData.TrainingDirectory)) {
+        if (!TryShowInExplorer(appData.ReportDirectory)) {
             Console.WriteLine($"Unable to open training reports folder.");
-            Console.WriteLine($"Enter '{appData.TrainingDirectory.FullName}' into your file explorer.");
+            Console.WriteLine($"Enter '{appData.ReportDirectory.FullName}' into your file explorer.");
         } else {
-            Console.WriteLine($"Report directory '{appData.TrainingDirectory.FullName}' opening in new window.");
+            Console.WriteLine($"Report directory '{appData.ReportDirectory.FullName}' opening in new window.");
         }
     }
 
@@ -90,9 +90,9 @@ public class Report : BaseCommand {
         if (success) {
             Console.WriteLine($"All reports deleted successfully.");
         } else {
-            TryShowInExplorer(appData.TrainingDirectory);
+            TryShowInExplorer(appData.ReportDirectory);
             Console.WriteLine($"Failed to delete some reports, manual intervention may be required.");
-            Console.WriteLine($"Report directory '{appData.TrainingDirectory.FullName}' opening in new window.");
+            Console.WriteLine($"Report directory '{appData.ReportDirectory.FullName}' opening in new window.");
         }
     }
 

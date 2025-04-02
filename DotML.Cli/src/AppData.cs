@@ -23,7 +23,7 @@ public class AppData {
     }
 
     public DirectoryInfo ModelDirectory => new DirectoryInfo(this.model_dir);
-    public DirectoryInfo TrainingDirectory => new DirectoryInfo(this.report_dir);
+    public DirectoryInfo ReportDirectory => new DirectoryInfo(this.report_dir);
 
     public IEnumerable<ModelInfo> ListModels() {
         foreach (var file in ModelDirectory.GetFiles("*.xml")) {
@@ -52,6 +52,11 @@ public class AppData {
         return CreateReportDir("Training " + now);
     }
 
+    public DirectoryInfo CreateTestingDir() {
+        var now = DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss");
+        return CreateReportDir("Testing " + now);
+    }
+
     public IEnumerable<GenericReport> EnumerateReports() {
         var info = Directory.CreateDirectory(report_dir);
         foreach (var report in info.EnumerateDirectories()) {
@@ -59,6 +64,9 @@ public class AppData {
             if (report.Name.StartsWith("Training")) {
                 yield return new TrainingSession(report);
             } 
+            else if (report.Name.StartsWith("Testing")) {
+                yield return new TestingSummary(report);
+            }
             
             // Generalized "unknown" report
             else {
@@ -69,5 +77,9 @@ public class AppData {
 
     public IEnumerable<TrainingSession> EnumerateTrainingSessions() {
         return EnumerateReports().OfType<TrainingSession>();
+    }
+
+    public IEnumerable<TestingSummary> EnumerateTestingSummaries() {
+        return EnumerateReports().OfType<TestingSummary>();
     }
 }

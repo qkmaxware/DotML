@@ -35,17 +35,18 @@ public class Test : BaseCommand {
         Console.WriteLine("done");
 
         Console.Write("Testing...");
-        var watch = Stopwatch.StartNew();
-        var report = new DefaultValidationReport();
+        var report = new DefaultValidationReportWithBreakdown();
         LossFunction loss = network.GetOutputLayer() is SoftmaxLayer 
             ? LossFunctions.CategoricalCrossEntropy 
             : LossFunctions.MeanSquaredError
         ;
+        var watch = Stopwatch.StartNew();
         Fit.Test(network, data, report, Math.Max(1, Environment.ProcessorCount), 0.1, loss);
         watch.Stop();
         var elapsed = watch.Elapsed;
         Console.WriteLine("done");
 
+        // Draw console report
         DrawDivider();
         string[] training_headers = ["ACCURACY", "PRECISION", "RECALL", "LOSS", "VALIDATION", "TIME-TAKEN"];
         int[] training_header_len = [10,          10,          10,       10,    15,            25         ];
@@ -75,5 +76,41 @@ public class Test : BaseCommand {
 
         Console.Write(ColumnValue(elapsed.TotalMinutes + "m", training_header_len[5]));
         Console.WriteLine();
+        Console.WriteLine();
+
+        // Write reports
+        var report_dir = appData.CreateTestingDir();
+        using (var writer = new StreamWriter(Path.Combine(report_dir.FullName, $"command.sh"))) {
+            writer.WriteLine(Environment.CommandLine);
+        }
+        using (var writer = new StreamWriter(Path.Combine(report_dir.FullName, $"model.{model.Guid}.xml"))) {
+            writer.Write(model.ToXml());
+        }
+        using (var writer = new StreamWriter(Path.Combine(report_dir.FullName, $"summary.csv"))) {
+            writer.WriteLine("LOSS-AVERAGE, LOSS-MIN, LOSS-MAX, ACCURACY, PRECISION, RECALL, F1-SCORE, TIME-TAKEN");
+            writer.Write(report.AverageLoss); writer.Write(',');
+            writer.Write(report.MinLoss); writer.Write(',');
+            writer.Write(report.MaxLoss); writer.Write(',');
+            writer.Write(report.Accuracy); writer.Write(',');
+            writer.Write(report.Precision); writer.Write(',');
+            writer.Write(report.Recall); writer.Write(',');
+            writer.Write(report.F1Score); writer.Write(',');
+            writer.Write($" \"{elapsed}\""); writer.WriteLine();
+        }
+        using (var writer = new StreamWriter(Path.Combine(report_dir.FullName, $"details.csv"))) {
+            writer.WriteLine("TEST-INDEX, STATUS, LOSS");
+            foreach (var breakdown in report.TestBreakdown) {
+                writer.Write(breakdown.Index); writer.Write(',');
+                writer.Write(breakdown.Passed ? "PASSED" : "FAILED"); writer.Write(',');
+                writer.Write(breakdown.Loss); writer.WriteLine();
+                writer.Flush();
+            }
+        }
+        PrintDone(report_dir);
+    }
+
+    private void PrintDone(DirectoryInfo dir) {
+        Console.WriteLine($"Reports saved to '{dir.FullName}'.");
+        Console.WriteLine($"Use \"{typeof(Fit).Assembly.GetName().Name} reports open '{dir.Name}'\" to review testing metrics.");
     }
 }

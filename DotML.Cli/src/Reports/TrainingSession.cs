@@ -1,22 +1,6 @@
 namespace DotML.Cli;
 
-public class GenericReport {
-    public DirectoryInfo Directory {get; private set;}
-    public string Name => Directory.Name;
-
-    public DateTime Created => Directory.CreationTime;
-    public DateTime Modified => Directory.LastWriteTime;
-
-    public GenericReport(DirectoryInfo info) {
-        this.Directory = info;
-    }
-
-    public void Delete() {
-        Directory.Delete(true);
-    }
-}
-
-public class TrainingSession : GenericReport{
+public class TrainingSession : GenericReport {
 
     public TrainingSession(DirectoryInfo dir) : base(dir) { }
 

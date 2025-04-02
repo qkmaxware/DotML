@@ -9,7 +9,7 @@ net1        alexnet:v1    Jan 21, 2024  Untrained
 net2        alexnet:v1    Jan 21, 2024  Trained
 */
 
-[Verb("list", HelpText = "List all compiled networks")]
+[Verb("list", HelpText = "List all compiled models")]
 public class List : BaseCommand {
 
     [Option("filter", Required = false)]

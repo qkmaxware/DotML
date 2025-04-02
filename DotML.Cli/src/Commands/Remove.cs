@@ -7,7 +7,7 @@ namespace DotML.Cli.Commands;
 Untrained network "net1" removed
 */
 
-[Verb("rm", HelpText = "Remove/delete a compiled network")]
+[Verb("rm", HelpText = "Remove/delete a compiled model")]
 public class Remove : BaseCommand {
     
     [Value(0, MetaName = "name", HelpText = "Model name", Required = true)]
