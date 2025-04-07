@@ -200,12 +200,14 @@ Mine
         var dW = new BatchedFeatureSet<double>(filter_shape); // (out_channels, kernel_count, filter_height, filter_width)
 
         for (var oY = 0; oY < output_height; oY++) {
+            // Region on the input which was used to compute this value on the output
+            var y_start = oY * StrideY - RowsPadding;
+            var y_end = y_start + filter_height;
+
             for (var oX = 0; oX < output_width; oX++) {
                 // Region on the input which was used to compute this value on the output
                 var x_start = oX * StrideX - ColumnsPadding;
                 var x_end = x_start + filter_width;
-                var y_start = oY * StrideY - RowsPadding;
-                var y_end = y_start + filter_height;
 
                 for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
                     for (var filterIndex = 0; filterIndex < out_channels; filterIndex++) {

@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DotML.LinearAlgebra\DotML.LinearAlgebra.csproj" />
+    <ProjectReference Include="..\DotML\DotML.csproj" />
   </ItemGroup>
 
 </Project>
