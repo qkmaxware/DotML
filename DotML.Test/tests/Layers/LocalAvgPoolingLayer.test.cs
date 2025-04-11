@@ -6,6 +6,16 @@ namespace DotML.Test.Layers;
 [TestClass]
 public class LocalAvgPoolingLayerTest {
     [TestMethod]
+    public void TestSafetensors() {
+        var layer = new LocalAvgPoolingLayer(new Shape3D(1, 4, 4), 2, 2);
+        var writer = new LayerSafetensorWriter(); 
+        var success = layer.Visit(writer, 0);
+        Assert.IsTrue(success, "Failed to write layer to safetensor.");
+        var tensors = writer.ToSafetensors();
+        Assert.AreEqual(0, tensors.Keys().Count(), "Layer should not have any tensors.");
+    }
+
+    [TestMethod]
     public void TestAvgMaxPooling() {
         var layer = new LocalAvgPoolingLayer(new Shape3D(1, 4, 4), 2, 2);
         Matrix<double> input = new Matrix<double>(new double[,] {

@@ -57,6 +57,10 @@ public class AppData {
         return CreateReportDir("Testing " + now);
     }
 
+    public string GenerateReportPath(string report_type) {
+        return Path.Combine(report_dir, report_type + " " + DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss"));
+    }
+
     public IEnumerable<GenericReport> EnumerateReports() {
         var info = Directory.CreateDirectory(report_dir);
         foreach (var report in info.EnumerateDirectories()) {
@@ -66,6 +70,9 @@ public class AppData {
             } 
             else if (report.Name.StartsWith("Testing")) {
                 yield return new TestingSummary(report);
+            }
+            else if (report.Name.StartsWith("Run")) {
+                yield return new RunLogs(report);
             }
             
             // Generalized "unknown" report

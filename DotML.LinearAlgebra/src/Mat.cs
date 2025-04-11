@@ -87,7 +87,7 @@ where T:INumber<T> {
     /// <summary>
     /// Tests if this matrix's internal storage is in row-major order
     /// </summary>
-    public bool IsRowMajor {
+    public static bool IsRowMajor {
         #if MATRIX_STORAGE_ROW_MAJOR
         get => true;
         #else
@@ -98,7 +98,7 @@ where T:INumber<T> {
     /// <summary>
     /// Tests if this matrix's internal storage is in column-major order
     /// </summary>
-    public bool IsColumnMajor {
+    public static bool IsColumnMajor {
         #if MATRIX_STORAGE_COL_MAJOR
         get => true;
         #else
@@ -925,6 +925,15 @@ where T:INumber<T> {
     }
 
     /// <summary>
+    /// Fill the matrix with all values being the same
+    /// </summary>
+    /// <param name="value">Value to fill across the matrix</param>
+    public void Fill(T value) {
+        var values = this.values.AsSpan();
+        values.Fill(value);
+    }
+
+    /// <summary>
     /// Reshape the elements of this matrix into one or more matrices of a different shape.
     /// </summary>
     /// <param name="size">shape of the matrix</param>
@@ -1327,6 +1336,42 @@ where T:INumber<T> {
 
     #endregion
     #region Conversion
+
+    #if MATRIX_STORAGE_ROW_MAJOR
+    /// <summary>
+    /// Extract the values of the matrix as a 1D array
+    /// </summary>
+    /// <returns>Row major representation of the matrix as an array</returns>
+    public T[] AsRowMajorArray() {
+        return values;
+    }
+    #else 
+    /// <summary>
+    /// Extract the values of the matrix as a 1D array
+    /// </summary>
+    /// <returns>Row major representation of the matrix as an array</returns>
+    public T[] AsRowMajorArray() {
+        return FlattenRows().ToArray();
+    }
+    #endif
+
+    #if MATRIX_STORAGE_COL_MAJOR
+    /// <summary>
+    /// Extract the values of the matrix as a 1D array
+    /// </summary>
+    /// <returns>Column major representation of the matrix as an array</returns>
+    public T[] AsColumnMajorArray() {
+        return values;
+    }
+    #else 
+    /// <summary>
+    /// Extract the values of the matrix as a 1D array
+    /// </summary>
+    /// <returns>Column major representation of the matrix as an array</returns>
+    public T[] AsColumnMajorArray() {
+        return FlattenColumns().ToArray();
+    }
+    #endif
 
     /// <summary>
     /// Create a span over the entire 2D matrix

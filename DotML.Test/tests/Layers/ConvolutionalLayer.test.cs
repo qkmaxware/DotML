@@ -9,6 +9,30 @@ public class ConvolutionalLayerTest {
     private const double epsilon = 0.001;
 
     [TestMethod]
+    public void TestSafetensors() {
+        var initializer = new DotML.Network.Initialization.ConstantInitialization(1.0);
+        var layer = new ConvolutionLayer(new Shape3D(1, 5, 5), Padding.Valid, ConvolutionFilter.Make(1, 1, 3));
+        layer.Initialize(initializer);
+        var writer = new LayerSafetensorWriter(); 
+        var success = layer.Visit(writer, 0);
+        Assert.IsTrue(success, "Failed to write layer to safetensor.");
+        var tensors = writer.ToSafetensors();
+        Assert.AreEqual(layer.Filters.SelectMany(f => f).Count() + layer.FilterCount, tensors.Keys().Count(), "Layer should have many tensors.");
+
+        layer = new ConvolutionLayer(new Shape3D(1, 5, 5), Padding.Valid, ConvolutionFilter.Make(1, 1, 3));
+        var reader = new LayerSafetensorReader(tensors);
+        layer.Visit(reader, 0);
+        foreach (var filter in layer.Filters) {
+            Assert.AreEqual(1.0, filter.Bias, "Filter should have bias initialized to 1.0.");
+            foreach (var kernel in filter) {
+                foreach (var item in kernel) {
+                    Assert.AreEqual(1.0, item, epsilon, "Weights should be initialized to 1.0.");
+                }
+            }
+        }
+    }
+
+    [TestMethod]
     public void TestConvolutionalLayerValidPadding() {
         var kernels = new Matrix<double>[]{
             new Matrix<double>(new double[,] {

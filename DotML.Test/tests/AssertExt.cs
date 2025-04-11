@@ -9,6 +9,13 @@ public static class AssertExt {
         }
     }
 
+    public static void AreEqual(Matrix<double> y_truth, Matrix<double> y_projected, double epsilon = 0.001) {
+        Assert.AreEqual(y_truth.Size, y_projected.Size);
+        for (var i = 0; i < y_truth.Size; i++) {
+            Assert.AreEqual(y_truth[i], y_projected[i], epsilon, $"Element {i}");
+        }
+    }
+
     public static void AreEqual(BatchedFeatureSet<double> Y_truth, BatchedFeatureSet<double> Y_projected, double epsilon = 0.001) {
         Assert.AreEqual(Y_truth.Batches, Y_projected.Batches, "Batch count isn't equal");
         var batch = 0;

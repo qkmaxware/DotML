@@ -28,8 +28,8 @@
 
   <ItemGroup>
     <None Include="Readme.md" Pack="true" PackagePath="\" />
-    <ProjectReference Include="..\DotML\DotML.csproj" />
     <EmbeddedResource Include=".\src\Docs\*.md"/>
+    <ProjectReference Include="..\DotML\DotML.csproj" />
     <ProjectReference Include="..\DotML.Netbuild\DotML.Netbuild.csproj" />
   </ItemGroup>
 

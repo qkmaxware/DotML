@@ -8,9 +8,15 @@ namespace DotML.Cli.Embeddings;
 /// Treat the input as a JSON vector (double array)
 /// </summary>
 public class Json : IEmbedder {
-    public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, FileInfo file) {
+
+    public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, IEnumerable<FileInfo> files) {
+        var batches = files.Select(file => CreateEmbedding(@for, file)).ToArray();
+        return new BatchedFeatureSet<double>(batches);
+    }
+    
+    public FeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, FileInfo file) {
         var vec = Matrix<double>.Column(JsonSerializer.Deserialize<double[]>(file.OpenRead()) ?? new double[0]);
-        return new BatchedFeatureSet<double>(new FeatureSet<double>(vec));
+        return new FeatureSet<double>(vec);
     }
 
     public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, string raw) {

@@ -143,8 +143,6 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         var filter_shape = FilterShape;
         var dW = BackpropagateWrtWeights(args.InputBatch, args.OutputErrors, filter_shape);
         var dB = BackpropagateWrtBias   (args.OutputErrors);
-        //var dX = TransposeConvolve2(this, args);
-        // TODO fix this
         var dX = BackpropagateWrtInput  (args.InputBatch, args.OutputErrors, filter_shape);
 
         return new BackpropagationReturns(
@@ -210,8 +208,10 @@ Mine
                 var x_end = x_start + filter_width;
 
                 for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
+                    var feats = dY[batchIndex];
                     for (var filterIndex = 0; filterIndex < out_channels; filterIndex++) {
-                        var grad = dY[batchIndex, filterIndex, oY, oX];
+                        var feat = feats[filterIndex];
+                        var grad = feat[oY, oX];
 
                         for (var kernelIndex = 0; kernelIndex < in_channels; kernelIndex++) {
                             var dk = dW[filterIndex, kernelIndex];
@@ -245,12 +245,15 @@ Mine
         // -----------------------------------------------------------------------
         // Compute dL/dB by summing over batches, rows, and columns
         var featureCount = dY.Channels; // Should be equal to FilterCount
+        var batchCount = dY.Batches;
         var dB = new double[featureCount];
         for (var featureIndex = 0; featureIndex < featureCount; featureIndex++) {
             // Compute sum 
             var sum = 0.0;
-            for (var batchIndex = 0; batchIndex < dY.Batches; batchIndex++) {
-                sum += dY[batchIndex, featureIndex].Sum();
+            for (var batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+                var span = dY[batchIndex, featureIndex].AsSpan();
+                foreach (var item in span)
+                    sum += item;
             }
 
             // Apply biases
@@ -267,9 +270,7 @@ Mine
         // ---------------------------------------------------------------
         var (batch_size, in_channels, out_rows, out_columns) = X.Shape; // In and out rows/columns flipped here since the "input" is dY and the output is "dX"
         var (_, out_channels, in_rows, in_columns) = dY.Shape;
-        var (filter_count, kernel_count, kernel_height, kernel_width) = filter_shape;
-        var kernel_rows_m1 = kernel_height - 1;
-        var kernel_cols_m1 = kernel_width - 1;
+        var (_, _, kernel_height, kernel_width) = filter_shape;
 
         var dX = new BatchedFeatureSet<double>(X.Shape);
         
@@ -278,13 +279,15 @@ Mine
         // Each kernel applied to a single input
         // So to go backwards we need to take the output from each filter and distribute it with each kernel back to the associated input
         for (var batch = 0; batch < batch_size; batch++) {
+            var ofeatures = dY[batch];
+            var ifeatures = dX[batch];
             for (var output_index = 0; output_index < out_channels; output_index++) {
                 var filter = this.filters[output_index];
-                var output = dY[batch, output_index];
+                var output = ofeatures[output_index];
 
                 for (var kernel_index = 0; kernel_index < in_channels; kernel_index++) {
                     var kernel = filter[kernel_index];
-                    var result = dX[batch, kernel_index];
+                    var result = ifeatures[kernel_index];
 
                     // --------------------------------------
                     // COPIED FROM Matrix<double>.TransposeConvolve();

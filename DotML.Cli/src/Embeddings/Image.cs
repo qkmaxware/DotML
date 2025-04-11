@@ -8,7 +8,7 @@ namespace DotML.Cli.Embeddings;
 /// Treat the input as an image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
 public class Image : ImageEmbedding {
-    public override BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
+    public override FeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
         var samples     = network.InputShape.Channels;
@@ -32,7 +32,7 @@ public class Image : ImageEmbedding {
             }
         }
 
-        return new BatchedFeatureSet<double>(features);
+        return features;
     }
 }
 
@@ -40,7 +40,7 @@ public class Image : ImageEmbedding {
 /// Treat the input as an RGB image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
 public class RgbImage : ImageEmbedding {
-    public override BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
+    public override FeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
         var samples     = 3;
@@ -61,7 +61,7 @@ public class RgbImage : ImageEmbedding {
             }
         }
 
-        return new BatchedFeatureSet<double>(features);
+        return features;
     }
 }
 
@@ -70,7 +70,7 @@ public class RgbImage : ImageEmbedding {
 /// Treat the input as a Mono image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
 public class MonoImage : ImageEmbedding {
-    public override BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
+    public override FeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
         var samples     = 1;
@@ -88,6 +88,6 @@ public class MonoImage : ImageEmbedding {
             }
         }
 
-        return new BatchedFeatureSet<double>(features);
+        return features;
     }
 }

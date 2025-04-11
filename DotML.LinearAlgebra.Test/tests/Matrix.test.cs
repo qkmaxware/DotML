@@ -1,7 +1,7 @@
 namespace DotML.Test;
 
 [TestClass]
-public class BasicMatrix {
+public class TestMatrix {
     [TestMethod]
     public void TestCreation() {
         Matrix<double> matrix = new Matrix<double>(5, 2);

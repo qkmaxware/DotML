@@ -6,6 +6,16 @@ namespace DotML.Test.Layers;
 [TestClass]
 public class SoftmaxLayerTest {
     [TestMethod]
+    public void TestSafetensors() {
+        var layer = new SoftmaxLayer(5);
+        var writer = new LayerSafetensorWriter(); 
+        var success = layer.Visit(writer, 0);
+        Assert.IsTrue(success, "Failed to write layer to safetensor.");
+        var tensors = writer.ToSafetensors();
+        Assert.AreEqual(0, tensors.Keys().Count(), "Layer should not have any tensors.");
+    }
+
+    [TestMethod]
     public void TestSoftmax() {
         var layer = new SoftmaxLayer(5);
         var X = Matrix<double>.FromFlattened(5, 1, [

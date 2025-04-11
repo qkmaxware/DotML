@@ -8,7 +8,7 @@ namespace DotML.Cli.Embeddings;
 /// An embedding that must be provided by a file and not accessible via standard input
 /// </summary>
 public abstract class FileOnlyEmbedding : IEmbedder {
-    public abstract BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, FileInfo file);
+    public abstract BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, IEnumerable<FileInfo> files);
 
     public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, string raw) {
         throw new NotSupportedException($"{GetType()} embedding doesn't support data from stdin.");
@@ -19,7 +19,13 @@ public abstract class FileOnlyEmbedding : IEmbedder {
 /// Base class for all embeddings that operate on images
 /// </summary>
 public abstract class ImageEmbedding : FileOnlyEmbedding {
-    public override BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, FileInfo file) {
+
+    public override BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, IEnumerable<FileInfo> files) {
+        var batches = files.Select(file => CreateEmbedding(@for, file)).ToArray();
+        return new BatchedFeatureSet<double>(batches);
+    }
+
+    public FeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, FileInfo file) {
         using var original = SKBitmap.FromImage(SKImage.FromEncodedData(file.FullName));
         using var processed = PreprocessImage(@for, original);
         var features = CreateEmbedding(@for, processed);
@@ -64,9 +70,9 @@ public abstract class ImageEmbedding : FileOnlyEmbedding {
         return resized;
     }
 
-    public abstract BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, SKBitmap bitmap);
+    public abstract FeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, SKBitmap bitmap);
 
-    public virtual BatchedFeatureSet<double> Postprocess(BatchedFeatureSet<double> features) {
+    public virtual FeatureSet<double> Postprocess(FeatureSet<double> features) {
         return features;
     }
 

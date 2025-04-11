@@ -106,6 +106,11 @@ public class Test : BaseCommand {
                 writer.Flush();
             }
         }
+        if (TryGetEmbeddedDoc("src/Docs/TestingReports.md", out string? documentation)) {
+            using (var writer = new StreamWriter(Path.Combine(report_dir.FullName, $"readme.md"))) {
+                writer.Write(documentation);
+            }
+        }
         PrintDone(report_dir);
     }
 

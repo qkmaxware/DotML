@@ -1,5 +1,6 @@
 using System.Text;
 using CommandLine;
+using DotML.Cli.Logging;
 
 namespace DotML.Cli.Commands;
 
@@ -26,7 +27,7 @@ public class Run : BaseCommand {
     [Value(0, MetaName = "name", HelpText = "Model name", Required = true)]
     public string? ModelName {get; set;}
 
-    [Option('f', "input", HelpText = "Path to input file, if no file present stdin is used instead")]
+    [Option('f', "input", HelpText = "Path to input files, if no file present stdin is used instead")]
     public string? InputFile {get; set;}
 
     [Option("embedding", HelpText = "Embedding type", Required = true)]
@@ -40,6 +41,9 @@ public class Run : BaseCommand {
 
     [Option("labels", HelpText = "Labels for classifications/categories", Required = false)]
     public IEnumerable<string>? Labels {get; set;}
+
+    [Option("log", HelpText = "List of items to save to the logs as the network is run (tensors, images, etc.)", Required = false)]
+    public IEnumerable<string>? OutputLoggers {get; set;}
 
     public override void Action(AppData appData) {
         // Verify options
@@ -60,6 +64,13 @@ public class Run : BaseCommand {
             Console.WriteLine(".");
             return;
         }
+        var user_selected_output_loggers = OutputLoggers?.ToArray() ?? Array.Empty<string>();
+        DirectoryInfo[] log_dir = [new DirectoryInfo(appData.GenerateReportPath("Run"))];
+        var output_loggers 
+            = assembly.GetExportedTypes().Where(type => !type.IsAbstract && type.IsAssignableTo(typeof(IOutputLogger)))
+            .Where(type => user_selected_output_loggers.Contains(type.Name.Replace("OutputLogger", string.Empty), StringComparer.OrdinalIgnoreCase))
+            .Select(type => (IOutputLogger?)Activator.CreateInstance(type, log_dir)).ToArray();
+        var is_logging = output_loggers.Length > 0;
         
         var model = appData.GetModel(ModelName);
         if (model is null) {
@@ -96,12 +107,23 @@ public class Run : BaseCommand {
                 Console.WriteLine($"No file exists with name '{InputFile}'.");
                 return;
             }
-            input_vector = embedder.CreateEmbedding(network, input);
+            input_vector = embedder.CreateEmbedding(network, new FileInfo[]{ input });
         }
         Console.WriteLine("done");
 
         Console.Write("Predicting output...");
-        var output_vector = network.PredictSync(input_vector);
+        var layer_index = 0;
+        var output_vector = network.PredictSync(
+            values: input_vector,
+            before_layer: (layer, input) => {},
+            after_layer: (layer, output) => {
+                foreach (var output_logger in output_loggers) {
+                    if (output_logger is not null)
+                        layer.Visit(output_logger, (layer_index, output));
+                }
+                layer_index++;
+            }
+        );
         Console.WriteLine("done");
 
         Console.Write("Decoding...");
@@ -112,6 +134,13 @@ public class Run : BaseCommand {
             } else {
                 Console.WriteLine("done");
             }
+
+            if (is_logging) {
+                Console.WriteLine();
+                Console.WriteLine($"Reports saved to '{log_dir[0].Name}'.");
+                Console.WriteLine($"Use \"{typeof(Run).Assembly.GetName().Name} reports open '{log_dir[0].Name}'\" to review runtime logs.");
+            }
+
             DrawDivider();
             result.ConsoleOutput();
         }

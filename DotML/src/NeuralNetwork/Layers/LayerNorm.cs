@@ -259,7 +259,7 @@ public class LayerNorm : FeedforwardNetworkLayer {
         }
     }
 
-    public override void Initialize(IInitializer initializer) { }
+    public override void Initialize(IInitializer initializer) {}
 
     public override int TrainableParameterCount() {
         return InputShape.Count * 2;

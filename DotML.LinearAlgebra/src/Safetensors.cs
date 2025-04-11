@@ -9,11 +9,11 @@ namespace DotML;
 /// </summary>
 public class Safetensors {
     // Generic tensor storage
-    private class GenericTensor : ITensorLike<object?> {
+    private class UnknownObjectTensor : ITensorLike<object?> {
         public GenericShape shape;
         public object data;
 
-        public GenericTensor(GenericShape shape, object data) {
+        public UnknownObjectTensor(GenericShape shape, object data) {
             this.shape = shape;
             this.data = data;
         }
@@ -48,7 +48,7 @@ public class Safetensors {
             return 1;
         }
     }
-    private Dictionary<string, GenericTensor> tensors = new Dictionary<string, GenericTensor>();
+    private Dictionary<string, UnknownObjectTensor> tensors = new Dictionary<string, UnknownObjectTensor>();
 
     /// <summary>
     /// All keys in this safetensors set
@@ -125,9 +125,14 @@ public class Safetensors {
         if (shape.Dimensions != 2)
             throw new ArgumentException($"Cannot load a tensor of dimensionality {shape.Dimensions} into a 2d matrix");
 
-        var matrix = new Matrix<TOut>(shape.GetDimension(0), shape.GetDimension(1));
-        LoadTensorInto<Matrix<TOut>, TOut>(key, matrix);
-        return matrix;
+        if (tensor.data is TOut[] elements && Matrix<TOut>.IsRowMajor) {
+            // No additional memory allocation, just use the array as is. 
+            return Matrix<TOut>.FromFlattened(shape.GetDimension(0), shape.GetDimension(1), elements);
+        } else {
+            var new_matrix = new Matrix<TOut>(shape.GetDimension(0), shape.GetDimension(1));
+            LoadTensorInto<Matrix<TOut>, TOut>(key, new_matrix);
+            return new_matrix;
+        }
     }
 
     /// <summary>
@@ -183,6 +188,7 @@ public class Safetensors {
 
         return index;
     }
+    
     /// <summary>
     /// Load the given tensor values into the result tensor object
     /// </summary>
@@ -231,7 +237,7 @@ public class Safetensors {
         }
 
         // Create a generic tensor to store with the provided shape and data
-        GenericTensor to_store = new GenericTensor(
+        UnknownObjectTensor to_store = new UnknownObjectTensor(
             new GenericShape(shape),
             values
         );
@@ -246,7 +252,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Matrix<Half> matrix) { 
-        this.tensors.Add(name, new GenericTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsSpan().ToArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
     }
     /// <summary>
     /// Add a 16bit matrix to the safetensor
@@ -254,7 +260,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Vec<Half> vector) { 
-        this.tensors.Add(name, new GenericTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsSpan().ToArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
     }
     /// <summary>
     /// Add a 32bit matrix to the safetensor
@@ -262,7 +268,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Matrix<float> matrix) { 
-        this.tensors.Add(name, new GenericTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsSpan().ToArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray()  ));
     }
     /// <summary>
     /// Add a 32bit matrix to the safetensor
@@ -270,7 +276,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Vec<float> vector) {
-        this.tensors.Add(name, new GenericTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsSpan().ToArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
     }
     /// <summary>
     /// Add a 64bit matrix to the safetensor
@@ -278,7 +284,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Matrix<double> matrix) {
-        this.tensors.Add(name, new GenericTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsSpan().ToArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
     }
     /// <summary>
     /// Add a 64bit matrix to the safetensor
@@ -286,7 +292,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Vec<double> vector) { 
-        this.tensors.Add(name, new GenericTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsSpan().ToArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
     }
 
     /// <summary>
@@ -316,13 +322,16 @@ public class Safetensors {
     /// <exception cref="FormatException">thrown when the safetensors format is not followed</exception>
     /// <exception cref="NullReferenceException">thrown when necessary information is missing</exception>
     public static Safetensors ReadFrom(BinaryReader reader) {
+        ulong base_stream_pos = 0U; // Manually track the stream position. Every time we read we need to increment appropriately.
         var header_size = reader.ReadUInt64();
-        var header_json = JsonSerializer.Deserialize<Dictionary<string, TensorInfo>>(System.Text.Encoding.UTF8.GetString(reader.ReadBytes((int)header_size)));
+        var header_string = System.Text.Encoding.UTF8.GetString(reader.ReadBytes((int)header_size));
+        var header_json = JsonSerializer.Deserialize<Dictionary<string, TensorInfo>>(header_string);
+        base_stream_pos += header_size + sizeof(UInt64); // header_size (bytes) + size_of_uint64 (bytes)
         
         Safetensors sb = new Safetensors();
-        var buffer_offset = (ulong)reader.BaseStream.Position;
+        var buffer_offset = base_stream_pos;
         if (header_json is not null) {
-            foreach (var entry in header_json) {
+            foreach (var entry in header_json.OrderBy(x => x.Value.DataStartOffset())) {
                 // Read header
                 var key         = entry.Key;
                 var tensorInfo  = entry.Value;
@@ -330,8 +339,8 @@ public class Safetensors {
 
                 var dimensions  = shape.Dimensions;
                 var entries     = shape.Size;
-                var startIndex  = (ulong)(tensorInfo.data_offsets?.ElementAtOrDefault(0) ?? 0);
-                var endIndex    = (ulong)(tensorInfo.data_offsets?.ElementAtOrDefault(1) ?? 0);
+                var startIndex  = (ulong)tensorInfo.DataStartOffset();
+                var endIndex    = (ulong)tensorInfo.DataEndOffset();
 
 
                 if (endIndex < startIndex) {
@@ -346,29 +355,42 @@ public class Safetensors {
                     throw new FormatException($"Tensor {key} data offset length doesn't match element count and sizeof data type.");
                 }
 
+                // Fast-forward (just read until the start position)
+                var start_position = buffer_offset + startIndex;
+                var end_position = buffer_offset + endIndex;
+                if (base_stream_pos > start_position) {
+                    throw new FormatException($"Tensor {key} data offset overlaps with another tensor.");
+                }
+                while (base_stream_pos < start_position) {
+                    reader.ReadByte();
+                    base_stream_pos++;
+                }
+
                 // Read values into storage
-                reader.BaseStream.Seek((long)(buffer_offset + startIndex), SeekOrigin.Begin);
                 for (var i = 0; i < entries; i++) {
                     switch (data) {
-                        case SByte[] i8_data: i8_data[i] = reader.ReadSByte(); break;
-                        case Int16[] i16_data: i16_data[i] = reader.ReadInt16(); break;
-                        case Int32[] i32_data: i32_data[i] = reader.ReadInt32(); break;
-                        case Int64[] i64_data: i64_data[i] = reader.ReadInt64(); break;
+                        case SByte[] i8_data: i8_data[i]    = reader.ReadSByte(); base_stream_pos += sizeof(SByte); break;
+                        case Int16[] i16_data: i16_data[i]  = reader.ReadInt16(); base_stream_pos += sizeof(Int16); break;
+                        case Int32[] i32_data: i32_data[i]  = reader.ReadInt32(); base_stream_pos += sizeof(Int32); break;
+                        case Int64[] i64_data: i64_data[i]  = reader.ReadInt64(); base_stream_pos += sizeof(Int64); break;
 
-                        case Byte[] u8_data: u8_data[i] = reader.ReadByte(); break;
-                        case UInt16[] u16_data: u16_data[i] = reader.ReadUInt16(); break;
-                        case UInt32[] u32_data: u32_data[i] = reader.ReadUInt32(); break;
-                        case UInt64[] u64_data: u64_data[i] = reader.ReadUInt64(); break;
+                        case Byte[] u8_data: u8_data[i]     = reader.ReadByte();   base_stream_pos += sizeof(Byte);   break;
+                        case UInt16[] u16_data: u16_data[i] = reader.ReadUInt16(); base_stream_pos += sizeof(UInt16); break;
+                        case UInt32[] u32_data: u32_data[i] = reader.ReadUInt32(); base_stream_pos += sizeof(UInt32); break;
+                        case UInt64[] u64_data: u64_data[i] = reader.ReadUInt64(); base_stream_pos += sizeof(UInt64); break;
 
-                        case Half[] f16_data: f16_data[i] = reader.ReadHalf(); break;
-                        case Single[] f32_data: f32_data[i] = reader.ReadSingle(); break;
-                        case Double[] f64_data: f64_data[i] = reader.ReadDouble(); break;
+                        case Half[] f16_data: f16_data[i]   = reader.ReadHalf();   base_stream_pos += sizeof(UInt16); break;
+                        case Single[] f32_data: f32_data[i] = reader.ReadSingle(); base_stream_pos += sizeof(Single); break;
+                        case Double[] f64_data: f64_data[i] = reader.ReadDouble(); base_stream_pos += sizeof(Double); break;
 
                         default:
                             throw new ArgumentException($"Type {data.GetType()} is not supported");
                     }
                 }
-                sb.tensors.Add(key, new GenericTensor(shape, data));
+                sb.tensors.Add(
+                    key, 
+                    new UnknownObjectTensor(shape, data)
+                );
             }
         }
 
@@ -397,6 +419,8 @@ public class Safetensors {
         public string? dtype {get; set;}
         public int[]? shape {get; set;}
         public ulong[]? data_offsets {get; set;}
+        public ulong DataStartOffset() => data_offsets?.ElementAtOrDefault(0) ?? 0;
+        public ulong DataEndOffset() => data_offsets?.ElementAtOrDefault(1) ?? 0;
         public Dictionary<string, string>? __metadata__ {get; set;}
     }
 
@@ -470,7 +494,7 @@ public class Safetensors {
         }
     }
 
-    private static void create_header_for(Dictionary<string, TensorInfo> header, ref ulong buffer_offset, Dictionary<string, GenericTensor> tensors) {
+    private static void create_header_for(Dictionary<string, TensorInfo> header, ref ulong buffer_offset, Dictionary<string, UnknownObjectTensor> tensors) {
         foreach (var matrix in tensors) {
             var shape = matrix.Value.shape;
             var type = matrix.Value.data?.GetType()?.GetElementType() ?? typeof(object);

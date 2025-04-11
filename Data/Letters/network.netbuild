@@ -1,0 +1,16 @@
+FROM scratch
+INPUT 1 32 32
+NAME "handwritten-letters"
+
+ADD convolution stride-x=1 stride-y=1 padding=Valid filters=6 kernel=5
+ADD activation fn=ReLU
+ADD avgpool stride-x=2 stride-y=2 kernel=2
+ADD convolution stride-x=1 stride-y=1 padding=Valid filters=16 kernel=5
+ADD activation fn=ReLU
+ADD avgpool stride-x=2 stride-y=2 kernel=2
+ADD dense neurons=156
+ADD activation fn=ReLU
+ADD dense neurons=109
+ADD activation fn=ReLU
+ADD dense neurons=28
+ADD softmax

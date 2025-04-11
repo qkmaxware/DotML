@@ -4,7 +4,7 @@ using DotML.Network.Initialization;
 namespace DotML.Test;
 
 [TestClass]
-public class SafetensorsVec {
+public class TestSafetensors {
     [TestMethod]
     public void TestSingleMatrix() {
         var filename = "TestSingleMatrix.safetensors";

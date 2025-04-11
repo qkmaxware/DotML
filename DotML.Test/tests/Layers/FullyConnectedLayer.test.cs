@@ -38,6 +38,26 @@ public class DenseLinearLayerTest {
     }*/
 
     [TestMethod]
+    public void TestSafetensors() {
+        var initializer = new DotML.Network.Initialization.ConstantInitialization(1.0);
+        var layer = new DenseLinearLayer(input_size: 5, neurons: 3);
+        layer.Initialize(initializer);
+        var writer = new LayerSafetensorWriter(); 
+        var success = layer.Visit(writer, 0);
+        Assert.IsTrue(success, "Failed to write layer to safetensor.");
+        var tensors = writer.ToSafetensors();
+        Assert.AreEqual(2, tensors.Keys().Count(), "Layer should have 2 tensors.");
+
+        layer = new DenseLinearLayer(input_size: 5, neurons: 3);
+        var reader = new LayerSafetensorReader(tensors);
+        layer.Visit(reader, 0);
+        foreach (var item in layer.Weights)
+            Assert.AreEqual(1.0, item, 0.001, "Weights should be initialized to 1.0.");
+        foreach (var item in layer.Biases)
+            Assert.AreEqual(1.0, item, 0.001, "Biases should be initialized to 1.0.");
+    }
+
+    [TestMethod]
     public void TestInput5Output3() {
         var layer = new DenseLinearLayer(input_size: 5, neurons: 3);
 

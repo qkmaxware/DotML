@@ -6,6 +6,43 @@ namespace DotML.Test.Layers;
 [TestClass]
 public class LayerNormTest {
     [TestMethod]
+    public void TestSafetensors() {
+        var layer = new LayerNorm(input_size: new Shape3D(1, 5, 5));
+        var writer = new LayerSafetensorWriter(); 
+        var success = layer.Visit(writer, 0);
+        Assert.IsTrue(success, "Failed to write layer to safetensor.");
+        foreach (var gamma in layer.Gammas) {
+            gamma.Fill(1.0);
+            foreach (var item in gamma) {
+                Assert.AreEqual(1.0, item, 0.001, "Weights should be initialized to 1.0.");
+            }
+        }
+        foreach (var beta in layer.Betas) {
+            beta.Fill(1.0);
+            foreach (var item in beta) {
+                Assert.AreEqual(1.0, item, 0.001, "Weights should be initialized to 1.0.");
+            }
+        }
+        var tensors = writer.ToSafetensors();
+        Assert.AreEqual(layer.Gammas.Count() + layer.Betas.Count(), tensors.Keys().Count(), "Layer should have many tensors.");
+        
+
+        layer = new LayerNorm(input_size: new Shape3D(1, 5, 5));
+        var reader = new LayerSafetensorReader(tensors);
+        layer.Visit(reader, 0);
+        foreach (var gamma in layer.Gammas) {
+            foreach (var item in gamma) {
+                Assert.AreEqual(1.0, item, 0.001, "Weights should be initialized to 1.0.");
+            }
+        }
+        foreach (var beta in layer.Betas) {
+            foreach (var item in beta) {
+                Assert.AreEqual(1.0, item, 0.001, "Weights should be initialized to 1.0.");
+            }
+        }
+    }
+
+    [TestMethod]
     public void Test1FeatureDefaultGammaDefaultBeta() {
         // Step 1: Setup layer and input
         var layer = new LayerNorm(input_size: new Shape3D(1, 5, 5));
