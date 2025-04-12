@@ -21,6 +21,22 @@ public static class Kernels {
         }
         return filter;
     }
+    /// <summary>
+    /// Create a kernel of the given size with random weights from a He distribution
+    /// </summary>
+    /// <param name="rows">Rows in the kernel</param>
+    /// <param name="columns">Columns in the kernel</param>
+    /// <returns>matrix</returns>
+    public static Matrix<double> HeKernel(int rows, int columns) {
+        var filter = new Matrix<double>(rows, columns);
+        var size = filter.Size;
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < columns; j++) {
+                filter[i, j] = he.RandomWeight(size, size, size);
+            }
+        }
+        return filter;
+    }
     static NormalXavierInitialization xavier = new NormalXavierInitialization();
     /// <summary>
     /// Create a kernel of the given size with random weights from a normal Xavier distribution
@@ -31,6 +47,22 @@ public static class Kernels {
         var filter = new Matrix<double>(size, size);
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
+                filter[i, j] = xavier.RandomWeight(size, size, size);
+            }
+        }
+        return filter;
+    }
+    /// <summary>
+    /// Create a kernel of the given size with random weights from a normal Xavier distribution
+    /// </summary>
+    /// <param name="rows">Rows in the kernel</param>
+    /// <param name="columns">Columns in the kernel</param>
+    /// <returns>matrix</returns>
+    public static Matrix<double> XavierKernel(int rows, int columns) {
+        var filter = new Matrix<double>(rows, columns);
+        var size = filter.Size;
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < columns; j++) {
                 filter[i, j] = xavier.RandomWeight(size, size, size);
             }
         }

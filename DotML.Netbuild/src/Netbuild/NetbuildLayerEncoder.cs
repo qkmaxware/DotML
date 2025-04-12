@@ -16,7 +16,7 @@ public class NetbuildLayerEncoder : ILayerVisitor {
         sb.WriteLine("FROM scratch");
         sb.WriteLine($"INPUT {network.InputShape.Channels} {network.InputShape.Rows} {network.InputShape.Columns}");
         if (network is INamedNetwork named && !string.IsNullOrEmpty(named.Name))
-            sb.WriteLine($"NAME \"{named.Name}\"");
+            sb.WriteLine($"LABEL \"{named.Name}\"");
         sb.WriteLine();
 
         // BODY
@@ -29,20 +29,24 @@ public class NetbuildLayerEncoder : ILayerVisitor {
     }
 
     public void Visit(ConvolutionLayer layer) {
-        sb.WriteLine($"ADD convolution stride-x={layer.StrideX} stride-y={layer.StrideY} padding={layer.Padding} filters={layer.FilterCount} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
+        sb.WriteLine($"ADD {nameof(ConvolutionLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} padding-x={layer.ColumnsPadding} padding-y={layer.RowsPadding} filters={layer.FilterCount} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
     }
 
     public void Visit(DepthwiseConvolutionLayer layer) {
-        sb.WriteLine($"ADD depthwise stride-x={layer.StrideX} stride-y={layer.StrideY} padding={layer.Padding} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
+        sb.WriteLine($"ADD {nameof(DepthwiseConvolutionLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} padding={layer.Padding} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
+    }
+
+    public void Visit(TransposeConvolutionLayer layer) {
+        sb.WriteLine($"ADD {nameof(TransposeConvolutionLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} padding-x={layer.InputColumnsPadding} padding-y={layer.InputRowsPadding} expand-x={layer.OutputColumnsPadding} expand-y={layer.OutputRowsPadding} filters={layer.FilterCount} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
     }
 
     public void Visit(PoolingLayer layer) {
         switch (layer) {
             case LocalMaxPoolingLayer max:
-                sb.WriteLine($"ADD maxpool stride-x={layer.StrideX} stride-y={layer.StrideY} kernel={Math.Max(layer.FilterHeight, layer.FilterWidth)}");
+                sb.WriteLine($"ADD {nameof(LocalMaxPoolingLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} kernel={Math.Max(layer.FilterHeight, layer.FilterWidth)}");
                 break;
             case LocalAvgPoolingLayer avg:
-                sb.WriteLine($"ADD avgpool stride-x={layer.StrideX} stride-y={layer.StrideY} kernel={Math.Max(layer.FilterHeight, layer.FilterWidth)}");
+                sb.WriteLine($"ADD {nameof(LocalAvgPoolingLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} kernel={Math.Max(layer.FilterHeight, layer.FilterWidth)}");
                 break;
             default:
                 throw new NotImplementedException();
@@ -50,31 +54,31 @@ public class NetbuildLayerEncoder : ILayerVisitor {
     }
 
     public void Visit(FlatteningLayer layer) {
-        sb.WriteLine($"ADD flattening");
+        sb.WriteLine($"ADD {nameof(FlatteningLayer)}");
     }
 
     public void Visit(DropoutLayer layer) {
-        sb.WriteLine($"ADD dropout percent={layer.DropoutRate}");
+        sb.WriteLine($"ADD {nameof(DropoutLayer)} percent={layer.DropoutRate}");
     }
 
     public void Visit(LayerNorm layer) {
-        sb.WriteLine($"ADD layernorm");
+        sb.WriteLine($"ADD {nameof(LayerNorm)}");
     }
 
     public void Visit(BatchNorm layer) {
-        sb.WriteLine($"ADD batchnorm");
+        sb.WriteLine($"ADD {nameof(BatchNorm)}");
     }
 
     public void Visit(DenseLinearLayer layer) {
-        sb.WriteLine($"ADD dense neurons={layer.NeuronCount}");
+        sb.WriteLine($"ADD {nameof(DenseLinearLayer)} neurons={layer.NeuronCount}");
     }
 
     public void Visit(ActivationLayer layer) {
         var alpha = layer.ActivationFunction.GetType().GetProperty("Alpha")?.GetValue(layer.ActivationFunction);
         if (alpha is null) {
-            sb.WriteLine($"ADD activation fn={layer.ActivationFunction.GetType().Name}");
+            sb.WriteLine($"ADD {nameof(ActivationLayer)} fn={layer.ActivationFunction.GetType().Name}");
         } else {
-            sb.WriteLine($"ADD activation fn={layer.ActivationFunction.GetType().Name} alpha={alpha}");
+            sb.WriteLine($"ADD {nameof(ActivationLayer)} fn={layer.ActivationFunction.GetType().Name} alpha={alpha}");
         }
     }
 

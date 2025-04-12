@@ -330,9 +330,7 @@ public class FeedforwardNetwork:
         var reader = new LayerSafetensorReader(sb);
         for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
             var layer = this.GetLayer(layerIndex);
-            if (!layer.Visit(reader, layerIndex)) {
-                throw new ArgumentException($"Failed to load all tensors for layer {layerIndex}.");
-            }
+            layer.Visit(reader, layerIndex);
         }
     }
 
@@ -344,9 +342,7 @@ public class FeedforwardNetwork:
 
         for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
             var layer = this.GetLayer(layerIndex);
-            if (!layer.Visit(writer, layerIndex)) {
-                throw new ArgumentException($"Failed to save all tensors for layer {layerIndex}.");
-            }
+            layer.Visit(writer, layerIndex);
         }
 
         return writer.ToSafetensors();
@@ -537,9 +533,7 @@ public class FeedforwardNetwork:
         using (var md = new LayerMarkdownWriter(writer)) {
             for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
                 var layer = this.GetLayer(layerIndex);
-                if (!layer.Visit(md, layerIndex)) {
-                    throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
-                }
+                layer.Visit(md, layerIndex);
             }
         }
         
@@ -554,9 +548,7 @@ public class FeedforwardNetwork:
         using (var html = new LayerHtmlWriter(writer)) {
             for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
                 var layer = this.GetLayer(layerIndex);
-                if (!layer.Visit(html, layerIndex)) {
-                    throw new ArgumentException($"Failed to print information for layer {layerIndex}.");
-                }
+                layer.Visit(html, layerIndex);
             }
         }
 

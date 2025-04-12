@@ -3,7 +3,7 @@ namespace DotML.Network;
 /// <summary>
 /// Writer to encode layer information to a text format
 /// </summary>
-public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
+public class LayerWriter : ILayerInputVisitor<int>, IDisposable {
 
     protected TextWriter sb;
     private static LayerDescriber describer = new LayerDescriber();
@@ -29,7 +29,7 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
         
     }
 
-    public bool Visit(ConvolutionLayer layer, int layerIndex) {
+    public void Visit(ConvolutionLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
@@ -38,10 +38,10 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
             layer, 
             layer.Visit(describer)
         );
-        return true;
+        return;
     }
 
-    public bool Visit(DepthwiseConvolutionLayer layer, int layerIndex) {
+    public void Visit(DepthwiseConvolutionLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
@@ -50,10 +50,10 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
             layer, 
             layer.Visit(describer)
         );
-        return true;
+        return;
     }
 
-    public bool Visit(PoolingLayer layer, int layerIndex) {
+    public void Visit(TransposeConvolutionLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
@@ -62,34 +62,22 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
             layer, 
             layer.Visit(describer)
         );
-        return true;
+        return;
     }
 
-    public bool Visit(FlatteningLayer layer, int layerIndex) {
+    public void Visit(PoolingLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
-        
+
         WriteLayerRow(
             layer, 
             layer.Visit(describer)
         );
-        return true;
+        return;
     }
 
-    public bool Visit(DropoutLayer layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
-        
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return true;
-    }
-
-    public bool Visit(LayerNorm layer, int layerIndex) {
+    public void Visit(FlatteningLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
@@ -98,10 +86,10 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
             layer, 
             layer.Visit(describer)
         );
-        return true;
+        return;
     }
 
-    public bool Visit(BatchNorm layer, int layerIndex) {
+    public void Visit(DropoutLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
@@ -110,10 +98,10 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
             layer, 
             layer.Visit(describer)
         );
-        return true;
+        return;
     }
 
-    public bool Visit(DenseLinearLayer layer, int layerIndex) {
+    public void Visit(LayerNorm layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
@@ -122,10 +110,10 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
             layer, 
             layer.Visit(describer)
         );
-        return true;
+        return;
     }
 
-    public bool Visit(ActivationLayer layer, int layerIndex) {
+    public void Visit(BatchNorm layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
@@ -134,10 +122,10 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
             layer, 
             layer.Visit(describer)
         );
-        return true;
+        return;
     }
 
-    public bool Visit(SoftmaxLayer layer, int layerIndex) {
+    public void Visit(DenseLinearLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
@@ -146,14 +134,38 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
             layer, 
             layer.Visit(describer)
         );
-        return true;
+        return;
+    }
+
+    public void Visit(ActivationLayer layer, int layerIndex) {
+        if (layerIndex == 0) {
+            WriteInputLayer(layer);
+        }
+        
+        WriteLayerRow(
+            layer, 
+            layer.Visit(describer)
+        );
+        return;
+    }
+
+    public void Visit(SoftmaxLayer layer, int layerIndex) {
+        if (layerIndex == 0) {
+            WriteInputLayer(layer);
+        }
+        
+        WriteLayerRow(
+            layer, 
+            layer.Visit(describer)
+        );
+        return;
     }
 
     public void Dispose() {
         WriteFooter();
     }
 
-    public bool Visit(InputCapture capture, int layerIndex) {
+    public void Visit(InputCapture capture, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(capture);
         }
@@ -162,6 +174,6 @@ public class LayerWriter : ILayerVisitor<int, bool>, IDisposable {
             capture, 
             capture.Visit(describer)
         );
-        return true;
+        return;
     }
 }

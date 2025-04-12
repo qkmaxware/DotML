@@ -61,4 +61,15 @@ public class NetBuildWriterTest {
 
         netbuild.Encode(network);
     }
+
+    [TestMethod]
+    // Texture Upscale
+    public void MakeFSRCNN_32_96() {
+        var network = FSRCNN.Make(FSRCNN.Version.V1, img_channels: 3, img_width: 32, img_height: 32, scaling: 3, activation: ReLU.Instance);
+
+        using var writer = new StreamWriter("fsrcnn.32.96.netbuild");
+        var netbuild = new NetbuildLayerEncoder(writer);
+
+        netbuild.Encode(network);
+    }
 }

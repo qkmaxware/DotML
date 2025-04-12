@@ -13,47 +13,51 @@ public abstract class BaseOutputLogger : IOutputLogger {
     }
 
 
-    public virtual Void Visit(ConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(ConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(DepthwiseConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(DepthwiseConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(PoolingLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(TransposeConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(FlatteningLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(PoolingLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(DropoutLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(FlatteningLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(LayerNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(DropoutLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(BatchNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(LayerNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(DenseLinearLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(BatchNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(ActivationLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(DenseLinearLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(SoftmaxLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(ActivationLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 
-    public virtual Void Visit(InputCapture capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public virtual void Visit(SoftmaxLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
+    }
+
+    public virtual void Visit(InputCapture capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 }

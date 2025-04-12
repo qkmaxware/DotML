@@ -3,13 +3,17 @@ namespace DotML.Network;
 /// <summary>
 /// Produce a human readable description of a layer
 /// </summary>
-public class LayerDescriber : ILayerVisitor<string> {
+public class LayerDescriber : ILayerOutputVisitor<string> {
     public string Visit(ConvolutionLayer layer) {
-        return $"Convolution of {layer.FilterCount} filters of size {layer.Filters.FirstOrDefault()?.FirstOrDefault().Shape}";
+        return $"Convolution from {layer.Filters.FirstOrDefault()?.Count()} channels to {layer.FilterCount} channels with kernels of size {layer.Filters.FirstOrDefault()?.FirstOrDefault().Shape}";
     }
 
     public string Visit(DepthwiseConvolutionLayer layer) {
         return $"Depth-wise convolution of {layer.Filters.Count} kernels of size {layer.Filters?.FirstOrDefault()?.FirstOrDefault().Shape}";
+    }
+
+    public string Visit(TransposeConvolutionLayer layer) {
+        return $"Transpose convolution from {layer.Filters.Count} channels to {layer.Filters.FirstOrDefault()?.Count()} channels with kernels of size {layer.Filters?.FirstOrDefault()?.FirstOrDefault().Shape}";
     }
 
     public string Visit(PoolingLayer layer) {

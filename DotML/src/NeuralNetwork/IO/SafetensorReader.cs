@@ -3,7 +3,7 @@ namespace DotML.Network;
 /// <summary>
 /// Writer to decode layer weights and biases from a safetensor file
 /// </summary>
-public class LayerSafetensorReader : ILayerVisitor<int, bool> {
+public class LayerSafetensorReader : ILayerInputVisitor<int> {
 
     private Safetensors sb;
 
@@ -11,7 +11,7 @@ public class LayerSafetensorReader : ILayerVisitor<int, bool> {
         this.sb = source;
     }
 
-    public bool Visit(ConvolutionLayer convo, int layerIndex) {
+    public void Visit(ConvolutionLayer convo, int layerIndex) {
         for (var filterIndex = 0; filterIndex < convo.FilterCount; filterIndex++) {
             var filter = convo.Filters[filterIndex];
             for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
@@ -25,10 +25,10 @@ public class LayerSafetensorReader : ILayerVisitor<int, bool> {
                 filter.Bias = sb.GetTensor<double>(fbkey)[0, 0];
             }
         }
-        return true;
+        return;
     }
 
-    public bool Visit(DepthwiseConvolutionLayer convo, int layerIndex) {
+    public void Visit(DepthwiseConvolutionLayer convo, int layerIndex) {
         var filter = convo.Filters;
         for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
             var kernel = filter[kernelIndex][0];
@@ -44,16 +44,33 @@ public class LayerSafetensorReader : ILayerVisitor<int, bool> {
                 filter[index++].Bias = bias;
             }
         }
-        return true;
+        return;
     }
 
-    public bool Visit(PoolingLayer layer, int layerIndex) { return true; }
+    public void Visit(TransposeConvolutionLayer convo, int layerIndex) {
+        for (var filterIndex = 0; filterIndex < convo.FilterCount; filterIndex++) {
+            var filter = convo.Filters[filterIndex];
+            for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
+                var key = $"Layers[{layerIndex}].Filters[{filterIndex}].Kernel[{kernelIndex}]";
+                if (sb.ContainsKey(key)) {
+                    filter[kernelIndex] = sb.GetTensor<double>(key);
+                }
+            }
+            var fbkey = $"Layers[{layerIndex}].Filters[{filterIndex}].Bias";
+            if (sb.ContainsKey(fbkey)) {
+                filter.Bias = sb.GetTensor<double>(fbkey)[0, 0];
+            }
+        }
+        return;
+    }
 
-    public bool Visit(FlatteningLayer layer, int layerIndex) { return true; }
+    public void Visit(PoolingLayer layer, int layerIndex) { return; }
 
-    public bool Visit(DropoutLayer layer, int layerIndex) { return true; }
+    public void Visit(FlatteningLayer layer, int layerIndex) { return; }
 
-    public bool Visit(LayerNorm norm, int layerIndex) {
+    public void Visit(DropoutLayer layer, int layerIndex) { return; }
+
+    public void Visit(LayerNorm norm, int layerIndex) {
         var gammas = norm.Gammas;
         for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
             var key = $"Layers[{layerIndex}].Gamma[{gammaIndex}]";
@@ -68,10 +85,10 @@ public class LayerSafetensorReader : ILayerVisitor<int, bool> {
                 betas[betaIndex] = sb.GetTensor<double>(key);
             }
         }
-        return true;
+        return;
     }
 
-    public bool Visit(BatchNorm norm, int layerIndex) {
+    public void Visit(BatchNorm norm, int layerIndex) {
         var mean_key = $"Layers[{layerIndex}].Means";
         if (sb.ContainsKey(mean_key)) {
             norm.RunningMean = Vec<double>.Wrap(sb.GetTensor<double>(mean_key).FlattenRows().ToArray());
@@ -95,10 +112,10 @@ public class LayerSafetensorReader : ILayerVisitor<int, bool> {
                 betas[betaIndex] = sb.GetTensor<double>(key);
             }
         }
-        return true;
+        return;
     }
 
-    public bool Visit(DenseLinearLayer conn, int layerIndex) {
+    public void Visit(DenseLinearLayer conn, int layerIndex) {
         var wkey = $"Layers[{layerIndex}].Weights";
         if (sb.ContainsKey(wkey)) {
             conn.Weights = sb.GetTensor<double>(wkey);
@@ -107,12 +124,12 @@ public class LayerSafetensorReader : ILayerVisitor<int, bool> {
         if (sb.ContainsKey(bkey)) {
             conn.Biases = Vec<double>.Wrap(sb.GetTensor<double>(bkey).FlattenRows().ToArray());
         }
-        return true;
+        return;
     }
 
-    public bool Visit(ActivationLayer layer, int layerIndex) { return true; }
+    public void Visit(ActivationLayer layer, int layerIndex) { return; }
 
-    public bool Visit(SoftmaxLayer layer, int layerIndex) { return true; }
+    public void Visit(SoftmaxLayer layer, int layerIndex) { return; }
 
-    public bool Visit(InputCapture capture, int args) { return true; }
+    public void Visit(InputCapture capture, int args) { return; }
 }

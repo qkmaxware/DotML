@@ -47,8 +47,10 @@ public class InputCapture : FeedforwardNetworkLayer {
     public override int TrainableParameterCount() { return 0; }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    
+    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) => visitor.Visit(this, args);
 
-    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerOutputVisitor<T> visitor) => visitor.Visit(this);
 
-    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

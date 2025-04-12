@@ -4,7 +4,7 @@
 | Activation Layer | Apply an activation function | Tested & Working |
 | Convolution Layer | Apply a 2D convolution | Tested & Working |
 | Depthwise Convolution Layer | Apply a 2D convolution depthwise separable | Tested & Working |
-| Deconvolution Layer | Apply a 2D transpose convolution  | WIP |
+| Transpose Convolution Layer | Apply a 2D transpose convolution  | WIP |
 | Dropout Layer | Apply dropout | Untested |
 | Flattening Layer | Flatten inputs to 1D | Untested |
 | Fully Connected (Dense) Layer | Apply fully connected weights and biases | Tested & Working |

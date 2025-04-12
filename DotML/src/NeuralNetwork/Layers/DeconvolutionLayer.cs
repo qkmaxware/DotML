@@ -7,48 +7,82 @@ namespace DotML.Network;
 
 [Untested]
 [WorkInProgress]
-public class DeconvolutionLayer : FeedforwardNetworkLayer {
+public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
     private ConvolutionFilter[] filters;
     public ReadOnlyCollection<ConvolutionFilter> Filters {get; init;}
-    public Expansion Padding {get; init;} // Indicates if the output matrix size will be larger than the input, or the same size (kinda like inverse padding)
     public int StrideX {get; init;}
     public int StrideY {get; init;}
 
     public int FilterCount => filters.Length;
+    public Shape4D FilterShape => new Shape4D(FilterCount, this.InputShape.Channels, filters[0].Height, filters[0].Width);
 
     private int filterRows;
     private int filterColumns;
-    public int RowsPadding {get; init;}
-    public int ColumnsPadding {get; init;}
+    public int InputRowsPadding {get; init;}
+    public int InputColumnsPadding {get; init;}
+    public int OutputRowsPadding {get; init;}
+    public int OutputColumnsPadding {get; init;}
 
-    public DeconvolutionLayer(Shape3D input_size) : this(input_size, Expansion.Same, 1, 1, new ConvolutionFilter[] { new ConvolutionFilter(Kernels.RandomKernel(3)) }) { }
+    public TransposeConvolutionLayer(Shape3D input_size, Padding padding, Expansion expansion, int strideX, int strideY, params ConvolutionFilter[] filters) {
+        this.filters                  = filters;
+        this.Filters                  = Array.AsReadOnly(this.filters);
+        this.StrideX                  = Math.Max(1, strideX);
+        this.StrideY                  = Math.Max(1, strideY);
+      
+        this.InputShape               = input_size;
+        var inputRows                 = InputShape.Rows;                                                    
+        var inputColumns              = InputShape.Columns;                                                   
+        this.filterRows               = filters.Select(f => f.Height).Max();                                                        // 3
+        this.filterColumns            = filters.Select(f => f.Width).Max();  
 
-    public DeconvolutionLayer(Shape3D input_size, Expansion padding) : this(input_size, padding, 1, 1, new ConvolutionFilter[] { new ConvolutionFilter(Kernels.RandomKernel(3)) }) { }
+        this.InputRowsPadding         = padding == Padding.Same ? (filterRows - 1) / 2 : 0;
+        this.InputColumnsPadding      = padding == Padding.Same ? (filterColumns - 1) / 2 : 0;
+        this.OutputRowsPadding        = expansion == Expansion.Expand ? (filterRows - 1) / 2 : 0;
+        this.OutputColumnsPadding     = expansion == Expansion.Expand ? (filterColumns - 1) / 2 : 0;
 
-    public DeconvolutionLayer(Shape3D input_size, Expansion padding, params ConvolutionFilter[] filters) : this(input_size, padding, 1, 1, filters) { }
+        var false_rows = inputRows + 2 * InputRowsPadding;
+        var false_cols = inputColumns + 2 * InputColumnsPadding;
 
-    public DeconvolutionLayer(Shape3D input_size, Expansion padding, int stride, params ConvolutionFilter[] filters) : this(input_size, padding, stride, stride, filters) {}
+        // Copied from TransposeConvolveEach in Mat.cs
+        var out_cols                  = (false_cols - 1) * StrideX + false_cols - 2 * OutputColumnsPadding; 
+        var out_rows                  = (false_rows - 1) * StrideY + false_rows - 2 * OutputRowsPadding;
 
-    public DeconvolutionLayer(Shape3D input_size, Expansion padding, int strideX, int strideY, params ConvolutionFilter[] filters) {
-        this.Padding            = padding;
-        this.filters            = filters;
-        this.Filters            = Array.AsReadOnly(this.filters);
-        this.StrideX            = Math.Max(1, strideX);
-        this.StrideY            = Math.Max(1, strideY);
-
-        this.InputShape         = input_size;
-        var inputRows           = InputShape.Rows;                                                    
-        var inputColumns        = InputShape.Columns;                                                   
-        this.filterRows         = filters.Select(f => f.Height).Max();                                                        // 3
-        this.filterColumns      = filters.Select(f => f.Width).Max();                                                         // 3
-        this.RowsPadding        = Padding == Expansion.Expand ? (filterRows - 1) / 2 : 0;       // Expand vs keep Same
-        this.ColumnsPadding     = Padding == Expansion.Expand ? (filterColumns - 1) / 2 : 0;    // Expand vs keep Same
-
-
-        OutputShape             = new Shape3D(
+        OutputShape = new Shape3D(
             channel:            filters.Length,
-            rows:               (inputRows - 1) * StrideY + filterRows - 2 * RowsPadding,
-            columns:            (inputColumns - 1) * StrideX + filterColumns - 2 * ColumnsPadding
+            rows:               out_rows,
+            columns:            out_cols
+        );
+    }
+
+    public TransposeConvolutionLayer(Shape3D input_size, int inputPaddingX, int inputPaddingY, int outputPaddingX, int outputPaddingY, int strideX, int strideY, params ConvolutionFilter[] filters) {
+        this.filters                  = filters;
+        this.Filters                  = Array.AsReadOnly(this.filters);
+        this.StrideX                  = Math.Max(1, strideX);
+        this.StrideY                  = Math.Max(1, strideY);
+      
+        this.InputShape               = input_size;
+        var inputRows                 = InputShape.Rows;                                                    
+        var inputColumns              = InputShape.Columns;                                                   
+        this.filterRows               = filters.Select(f => f.Height).Max();                                                        // 3
+        this.filterColumns            = filters.Select(f => f.Width).Max();  
+
+        this.InputRowsPadding         = Math.Max(0, inputPaddingY);
+        this.InputColumnsPadding      = Math.Max(0, inputPaddingX); 
+        this.OutputRowsPadding        = Math.Max(0, outputPaddingY);
+        this.OutputColumnsPadding     = Math.Max(0, outputPaddingX);
+
+        var padded_input_rows = inputRows + 2 * InputRowsPadding;
+        var padded_input_columns = inputColumns + 2 * InputColumnsPadding;
+
+        // Copied from TransposeConvolveEach in Mat.cs
+        //                            = (in_cols - 1) * outputStrideX + kernel.Columns - 2 * outputPaddingX; 
+        var out_cols                  = (padded_input_columns - 1) * StrideX + filterColumns - 2 * OutputColumnsPadding; 
+        var out_rows                  = (padded_input_rows - 1) * StrideY + filterRows - 2 * OutputRowsPadding;
+
+        OutputShape = new Shape3D(
+            channel:            filters.Length,
+            rows:               out_rows,
+            columns:            out_cols
         );
     }
 
@@ -72,71 +106,246 @@ public class DeconvolutionLayer : FeedforwardNetworkLayer {
         return Filters.Select(filter => filter.Select(kernel => kernel.Rows * kernel.Columns).Sum()).Sum() + FilterCount;
     }
 
-    public Matrix<double> TransposeConvolve(Matrix<double> input, int channel) {
-        var output = new Matrix<double>(input.Rows, input.Columns);
-
-        // Calculate the input errors for each filter
-        for (var filterIndex = 0; filterIndex < Filters.Count; filterIndex++) {
-            var filter = filters[filterIndex];
-            var filterRows = filter.Height;
-            var filterColumns = filter.Width;
-            var rows = input.Rows;
-            var cols = input.Columns;
-            var kernel = filter[channel];
-
-            // Iterate over output errors to compute gradient
-            for (int outY = 0; outY < rows; outY++) {
-                var startY = outY * StrideY - RowsPadding;
-                for (int outX = 0; outX < cols; outX++) {
-                    var startX = outX * StrideX - ColumnsPadding;
-                    // Place the error at the corresponding position in the input space
-                    for (int ky = 0; ky < filterRows; ky++) {
-                        var inY = startY + ky;
-                        for (int kx = 0; kx < filterColumns; kx++) {
-                            var inX = startX + kx;
-
-                            if (inY >= 0 && inY < input.Rows && inX >= 0 && inX < input.Columns) {
-                                output[inY, inX] += input[outY, outX] * kernel[ky, kx];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return output;
-    }
-
     public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
         var channel_count = OutputShape.Channels;
         var outputs = new Matrix<double>[channel_count];
 
         for (var channel = 0; channel < channel_count; channel++) {
-            var input = channels[channel];
-            var kernel = filters[channel];
-            outputs[channel] = TransposeConvolve(channels[channel], channel);
+            var filter = filters[channel];
+            var output = Matrix<double>.TransposeConvolveEach(
+                channels,
+                filter,
+                inputPaddingX: InputColumnsPadding, inputPaddingY: InputRowsPadding,
+                outputStrideX: StrideX, outputStrideY: StrideY,
+                outputPaddingX: OutputColumnsPadding, outputPaddingY: OutputRowsPadding,
+                bias: filter.Bias
+            );
+            outputs[channel] = output;
         }
 
         return new FeatureSet<double>(outputs);
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
-        throw new NotImplementedException();
+        var filter_shape = FilterShape;
+        var dW = BackpropagateWrtWeights(args.InputBatch, args.OutputErrors, filter_shape);
+        var dB = BackpropagateWrtBias(args.OutputErrors);
+        var dX = BackpropagateWrtInput(args.InputBatch, args.OutputErrors, filter_shape);
+
+        return new BackpropagationReturns(
+            error: dX,
+            gradients: new Gradients(
+                filters: this.filters, 
+                weights: dW,
+                bias: dB
+            )
+        );
+    }
+
+    private BatchedFeatureSet<double> BackpropagateWrtWeights(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
+        // Kernel/Weight Gradients
+        // dW(filter, kernel, row, col) = dy(filter, i, j) * input(c, i+k-1, j+l-1)
+        // ----------------------------------------------------------------------------
+        var (batch_size, in_channels, input_height, input_width) = X.Shape; // batches, inputs, rows, columns
+        var padded_input_height = input_height + 2 * InputRowsPadding;
+        var padded_input_width = input_width + 2 * InputColumnsPadding;
+        var (_, _, output_height, output_width) = dY.Shape;                 // batches, outputs, rows, columns
+        var (out_channels, _, filter_height, filter_width) = filter_shape;  // outputs, inputs, kernel rows, kernel columns
+
+        var dW = new BatchedFeatureSet<double>(filter_shape);               // outputs, kernels, kernel rows, kernel columns
+
+        for (var batch_index = 0; batch_index < batch_size; batch_index++) {
+            var xbatch = X[batch_index];
+            var ybatch = dY[batch_index];
+
+            for (var feature_index = 0; feature_index < in_channels; feature_index++) {
+                var xfeats = xbatch[feature_index];
+
+                for (var r = 0; r < padded_input_height; r++) {
+                    // Y-Region on the output that this input position contributed to
+                    var region_start_y = r * StrideX - OutputRowsPadding;
+                    var region_end_y = region_start_y + filter_height;
+
+                    var real_r = r - InputRowsPadding;
+
+                    for (var c = 0; c < padded_input_width; c++) {
+                        // X-Region on the output that this input position contributed to
+                        var region_start_x = c * StrideX - OutputColumnsPadding;
+                        var region_end_x = region_start_x + filter_width;
+
+                        var real_c = c - InputColumnsPadding;
+
+                        var i = (real_r < 0 || real_c < 0 || real_r >= input_height || real_c >= input_width) 
+                            ? 0.0
+                            : xfeats[real_r, real_c];
+
+                        for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
+                            if (out_y < 0 || out_y >= output_height)
+                                continue;
+
+                            for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
+                                if (out_x < 0 || out_x >= output_width)
+                                    continue;
+
+                                for (var channel_index = 0; channel_index < out_channels; channel_index++) {
+                                    dW[channel_index, feature_index, ky, kx] += i * ybatch[channel_index, out_y, out_x];
+                                }
+                                    
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return dW;
+    }
+
+    private Vec<double> BackpropagateWrtBias(BatchedFeatureSet<double> dY) {
+        // Bias Gradients
+        // dL/dB = dL/dY * dY/dB = dY * dY/dB
+        // dY/dB = [1; ... ; 1] because b is constant wrt y
+        // dL/dB = dL/dY = Sum over x,y of dY(x,y) given the above statement
+        // -----------------------------------------------------------------------
+        // Compute dL/dB by summing over batches, rows, and columns
+        var featureCount = dY.Channels; // Should be equal to FilterCount
+        var dB = new double[featureCount];
+        for (var featureIndex = 0; featureIndex < featureCount; featureIndex++) {
+            // Compute sum 
+            var sum = 0.0;
+            for (var batchIndex = 0; batchIndex < dY.Batches; batchIndex++) {
+                sum += dY[batchIndex, featureIndex].Sum();
+            }
+
+            // Apply biases
+            dB[featureIndex] = sum;
+        }
+
+        return Vec<double>.Wrap(dB);
+    }
+
+    private BatchedFeatureSet<double> BackpropagateWrtInput(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
+        var (batch_size, in_channels, out_rows, out_columns) = X.Shape; // In and out rows/columns flipped here since the "input" is dY and the output is "dX"
+        var padded_out_rows = out_rows + 2 * InputRowsPadding;
+        var padded_out_columns = out_columns + 2 * InputColumnsPadding;
+
+        var (_, out_channels, in_rows, in_columns) = dY.Shape;
+        var (filter_count, kernel_count, kernel_height, kernel_width) = filter_shape;
+
+        var dX = new BatchedFeatureSet<double>(X.Shape);
+        
+        // How it worked.
+        // Each filter was an output channel
+        // Each kernel applied to a single input
+        // So to go backwards we need to take the output from each filter and distribute it with each kernel back to the associated input
+        for (var batch = 0; batch < batch_size; batch++) {
+            for (var output_index = 0; output_index < out_channels; output_index++) {
+                var filter = this.filters[output_index];
+                var output = dY[batch, output_index];
+
+                for (var kernel_index = 0; kernel_index < in_channels; kernel_index++) {
+                    var kernel = filter[kernel_index];
+                    var result = dX[batch, kernel_index];
+
+                    // --------------------------------------
+                    // COPIED FROM Matrix<double>.Convolve();
+                    // --------------------------------------
+                    for (var y = 0; y < padded_out_rows; y++) {
+                        var real_y = y - InputRowsPadding;
+                        var startY = y * StrideY - OutputRowsPadding;
+    
+                        if (real_y < 0 || real_y >= out_rows)
+                            continue;
+
+                        for (var x = 0; x < padded_out_columns; x++) {
+                            var real_x = x - InputColumnsPadding;
+                            var startX = x * StrideX - OutputColumnsPadding;
+
+                            if (real_x < 0 || real_x >= out_columns)
+                                continue;
+
+                            var total_sum = 0.0;
+                            for (int ky = 0; ky < filterRows; ky++) {
+                                var inY = startY + ky;
+                                if (inY < 0 || inY >= in_rows) continue; // Skip out-of-bounds rows
+
+                                for (int kx = 0; kx < filterColumns; kx++) {
+                                    var inX = startX + kx;
+                                    if (inX < 0 || inX >= in_columns) continue; // Skip out-of-bounds columns
+                                    
+                                    total_sum += output[inY, inX] * kernel[ky, kx];
+                                }
+                            }
+                            
+                            result[real_y, real_x] += total_sum;
+                        }
+                    }
+                    // --------------------------------------
+                }
+            }
+        }
+
+        return new BatchedFeatureSet<double>(dX);
+    }
+
+    public class Gradients : LayerGradients {
+        private ConvolutionFilter[] Filters;
+        public BatchedFeatureSet<double> FilterKernelGradients;
+        public Vec<double> BiasGradients;
+
+        public Gradients(ConvolutionFilter[] filters, BatchedFeatureSet<double> weights, Vec<double> bias) {
+            this.Filters = filters;
+            this.FilterKernelGradients = weights;
+            this.BiasGradients = bias;
+        }
+
+        public override void Clip(double weight_threshold, double bias_threshold) {
+            base.ClipBatch(FilterKernelGradients, weight_threshold);
+            base.ClipVector(BiasGradients, bias_threshold);
+        }
+
+        public override void Apply(GradientTransformationHandler handler) {
+            int index = 0;
+            for (var m = 0; m < FilterKernelGradients.Batches; m++) {
+                var filter = FilterKernelGradients[m];
+                var param_filter = Filters[m];
+                for (var k = 0; k < filter.Channels; k++) {
+                    var matrix = filter[k];
+                    var param_kernel = param_filter[k];
+                    for (var r = 0; r < matrix.Rows; r++) {
+                        for (var c = 0; c < matrix.Columns; c++) {
+                            matrix[r,c] = handler(index++, param_kernel[r,c], matrix[r,c]);
+                        }
+                    }
+                }
+            }
+
+            for (var i = 0; i < BiasGradients.Dimensionality; i++) {
+                BiasGradients[i] = handler(index++, Filters[i].Bias, BiasGradients[i]);
+            }
+        }
     }
 
     public override void SubtractGradients(LayerGradients? gradients) {
-        throw new NotImplementedException();
+        if (gradients is null || gradients is not Gradients grads)
+            throw new ArgumentException(nameof(gradients));
+
+        for (var f = 0; f < filters.Length; f++) {
+            var filter = filters[f];
+            for (var k = 0; k < filter.Count; k++) {
+                var kernel = filter[k];
+                kernel.SubtractWithInplace(grads.FilterKernelGradients[f, k]);
+            }
+        } 
+
+        for (var f = 0; f < filters.Length; f++) {
+            var filter = filters[f];
+            filter.Bias -= grads.BiasGradients[f];
+        }  
     }
 
-    public override void Visit(ILayerVisitor visitor) {
-        throw new NotImplementedException();
-    }
-
-    public override T Visit<T>(ILayerVisitor<T> visitor) {
-        throw new NotImplementedException();
-    }
-
-    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) {
-        throw new NotImplementedException();
-    }
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) => visitor.Visit(this, args);
+    public override T Visit<T>(ILayerOutputVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

@@ -31,6 +31,7 @@ public class ModelInfo {
 
     public string? Guid => network_file is  null ? string.Empty : Path.GetFileNameWithoutExtension(network_file.Name);
     public ModelTrainingStatus Status() => weights_file is null || !weights_file.Exists ? ModelTrainingStatus.Untrained : ModelTrainingStatus.Trained;
+    public string? Description {get; set;}
     public List<string> ClassLabels {get; set;} = new List<string>();
     public List<string> Tags {get; set;} = new List<string>();
     public DateTime Created() => network_file is null ? DateTime.Now : network_file.CreationTime;

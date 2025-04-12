@@ -95,6 +95,30 @@ public class ConvolutionFilter : IEnumerable<Matrix<double>> {
         return objs;
     }
 
+    /// <summary>
+    /// Make a bunch of filters with the given number of kernels per filter and kernel size
+    /// </summary>
+    /// <param name="filters">number of filters</param>
+    /// <param name="kernels_per_filter">number of kernels per filter</param>
+    /// <param name="kernel_rows">size of each kernel height</param>
+    /// /// <param name="kernel_columns">size of each kernel width</param>
+    /// <returns>filter list</returns>
+    public static ConvolutionFilter[] Make(int filters, int kernels_per_filter, int kernel_rows, int kernel_columns) {
+        kernels_per_filter = Math.Max(0, kernels_per_filter);
+        filters = Math.Max(0, filters);
+
+        var objs = new ConvolutionFilter[filters]; 
+        for (var i = 0; i < objs.Length; i++) {
+            var kernels = new Matrix<double>[kernels_per_filter];
+            for (var j = 0; j < kernels_per_filter; j++) {
+                kernels[j] = Kernels.HeKernel(kernel_rows, kernel_columns);
+            }
+            var filter = new ConvolutionFilter(kernels);
+            objs[i] = filter;
+        }
+        return objs;
+    }
+
     public IEnumerator<Matrix<double>> GetEnumerator() {
         return ((IEnumerable<Matrix<double>>)kernels).GetEnumerator();
     }

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.ObjectModel;
 using System.Dynamic;
 using System.Text.RegularExpressions;
 using DotML.Network.Training;
@@ -215,6 +216,10 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
         this.data = new List<TrainingPair>();
     }
 
+    public TrainingSet(int initial_capacity) {
+        this.data = new List<TrainingPair>(initial_capacity);
+    }
+
     public TrainingSet(TrainingPair first, params TrainingPair[] next) {
         this.data = [first, ..next];
     }
@@ -375,6 +380,7 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
 
 
     private static char[] magic = ['v', 'e', 'c'];
+    internal static ReadOnlyCollection<char> BinaryTrainingSetMagicNumber => Array.AsReadOnly(magic);
 
     /// <summary>
     /// Check if the given file is a binary encoded training set
@@ -409,7 +415,7 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
 
     // Not super useful in this class, but necessary if other utility programs create training data dumps
     // eg Images2Dataset using U8 for pixel values
-    private enum VectorStorageType : byte {
+    public enum VectorStorageType : byte {
         U8 = 0b0001_0000,   U16 = 0b0001_0001,  U32 = 0b0001_0010,  U64 = 0b0001_0011,
         I8 = 0b0010_0000,   I16 = 0b0010_0001,  I32 = 0b0010_0010,  I64 = 0b0010_0011,
                             F16 = 0b0100_0001,  F32 = 0b0100_0010,  F64 = 0b0100_0011

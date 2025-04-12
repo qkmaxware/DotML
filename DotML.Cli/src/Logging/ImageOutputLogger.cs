@@ -36,57 +36,62 @@ public class ImagesOutputLogger : BaseOutputLogger {
         }
     }
 
-    public override Void Visit(ConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(ConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(ConvolutionLayer)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(DepthwiseConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(DepthwiseConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(DepthwiseConvolutionLayer)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(PoolingLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(TransposeConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        EmitImage($"Layer-{args.LayerIndex} {nameof(TransposeConvolutionLayer)}", args.Output);
+        return;
+    }
+
+    public override void Visit(PoolingLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(PoolingLayer)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(FlatteningLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(FlatteningLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(FlatteningLayer)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(DropoutLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(DropoutLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(DropoutLayer)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(LayerNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(LayerNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(LayerNorm)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(BatchNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(BatchNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(BatchNorm)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(DenseLinearLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(DenseLinearLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(DenseLinearLayer)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(ActivationLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(ActivationLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(ActivationLayer)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(SoftmaxLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(SoftmaxLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(SoftmaxLayer)}", args.Output);
-        return Void.Instance;
+        return;
     }
 
-    public override Void Visit(InputCapture capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
-        return Void.Instance;
+    public override void Visit(InputCapture capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
     }
 }

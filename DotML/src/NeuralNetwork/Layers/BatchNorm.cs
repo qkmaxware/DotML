@@ -302,10 +302,11 @@ public class BatchNorm : FeedforwardNetworkLayer {
     public override int UnTrainableParameterCount() => this.RunningVariance.Dimensionality + this.RunningMean.Dimensionality;
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
+    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) => visitor.Visit(this, args);
 
-    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
+    public override T Visit<T>(ILayerOutputVisitor<T> visitor) => visitor.Visit(this);
 
-    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 
     public class Gradients : LayerGradients {
         private Matrix<double>[] Gammas;

@@ -16,7 +16,7 @@ public static class ArgumentMapExtensions {
     }
 }
 
-public class LayerMapper : ILayerVisitor<LayerMapper.LayerConstructionArgs,IFeedforwardNetworkLayer> {
+public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructionArgs,IFeedforwardNetworkLayer> {
 
     private List<MethodInfo> decoders;
 
@@ -81,23 +81,40 @@ public class LayerMapper : ILayerVisitor<LayerMapper.LayerConstructionArgs,IFeed
 
     public IFeedforwardNetworkLayer Visit(ConvolutionLayer layer, LayerConstructionArgs args) {
         (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
-        var padding     = Enum.Parse<Padding>(arguments.FirstOf(Same, "padding").AsString(), true);
+        int? x_pad      = arguments.ContainsKey("padding-x") ? arguments["padding-x"].AsInt() : null;
+        int? y_pad      = arguments.ContainsKey("padding-y") ? arguments["padding-y"].AsInt() : null;
+        Padding pad     = Enum.Parse<Padding>(arguments.FirstOf(Same, "padding").AsString(), true);
         var x_stride    = arguments.FirstOf(One, "stride-x", "stride").AsInt();
         var y_stride    = arguments.FirstOf(One, "stride-y", "stride").AsInt();
         var filters     = arguments["filters"].AsInt();
         var kernel_size = arguments["kernel"].AsInt();
 
-        return new ConvolutionLayer(
-            input_size: ishape,
-            padding: padding,
-            strideX: x_stride,
-            strideY: y_stride,
-            filters: ConvolutionFilter.Make(
-                filters: filters,
-                kernels_per_filter: ishape.Channels,
-                kernel_size: kernel_size
-            ) 
-        );
+        if (x_pad.HasValue && y_pad.HasValue) {
+            return new ConvolutionLayer(
+                input_size: ishape,
+                rowsPadding: y_pad.Value,
+                columnsPadding: x_pad.Value,
+                strideX: x_stride,
+                strideY: y_stride,
+                filters: ConvolutionFilter.Make(
+                    filters: filters,
+                    kernels_per_filter: ishape.Channels,
+                    kernel_size: kernel_size
+                ) 
+            );
+        } else {
+            return new ConvolutionLayer(
+                input_size: ishape,
+                padding: pad,
+                strideX: x_stride,
+                strideY: y_stride,
+                filters: ConvolutionFilter.Make(
+                    filters: filters,
+                    kernels_per_filter: ishape.Channels,
+                    kernel_size: kernel_size
+                ) 
+            );
+        }
     }
 
     public IFeedforwardNetworkLayer Visit(DepthwiseConvolutionLayer? layer, LayerConstructionArgs args) {
@@ -118,6 +135,48 @@ public class LayerMapper : ILayerVisitor<LayerMapper.LayerConstructionArgs,IFeed
                 kernel_size: kernel_size
             ) 
         );
+    }
+
+    public IFeedforwardNetworkLayer Visit(TransposeConvolutionLayer layer, LayerConstructionArgs args) {
+        (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
+        int? x_pad      = arguments.ContainsKey("padding-x") ? arguments["padding-x"].AsInt() : null;
+        int? y_pad      = arguments.ContainsKey("padding-y") ? arguments["padding-y"].AsInt() : null;
+        int? x_expand   = arguments.ContainsKey("expand-x") ? arguments["expand-x"].AsInt() : null;
+        int? y_expand   = arguments.ContainsKey("expand-y") ? arguments["expand-y"].AsInt() : null;
+        Padding pad     = Enum.Parse<Padding>(arguments.FirstOf(Same, "padding").AsString(), true);
+        Expansion expand= Enum.Parse<Expansion>(arguments.FirstOf(Same, "expand").AsString(), true);
+        var x_stride    = arguments.FirstOf(One, "stride-x", "stride").AsInt();
+        var y_stride    = arguments.FirstOf(One, "stride-y", "stride").AsInt();
+        var filters     = arguments["filters"].AsInt(); // Not really filters, but outputs
+        var kernel_size = arguments["kernel"].AsInt();
+
+        if (x_pad.HasValue && y_pad.HasValue && x_expand.HasValue && y_expand.HasValue) {
+            return new TransposeConvolutionLayer(
+                input_size: ishape,
+                inputPaddingX: x_pad.Value, inputPaddingY: x_pad.Value,
+                outputPaddingX: x_expand.Value, outputPaddingY: y_expand.Value,
+                strideX: x_stride,
+                strideY: y_stride,
+                filters: ConvolutionFilter.Make(
+                    filters: filters,
+                    kernels_per_filter: ishape.Channels,
+                    kernel_size: kernel_size
+                ) 
+            );
+        } else {
+            return new TransposeConvolutionLayer(
+                input_size: ishape,
+                padding: pad,
+                expansion: expand,
+                strideX: x_stride,
+                strideY: y_stride,
+                filters: ConvolutionFilter.Make(
+                    filters: filters,
+                    kernels_per_filter: ishape.Channels,
+                    kernel_size: kernel_size
+                ) 
+            );
+        }
     }
 
     public IFeedforwardNetworkLayer Visit(PoolingLayer? layer, LayerConstructionArgs args) {

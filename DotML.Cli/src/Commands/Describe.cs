@@ -17,6 +17,11 @@ public class Describe : BaseCommand {
             return;
         }
 
+        if (!string.IsNullOrEmpty(model.Description)) {
+            Console.Write(model.Description);
+            Console.WriteLine();
+        }
+
         Console.WriteLine("IDENTIFIERS");
         Console.WriteLine(" | " + (model.Guid ?? "?"));
         foreach (var tag in model.Tags.Select((t, i) => (i, t))) {

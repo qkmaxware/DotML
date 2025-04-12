@@ -12,7 +12,6 @@ namespace DotML.Network;
 public class ConvolutionLayer : FeedforwardNetworkLayer {
     private ConvolutionFilter[] filters;
     public ReadOnlyCollection<ConvolutionFilter> Filters {get; init;}
-    public Padding Padding {get; init;}
     public int StrideX {get; init;}
     public int StrideY {get; init;}
 
@@ -34,7 +33,6 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
     public ConvolutionLayer(Shape3D input_size, Padding padding, int stride, params ConvolutionFilter[] filters) : this(input_size, padding, stride, stride, filters) {}
 
     public ConvolutionLayer(Shape3D input_size, Padding padding, int strideX, int strideY, params ConvolutionFilter[] filters) {
-        this.Padding = padding;
         this.filters = filters;
         this.Filters = Array.AsReadOnly(this.filters);
         this.StrideX = Math.Max(1, strideX);
@@ -46,8 +44,31 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         var inputColumns        = InputShape.Columns;                                                   // 32
         this.filterRows          = filters.Select(f => f.Height).Max();                                                        // 3
         this.filterColumns       = filters.Select(f => f.Width).Max();                                                         // 3
-        this.RowsPadding         = Padding == Padding.Same ? (filterRows - 1) / 2 : 0;                   // 1 
-        this.ColumnsPadding      = Padding == Padding.Same ? (filterColumns - 1) / 2 : 0;                // 1
+        this.RowsPadding         = padding == Padding.Same ? (filterRows - 1) / 2 : 0;                   // 1 
+        this.ColumnsPadding      = padding == Padding.Same ? (filterColumns - 1) / 2 : 0;                // 1
+
+
+        OutputShape             = new Shape3D(
+            channel: filters.Length, 
+            rows: (inputRows - filterRows + 2 * RowsPadding) / StrideY + 1,
+            columns: (inputColumns - filterColumns + 2 * ColumnsPadding) / StrideX + 1
+        );
+    }
+
+    public ConvolutionLayer(Shape3D input_size, int rowsPadding, int columnsPadding, int strideX, int strideY, params ConvolutionFilter[] filters) {
+        this.filters = filters;
+        this.Filters = Array.AsReadOnly(this.filters);
+        this.StrideX = Math.Max(1, strideX);
+        this.StrideY = Math.Max(1, strideY);
+
+        // Note, this only works if FILTERS is FIXED!! which may not be true
+        this.InputShape = input_size;
+        var inputRows           = InputShape.Rows;                                                      // 32
+        var inputColumns        = InputShape.Columns;                                                   // 32
+        this.filterRows          = filters.Select(f => f.Height).Max();                                                        // 3
+        this.filterColumns       = filters.Select(f => f.Width).Max();                                                         // 3
+        this.RowsPadding         = Math.Max(0, rowsPadding);                   // 1 
+        this.ColumnsPadding      = Math.Max(0, columnsPadding);                // 1
 
 
         OutputShape             = new Shape3D(
@@ -324,6 +345,7 @@ Mine
     }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) => visitor.Visit(this, args);
+    public override T Visit<T>(ILayerOutputVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

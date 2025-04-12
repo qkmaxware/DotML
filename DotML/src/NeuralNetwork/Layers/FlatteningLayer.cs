@@ -60,11 +60,15 @@ public class ReshapeLayer : FeedforwardNetworkLayer {
         throw new NotImplementedException();
     }
 
-    public override T Visit<T>(ILayerVisitor<T> visitor) {
+    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) {
         throw new NotImplementedException();
     }
 
-    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) {
+    public override T Visit<T>(ILayerOutputVisitor<T> visitor) {
+        throw new NotImplementedException();
+    }
+
+    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) {
         throw new NotImplementedException();
     }
 }
@@ -93,6 +97,7 @@ public class FlatteningLayer : ReshapeLayer {
     }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
-    public override T Visit<T>(ILayerVisitor<T> visitor) => visitor.Visit(this);
-    public override TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) => visitor.Visit(this, args);
+    public override T Visit<T>(ILayerOutputVisitor<T> visitor) => visitor.Visit(this);
+    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

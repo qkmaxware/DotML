@@ -32,13 +32,15 @@ public class Image : IDecoder {
 
             if (bitmaps.Length == 1) {
                 var bitmap = bitmaps[0];
-                bitmap.Encode(file.OpenWrite(), SKEncodedImageFormat.Png, 100);
+                using (var stream = File.Open(file.FullName, FileMode.Create)) {
+                    bitmap.Encode(stream, SKEncodedImageFormat.Png, 100);
+                }
             } else {
                 var path = file.FullName;
                 for (var i = 0; i < bitmaps.Length; i++) {
                     var save_to = Path.ChangeExtension(path, $".{i}.png"); // Number the images if there are more than 1
                     var bitmap = bitmaps[i];
-                    using (var stream = File.OpenWrite(save_to)) {
+                    using (var stream = File.Open(save_to, FileMode.Create)) {
                         bitmap.Encode(stream, SKEncodedImageFormat.Png, 100);
                     }
                 }
@@ -64,9 +66,9 @@ public class Image : IDecoder {
             for (var y = 0; y < height; y++) {
                 for (var x = 0; x < width; x++) {
                     var offset = y * width + x;
-                    var r = channels >= 1 ? (byte)features[0, y, x] : (byte)0;
-                    var g = channels >= 2 ? (byte)features[1, y, x] : (byte)0;
-                    var b = channels >= 3 ? (byte)features[2, y, x] : (byte)0;
+                    var r = channels >= 1 ? (byte)Math.Clamp(features[0, y, x] * 255, 0, 255) : (byte)0;
+                    var g = channels >= 2 ? (byte)Math.Clamp(features[1, y, x] * 255, 0, 255) : (byte)0;
+                    var b = channels >= 3 ? (byte)Math.Clamp(features[2, y, x] * 255, 0, 255) : (byte)0;
                     if (channels == 1) {
                         g = r; b = r; // For mono-images use the same colour for all 3 components
                     }

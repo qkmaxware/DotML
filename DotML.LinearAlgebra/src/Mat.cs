@@ -735,10 +735,7 @@ where T:INumber<T> {
     /// <param name="outputPaddingX">horizontal padding of the output matrix</param>
     /// <param name="outputPaddingY">vertical padding of the output matrix</param>
     /// <returns>transpose convolved matrix</returns>
-    public Matrix<T> TransposeConvolve(Matrix<T> kernel, bool flip_kernel = false, int outputStrideX = 1, int outputStrideY = 1, int outputPaddingX = 0, int outputPaddingY = 0, T? bias = default(T)) {
-        var in_rows = this.Rows;
-        var in_cols = this.Columns;
-
+    public Matrix<T> TransposeConvolve(Matrix<T> kernel, bool flip_kernel = false, int outputStrideX = 1, int outputStrideY = 1, int inputPaddingX = 0, int inputPaddingY = 0, int outputPaddingX = 0, int outputPaddingY = 0, T? bias = default(T)) {
         var kernel_rows = kernel.Rows;
         var kernel_rows_m1 = kernel_rows - 1;
         var kernel_cols = kernel.Columns;
@@ -747,19 +744,29 @@ where T:INumber<T> {
         // TODO account for stride in output size calculation
         // https://www.digitalocean.com/community/tutorials/transpose-convolution
         // Transpose Convolution Output Size = (Input Size - 1) * Strides + Filter Size - 2 * Padding + Output Padding
-        var out_cols = (this.Columns - 1) * outputStrideX + kernel.Columns - 2 * outputPaddingX; 
-        var out_rows = (this.Rows - 1) * outputStrideY + kernel.Rows - 2 * outputPaddingY;
+        var in_rows_real = this.Rows;
+        var in_cols_real = this.Columns;
+        var in_rows = in_rows_real + inputPaddingY * 2;
+        var in_cols = in_cols_real + inputPaddingX * 2;
+        var out_cols = (in_cols - 1) * outputStrideX + kernel.Columns - 2 * outputPaddingX; 
+        var out_rows = (in_rows - 1) * outputStrideY + kernel.Rows - 2 * outputPaddingY;
 
         var result = new Matrix<T>(out_rows, out_cols, bias ?? T.Zero);
         for (var r = 0; r < in_rows; r++) {
             var region_start_y = r * outputStrideY - outputPaddingY;
             var region_end_y = region_start_y + kernel_rows;
 
+            var real_r = r - inputPaddingY;
+
             for (var c = 0; c < in_cols; c++) {
                 var region_start_x = c * outputStrideX - outputPaddingX;
                 var region_end_x = region_start_x + kernel_cols;
 
-                var i = this[r, c];
+                var real_c = c - inputPaddingX;
+
+                var i = (real_r < 0 || real_c < 0 || real_r >= in_rows_real || real_c >= in_cols_real) 
+                    ? T.Zero
+                    : this[real_r, real_c];
 
                 for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
                     if (out_y < 0 || out_y >= out_rows)
@@ -773,6 +780,77 @@ where T:INumber<T> {
                             result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
                         } else {
                             result[out_y, out_x] += i * kernel[ky, kx];
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Perform a transpose convolution of this matrix using the provided kernel
+    /// </summary>
+    /// <param name="kernel">kernel</param>
+    /// <param name="flip_kernel">should the kernel be flipped across both dimensions or not</param>
+    /// <param name="outputStrideX">stride across the x-axis (columns) of the output matrix</param>
+    /// <param name="outputStrideY">stride across the y-axis (rows) of the output matrix</param>
+    /// <param name="paddingX">horizontal padding of the input matrix</param>
+    /// <param name="paddingY">vertical padding of the input matrix</param>
+    /// <param name="outputPaddingX">horizontal padding of the output matrix</param>
+    /// <param name="outputPaddingY">vertical padding of the output matrix</param>
+    /// <returns>transpose convolved matrix</returns>
+    public static Matrix<T> TransposeConvolveEach(IEnumerable<Matrix<T>> inputs, IEnumerable<Matrix<T>> kernels, bool flip_kernel = false, int outputStrideX = 1, int outputStrideY = 1, int inputPaddingX = 0, int inputPaddingY = 0, int outputPaddingX = 0, int outputPaddingY = 0, T? bias = default(T)) {
+        var first = inputs.First();
+        var in_rows_real = first.Rows;
+        var in_cols_real = first.Columns;
+        var in_rows = in_rows_real + inputPaddingY * 2;
+        var in_cols = in_cols_real + inputPaddingX * 2;
+
+        var first_k = kernels.First();
+        var kernel_rows = first_k.Rows;
+        var kernel_rows_m1 = kernel_rows - 1;
+        var kernel_cols = first_k.Columns;
+        var kernel_cols_m1 = kernel_cols - 1;
+
+        // TODO account for stride in output size calculation
+        // https://www.digitalocean.com/community/tutorials/transpose-convolution
+        // Transpose Convolution Output Size = (Input Size - 1) * Strides + Filter Size - 2 * Padding + Output Padding
+        var out_cols = (in_cols - 1) * outputStrideX + first_k.Columns - 2 * outputPaddingX; 
+        var out_rows = (in_rows - 1) * outputStrideY + first_k.Rows - 2 * outputPaddingY;
+
+        var result = new Matrix<T>(out_rows, out_cols, bias ?? T.Zero);
+        foreach (var (input, kernel) in inputs.Zip(kernels)) {
+            for (var r = 0; r < in_rows; r++) {
+                var region_start_y = r * outputStrideY - outputPaddingY;
+                var region_end_y = region_start_y + kernel_rows;
+
+                var real_r = r - inputPaddingY;
+
+                for (var c = 0; c < in_cols; c++) {
+                    var region_start_x = c * outputStrideX - outputPaddingX;
+                    var region_end_x = region_start_x + kernel_cols;
+
+                    var real_c = c - inputPaddingX;
+
+                    var i = (real_r < 0 || real_c < 0 || real_r >= in_rows_real || real_c >= in_cols_real) 
+                        ? T.Zero
+                        : input[real_r, real_c];
+
+                    for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
+                        if (out_y < 0 || out_y >= out_rows)
+                            continue;
+
+                        for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
+                            if (out_x < 0 || out_x >= out_cols)
+                                continue;
+
+                            if (flip_kernel) {
+                                result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
+                            } else {
+                                result[out_y, out_x] += i * kernel[ky, kx];
+                            }
                         }
                     }
                 }
@@ -1336,7 +1414,7 @@ where T:INumber<T> {
 
     #endregion
     #region Conversion
-
+    
     #if MATRIX_STORAGE_ROW_MAJOR
     /// <summary>
     /// Extract the values of the matrix as a 1D array

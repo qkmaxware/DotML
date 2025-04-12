@@ -1,0 +1,15 @@
+FROM scratch INPUT 3 32 32
+LABEL "3x-upscale"
+
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=2 padding-y=2 filters=56 kernel=5
+ADD ActivationLayer fn=ReLU
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=56 kernel=3
+ADD ActivationLayer fn=ReLU
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=56 kernel=3
+ADD ActivationLayer fn=ReLU
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=56 kernel=3
+ADD ActivationLayer fn=ReLU
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=56 kernel=3
+ADD ActivationLayer fn=ReLU
+ADD TransposeConvolutionLayer stride-x=3 stride-y=3 padding-x=0 padding-y=0 expand-x=0 expand-y=0 filters=56 kernel=3
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=3 kernel=3

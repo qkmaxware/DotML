@@ -21,8 +21,9 @@ public interface IFeedforwardNetworkLayer : ILayer {
     public bool DoesShapeMatchInputShape(Shape3D shape);
 
     public void Visit(ILayerVisitor visitor);
-    public T Visit<T>(ILayerVisitor<T> visitor);
-    public TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args);
+    public void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args);
+    public T Visit<T>(ILayerOutputVisitor<T> visitor);
+    public TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args);
 }
 
 /// <summary>
@@ -87,6 +88,7 @@ public abstract class FeedforwardNetworkLayer : IFeedforwardNetworkLayer {
     public abstract void SubtractGradients(LayerGradients? gradients);
 
     public abstract void Visit(ILayerVisitor visitor);
-    public abstract T Visit<T>(ILayerVisitor<T> visitor);
-    public abstract TOut Visit<TIn, TOut>(ILayerVisitor<TIn, TOut> visitor, TIn args);
+    public abstract void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args);
+    public abstract T Visit<T>(ILayerOutputVisitor<T> visitor);
+    public abstract TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args);
 }

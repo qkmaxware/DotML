@@ -10,6 +10,9 @@ public class Build : BaseCommand {
     [Value(0, MetaName = "name", HelpText = "File path to model to build", Required = true)]
     public string? FilePath {get; set;}
 
+    [Option("description", Required = false, HelpText = "Text to use as the model's description")]
+    public string? DescriptionText {get; set;}
+
     [Option("tag", HelpText = "Tag to use to uniquely identify this network once built", Required = false)]
     public IEnumerable<string>? TagsToAdd {get; set;}
 
@@ -28,7 +31,11 @@ public class Build : BaseCommand {
         var model_scripts = appData.ListModels();
         var scoped_networks = model_scripts
             .SelectMany(model => (model.Tags ?? Enumerable.Empty<string>()).Prepend(model.Guid).Cast<string>().Select(key => new KeyValuePair<string, ModelInfo>(key, model)))
-            .ToDictionary((model) => model.Key, (model) => (Func<string>)(model.Value.GetBuildScript));
+            .GroupBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                (model) => model.Key, 
+                (model) => (Func<string>)(model.First().Value.GetBuildScript)
+            );
         using var reader = new StreamReader(file.OpenRead());
         var text = reader.ReadToEnd();
         Console.WriteLine("done");
@@ -76,6 +83,8 @@ public class Build : BaseCommand {
             var meta_file = new FileInfo(Path.Combine(appData.ModelDirectory.FullName, guid + ".xml"));
             using (var writer = new StreamWriter(meta_file.FullName)) {
                 var info = new ModelInfo(meta_file);
+                info.Description = DescriptionText;
+
                 if (TagsToAdd is not null) {
                     info.Tags = new List<string>();
                     foreach (var tag in TagsToAdd) {

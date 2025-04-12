@@ -18,13 +18,14 @@ public class Modify : BaseCommand {
         none,
         tags,
         labels,
-        weights
+        weights,
+        description,
     }
 
     [Value(0, MetaName = "name", HelpText = "Model name", Required = true)]
     public string? ModelName {get; set;}
 
-    [Value(1, MetaName = "sub-command", HelpText = "Modification type (tags, labels, weights)", Required = true)]
+    [Value(1, MetaName = "sub-command", HelpText = "Modification type (tags, labels, weights, description)", Required = true)]
     public SubCommand Cmd {get; set;}
 
     /*[Usage()]
@@ -38,11 +39,29 @@ public class Modify : BaseCommand {
 
     public override void Action(AppData appData) {
         switch (Cmd) {
-            case SubCommand.tags:       TagAction(appData);     break;
-            case SubCommand.labels:     LabelAction(appData);   break;
-            case SubCommand.weights:    WeightsAction(appData); break;
+            case SubCommand.tags:       TagAction(appData);         break;
+            case SubCommand.labels:     LabelAction(appData);       break;
+            case SubCommand.weights:    WeightsAction(appData);     break;
+            case SubCommand.description:DescriptionAction(appData); break;
         }
     }
+
+    #region Description
+    [Option("text", Required = false, HelpText = "In 'description' mode, text to use as the model's description")]
+    public string? DescriptionText {get; set;}
+    public void DescriptionAction(AppData appData) {
+        var model = appData.GetModel(ModelName);
+        if (model is null) {
+            Console.WriteLine($"No model exists with name '{ModelName}'.");
+            return;
+        }
+
+        model.Description = DescriptionText;
+
+        model.UpdateMetadata();
+    }
+    #endregion
+
 
     #region Tagging
     [Option("add", Required = false, HelpText = "In 'tagging' mode, tags to add to the model", Separator = ' ')]
