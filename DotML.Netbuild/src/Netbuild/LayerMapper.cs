@@ -179,6 +179,16 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
         }
     }
 
+    public IFeedforwardNetworkLayer Visit(PixelShuffle? layer, LayerConstructionArgs args) {
+        (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
+        var upscale = arguments.FirstOf(One, "upscale", "upscale-by").AsInt();
+
+        return new PixelShuffle(
+            input_size: ishape,
+            upscale_factor: upscale
+        );
+    }
+
     public IFeedforwardNetworkLayer Visit(PoolingLayer? layer, LayerConstructionArgs args) {
         // Don't use this. Use the LocalMaxPoolingLayer and LocalAvgPoolingLayer versions below
         // I think I want to fix this in the visitor pattern anyways 

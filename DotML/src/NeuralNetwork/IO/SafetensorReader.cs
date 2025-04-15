@@ -64,6 +64,8 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
         return;
     }
 
+    public void Visit(PixelShuffle layer, int layerIndex) { return; }
+
     public void Visit(PoolingLayer layer, int layerIndex) { return; }
 
     public void Visit(FlatteningLayer layer, int layerIndex) { return; }

@@ -29,7 +29,7 @@ public class LayerWriter : ILayerInputVisitor<int>, IDisposable {
         
     }
 
-    public void Visit(ConvolutionLayer layer, int layerIndex) {
+    private void WriteLayer(IFeedforwardNetworkLayer layer, int layerIndex) {
         if (layerIndex == 0) {
             WriteInputLayer(layer);
         }
@@ -41,139 +41,33 @@ public class LayerWriter : ILayerInputVisitor<int>, IDisposable {
         return;
     }
 
-    public void Visit(DepthwiseConvolutionLayer layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
+    public void Visit(ConvolutionLayer layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(DepthwiseConvolutionLayer layer, int layerIndex) => WriteLayer(layer, layerIndex);
 
-    public void Visit(TransposeConvolutionLayer layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
+    public void Visit(PixelShuffle layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(TransposeConvolutionLayer layer, int layerIndex) => WriteLayer(layer, layerIndex);
 
-    public void Visit(PoolingLayer layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
+    public void Visit(PoolingLayer layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(FlatteningLayer layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-    public void Visit(FlatteningLayer layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
-        
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(DropoutLayer layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-    public void Visit(DropoutLayer layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
-        
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(LayerNorm layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-    public void Visit(LayerNorm layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
-        
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(BatchNorm layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-    public void Visit(BatchNorm layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
-        
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(DenseLinearLayer layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-    public void Visit(DenseLinearLayer layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
-        
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(ActivationLayer layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-    public void Visit(ActivationLayer layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
-        
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(SoftmaxLayer layer, int layerIndex)  => WriteLayer(layer, layerIndex);
 
-    public void Visit(SoftmaxLayer layer, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(layer);
-        }
-        
-        WriteLayerRow(
-            layer, 
-            layer.Visit(describer)
-        );
-        return;
-    }
+    public void Visit(InputCapture layer, int layerIndex) => WriteLayer(layer, layerIndex);
 
     public void Dispose() {
         WriteFooter();
-    }
-
-    public void Visit(InputCapture capture, int layerIndex) {
-        if (layerIndex == 0) {
-            WriteInputLayer(capture);
-        }
-        
-        WriteLayerRow(
-            capture, 
-            capture.Visit(describer)
-        );
-        return;
     }
 }

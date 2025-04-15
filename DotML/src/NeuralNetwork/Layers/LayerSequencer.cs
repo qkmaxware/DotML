@@ -23,6 +23,13 @@ public delegate IFeedforwardNetworkLayer NetworkLayerGenerator(Shape3D input_sha
 public delegate IEnumerable<IFeedforwardNetworkLayer> NetworkBlockGenerator(Shape3D input_shape);
 
 /// <summary>
+/// A function that generates a skip connection
+/// </summary>
+/// <param name="input_shape">input shape</param>
+/// <returns>skip connection</returns>
+public delegate SkipConnection SkipConnectionGenerator(Shape3D input_shape);
+
+/// <summary>
 /// Layer sequencer to make creating sequences of layers easier by passing input shaped on from one layer to another
 /// </summary>
 public static class LayerSequencingExtensions {
@@ -146,6 +153,55 @@ public static class LayerSequencingExtensions {
             foreach (var nextLayer in next(layer.OutputShape)) {
                 yield return nextLayer;
             }
+        }
+    }
+
+    /// <summary>
+    /// Create a sequence of layers followed by a block of layers repeated the given number of times
+    /// </summary>
+    /// <param name="layer">Starting layer</param>
+    /// <param name="block">Generator that produces subsequent layers given a specific input size for the next layer</param>
+    /// <param name="repetitions">Number of times to repeat the block</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenBlock(this IFeedforwardNetworkLayer layer, NetworkBlockGenerator block, int repetitions = 1) {
+        yield return layer;
+        var shape = layer.OutputShape;
+
+        for (var i = 0; i < repetitions; i++) {
+            foreach (var ilayer in block(shape)) {
+                yield return ilayer;
+                shape = ilayer.OutputShape;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Create a sequence of layers followed by a block of layers repeated the given number of times. The block is bookend by an input capture and a skip connection.
+    /// </summary>
+    /// <param name="layer">Starting layer</param>
+    /// <param name="block">Generator that produces the block body</param>
+    /// <param name="connection">Skip connection generator</param>
+    /// <param name="repetitions">Number of times to repeat the block</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenSkipBlock(this IFeedforwardNetworkLayer layer, NetworkBlockGenerator block, SkipConnectionGenerator connection, int repetitions = 1) {
+        yield return layer;
+        var shape = layer.OutputShape;
+
+        for (var i = 0; i < repetitions; i++) {
+            // Begin with an input capture
+            var capture = new InputCapture(shape);
+            yield return capture;
+
+            // Do the body of the block
+            foreach (var ilayer in block(shape)) {
+                yield return ilayer;
+                shape = ilayer.OutputShape;
+            }
+
+            // Create the residual connection
+            var residual = connection(shape);
+            yield return residual;
+            shape = residual.OutputShape;
         }
     }
 
@@ -300,6 +356,61 @@ public static class LayerSequencingExtensions {
             foreach (var layer in next(shape)) {
                 yield return layer;
             }
+        }
+    }
+
+    /// <summary>
+    /// Create a sequence of layers followed by a block of layers repeated the given number of times
+    /// </summary>
+    /// <param name="seq">initial sequence</param>
+    /// <param name="block">generator that produces subsequent layers given a specific input size for the next layer</param>
+    /// <param name="repetitions">Number of times to repeat the block</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenBlock(this LayerSequence seq, NetworkBlockGenerator block, int repetitions = 1) {
+        Shape3D shape = new Shape3D();
+        foreach (var layer in seq) {
+            yield return layer;
+            shape = layer.OutputShape;
+        }
+
+        for (var i = 0; i < repetitions; i++) {
+            foreach (var layer in block(shape)) {
+                yield return layer;
+                shape = layer.OutputShape;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Create a sequence of layers followed by a block of layers repeated the given number of times. The block is bookend by an input capture and a skip connection.
+    /// </summary>
+    /// <param name="layer">Starting layer</param>
+    /// <param name="block">Generator that produces the block body</param>
+    /// <param name="connection">Skip connection generator</param>
+    /// <param name="repetitions">Number of times to repeat the block</param>
+    /// <returns>layer sequence</returns>
+    public static LayerSequence ThenSkipBlock(this LayerSequence seq, NetworkBlockGenerator block, SkipConnectionGenerator connection, int repetitions = 1) {
+        Shape3D shape = new Shape3D();
+        foreach (var layer in seq) {
+            yield return layer;
+            shape = layer.OutputShape;
+        }
+
+        for (var i = 0; i < repetitions; i++) {
+            // Begin with an input capture
+            var capture = new InputCapture(shape);
+            yield return capture;
+
+            // Do the body of the block
+            foreach (var ilayer in block(shape)) {
+                yield return ilayer;
+                shape = ilayer.OutputShape;
+            }
+
+            // Create the residual connection
+            var residual = connection(shape);
+            yield return residual;
+            shape = residual.OutputShape;
         }
     }
 

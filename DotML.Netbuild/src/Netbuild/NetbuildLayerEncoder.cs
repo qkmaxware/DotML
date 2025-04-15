@@ -40,6 +40,10 @@ public class NetbuildLayerEncoder : ILayerVisitor {
         sb.WriteLine($"ADD {nameof(TransposeConvolutionLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} padding-x={layer.InputColumnsPadding} padding-y={layer.InputRowsPadding} expand-x={layer.OutputColumnsPadding} expand-y={layer.OutputRowsPadding} filters={layer.FilterCount} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
     }
 
+    public void Visit(PixelShuffle layer) {
+        sb.WriteLine($"ADD {nameof(PixelShuffle)} upscale-by={layer.UpscalingFactor}");
+    }
+
     public void Visit(PoolingLayer layer) {
         switch (layer) {
             case LocalMaxPoolingLayer max:

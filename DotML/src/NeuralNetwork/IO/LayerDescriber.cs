@@ -16,6 +16,10 @@ public class LayerDescriber : ILayerOutputVisitor<string> {
         return $"Transpose convolution from {layer.Filters.Count} channels to {layer.Filters.FirstOrDefault()?.Count()} channels with kernels of size {layer.Filters?.FirstOrDefault()?.FirstOrDefault().Shape}";
     }
 
+    public string Visit(PixelShuffle layer) {
+        return $"Shuffle pixels from {layer.InputShape.Channels} channels to {layer.OutputShape.Channels} channels to upscale resolution by {layer.UpscalingFactor}x.";
+    }
+
     public string Visit(PoolingLayer layer) {
         return $"Pooling with a size of {layer.FilterHeight}x{layer.FilterWidth}";
     }

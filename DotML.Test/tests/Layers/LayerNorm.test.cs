@@ -9,8 +9,7 @@ public class LayerNormTest {
     public void TestSafetensors() {
         var layer = new LayerNorm(input_size: new Shape3D(1, 5, 5));
         var writer = new LayerSafetensorWriter(); 
-        var success = layer.Visit(writer, 0);
-        Assert.IsTrue(success, "Failed to write layer to safetensor.");
+        layer.Visit(writer, 0);
         foreach (var gamma in layer.Gammas) {
             gamma.Fill(1.0);
             foreach (var item in gamma) {

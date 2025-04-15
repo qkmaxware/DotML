@@ -14,8 +14,7 @@ public class DepthwiseConvolutionLayerTest {
         var layer = new DepthwiseConvolutionLayer(new Shape3D(1, 5, 5), Padding.Valid, ConvolutionFilter.Make(1, 1, 3));
         layer.Initialize(initializer);
         var writer = new LayerSafetensorWriter(); 
-        var success = layer.Visit(writer, 0);
-        Assert.IsTrue(success, "Failed to write layer to safetensor.");
+        layer.Visit(writer, 0);
         var tensors = writer.ToSafetensors();
         Assert.AreEqual(layer.Filters.SelectMany(f => f).Count() + layer.Filters.Count(), tensors.Keys().Count(), "Layer should have many tensors.");
 

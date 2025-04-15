@@ -29,9 +29,9 @@ public static class FSRCNN {
     /// </summary>
     public const int IMG_HEIGHT = 32;
     /// <summary>
-    /// Typical upscaling factor for an image processed by FSRCNN (typically 2x)
+    /// Typical upscaling factor for an image processed by FSRCNN (typically 3x)
     /// </summary>
-    public const int UPSCALING_FACTOR = 2;
+    public const int UPSCALING_FACTOR = 3;
 
     public static FeedforwardNetwork Make(Version version, int img_channels = IMG_CHANNELS, int img_width = IMG_WIDTH, int img_height = IMG_HEIGHT, int scaling = UPSCALING_FACTOR, ActivationFunction? activation = null) {
         scaling = Math.Max(1, scaling);

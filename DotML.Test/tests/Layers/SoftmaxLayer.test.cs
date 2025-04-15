@@ -9,8 +9,7 @@ public class SoftmaxLayerTest {
     public void TestSafetensors() {
         var layer = new SoftmaxLayer(5);
         var writer = new LayerSafetensorWriter(); 
-        var success = layer.Visit(writer, 0);
-        Assert.IsTrue(success, "Failed to write layer to safetensor.");
+        layer.Visit(writer, 0);
         var tensors = writer.ToSafetensors();
         Assert.AreEqual(0, tensors.Keys().Count(), "Layer should not have any tensors.");
     }

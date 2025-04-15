@@ -25,6 +25,10 @@ public abstract class BaseOutputLogger : IOutputLogger {
         return;
     }
 
+    public virtual void Visit(PixelShuffle layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
+    }
+
     public virtual void Visit(PoolingLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         return;
     }

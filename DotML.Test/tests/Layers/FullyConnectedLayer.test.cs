@@ -43,8 +43,7 @@ public class DenseLinearLayerTest {
         var layer = new DenseLinearLayer(input_size: 5, neurons: 3);
         layer.Initialize(initializer);
         var writer = new LayerSafetensorWriter(); 
-        var success = layer.Visit(writer, 0);
-        Assert.IsTrue(success, "Failed to write layer to safetensor.");
+        layer.Visit(writer, 0);
         var tensors = writer.ToSafetensors();
         Assert.AreEqual(2, tensors.Keys().Count(), "Layer should have 2 tensors.");
 

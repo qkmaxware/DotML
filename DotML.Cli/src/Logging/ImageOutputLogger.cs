@@ -51,6 +51,11 @@ public class ImagesOutputLogger : BaseOutputLogger {
         return;
     }
 
+    public override void Visit(PixelShuffle layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        EmitImage($"Layer-{args.LayerIndex} {nameof(PixelShuffle)}", args.Output);
+        return;
+    }
+
     public override void Visit(PoolingLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         EmitImage($"Layer-{args.LayerIndex} {nameof(PoolingLayer)}", args.Output);
         return;
