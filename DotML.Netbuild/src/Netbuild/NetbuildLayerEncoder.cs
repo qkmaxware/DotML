@@ -47,10 +47,10 @@ public class NetbuildLayerEncoder : ILayerVisitor {
     public void Visit(PoolingLayer layer) {
         switch (layer) {
             case LocalMaxPoolingLayer max:
-                sb.WriteLine($"ADD {nameof(LocalMaxPoolingLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} kernel={Math.Max(layer.FilterHeight, layer.FilterWidth)}");
+                sb.WriteLine($"ADD {nameof(LocalMaxPoolingLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} padding-x={layer.PaddingX} padding-y={layer.PaddingY} kernel={Math.Max(layer.FilterHeight, layer.FilterWidth)}");
                 break;
             case LocalAvgPoolingLayer avg:
-                sb.WriteLine($"ADD {nameof(LocalAvgPoolingLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} kernel={Math.Max(layer.FilterHeight, layer.FilterWidth)}");
+                sb.WriteLine($"ADD {nameof(LocalAvgPoolingLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} padding-x={layer.PaddingX} padding-y={layer.PaddingY} kernel={Math.Max(layer.FilterHeight, layer.FilterWidth)}");
                 break;
             default:
                 throw new NotImplementedException();

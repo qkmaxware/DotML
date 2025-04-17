@@ -83,4 +83,15 @@ public class NetBuildWriterTest {
 
         netbuild.Encode(network);
     }
+
+    [TestMethod]
+    // Cifar-10
+    public void MakeResNet6_32x32_10() {
+        var network = ResNet.Make(ResNet.Version.V6, img_channels: 3, img_width: 32, img_height: 32, output_classes: 10, activation: ReLU.Instance);
+
+        using var writer = new StreamWriter("resnet.32x32.10.netbuild");
+        var netbuild = new NetbuildLayerEncoder(writer);
+
+        netbuild.Encode(network);
+    }
 }

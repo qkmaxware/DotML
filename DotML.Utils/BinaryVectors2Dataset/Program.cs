@@ -24,20 +24,24 @@ public class Program {
             options.OutName = options.OutName.EndsWith(".bin") ? options.OutName : options.OutName + ".bin";
 
             var parser = new BinaryClassifiedVectors();
-            TrainingSet set = new TrainingSet();
+            // TrainingSet set = new TrainingSet();
+            var builder = new TrainingSetBuilder<byte>();
+            builder.ScalingFactor = 1.0 / 255.0;
             foreach (var file in files) {
                 Console.Write($"Processing '{file}'...");
                 var info = new FileInfo(file);
                 if (!info.Exists)
                     continue;
-                set.AddRange(parser.Read(info));
+                builder.AddRange(parser.ReadBytes(info, fixed_vector_size: 1024 * 3));
+                //set.AddRange(parser.Read(info));
                 Console.WriteLine("done");
             }
 
             using var out_stream = File.Open(options.OutName, FileMode.Create);
             using var writer = new BinaryWriter(out_stream);
-            set.WriteTo(writer);
-            Console.WriteLine("Training set contains: " + set.Size + " entries");
+            // set.WriteTo(writer);
+            builder.WriteTo(writer);
+            Console.WriteLine("Training set contains: " + builder.Count + " entries");
             Console.WriteLine("File saved as " + options.OutName);
         });
     }
@@ -46,7 +50,7 @@ public class Program {
 
 public class BinaryClassifiedVectors {
 
-    public bool CategoryIsByte = false;
+    public bool CategoryIsByte = true;
     public int OutputClasses = 2;
     public double ZeroValue = 0.0;
     public double OneValue = 1.0;
@@ -57,8 +61,42 @@ public class BinaryClassifiedVectors {
             category_off:       ZeroValue, 
             category_on:        OneValue, 
             element_parser:     x => (x.ReadByte() / 255.0), 
-            fixed_vector_size:  null//1024 * 3 
+            fixed_vector_size:  1024 * 3 
         );
+    }
+
+    public IEnumerable<(byte[], byte[])> ReadBytes(FileInfo file, int? fixed_vector_size = null) {
+        using var stream = file.OpenRead();
+        using var reader = new BinaryReader(stream);
+        
+        List<(byte[], int)> items = new List<(byte[], int)>();
+        int category_count = 1;
+        while (stream.Position < stream.Length) {
+            var category_index  = !CategoryIsByte ? reader.ReadInt32() : reader.ReadByte();
+            category_count = Math.Max(category_count, category_index + 1);
+            var vector_size     = fixed_vector_size.HasValue ? fixed_vector_size.Value : reader.ReadInt32();
+            byte[] input_vec  = new byte[vector_size];
+            Console.WriteLine($"CATEGORY: {category_index}, VECTOR: {vector_size}");
+
+            for (var i = 0; i < vector_size; i++) {
+                try {
+                    input_vec[i] = reader.ReadByte();
+                } catch {
+                    input_vec[i] = (byte)0;
+                }
+            } 
+            items.Add((input_vec, category_index));
+        }
+
+        return items.Select(p => (p.Item1, vector_from_label_index(p.Item2, category_count, 0, 255)));
+    }
+
+    private static byte[] vector_from_label_index(int index, int classes, byte off = 0, byte on = 255) {
+        byte[] values = new byte[classes];
+        Array.Fill(values, off);
+        if (index >= 0 && index < classes)
+            values[index] = on;
+        return values;
     }
 
     private static Vec<double> vector_from_label_index(int index, int classes, double off = -1, double on = 1) {

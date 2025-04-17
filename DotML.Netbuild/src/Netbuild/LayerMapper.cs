@@ -200,6 +200,8 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
         (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
         var x_stride = arguments.FirstOf(One, "stride-x", "stride").AsInt();
         var y_stride = arguments.FirstOf(One, "stride-y", "stride").AsInt();
+        var x_pad = arguments.FirstOf(Zero, "padding-x", "padding").AsInt();
+        var y_pad = arguments.FirstOf(Zero, "padding-y", "padding").AsInt();
         var kernel = arguments["kernel"].AsInt();
 
         return new LocalMaxPoolingLayer(
@@ -207,7 +209,9 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
             width: kernel,
             height: kernel,
             strideX: x_stride,
-            strideY: y_stride
+            strideY: y_stride,
+            paddingX: x_pad,
+            paddingY: y_pad
         );
     }
 
@@ -215,6 +219,8 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
         (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
         var x_stride = arguments.FirstOf(One, "stride-x", "stride").AsInt();
         var y_stride = arguments.FirstOf(One, "stride-y", "stride").AsInt();
+        var x_pad = arguments.FirstOf(Zero, "padding-x", "padding").AsInt();
+        var y_pad = arguments.FirstOf(Zero, "padding-y", "padding").AsInt();
         var kernel = arguments["kernel"].AsInt();
 
         return new LocalAvgPoolingLayer(
@@ -222,7 +228,9 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
             width: kernel,
             height: kernel,
             strideX: x_stride,
-            strideY: y_stride
+            strideY: y_stride,
+            paddingX: x_pad,
+            paddingY: y_pad
         );
     }
 

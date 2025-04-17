@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace DotML;
 
@@ -308,6 +309,16 @@ public class BatchedFeatureSet<T> :
     /// </summary>
     /// <returns></returns>
     public Vec<T> ToVector() => Vec<T>.Wrap(FlattenElements().ToArray());
+
+    public string ToJaggedArrayString() {
+        StringBuilder sb = new StringBuilder();
+        sb.Append('[');
+        for (var batch = 0; batch < this.Batches; batch++) {
+            sb.Append(this[batch].ToJaggedArrayString());
+        }
+        sb.Append(']');
+        return sb.ToString();
+    }
 }
 
 /// <summary>
@@ -631,4 +642,14 @@ public class FeatureSet<T> :
     /// </summary>
     /// <returns></returns>
     public Vec<T> ToVector() => Vec<T>.Wrap(FlattenElements().ToArray());
+
+    public string ToJaggedArrayString() {
+        StringBuilder sb = new StringBuilder();
+        sb.Append('[');
+        for (var feature = 0; feature < this.Channels; feature++) {
+            sb.Append(this[feature].ToJaggedArrayString());
+        }
+        sb.Append(']');
+        return sb.ToString();
+    }
 }

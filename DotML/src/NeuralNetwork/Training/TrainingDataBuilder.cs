@@ -12,7 +12,7 @@ public class TrainingSetBuilder {
     /// <summary>
     /// Scaling factor for all vectors
     /// </summary>
-    public double ScalingFactor {get; private set;} = 1;
+    public double ScalingFactor {get; set;} = 1;
 
     /// <summary>
     /// Type of value stored in each vector
@@ -96,7 +96,17 @@ public class TrainingSetBuilder {
 
     private List<KeyValuePair<Array, Array>> pairs;
 
-    protected IEnumerable<KeyValuePair<Array, Array>> TrainingPairs => pairs.AsReadOnly();
+    public int InputLength => pairs.Count > 0 ? pairs[0].Key.Length : 0;
+    public int OutputLength => pairs.Count > 0 ? pairs[0].Value.Length : 0;
+
+    public IEnumerable<KeyValuePair<Array, Array>> TrainingPairs => pairs.AsReadOnly();
+
+    public KeyValuePair<Array, Array>? GetPair(int index) {
+        if (index < 0 || index >= pairs.Count) {
+            return null;
+        }
+        return pairs[index];
+    }
 
     /// <summary>
     /// Number of training pairs
@@ -222,19 +232,19 @@ public class TrainingSetBuilder {
             var data = MakeValueArray(value_type, vec_size);
             for (var j = 0; j < vec_size; j++) {
                 data.SetValue(type switch {
-                    TrainingSet.VectorStorageType.U8  => (double)reader.ReadByte(),
-                    TrainingSet.VectorStorageType.U16 => (double)reader.ReadUInt16(),
-                    TrainingSet.VectorStorageType.U32 => (double)reader.ReadUInt32(),
-                    TrainingSet.VectorStorageType.U64 => (double)reader.ReadUInt64(),
+                    TrainingSet.VectorStorageType.U8  => reader.ReadByte(),
+                    TrainingSet.VectorStorageType.U16 => reader.ReadUInt16(),
+                    TrainingSet.VectorStorageType.U32 => reader.ReadUInt32(),
+                    TrainingSet.VectorStorageType.U64 => reader.ReadUInt64(),
 
-                    TrainingSet.VectorStorageType.I8  => (double)reader.ReadSByte(),
-                    TrainingSet.VectorStorageType.I16 => (double)reader.ReadInt16(),
-                    TrainingSet.VectorStorageType.I32 => (double)reader.ReadInt32(),
-                    TrainingSet.VectorStorageType.I64 => (double)reader.ReadInt64(),
+                    TrainingSet.VectorStorageType.I8  => reader.ReadSByte(),
+                    TrainingSet.VectorStorageType.I16 => reader.ReadInt16(),
+                    TrainingSet.VectorStorageType.I32 => reader.ReadInt32(),
+                    TrainingSet.VectorStorageType.I64 => reader.ReadInt64(),
 
-                    TrainingSet.VectorStorageType.F16 => (double)reader.ReadHalf(),
-                    TrainingSet.VectorStorageType.F32 => (double)reader.ReadSingle(),
-                    TrainingSet.VectorStorageType.F64 => (double)reader.ReadDouble(),
+                    TrainingSet.VectorStorageType.F16 => reader.ReadHalf(),
+                    TrainingSet.VectorStorageType.F32 => reader.ReadSingle(),
+                    TrainingSet.VectorStorageType.F64 => reader.ReadDouble(),
 
                     _ => throw new InvalidCastException(nameof(TrainingSet.VectorStorageType))
                 }, j);
@@ -253,19 +263,19 @@ public class TrainingSetBuilder {
             var data = MakeValueArray(value_type, vec_size);
             for (var j = 0; j < vec_size; j++) {
                 data.SetValue(type switch {
-                    TrainingSet.VectorStorageType.U8  => (double)reader.ReadByte(),
-                    TrainingSet.VectorStorageType.U16 => (double)reader.ReadUInt16(),
-                    TrainingSet.VectorStorageType.U32 => (double)reader.ReadUInt32(),
-                    TrainingSet.VectorStorageType.U64 => (double)reader.ReadUInt64(),
+                    TrainingSet.VectorStorageType.U8  => reader.ReadByte(),
+                    TrainingSet.VectorStorageType.U16 => reader.ReadUInt16(),
+                    TrainingSet.VectorStorageType.U32 => reader.ReadUInt32(),
+                    TrainingSet.VectorStorageType.U64 => reader.ReadUInt64(),
 
-                    TrainingSet.VectorStorageType.I8  => (double)reader.ReadSByte(),
-                    TrainingSet.VectorStorageType.I16 => (double)reader.ReadInt16(),
-                    TrainingSet.VectorStorageType.I32 => (double)reader.ReadInt32(),
-                    TrainingSet.VectorStorageType.I64 => (double)reader.ReadInt64(),
+                    TrainingSet.VectorStorageType.I8  => reader.ReadSByte(),
+                    TrainingSet.VectorStorageType.I16 => reader.ReadInt16(),
+                    TrainingSet.VectorStorageType.I32 => reader.ReadInt32(),
+                    TrainingSet.VectorStorageType.I64 => reader.ReadInt64(),
 
-                    TrainingSet.VectorStorageType.F16 => (double)reader.ReadHalf(),
-                    TrainingSet.VectorStorageType.F32 => (double)reader.ReadSingle(),
-                    TrainingSet.VectorStorageType.F64 => (double)reader.ReadDouble(),
+                    TrainingSet.VectorStorageType.F16 => reader.ReadHalf(),
+                    TrainingSet.VectorStorageType.F32 => reader.ReadSingle(),
+                    TrainingSet.VectorStorageType.F64 => reader.ReadDouble(),
 
                     _ => throw new InvalidCastException(nameof(TrainingSet.VectorStorageType))
                 }, j);
@@ -350,6 +360,38 @@ public class TrainingSetBuilder {
                 };
             }
         }
+    }
+
+    private static IEnumerable<double> ToIEnumerable(Array array) {
+        foreach (var item in array) {
+            yield return (double)Convert.ChangeType(item, typeof(Double));
+        }
+    }
+
+    /// <summary>
+    /// Convert the builder's data to a concrete training set
+    /// </summary>
+    /// <returns>Training set</returns>
+    public TrainingSet ToTrainingSet() {
+        TrainingSet set = new TrainingSet(this.Count);
+
+        foreach (var pair in TrainingPairs) {
+            TrainingPair training = new TrainingPair {
+                Input  = Vec<double>.Wrap(ToIEnumerable(pair.Key).Select(v => v * ScalingFactor).ToArray()),
+                Output = Vec<double>.Wrap(ToIEnumerable(pair.Value).Select(v => v * ScalingFactor).ToArray()),
+            };
+            set.Add(training);
+        }
+
+        return set;
+    }
+    
+    /// <summary>
+    /// Clone this builder to a new instance
+    /// </summary>
+    /// <returns>TrainingSetBuilder with identical values</returns>
+    public TrainingSetBuilder Clone() {
+        return new TrainingSetBuilder(this, deep: true);
     }
 
     /// <summary>
@@ -523,27 +565,4 @@ public class TrainingSetBuilder<T> : TrainingSetBuilder where T:IConvertible {
         base.Insert(index, input, output);
     }
 
-    private static IEnumerable<T> ToIEnumerable(Array array) {
-        foreach (var item in array) {
-            yield return (T)item;
-        }
-    }
-
-    /// <summary>
-    /// Convert the builder's data to a concrete training set
-    /// </summary>
-    /// <returns>Training set</returns>
-    public TrainingSet ToTrainingSet() {
-        TrainingSet set = new TrainingSet(this.Count);
-
-        foreach (var pair in TrainingPairs) {
-            TrainingPair training = new TrainingPair {
-                Input  = Vec<double>.Wrap(ToIEnumerable(pair.Key).Select(v => v.ToDouble(null) * ScalingFactor).ToArray()),
-                Output = Vec<double>.Wrap(ToIEnumerable(pair.Value).Select(v => v.ToDouble(null) * ScalingFactor).ToArray()),
-            };
-            set.Add(training);
-        }
-
-        return set;
-    }
 }

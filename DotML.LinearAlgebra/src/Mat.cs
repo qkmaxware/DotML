@@ -1088,6 +1088,26 @@ where T:INumber<T> {
         return str.ToString();
     }
 
+    public string ToMatlabString() => ToString();
+
+    public string ToJaggedArrayString() {
+        StringBuilder sb = new StringBuilder();
+        sb.Append('[');
+        for (var r = 0; r < Rows; r++) {
+            if (r != 0)
+                sb.Append(',');
+            sb.Append('[');
+            for (var c = 0; c < Columns; c++) {
+                if (c != 0)
+                    sb.Append(',');
+                sb.Append(this[r, c]);
+            }
+            sb.Append(']');
+        }
+        sb.Append(']');
+        return sb.ToString();
+    }
+
     /// <summary>
     /// String representation of the matrix in a HTML compatible MathML
     /// </summary>

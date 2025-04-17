@@ -3,7 +3,7 @@ using DotML.Network.Training;
 
 namespace DotML.Network;
 
-public abstract class AdditionSkipConnection : SkipConnection {
+public class AdditionSkipConnection : SkipConnection {
     public AdditionSkipConnection(Shape3D input_shape, InputCapture captureSource) : base(input_shape, input_shape, captureSource) { }
 
     /// <summary>
@@ -12,22 +12,24 @@ public abstract class AdditionSkipConnection : SkipConnection {
     /// <param name="skipConnection">capture source features</param>
     /// <param name="input">input features</param>
     /// <returns>combined features</returns>
-    public override BatchedFeatureSet<double> Combine(BatchedFeatureSet<double>? skipConnection, BatchedFeatureSet<double> input) {
+    public override BatchedFeatureSet<double> Combine(BatchedFeatureSet<double>? skipConnection, BatchedFeatureSet<double> inputs) {
         if (skipConnection is null)
-            return input;
+            return inputs;
 
-        if (skipConnection.Shape != input.Shape)
+        if (skipConnection.Shape != inputs.Shape)
             throw new ArgumentException("Incompatible tensor shapes");
 
-        var shape = input.Shape;
+        var shape = inputs.Shape;
 
         // Loop over all channels and perform matrix addition
         FeatureSet<double>[] values = new FeatureSet<double>[shape.Batches];
         for (var batchIndex = 0; batchIndex < values.Length; batchIndex++) {
             Matrix<double>[] features = new Matrix<double>[shape.Channels];
+            var captured = skipConnection[batchIndex];
+            var input = inputs[batchIndex];
 
             for (var i = 0; i < features.Length; i++) {
-                features[i] = skipConnection[batchIndex][i] + input[batchIndex][i];
+                features[i] = captured[i] + input[i];
             }
 
             values[batchIndex] = new FeatureSet<double>(features);
@@ -56,4 +58,12 @@ public abstract class AdditionSkipConnection : SkipConnection {
             gradients: null
         );
     }
+
+    public override void Visit(ILayerVisitor visitor) =>throw new NotImplementedException();//=> visitor.Visit(this);
+    
+    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) =>throw new NotImplementedException();//=> visitor.Visit(this, args);
+
+    public override T Visit<T>(ILayerOutputVisitor<T> visitor) =>throw new NotImplementedException();//=> visitor.Visit(this);
+
+    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) =>throw new NotImplementedException();//=> visitor.Visit(this, args);
 }

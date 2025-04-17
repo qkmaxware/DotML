@@ -3,7 +3,7 @@ import torch.nn as nn
 import json
 
 # Step 1: Make layer
-layer = nn.MaxPool2d(kernel_size=3, stride=1, padding=0)
+layer = nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
 
 # Step 2: Create random input tensor
 input = torch.randn(1, 1, 5, 5, requires_grad=True) # 1 batch, 1 channel, 5x5 feature

@@ -35,9 +35,12 @@ public class FromStatement : Statement {
     public override void Action(BuildEnvironment env) {
         env.Network = (Identifier?.ToLower()) switch {
             // Named networks!
-            "lenet"     => LeNet.Make(make_enum<LeNet.Version>(Version, LeNet.Version.Latest), output_classes: LeNet.OUT_CLASSES),
             "alexnet"   => AlexNet.Make(make_enum<AlexNet.Version>(Version, AlexNet.Version.Latest), output_classes: AlexNet.OUT_CLASSES),
+            "espcn"     => ESPCN.Make(make_enum<ESPCN.Version>(Version, ESPCN.Version.Latest)),
+            "fsrcnn"    => FSRCNN.Make(make_enum<FSRCNN.Version>(Version, FSRCNN.Version.Latest)),
+            "lenet"     => LeNet.Make(make_enum<LeNet.Version>(Version, LeNet.Version.Latest), output_classes: LeNet.OUT_CLASSES),
             "mobilenet" => MobileNet.Make(make_enum<MobileNet.Version>(Version, MobileNet.Version.Latest), output_classes: MobileNet.OUT_CLASSES),
+            "resnet"    => ResNet.Make(make_enum<ResNet.Version>(Version, ResNet.Version.Latest)),
             "vgg"       => VGGNet.Make(make_enum<VGGNet.Version>(Version, VGGNet.Version.Latest), output_classes: VGGNet.OUT_CLASSES),
 
             // Scratch
