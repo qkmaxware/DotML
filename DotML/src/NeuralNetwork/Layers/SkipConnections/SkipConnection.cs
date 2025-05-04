@@ -11,6 +11,11 @@ public abstract class SkipConnection : FeedforwardNetworkLayer {
     /// </summary>
     public InputCapture CaptureSource {get; private set;}
 
+    /// <summary>
+    /// Automatically crop or pad across rows&columns for captured inputs to match input shape
+    /// </summary>
+    public bool AutoCropOrPad {get; set;} = true;
+
     public SkipConnection(Shape3D input_shape, Shape3D output_shape, InputCapture captureSource) {
         this.CaptureSource = captureSource;
         this.InputShape = input_shape;
@@ -22,7 +27,34 @@ public abstract class SkipConnection : FeedforwardNetworkLayer {
     }
 
     public override BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
-        return Combine(CaptureSource.CapturedInput, features);
+        // TODO AUTO padding / cropping 
+        var captured = CaptureSource.CapturedInput;
+        if (captured is not null && AutoCropOrPad) {
+            var hdiff = features.Columns - captured.Columns;    // + if padding, - if cropping
+            var vdiff = features.Rows - captured.Rows;          // + if padding, - if cropping
+
+            if (hdiff != 0 || vdiff != 0) {
+                var lpad = hdiff / 2;                           // Attempt to centre the padding/cropping
+                var rpad = hdiff - lpad;
+                var tpad = vdiff / 2;                           // Attempt to centre the padding/cropping
+                var bpad = vdiff - tpad;
+
+                var bs = new FeatureSet<double>[captured.Batches];
+                for (var b = 0; b < bs.Length; b++) {
+                    var fs = new Matrix<double>[captured.Channels];
+                    for (var f = 0; f < fs.Length; f++) {
+                        fs[f] = captured[b, f].Pad(
+                                  top: tpad, 
+                            left: lpad, right: rpad, 
+                                bottom: bpad
+                        );
+                    }
+                    bs[b] = new FeatureSet<double>(fs);
+                }
+                captured = new BatchedFeatureSet<double>(bs);
+            }
+        }
+        return Combine(captured, features);
     }
 
     /// <summary>

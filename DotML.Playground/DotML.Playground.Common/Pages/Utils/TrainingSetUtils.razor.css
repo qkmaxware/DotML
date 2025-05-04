@@ -1,0 +1,14 @@
+.tool {
+    color: white !important;
+    display: inline-block;
+    width: 240px;
+    margin: 8px;
+    background-color: #36393e;
+    border-radius: 25px;
+    border: 1px solid #424549;
+    padding: 12px;
+}
+
+.tool > img {
+    width: 100%;
+}

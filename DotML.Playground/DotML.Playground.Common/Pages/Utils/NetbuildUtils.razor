@@ -1,0 +1,15 @@
+@page "/utils/netbuild"
+@using DotML.Playground.Common.Shared
+@using DotML.Playground.Common.Shared.Tools
+
+<TabView @ref=tabs>
+    <Tab Title="Home">
+    </Tab>
+    <Tab Title="Editor">
+        <NetbuildBuilder></NetbuildBuilder>
+    </Tab>
+</TabView>
+
+@code {
+    private TabView? tabs;
+}

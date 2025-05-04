@@ -1,0 +1,136 @@
+﻿@page "/examples"
+@using DotML.Network
+
+@foreach (var group in links.Select((link, i) => (Index: i, Value: link)).GroupBy(x => x.Index / 3)){
+<div class="w3-row w3-padding">
+    @foreach (var link in group.Select(l => l.Value)) {
+    <div class="w3-third w3-padding">
+        <a class="w3-card w3-round-xlarge light w3-button" href="@link.Href">
+            <h5>@link.Title</h5>
+            <div class="w3-display-container">
+                @if (link.Type is not null && !string.IsNullOrEmpty(link.Type.Name)) {
+                <a class="w3-display-topleft w3-round highlight info w3-right w3-small" href="@(link.Type.Href ?? "#")" title="@link.Type.Description">&nbsp;@(link.Type.Name)&nbsp;</a>
+                }
+                <img src="_content/DotML.Playground.Common/@link.Image" style="width: 100%; height: 120px;" alt="@link.Alt"/>
+            </div>
+            <p style="white-space: normal; height: 120px; overflow-y: auto;">
+            @link.Description
+            </p>
+        </a>
+    </div>
+    }
+</div>
+}
+
+@code {
+public class Type {
+    public string Name {get; set;} = string.Empty;
+    public string Description {get; set;} = string.Empty;
+    public string Href {get; set;} = string.Empty;
+}
+public static Type Perception = new Type {
+    Name = "Perception",
+    Description = "A simple neural network with a single neuron acting as a binary classifier.",
+    Href = "https://en.wikipedia.org/wiki/Perceptron"
+};
+public static Type MultilayerPerception = new Type {
+    Name = "Multilayer Perception",
+    Description = "A neural network with one or more hidden layers composed of fully-connected neurons.",
+    Href = "https://en.wikipedia.org/wiki/Multilayer_perceptron"
+};
+
+public static Type CNN = new Type {
+    Name = "CNN",
+    Description = "A neural network that performs convolutions across 2D data.",
+    Href = "https://en.wikipedia.org/wiki/Convolutional_neural_network"
+};
+
+public static Type Residual = new Type {
+    Name = "Residual",
+    Description = "A class of network in which layers learn residual functions referencing earlier layer inputs.",
+    Href = "https://en.wikipedia.org/wiki/Residual_neural_network"
+};
+public class Link {
+    public Type? Type {get; set;} = null;
+    public string Href { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Image { get; set; } = string.Empty;
+    public string Alt { get; set; } = string.Empty;
+}
+
+public static List<Link> links = new List<Link> {
+new Link {
+    Href = "examples/and",
+    Title = "Boolean And (AND)",
+    Type = Perception,
+    Description = "A basic digital logic gate that implements the logical conjunction.",
+    Image = "images/and.svg",
+    Alt = "AND Gate"
+},
+new Link {
+    Href = "examples/or",
+    Title = "Boolean Or (Or)",
+    Type = Perception,
+    Description = "A basic digital logic gate that implements the logical disjunction.",
+    Image = "images/or.svg",
+    Alt = "OR Gate"
+},
+new Link {
+    Href = "examples/not",
+    Title = "Boolean Not (NOT)",
+    Type = Perception,
+    Description = "A basic digital logic gate that implements the logical negation.",
+    Image = "images/not.svg",
+    Alt = "NOT Gate"
+},
+new Link {
+    Href = "examples/xor",
+    Title = "Boolean Exclusive Or (XOR)",
+    Type = MultilayerPerception,
+    Description = "The simplest problem that can't be solved by a perception since the data is not linearly separable. XOR is a logical operation that returns true (or 1) if and only if exactly one of the inputs is true (or 1), and false (or 0) otherwise.",
+    Image = "images/xor.svg",
+    Alt = "XOR Gate"
+},
+new Link {
+    Href = "examples/digits",
+    Title = "Handwritten Digit Recognizer",
+    Type = CNN,
+    Description = "Recognize handwritten digits (0-9) written on a 32x32 pixel canvas.",
+    Image = "images/digits.svg",
+    Alt = "Digits"
+},
+new Link {
+    Href = "examples/letters",
+    Title = "Handwritten Letter Recognizer",
+    Type = CNN,
+    Description = "Recognize handwritten capital letters (A-Z) written on a 32x32 pixel canvas.",
+    Image = "images/letters.svg",
+    Alt = "Letters"
+},
+new Link {
+    Href = "examples/cifar-10",
+    Title = "Cifar-10",
+    Type = Residual,
+    Description = "Recognize small images of airplanes, automobiles, birds, cats, deer, dogs, frogs, horses, ships, and trucks.",
+    Image = "images/cifar.svg",
+    Alt = "Cifar-10"
+},
+new Link {
+    Href = "examples/fruits",
+    Title = "Common Fruit Recognizer",
+    Type = CNN,
+    Description = "Recognize some common fruits from images including apples, oranges, bananas, grapes, and pears.",
+    Image = "images/fruit.svg",
+    Alt = "Apple"
+},
+new Link {
+    Href = "examples/upscale",
+    Title = "Upscaling",
+    Type = CNN,
+    Description = "Upscale 32x32 pixel textures by 3x using pixel shuffling.",
+    Image = "images/upscale.svg",
+    Alt = "2x Upscaling"
+},
+};
+}

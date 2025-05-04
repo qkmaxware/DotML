@@ -59,11 +59,11 @@ public class AdditionSkipConnection : SkipConnection {
         );
     }
 
-    public override void Visit(ILayerVisitor visitor) =>throw new NotImplementedException();//=> visitor.Visit(this);
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
     
-    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) =>throw new NotImplementedException();//=> visitor.Visit(this, args);
+    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) => visitor.Visit(this, args);
 
-    public override T Visit<T>(ILayerOutputVisitor<T> visitor) =>throw new NotImplementedException();//=> visitor.Visit(this);
+    public override T Visit<T>(ILayerOutputVisitor<T> visitor) => visitor.Visit(this);
 
-    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) =>throw new NotImplementedException();//=> visitor.Visit(this, args);
+    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

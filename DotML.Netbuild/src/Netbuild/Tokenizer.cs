@@ -2,9 +2,9 @@ using System.Data;
 
 namespace DotML.Network.IO.Netbuild;
 
-internal class Tokenizer {
+public class Tokenizer {
     
-    private Lexeme[] all = [
+    private static Lexeme[] all = [
         new KeywordFrom(),
         new KeywordScratch(),
         new KeywordInput(),
@@ -29,6 +29,33 @@ internal class Tokenizer {
         new Comment()
     ];
     
+    public static IEnumerable<Lexeme> Lexemes() => Array.AsReadOnly(all);
+
+    public List<Token> GetTokens(string text, out string un_tokenized) {
+        var tokens = new List<Token>();
+        un_tokenized = string.Empty;
+        var start_index = 0;
+        while (start_index < text.Length) {
+            bool was_matched = false;
+
+            foreach (var lexeme in all) {
+                var token = lexeme.GetNext(start_index, text);
+                if (token is null)
+                    continue;
+                
+                was_matched = true;
+                start_index += token.Length;
+                tokens.Add(token);
+            }
+        
+            if (!was_matched) {
+                un_tokenized = text.Substring(start_index);
+                break;
+            }
+        }
+        return tokens;
+    }
+
     public List<Token> GetTokens(string text) {
         var tokens = new List<Token>();
         var start_index = 0;

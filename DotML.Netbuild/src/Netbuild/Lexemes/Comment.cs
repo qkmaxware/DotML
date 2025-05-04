@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace DotML.Network.IO.Netbuild;
 
-internal class Comment : RegexLexeme {
+public class Comment : RegexLexeme {
     public Comment() : base(@"\G\s*#(?<value>[^\n]+)\s*", RegexOptions.Compiled) {
         this.GroupName = "value";
     }

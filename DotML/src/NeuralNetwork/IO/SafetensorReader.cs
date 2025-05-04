@@ -101,7 +101,7 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
         }
         
         var gammas = norm.Gammas;
-        for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
+        /*for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
             var key = $"Layers[{layerIndex}].Gamma[{gammaIndex}]";
             if (sb.ContainsKey(key)) {
                 gammas[gammaIndex] = sb.GetTensor<double>(key);
@@ -113,7 +113,7 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
             if (sb.ContainsKey(key)) {
                 betas[betaIndex] = sb.GetTensor<double>(key);
             }
-        }
+        }*/
         return;
     }
 
@@ -134,4 +134,6 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
     public void Visit(SoftmaxLayer layer, int layerIndex) { return; }
 
     public void Visit(InputCapture capture, int args) { return; }
+
+    public void Visit(AdditionSkipConnection capture, int args) { return; }
 }

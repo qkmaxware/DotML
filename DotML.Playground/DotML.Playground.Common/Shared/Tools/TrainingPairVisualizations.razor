@@ -1,0 +1,225 @@
+@using System.Drawing
+<div class="w3-margin-top" style="max-width: 100%">
+@if (Data is not null) {
+switch(Type) {
+    case Visualization.Vector:
+        <table class="w3-table tensor">
+            <tbody>
+                @{ 
+                var counter = 0;
+                @foreach (var item in Data) {
+                    <tr>
+                        <td>@(counter++)</td>
+                        <td>@((double)item * DataScaling)</td>
+                    </tr>
+                }}
+            </tbody>
+        </table>
+        break;
+    case Visualization.Tensor:
+        <div>
+            <label><b>Shape:</b></label><br>
+            <label>Channels:</label>
+            <input type="number" min="1" max="@Data.Length" @bind=tensor_channels>
+            <label>Rows:</label>
+            <input type="number" min="1" max="@Data.Length" @bind=tensor_rows>
+            <label>Columns:</label>
+            <input type="number" min="1" max="@Data.Length" @bind=tensor_cols>
+        </div>
+        <div style="text-align: left; overflow: auto;">
+            @for (var channel = 0; channel < tensor_channels; channel++) {
+                var channel_offset = channel * tensor_rows * tensor_cols;
+                <b>Channel #@channel</b><br>
+                @if (channel_offset >= Data.Length) {
+                    continue;
+                } else {
+                <table class="w3-table tensor">
+                    <thead>
+                        <th></th>
+                        @for (var col = 0; col < tensor_cols; col++) {
+                            <th>@col</th>
+                        }
+                    </thead>
+                    <tbody>
+                        @for (var row = 0; row < tensor_rows; row++) {
+                            var row_offset = channel_offset + row * tensor_cols;
+                            <tr>
+                                <td>@row</td>
+                            @for (var col = 0; col < tensor_cols; col++) {
+                                var index = row_offset + col;
+                                <td>@(index >= 0 && index < Data.Length ? ((double)Data.GetValue(index) * DataScaling) : null)</td>
+                            }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                }
+            }
+        </div>
+        break;
+    case Visualization.Heatmap:
+        <div>
+            <label><b>Shape:</b></label><br>
+            <label>Channels:</label>
+            <input type="number" min="1" max="@Data.Length" @bind=tensor_channels>
+            <label>Rows:</label>
+            <input type="number" min="1" max="@Data.Length" @bind=tensor_rows>
+            <label>Columns:</label>
+            <input type="number" min="1" max="@Data.Length" @bind=tensor_cols>
+            <br>
+            <label><b>Heat:</b></label><br>
+            <label>Min Value:</label>
+            <input type="range" min="0" max="heatmap_max" @bind=heatmap_min>
+            <label>Max Value:</label>
+            <input type="range" min="0" max="100" @bind=heatmap_max>
+        </div>
+        <div style="text-align: left; width: 100%;">
+             @for (var channel = 0; channel < tensor_channels; channel++) {
+                var channel_offset = channel * tensor_rows * tensor_cols;
+                <b>Channel #@channel</b><br>
+                @if (channel_offset >= Data.Length) {
+                    continue;
+                } else {
+                    var cell_height = heatmap_height / tensor_rows;
+                    var cell_width = heatmap_width / tensor_cols;
+                    <svg class="heatmap" viewBox="0 0 @(heatmap_width) @(heatmap_height)">
+                        @for (var row = 0; row < tensor_rows; row++) {
+                            var row_offset = channel_offset + row * tensor_cols;
+                            var svg_row = cell_height* row;
+                            @for (var col = 0; col < tensor_cols; col++) {
+                                var index = row_offset + col;
+                                var value = (index >= 0 && index < Data.Length ? (double)Convert.ChangeType(Data.GetValue(index), typeof(double)) : 0.0);
+                                value *= DataScaling;
+                                var colour = LerpRGB(heatmap_color_min, heatmap_color_max, (value - heatmap_min) / (heatmap_max - heatmap_min));
+                                <rect x="@(cell_width*col)" y="@(svg_row)" width="@(cell_width)" height="@(cell_height)" fill="rgb(@colour.R,@colour.G,@colour.B)"/>
+                            }
+                        }
+                    </svg>
+                }
+            }
+        </div>
+        break;
+    case Visualization.Probability:
+        <table class="w3-table">
+                <thead>
+                    <tr>
+                        <th style="width: 12em;">Class Index</th>
+                        <th style="width: 12em;">Class Name</th>
+                        <th>Probability</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Data.Length; i++) {
+                        var index = i;
+                        var value = (index >= 0 && index < Data.Length ? (double)Convert.ChangeType(Data.GetValue(index), typeof(double)) : 0.0);
+                        value *= DataScaling;
+                        <tr>
+                            <td>@i</td>
+                            <td>
+                                <input type="text" style="width: 100%;" value="@(probability_get_label(index))" @onchange=@((e) => probability_set_label(index, e.Value?.ToString() ?? string.Empty))/>
+                            </td>
+                            <td class="w3-display-container">
+                                <div class="w3-round light">
+                                    <div class="w3-container w3-round highlight" style="width:@((value)*100)%">&nbsp;</div>
+                                </div>
+                                <span class="w3-display-middle">@(((value)*100).ToString("F2"))%</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        break;
+    case Visualization.Image:
+        <div>
+            <label><b>Shape:</b></label><br>
+            <label>Rows:</label>
+            <input type="number" min="1" max="@Data.Length" @bind=tensor_rows>
+            <label>Columns:</label>
+            <input type="number" min="1" max="@Data.Length" @bind=tensor_cols>
+            <label>Pixel Scale:</label>
+            <input type="number" min="1" max="255" @bind=image_pixel_scale>
+        </div>
+        <div style="text-align: left; width: 100%;">
+            @{
+            var img_cell_height = heatmap_height / tensor_rows;
+            var img_cell_width = heatmap_width / tensor_cols;
+            var img_size = tensor_rows * tensor_cols;
+            <svg class="heatmap" viewBox="0 0 @(heatmap_width) @(heatmap_height)">
+                @for (var row = 0; row < tensor_rows; row++) {
+                    var row_offset = row * tensor_cols;
+                    var svg_row = img_cell_height* row;
+                    @for (var col = 0; col < tensor_cols; col++) {
+                        var col_offset = row_offset + col;
+
+                        var red_index = col_offset + 0 * img_size;
+                        var red = (red_index >= 0 && red_index < Data.Length ? (double)Convert.ChangeType(Data.GetValue(red_index), typeof(double)) : 0.0);
+                        red *= DataScaling;
+                        var green_index = col_offset + 1 * img_size;
+                        var green = (green_index >= 0 && green_index < Data.Length ? (double)Convert.ChangeType(Data.GetValue(green_index), typeof(double)) : 0.0);
+                        green *= DataScaling;
+                        var blue_index = col_offset + 2 * img_size;
+                        var blue = (blue_index >= 0 && blue_index < Data.Length ? (double)Convert.ChangeType(Data.GetValue(blue_index), typeof(double)) : 0.0);
+                        blue *= DataScaling;
+
+                        <rect x="@(img_cell_width*col)" y="@(svg_row)" width="@(img_cell_height)" height="@(img_cell_width)" fill="rgb(@((byte)(red * image_pixel_scale)),@((byte)(green * image_pixel_scale)),@((byte)(blue * image_pixel_scale)))"></rect>
+                    }
+                }
+            </svg>
+            }
+        </div>
+        break;
+    default:
+        <text>Unsupported visualization type.</text>;
+        break;
+}} else {
+    <text>No data provided.</text>;
+}
+</div>
+
+@code {
+    [Parameter] public Visualization Type { get; set; } = Visualization.None;
+    [Parameter] public double DataScaling {get; set;} = 1;
+    [Parameter] public Array? Data { get; set; } = null;
+
+    private int tensor_channels = 1;
+    private int tensor_rows = 1;
+    private int tensor_cols = 1;
+
+    private const float heatmap_width = 256.0f;
+    private const float heatmap_height = 256.0f;
+    private float heatmap_min = 0.0f;
+    private float heatmap_max = 1.0f;
+    private static Color heatmap_color_min = Color.White; // White
+    private static Color heatmap_color_max = Color.Red; // Red
+    private static Color LerpRGB (Color a, Color b, double t) {
+        return Color.FromArgb (
+            (byte)(a.A + (b.A - a.A) * t),
+            (byte)(a.R + (b.R - a.R) * t),
+            (byte)(a.G + (b.G - a.G) * t),
+            (byte)(a.B + (b.B - a.B) * t)
+        );
+    }
+
+    private int image_pixel_scale = 255;
+
+    private Dictionary<int, string> probability_class_labels = new Dictionary<int, string>();
+    private string probability_get_label(int index) {
+        if (probability_class_labels.ContainsKey(index)) {
+            return probability_class_labels[index];
+        } else {
+            return string.Empty;
+        }
+    }
+    private void probability_set_label(int index, string label) {
+        probability_class_labels[index] = label;
+    }
+
+    public enum Visualization {
+        None,
+        Vector,
+        Tensor,
+        Heatmap,
+        Probability,
+        Image,
+    }
+}

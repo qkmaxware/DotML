@@ -20,4 +20,5 @@ public class Token<T> : Token {
         this.Value = value;
     }
 
+    public override string ToString() => Value?.ToString() ?? string.Empty;
 }

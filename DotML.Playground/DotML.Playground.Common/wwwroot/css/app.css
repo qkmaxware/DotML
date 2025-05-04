@@ -1,0 +1,38 @@
+html {
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    background-color: #1e2124;
+    color: white;
+    padding: 0;
+    margin: 0;
+}
+
+:root {
+    --light: #282b30;
+    --lighter: #36393e;
+    --lightest: #424549;
+    --highlight: rgb(33, 150, 243);
+}
+
+.light {
+    background-color: #282b30;
+    color: white;
+}
+
+.lighter {
+    background-color: #36393e;
+    color: white;
+}
+
+.lightest {
+    background-color: #424549;
+    color: white;
+}
+
+.highlight {
+    background-color: rgb(33, 150, 243);
+    color: white;
+}

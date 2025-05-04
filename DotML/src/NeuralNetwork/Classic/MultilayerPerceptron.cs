@@ -26,7 +26,8 @@ public static class MultilayerPerceptron {
 
         // Subsequent layers (layer[i-1] -> layer[i])
         for (var i = 1; i < layer_sizes.Length; i++) {
-            set = set.Then((ishape) => new DenseLinearLayer(ishape.Count, layer_sizes[i]));
+            var layer_size = layer_sizes[i];
+            set = set.Then((ishape) => new DenseLinearLayer(ishape.Count, layer_size));
             if (activation is not null) {
                 set = set.Then((ishape) => new ActivationLayer(ishape, activation));
             }

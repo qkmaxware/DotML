@@ -474,26 +474,30 @@ where T:INumber<T> {
     #endregion
     #region Methods
     /// <summary>
-    /// Pad a matrix with 0's to a given size
+    /// Pad a matrix with with the given padding value to a given size, crop if negative padding margins are given
     /// </summary>
-    /// <param name="top">top padding</param>
-    /// <param name="right">right padding</param>
-    /// <param name="bottom">bottom padding</param>
-    /// <param name="left">left padding</param>
-    /// <returns>padded matrix</returns>
-    public Matrix<T> Pad(int top = 0, int right = 0, int bottom = 0, int left = 0) {
-        top         = Math.Max(0, top);
-        right       = Math.Max(0, right);
-        bottom      = Math.Max(0, bottom);
-        left        = Math.Max(0, left);
-
-        var rows    = top + bottom + this.Rows;
-        var columns = left + right + this.Columns;
-        var matrix  = new Matrix<T>(rows, columns);
+    /// <param name="top">top padding rows</param>
+    /// <param name="right">right padding columns</param>
+    /// <param name="bottom">bottom padding rows</param>
+    /// <param name="left">left padding columns</param>
+    /// <param name="value">value to pad with (default: 0)</param>
+    /// <returns>padded/cropped matrix</returns>
+    public Matrix<T> Pad(int top = 0, int right = 0, int bottom = 0, int left = 0, T? value = default(T)) {
+        var rows    = Math.Max(0, top + bottom + this.Rows);
+        var columns = Math.Max(0, left + right + this.Columns);
+        var matrix  = new Matrix<T>(rows, columns, value ?? T.Zero);
 
         for (var r = 0; r < this.Rows; r++) {
+            var result_r = r + top;
+            if (result_r < 0 || result_r >= rows)
+                continue;
+
             for (var c = 0; c < this.Columns; c++) {
-                matrix[r + left, c + top] = this[r, c];
+                var result_c = c + left;
+                if (result_c < 0 || result_c >= columns)
+                    continue;
+
+                matrix[result_r, result_c] = this[r, c];
             }
         }
 

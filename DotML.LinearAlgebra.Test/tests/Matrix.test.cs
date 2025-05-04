@@ -391,4 +391,143 @@ public class TestMatrix {
         }
     }
 
+    [TestMethod]
+    public void TestPositivePad() {
+        var matrix = Matrix<double>.FromJagged(
+            [
+                [1, 2, 3],
+                [4, 5, 6],
+                [7, 8, 9]
+            ]
+        );
+        Assert.AreEqual(3, matrix.Rows);
+        Assert.AreEqual(3, matrix.Columns);
+
+        var pad = matrix.Pad(top: 4, value: 0);
+        Assert.AreEqual(3 + 4, pad.Rows);
+        Assert.AreEqual(3, pad.Columns);
+        Assert.AreEqual(
+            Matrix<double>.FromJagged(
+                [
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [1, 2, 3],
+                    [4, 5, 6],
+                    [7, 8, 9],
+                ]
+            ), 
+            pad
+        );
+        pad = matrix.Pad(bottom: 4, value: 0);
+        Assert.AreEqual(3 + 4, pad.Rows);
+        Assert.AreEqual(3, pad.Columns);
+        Assert.AreEqual(
+            Matrix<double>.FromJagged(
+                [
+                    [1, 2, 3],
+                    [4, 5, 6],
+                    [7, 8, 9],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0],
+                ]
+            ), pad
+        );
+        pad = matrix.Pad(left: 4, value: 0);
+        Assert.AreEqual(3, pad.Rows);
+        Assert.AreEqual(3 + 4, pad.Columns);
+        Assert.AreEqual(
+            Matrix<double>.FromJagged(
+                [
+                    [0,0,0,0, 1, 2, 3],
+                    [0,0,0,0, 4, 5, 6],
+                    [0,0,0,0, 7, 8, 9],
+                ]
+            ),
+            pad
+        );
+        pad = matrix.Pad(right: 4, value: 0);
+        Assert.AreEqual(3, pad.Rows);
+        Assert.AreEqual(3 + 4, pad.Columns);
+        Assert.AreEqual(
+            Matrix<double>.FromJagged(
+                [
+                    [1, 2, 3, 0,0,0,0 ],
+                    [4, 5, 6, 0,0,0,0 ],
+                    [7, 8, 9, 0,0,0,0 ],
+                ]
+            ),
+            pad
+        );
+    }
+
+    [TestMethod]
+    public void TestNegativePad() {
+        var matrix = Matrix<double>.FromJagged(
+            [
+                [1, 2, 3],
+                [4, 5, 6],
+                [7, 8, 9],
+            ]
+        );
+        Assert.AreEqual(3, matrix.Rows);
+        Assert.AreEqual(3, matrix.Columns);
+
+        var crop = matrix.Pad(top: -1);
+        Assert.AreEqual(3 - 1, crop.Rows);
+        Assert.AreEqual(3, crop.Columns);
+        Assert.AreEqual(
+            Matrix<double>.FromJagged(
+                [
+                    [4, 5, 6],
+                    [7, 8, 9],
+                ]
+            ),
+            crop
+        );
+
+        crop = matrix.Pad(bottom: -1);
+        Assert.AreEqual(3 - 1, crop.Rows);
+        Assert.AreEqual(3, crop.Columns);
+        Assert.AreEqual(
+            Matrix<double>.FromJagged(
+                [
+                    [1, 2, 3],
+                    [4, 5, 6],
+                ]
+            ),
+            crop
+        );
+
+        crop = matrix.Pad(left: -1);
+        Assert.AreEqual(3, crop.Rows);
+        Assert.AreEqual(3 - 1, crop.Columns);
+        Assert.AreEqual(
+            Matrix<double>.FromJagged(
+                [
+                    [2, 3],
+                    [5, 6],
+                    [8, 9],
+                ]
+            ),
+            crop
+        );
+
+        crop = matrix.Pad(right: -1);
+        Assert.AreEqual(3, crop.Rows);
+        Assert.AreEqual(3 - 1, crop.Columns);
+        Assert.AreEqual(
+            Matrix<double>.FromJagged(
+                [
+                    [1, 2],
+                    [4, 5],
+                    [7, 8],
+                ]
+            ),
+            crop
+        );
+    }
 }

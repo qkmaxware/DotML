@@ -1,0 +1,20 @@
+<circle
+    r="10.016369"
+    cy="64"
+    cx="46.287514"
+    id="path833-4"
+    style="fill:#ffffff;stroke:#000000;stroke-width:1.065;stroke-linecap:round;stroke-linejoin:round" />
+<path
+    id="path863"
+    d="M 3.5907739,63.688988 H 32.883927"
+    style="fill:none;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow)" />
+<text
+    id="text1155"
+    y="67.090775"
+    x="46.313545"
+    style="font-size:10.5833px;line-height:1.25;font-family:'Bookman Old Style';text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;alignment-baseline:middle;stroke-width:0.264583"
+    xml:space="preserve"><tspan
+        style="alignment-baseline:middle;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;stroke-width:0.264583"
+        y="67.090775"
+        x="46.313545"
+        id="tspan1153">{0}</tspan></text>

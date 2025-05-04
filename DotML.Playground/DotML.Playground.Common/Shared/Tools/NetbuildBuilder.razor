@@ -1,0 +1,348 @@
+@using DotML.Network
+@using DotML.Network.IO
+@using DotML.Playground.Common.Shared.Interactable
+
+<nav class="w3-bar lighter w3-border-bottom">
+    <div class="w3-dropdown-hover">
+        <button class="w3-button">File</button>
+        <div class="w3-dropdown-content w3-bar-block w3-card-4">
+            <button class="w3-bar-item w3-button" @onclick=make_new>New</button>
+            <button class="w3-bar-item w3-button" @onclick=@(() => template_modal?.Show())>New from Template</button>
+            <hr>
+            <button class="w3-bar-item w3-button">Save</button>
+        </div>
+    </div>
+    <button class="w3-bar-item w3-button w3-right highlight" @onclick=validate>Validate</button>
+</nav>
+<CodeEditor @ref=editor></CodeEditor>
+
+<Modal Title="Validation" @ref=validation_modal>
+    @if (validation_report is null) {
+        <Spinner Text="validating"></Spinner>
+    } else {
+        @if (validation_report.Success) {
+            <div class="w3-panel w3-green w3-margin-bottom">
+                <h3>&checkmark; Valid!</h3>
+                <p>Your netbuild script produces a valid neural network in DotML.</p>
+            </div>
+            <table class="w3-table">
+                <thead>
+                    <th>Property</th>
+                    <th>Value</th>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Layers</td><td>@validation_report.layers</td>
+                    </tr>
+                    <tr>
+                        <td>Trainable Parameters</td><td>@validation_report.trainable</td>
+                    </tr>
+                    <tr>
+                        <td>Untrainable Parameters</td><td>@validation_report.untrainable</td>
+                    </tr>
+                    <tr>
+                        <td>Disk Size</td><td>@validation_report.size</td>
+                    </tr>
+                </tbody>
+            </table>
+        } else {
+            <div class="w3-panel w3-red w3-margin-bottom">
+                <h3>&times; Invalid!</h3>
+                <p>@validation_report.exception</p>
+            </div>
+        }
+    }
+</Modal>
+
+<Modal Title="Template" @ref=template_modal>
+    <form>
+        <label>Template: </label>
+        <select class="w3-select" @bind=template_index>
+            <option value="-1">None</option>
+            @for (var i = 0; i < templates.Count; i++) {
+                var template = templates[i];
+                <option value="@i">@template.Name</option>
+            }
+        </select>
+        @if (template_selected is not null) {
+        <section class="w3-margin-top w3-margin-bottom">
+            <label>Arguments: </label>
+            <table class="w3-container w3-table">
+                <tbody>
+                @foreach (var pair in template_selected.Arguments) {
+                    var option = pair.Value;
+                    <tr>
+                        <td>@(pair.Key):</td><td><input type="@option.HintType" class="w3-input" @bind=option.Value></td>
+                    </tr>
+                }   
+                </tbody>
+            </table>
+        </section>
+        <button type="button" class="w3-button highlight" style="width: 100%" @onclick=make_from_template>Make</button>
+        }
+    </form>
+</Modal>
+
+@code {
+
+    private Modal? validation_modal;
+    private ValidationReport? validation_report;
+
+    private class ValidationReport {
+        public bool Success;
+        public Exception? exception;
+
+        public DataSize size;
+        public int layers;
+        public int trainable;
+        public int untrainable;
+    }
+    private void validate() {
+        if (editor is null) {
+            Console.WriteLine("No editor");
+            return;
+        }
+        var code = editor.GetText();
+        var decoder = new NetbuildSerializer();
+
+        validation_report = null;
+        validation_modal?.Show();
+
+        Task.Run(async () => {
+            try {
+                var network = decoder.Deserialize(code);
+                var v = new ValidationReport {
+                    Success = true,
+                    size = network.StorageSize(),
+                    layers = network.LayerCount,
+                    trainable = network.TrainableParameterCount(),
+                    untrainable = network.UnTrainableParameterCount()
+                };
+                this.validation_report = v;
+            } catch (Exception e) {
+                var v = new ValidationReport {
+                    Success = false,
+                    exception = e,
+                };
+                this.validation_report = v;
+            }
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private class Option {
+        public string? Value;
+        public string HintType {get; init;}
+        public Option(object o) { this.Value = o.ToString(); HintType = "text"; }
+        public Option(object o, string hint) { this.Value = o.ToString(); HintType = hint; }
+
+        public string AsString() {
+            return Value ?? string.Empty;
+        }
+
+        public int AsInt() {
+            if (!int.TryParse(Value, out var result)) {
+                return 0;
+            }
+            return result;
+        }
+
+        public bool AsBool() {
+            if (!bool.TryParse(Value, out var result)) {
+                return false;
+            }
+            return result;
+        }
+
+        public float AsFloat() {
+            if (!float.TryParse(Value, out var result)) {
+                return 0.0f;
+            }
+            return result;
+        }
+    }
+    private CodeEditor? editor;
+    private static NetbuildSerializer serializer = new NetbuildSerializer();
+    private Modal? template_modal;
+    private class Template {
+        public string Name;
+        public Dictionary<string, Option> Arguments;
+        public Func<Dictionary<string, Option>, string> Factory;
+
+        public Template(string name, Dictionary<string, Option> args, Func<Dictionary<string, Option>, string> factory) {
+            this.Name = name;
+            this.Arguments = args;
+            this.Factory = factory;
+        }
+    }
+    private int template_index = -1;
+    private Template? template_selected => template_index >= 0 && template_index < templates.Count ? templates[template_index] : null;
+    private List<Template> templates = [
+        new Template(
+            "Multilayer Perception",
+            new Dictionary<string, Option> {
+                { "InputSize", new Option(2, "number") },
+                { "HiddenLayerSize", new Option(2, "number") },
+                { "OutputSize", new Option(2, "number") },
+            },
+            (args) => serializer.Serialize(MultilayerPerceptron.Make(
+                activation: Sigmoid.Instance,
+                args["InputSize"].AsInt(),
+                args["HiddenLayerSize"].AsInt(),
+                args["OutputSize"].AsInt()
+            ))
+        ),
+        new Template(
+            "AlexNet",
+            new Dictionary<string, Option> {
+                { "ImageChannels", new Option(AlexNet.IMG_CHANNELS, "number") },
+                { "ImageHeight", new Option(AlexNet.IMG_HEIGHT, "number") },
+                { "ImageWidth", new Option(AlexNet.IMG_WIDTH, "number") },
+                { "OutputClasses", new Option(AlexNet.OUT_CLASSES, "number") },
+            },
+            (args) => serializer.Serialize(AlexNet.Make(
+                AlexNet.Version.V1, 
+                output_classes: args["OutputClasses"].AsInt(), 
+                img_channels:   args["ImageChannels"].AsInt(),
+                img_height:     args["ImageHeight"].AsInt(),
+                img_width:      args["ImageWidth"].AsInt(),
+                normalize_layers: true
+            ))
+        ),
+        new Template(
+            "ESPCN",
+            new Dictionary<string, Option> {
+                { "ImageChannels", new Option(ESPCN.IMG_CHANNELS, "number") },
+                { "ImageHeight", new Option(ESPCN.IMG_HEIGHT, "number") },
+                { "ImageWidth", new Option(ESPCN.IMG_WIDTH, "number") },
+                { "ScalingFactor", new Option(4, "number") },
+            },
+            (args) => serializer.Serialize(ESPCN.Make(
+                ESPCN.Version.V1, 
+                img_channels:   args["ImageChannels"].AsInt(),
+                img_width:      args["ImageWidth"].AsInt(),
+                img_height:     args["ImageHeight"].AsInt(),
+                scaling:        args["ScalingFactor"].AsInt()
+            ))
+        ),
+        new Template(
+            "FSRCNN",
+            new Dictionary<string, Option> {
+                { "ImageChannels", new Option(FSRCNN.IMG_CHANNELS, "number") },
+                { "ImageHeight", new Option(FSRCNN.IMG_HEIGHT, "number") },
+                { "ImageWidth", new Option(FSRCNN.IMG_WIDTH, "number") },
+                { "ScalingFactor", new Option(4, "number") },
+            },
+            (args) => serializer.Serialize(FSRCNN.Make(
+                FSRCNN.Version.V1, 
+                img_channels:   args["ImageChannels"].AsInt(),
+                img_width:      args["ImageWidth"].AsInt(),
+                img_height:     args["ImageHeight"].AsInt(),
+                scaling:        args["ScalingFactor"].AsInt()
+            ))
+        ),
+        new Template(
+            "LeNet",
+            new Dictionary<string, Option> {
+                { "ImageChannels", new Option(LeNet.IMG_CHANNELS, "number") },
+                { "ImageHeight", new Option(LeNet.IMG_HEIGHT, "number") },
+                { "ImageWidth", new Option(LeNet.IMG_WIDTH, "number") },
+                { "OutputClasses", new Option(LeNet.OUT_CLASSES, "number") },
+            },
+            (args) => serializer.Serialize(LeNet.Make(
+                LeNet.Version.V5, 
+                output_classes: args["OutputClasses"].AsInt(), 
+                img_channels:   args["ImageChannels"].AsInt(),
+                img_height:     args["ImageHeight"].AsInt(),
+                img_width:      args["ImageWidth"].AsInt()
+            ))
+        ),
+        /*new Template(
+            "MobileNet",
+            new Dictionary<string, Option> {
+                { "ImageChannels", new Option(AlexNet.IMG_CHANNELS) },
+                { "ImageHeight", new Option(AlexNet.IMG_HEIGHT) },
+                { "ImageWidth", new Option(AlexNet.IMG_WIDTH) },
+                { "OutputClasses", new Option(AlexNet.OUT_CLASSES) },
+            },
+            (args) => serializer.Serialize(MobileNet.Make(
+                MobileNet.Version.V1, 
+                output_classes: args["OutputClasses"].AsInt(), 
+                img_channels:   args["ImageChannels"].AsInt(),
+                img_height:     args["ImageHeight"].AsInt(),
+                img_width:      args["ImageWidth"].AsInt()
+            ))
+        ),*/
+        new Template(
+            "ResNet-6",
+            new Dictionary<string, Option> {
+                { "ImageChannels", new Option(ResNet.IMG_CHANNELS, "number") },
+                { "ImageHeight", new Option(ResNet.IMG_HEIGHT, "number") },
+                { "ImageWidth", new Option(ResNet.IMG_WIDTH, "number") },
+                { "OutputClasses", new Option(100, "number") },
+            },
+            (args) => serializer.Serialize(ResNet.Make(
+                ResNet.Version.V6, 
+                output_classes: args["OutputClasses"].AsInt(), 
+                img_channels:   args["ImageChannels"].AsInt(),
+                img_height:     args["ImageHeight"].AsInt(),
+                img_width:      args["ImageWidth"].AsInt()
+            ))
+        ),
+        new Template(
+            "ResNet-18",
+            new Dictionary<string, Option> {
+                { "ImageChannels", new Option(AlexNet.IMG_CHANNELS, "number") },
+                { "ImageHeight", new Option(AlexNet.IMG_HEIGHT, "number") },
+                { "ImageWidth", new Option(AlexNet.IMG_WIDTH, "number") },
+                { "OutputClasses", new Option(1000, "number") },
+            },
+            (args) => serializer.Serialize(ResNet.Make(
+                ResNet.Version.V18, 
+                output_classes: args["OutputClasses"].AsInt(), 
+                img_channels:   args["ImageChannels"].AsInt(),
+                img_height:     args["ImageHeight"].AsInt(),
+                img_width:      args["ImageWidth"].AsInt()
+            ))
+        ),
+        new Template(
+            "VGGNet-16",
+            new Dictionary<string, Option> {
+                { "ImageChannels", new Option(VGGNet.IMG_CHANNELS, "number") },
+                { "ImageHeight", new Option(VGGNet.IMG_HEIGHT, "number") },
+                { "ImageWidth", new Option(VGGNet.IMG_WIDTH, "number") },
+                { "OutputClasses", new Option(VGGNet.OUT_CLASSES, "number") },
+            },
+            (args) => serializer.Serialize(VGGNet.Make(
+                VGGNet.Version.VGG16, 
+                output_classes: args["OutputClasses"].AsInt(), 
+                img_channels:   args["ImageChannels"].AsInt(),
+                img_height:     args["ImageHeight"].AsInt(),
+                img_width:      args["ImageWidth"].AsInt()
+            ))
+        ),
+    ];
+    private void make_new() {
+        editor?.SetText(string.Empty);
+    }
+    private void make_from_template() {
+        if (editor is null) {
+            Console.WriteLine("No editor");
+            return;
+        }
+        var template = template_selected;
+        if (template is null) {
+            Console.WriteLine("No template");
+            return;
+        }
+        
+        var str = template.Factory(template.Arguments);
+        if (string.IsNullOrEmpty(str)) {
+            Console.WriteLine("No string");
+            return;
+        }
+        editor.SetText(str);
+
+        template_modal?.Hide();
+    }
+}

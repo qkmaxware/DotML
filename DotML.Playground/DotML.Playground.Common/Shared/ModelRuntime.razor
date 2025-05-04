@@ -1,0 +1,85 @@
+@using DotML.Network
+@using DotML.Playground.Common.Shared.Popups
+@inject HttpClient Http
+
+<ModelInfo @ref=info Network=@loaded></ModelInfo>
+<LayerBreakdown @ref=breakdown Network=@loaded></LayerBreakdown>
+
+<div>
+    <nav class="light" style="margin-bottom: 16px;">
+        <div class="w3-padding">
+            <b>Model '@Href'</b> @if (loaded is not null){<span class="w3-round highlight w3-right">&nbsp;Loaded&nbsp;</span>}
+        </div>
+        <!-- https://www.w3schools.com/w3css/w3css_dropdowns.asp -->
+        @if (loaded is not null) {
+        <div class="w3-bar">
+            <Dropdown Title="Network">
+                <button class="w3-bar-item w3-button" @onclick=@(() => info?.Modal?.Show())>Info</button>
+                <button class="w3-bar-item w3-button" @onclick=@(() => breakdown?.Modal?.Show())>Layers</button>
+            </Dropdown>
+        </div>
+        }
+    </nav>
+@if (loaded is not null) {
+    <div class="w3-container">
+    @if (ChildContent is not null) {
+        @ChildContent(loaded)
+    }
+    </div>
+} else if (loaded is null && loading_error is not null) {
+    <Error Message=@loading_error></Error>
+} else {
+    <div class="w3-display-container" style="position: absolute; left: 0; top: 0; width: 100dvw; height: 100dvh;">
+        <div class="w3-display-middle">
+            <Spinner Text="Loading Model"></Spinner>
+        </div>
+    </div>
+}
+</div>
+
+@code {
+    [Parameter] public string? Href {get; set;}
+    [Parameter] public RenderFragment<FeedforwardNetwork>? ChildContent {get; set;}
+
+    private ModelInfo? info;
+    private LayerBreakdown? breakdown;
+
+    private FeedforwardNetwork? loaded;
+    private Exception? loading_error; 
+
+    public override async Task SetParametersAsync(ParameterView parameters) {
+        await base.SetParametersAsync(parameters);
+        if (string.IsNullOrEmpty(Href)) {
+            loaded = null;
+            loading_error = new Exception("ModelPath is null or empty.");
+            return;
+        }
+
+        var task = Task.Run(async () => {
+            var response = await Http.GetAsync("_content/DotML.Playground.Common/" + Href);
+            if (!response.IsSuccessStatusCode) {
+                loaded = null;
+                loading_error = new HttpRequestException($"HTTP {response.StatusCode}");
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            using var stream = response.Content.ReadAsStream();
+            if (Model.TryLoadZip(stream, out var model, out var error)) {
+                loaded = model;
+                if (loaded is null) {
+                    loading_error = new Exception("An unexpected error occurred while loading the model.");
+                } else {
+                    loading_error = null;
+                }
+                await InvokeAsync(StateHasChanged);
+                return;
+            } else {
+                loaded = null;
+                loading_error = new FormatException("Failed to load model from zip.", error);
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+        });
+    }
+}

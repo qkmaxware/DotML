@@ -69,7 +69,7 @@ public class LayerSafetensorWriter : ILayerInputVisitor<int> {
         sb.Add($"Layers[{layerIndex}].Means", norm.RunningMean);
         sb.Add($"Layers[{layerIndex}].Variance", norm.RunningVariance);
         var gammas = norm.Gammas;
-        for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
+        /*for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
             var kernel = gammas[gammaIndex];
             sb.Add($"Layers[{layerIndex}].Gamma[{gammaIndex}]", kernel);
         }
@@ -77,7 +77,7 @@ public class LayerSafetensorWriter : ILayerInputVisitor<int> {
         for (var betaIndex = 0; betaIndex < betas.Length; betaIndex++) {
             var kernel = betas[betaIndex];
             sb.Add($"Layers[{layerIndex}].Beta[{betaIndex}]", kernel);
-        }
+        }*/
         return;
     }
 
@@ -92,4 +92,6 @@ public class LayerSafetensorWriter : ILayerInputVisitor<int> {
     public void Visit(SoftmaxLayer layer, int layerIndex) { return; }
 
     public void Visit(InputCapture capture, int args) { return; }
+
+    public void Visit(AdditionSkipConnection capture, int args) { return; }
 }

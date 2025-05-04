@@ -5,9 +5,11 @@ namespace DotML.Cli.Commands;
 
 // Example usage
 /*
-netflow mod net2 tags --add "new-tag" 
-netflow mod net2 weights --transfer "my-weights.safetensors"
-netflow mod net2 labels --list apple banana orange
+netflow mod net2 tags           --add "new-tag" 
+netflow mod net2 weights        --import "my-weights.safetensors"
+netflow mod net2 weights        --transfer to_network
+netflow mod net2 labels         --list apple banana orange
+netflow mod net2 description    --text "This network does something..."
 */
 
 

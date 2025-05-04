@@ -6,7 +6,7 @@ namespace DotML.Cli.Decodings;
 /// <summary>
 /// Decode an output into an image file
 /// </summary>
-public class Image : IDecoder {
+public class Image : IDecoder, IFileOnlyDecoder {
 
     public class Result : IDecodedResult {
         

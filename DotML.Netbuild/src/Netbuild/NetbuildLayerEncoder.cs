@@ -87,11 +87,17 @@ public class NetbuildLayerEncoder : ILayerVisitor {
     }
 
     public void Visit(SoftmaxLayer layer) {
-        sb.WriteLine($"ADD softmax");
+        sb.WriteLine($"ADD {nameof(SoftmaxLayer)}");
     }
 
     public void Visit(InputCapture capture) {
-        throw new NotImplementedException();
+        sb.WriteLine($"ADD {nameof(InputCapture)} AS output_{capture.UID()}");
+        //sb.WriteLine($"COPY AS out_{capture.UID()}");
+    }
+
+    public void Visit(AdditionSkipConnection skip) {
+        sb.WriteLine($"ADD {nameof(AdditionSkipConnection)} residual=output_{skip.CaptureSource.UID()}");
+        //sb.WriteLine($"RESIDUAL ADDITION {skip.CaptureSource.UID()}");
     }
 
 }

@@ -137,4 +137,9 @@ public class TensorsOutputLogger : BaseOutputLogger {
     public override void Visit(InputCapture capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         return;
     }
+
+    public override void Visit(AdditionSkipConnection capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        EmitTensors($"Layer-{args.LayerIndex} {nameof(AdditionSkipConnection)}", args.Output);
+        return;
+    }
 }

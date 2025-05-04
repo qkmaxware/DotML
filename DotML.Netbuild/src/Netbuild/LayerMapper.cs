@@ -1,8 +1,17 @@
 using System.Data;
 using System.Reflection;
-using ArgumentMap = System.Collections.Generic.Dictionary<string, DotML.Network.IO.Netbuild.Literal>;
 
 namespace DotML.Network.IO.Netbuild;
+
+public class ArgumentMap : System.Collections.Generic.Dictionary<string, DotML.Network.IO.Netbuild.Literal> {
+    public BuildEnvironment Env {get; private set;}
+    public ArgumentMap(BuildEnvironment environment) {
+        this.Env = environment;
+    }
+    public ArgumentMap(BuildEnvironment environment, System.Collections.Generic.Dictionary<string, DotML.Network.IO.Netbuild.Literal> args) : base(args) {
+        this.Env = environment;
+    }
+}
 
 public static class ArgumentMapExtensions {
     public static Literal FirstOf(this ArgumentMap mapping, Literal @default, params string[] names) {
@@ -282,6 +291,16 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
     }
 
     public IFeedforwardNetworkLayer Visit(InputCapture? capture, LayerConstructionArgs args) {
-        throw new NotImplementedException();
+        (Shape3D ishape, _) = (args.InputShape, args.Arguments);
+        return new InputCapture(ishape);
+    }
+
+    public IFeedforwardNetworkLayer Visit(AdditionSkipConnection? skip, LayerConstructionArgs args) {
+        (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
+        var layer_name = arguments["residual"].AsString();
+        InputCapture? capture = (InputCapture?)arguments.Env.GetLayer(layer_name);
+        if (capture is null)
+            throw new ArgumentException($"Layer '{layer_name}' either doesn't exist or is not an input capturing layer.");
+        return new AdditionSkipConnection(ishape, capture);
     }
 }

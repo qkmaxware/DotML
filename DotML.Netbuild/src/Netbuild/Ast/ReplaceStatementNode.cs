@@ -3,10 +3,10 @@ namespace DotML.Network.IO.Netbuild;
 public class ReplaceStatement : Statement {
     LayerReference reference;
     private string layer_name;
-    Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory;
+    Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory;
     public Dictionary<string, Literal> arguments = new Dictionary<string, Literal>();
 
-    public ReplaceStatement(LayerReference reference, string layer_name, Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory, List<(Token<string>, Literal)> args) {
+    public ReplaceStatement(LayerReference reference, string layer_name, Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory, List<(Token<string>, Literal)> args) {
         this.factory = factory;
         foreach (var pair in args) {
             arguments[pair.Item1.Value] = pair.Item2;
@@ -22,7 +22,7 @@ public class ReplaceStatement : Statement {
         
         var replacement_index = reference.IndexOf(env.LayerAliases);
         var input_shape = network.GetLayer(replacement_index).InputShape;
-        IFeedforwardNetworkLayer layer = factory(input_shape, arguments);
+        IFeedforwardNetworkLayer layer = factory(input_shape, new ArgumentMap(env, arguments));
         network.ReplaceLayer(replacement_index, layer);
     }
 

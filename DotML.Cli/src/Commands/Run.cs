@@ -128,11 +128,25 @@ public class Run : BaseCommand {
 
         Console.Write("Decoding...");
         using (var result = decoder.Decode(output_vector)) {
+            Console.WriteLine("done");
+            DrawDivider();
+
+            if (string.IsNullOrEmpty(OutputFile) && decoder is IFileOnlyDecoder fonly) {
+                // No file is provided, but the decoder is a file only decoder
+                if (fonly.FileRequired()) {
+                    Console.WriteLine($"Decoder '{fonly.GetType().Name}' REQUIRES a file to be specified for it's output. Please provide an output file path using the -o or --output options and try again.");
+                    return; // Don't even do console output and just hard quit right now
+                } else {
+                    Console.WriteLine($"Decoder '{fonly.GetType().Name}' works best when a file is specified for it's output. Results may be displayed on the console but may be insufficient. You may run the network again using the -o or --output options to obtain output files.");
+                }
+            }
+
+            result.ConsoleOutput();
+
             if (!string.IsNullOrEmpty(OutputFile)) {
                 result.FileOutput(new FileInfo(OutputFile));
-                Console.WriteLine($"done created '{OutputFile}'");
-            } else {
-                Console.WriteLine("done");
+                Console.WriteLine();
+                Console.WriteLine($"Created file '{OutputFile}'");
             }
 
             if (is_logging) {
@@ -140,9 +154,6 @@ public class Run : BaseCommand {
                 Console.WriteLine($"Reports saved to '{log_dir[0].Name}'.");
                 Console.WriteLine($"Use \"{typeof(Run).Assembly.GetName().Name} reports open '{log_dir[0].Name}'\" to review runtime logs.");
             }
-
-            DrawDivider();
-            result.ConsoleOutput();
         }
     }
 }

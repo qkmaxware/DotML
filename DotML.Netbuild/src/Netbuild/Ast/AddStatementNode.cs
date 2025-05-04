@@ -2,11 +2,11 @@ namespace DotML.Network.IO.Netbuild;
 
 public class AddStatement : Statement {
     string layer_name;
-    Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory;
+    Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory;
     string? ident;
     public Dictionary<string, Literal> arguments = new Dictionary<string, Literal>();
 
-    public AddStatement(string layer_name, Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory, List<(Token<string>, Literal)> args, string? alias) {
+    public AddStatement(string layer_name, Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory, List<(Token<string>, Literal)> args, string? alias) {
         this.layer_name = layer_name;
         this.factory = factory;
         foreach (var pair in args) {
@@ -22,7 +22,7 @@ public class AddStatement : Statement {
             return;
         
         var output_shape = network.LayerCount > 0 ? network.OutputShape : env.InputShape;
-        IFeedforwardNetworkLayer layer = factory(output_shape, arguments);
+        IFeedforwardNetworkLayer layer = factory(output_shape, new ArgumentMap(env, arguments));
         var index = network.LayerCount;
         network.AddLayer(layer);
 

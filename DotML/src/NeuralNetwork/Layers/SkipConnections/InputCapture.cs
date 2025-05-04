@@ -17,6 +17,14 @@ public class InputCapture : FeedforwardNetworkLayer {
     }
 
     /// <summary>
+    /// A unique identifier to this input capture
+    /// </summary>
+    /// <returns>uid</returns>
+    public int UID() {
+        return base.GetHashCode();
+    }
+
+    /// <summary>
     /// Cache the given feature set
     /// </summary>
     /// <param name="channels">feature set</param>

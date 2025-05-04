@@ -53,6 +53,10 @@ public class LayerDescriber : ILayerOutputVisitor<string> {
     }
 
     public string Visit(InputCapture capture) {
-        return  $"Cache the inputs of this layer to reference at a later time";
+        return  $"Cache the inputs of this layer to reference at a later time ({capture.UID()})";
+    }
+
+    public string Visit(AdditionSkipConnection skip) {
+        return  $"Add the input to this layer with a previous layer's output ({skip.CaptureSource.UID()})";
     }
 }
