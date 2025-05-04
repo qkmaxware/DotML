@@ -117,7 +117,7 @@ public static class UNet {
         yield return up_conv;
 
         // Decoder path
-        var skip = new ConcatenationSkipConnection(up_conv.OutputShape, capture, ConcatenationSkipConnection.Side.ResidualLeft);
+        var skip = new ConcatenationSkipConnection(up_conv.OutputShape, capture, ConcatenationSkipConnection.Side.Left);
         yield return skip;
 
         var compress_1 = new ConvolutionLayer(

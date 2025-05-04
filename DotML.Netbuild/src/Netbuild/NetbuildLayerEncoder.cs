@@ -100,4 +100,9 @@ public class NetbuildLayerEncoder : ILayerVisitor {
         //sb.WriteLine($"RESIDUAL ADDITION {skip.CaptureSource.UID()}");
     }
 
+    public void Visit(ConcatenationSkipConnection skip) {
+        sb.WriteLine($"ADD {nameof(ConcatenationSkipConnection)} residual=output_{skip.CaptureSource.UID()} side={skip.ConcatenationSide}");
+        //sb.WriteLine($"RESIDUAL ADDITION {skip.CaptureSource.UID()}");
+    }
+
 }

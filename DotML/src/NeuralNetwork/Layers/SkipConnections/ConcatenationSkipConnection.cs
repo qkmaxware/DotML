@@ -7,8 +7,8 @@ namespace DotML.Network;
 public class ConcatenationSkipConnection : SkipConnection {
 
     public enum Side {
-        ResidualLeft,
-        ResidualRight
+        Left,
+        Right
     }
 
     public Side ConcatenationSide {get; init;}
@@ -41,7 +41,7 @@ public class ConcatenationSkipConnection : SkipConnection {
 
             Matrix<double>[] features = new Matrix<double>[shape.Channels];
             var i = 0;
-            if (ConcatenationSide == Side.ResidualRight) {
+            if (ConcatenationSide == Side.Right) {
                 // Residual to the Right
                 var size_1 = inputs.Channels;
                 var size_2 = features.Length;
@@ -79,7 +79,7 @@ public class ConcatenationSkipConnection : SkipConnection {
         var residual_size = this.CaptureSource.OutputShape.Channels;
         var input_size = this.InputShape.Channels;
 
-        if (ConcatenationSide == Side.ResidualLeft) {
+        if (ConcatenationSide == Side.Left) {
             // Remove LHS channels
             var error_trim = new FeatureSet<double>[args.dY.Batches];
             for (var batch = 0; batch < args.dY.Batches; batch++) {
@@ -112,11 +112,11 @@ public class ConcatenationSkipConnection : SkipConnection {
         }
     }
 
-    public override void Visit(ILayerVisitor visitor) => throw new NotImplementedException();// => visitor.Visit(this);
+    public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
     
-    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) => throw new NotImplementedException();// => visitor.Visit(this, args);
+    public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) => visitor.Visit(this, args);
 
-    public override T Visit<T>(ILayerOutputVisitor<T> visitor) => throw new NotImplementedException();// => visitor.Visit(this);
+    public override T Visit<T>(ILayerOutputVisitor<T> visitor) => visitor.Visit(this);
 
-    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => throw new NotImplementedException();// => visitor.Visit(this, args);
+    public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 }

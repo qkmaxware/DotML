@@ -8,10 +8,9 @@ using DotML.Network.Training;
 namespace DotML.Network;
 
 /// <summary>
-/// Layer that performs batch normalization 
+/// Layer that performs batch normalization. Each channel is normalized across all batches.
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
-[Untested]
 public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
     private double running_mean_momentum = 0.9;
@@ -117,7 +116,10 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
                     var normalizedMatrix = matrix.Transform(x => (x - mean)  / Math.Sqrt(variance + 1e-8));
 
                     // Apply scaling (gamma) and shifting (beta)
-                    normalizedMatrix.Apply((x) => x * Gammas[channelIndex] + Betas[channelIndex]); // output = output .* gamma // output = output + beta    
+                    // 0, 2, 1, 1
+                    var gamma = Gammas[channelIndex];
+                    var beta =  Betas[channelIndex];
+                    normalizedMatrix.Apply((x) => x * gamma + beta); // output = output .* gamma // output = output + beta    
 
                     return normalizedMatrix;
                 }).ToArray()
