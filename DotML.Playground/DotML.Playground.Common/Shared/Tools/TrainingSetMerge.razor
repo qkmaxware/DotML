@@ -103,9 +103,11 @@
     }
 
     private async void Merge() {
-        if (!CanMerge())
+        if (first is null)
             return;
-        
+        if (second is null)
+            return;
+          
         if (first.StorageType == second.StorageType && first.ScalingFactor == second.ScalingFactor) {
             // Slightly more efficient merge because storage type and scaling factors are the same
             var next = first.Clone();

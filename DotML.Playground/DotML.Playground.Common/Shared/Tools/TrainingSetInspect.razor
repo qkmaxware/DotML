@@ -123,7 +123,7 @@
             return; 
         }
 
-        this.fileaname = results.Value.FileName;
+        this.fileaname = results.Value.FileName ?? string.Empty;
         this.set = results.Value.Builder;
         await InvokeAsync(StateHasChanged);
     }
