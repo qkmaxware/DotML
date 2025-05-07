@@ -19,6 +19,7 @@ public interface ILayerVisitor {
 
     public void Visit(InputCapture capture);
     public void Visit(AdditionSkipConnection skip);
+    public void Visit(ConcatenationSkipConnection skip);
 }
 
 /// <summary>
@@ -40,6 +41,7 @@ public interface ILayerOutputVisitor<TOut> {
 
     public TOut Visit(InputCapture capture);
     public TOut Visit(AdditionSkipConnection skip);
+    public TOut Visit(ConcatenationSkipConnection skip);
 }
 
 /// <summary>
@@ -61,6 +63,7 @@ public interface ILayerInputVisitor<TIn> {
 
     public void Visit(InputCapture capture, TIn args);
     public void Visit(AdditionSkipConnection skip, TIn args);
+    public void Visit(ConcatenationSkipConnection skip, TIn args);
 }
 
 /// <summary>
@@ -82,4 +85,5 @@ public interface ILayerInputOutputVisitor<TIn, TOut> {
 
     public TOut Visit(InputCapture capture, TIn args);
     public TOut Visit(AdditionSkipConnection skip, TIn args);
+    public TOut Visit(ConcatenationSkipConnection skip, TIn args);
 }

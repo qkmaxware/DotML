@@ -69,6 +69,8 @@ public class LayerWriter : ILayerInputVisitor<int>, IDisposable {
 
     public void Visit(AdditionSkipConnection layer, int layerIndex) => WriteLayer(layer, layerIndex);
 
+    public void Visit(ConcatenationSkipConnection layer, int layerIndex) => WriteLayer(layer, layerIndex);
+
     public void Dispose() {
         WriteFooter();
     }

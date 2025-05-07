@@ -104,4 +104,9 @@ public class ImagesOutputLogger : BaseOutputLogger {
         EmitImage($"Layer-{args.LayerIndex} {nameof(AdditionSkipConnection)}", args.Output);
         return;
     }
+
+    public override void Visit(ConcatenationSkipConnection capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        EmitImage($"Layer-{args.LayerIndex} {nameof(ConcatenationSkipConnection)}", args.Output);
+        return;
+    }
 }

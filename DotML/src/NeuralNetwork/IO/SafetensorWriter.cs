@@ -94,4 +94,6 @@ public class LayerSafetensorWriter : ILayerInputVisitor<int> {
     public void Visit(InputCapture capture, int args) { return; }
 
     public void Visit(AdditionSkipConnection capture, int args) { return; }
+
+    public void Visit(ConcatenationSkipConnection capture, int args) { return; }
 }

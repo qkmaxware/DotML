@@ -364,7 +364,7 @@ public class BatchNormTest {
 
     [TestMethod]
     public void Test2Feature() {
-        var layer = new BatchNorm(new Shape3D(1, 5, 5));
+        var layer = new BatchNorm(new Shape3D(2, 5, 5));
         layer.BeginTraining(); // Turn off inference mode (don't use running mean/var)
         
         // Forward pass        

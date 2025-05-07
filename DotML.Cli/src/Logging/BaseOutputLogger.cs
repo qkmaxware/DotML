@@ -68,4 +68,8 @@ public abstract class BaseOutputLogger : IOutputLogger {
     public virtual void Visit(AdditionSkipConnection capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
         return;
     }
+
+    public virtual void Visit(ConcatenationSkipConnection capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        return;
+    }
 }

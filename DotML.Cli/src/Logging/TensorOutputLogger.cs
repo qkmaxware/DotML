@@ -142,4 +142,9 @@ public class TensorsOutputLogger : BaseOutputLogger {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(AdditionSkipConnection)}", args.Output);
         return;
     }
+
+    public override void Visit(ConcatenationSkipConnection capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+        EmitTensors($"Layer-{args.LayerIndex} {nameof(ConcatenationSkipConnection)}", args.Output);
+        return;
+    }
 }

@@ -7,6 +7,10 @@ using DotML.Network.Training;
 
 namespace DotML.Network;
 
+/// <summary>
+/// Layer that performs batch normalization. Each channel is put into groups and normalized across the group. 
+/// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
+/// </summary>
 [Untested]
 public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
     /// <summary>

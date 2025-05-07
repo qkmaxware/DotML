@@ -8,7 +8,7 @@ using DotML.Network.Training;
 namespace DotML.Network;
 
 /// <summary>
-/// Layer that performs layer (non batch) normalization 
+/// Layer that performs layer (non batch) normalization. Each channel is normalized across all channels.
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
 public class LayerNorm : FeedforwardNetworkLayer, INormalizationLayer {

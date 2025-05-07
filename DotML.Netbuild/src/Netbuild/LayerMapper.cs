@@ -303,4 +303,15 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
             throw new ArgumentException($"Layer '{layer_name}' either doesn't exist or is not an input capturing layer.");
         return new AdditionSkipConnection(ishape, capture);
     }
+
+    public IFeedforwardNetworkLayer Visit(ConcatenationSkipConnection? skip, LayerConstructionArgs args) {
+        (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
+        var layer_name = arguments["residual"].AsString();
+        var side = Enum.Parse<ConcatenationSkipConnection.Side>(arguments["side"].AsString(), true);
+
+        InputCapture? capture = (InputCapture?)arguments.Env.GetLayer(layer_name);
+        if (capture is null)
+            throw new ArgumentException($"Layer '{layer_name}' either doesn't exist or is not an input capturing layer.");
+        return new ConcatenationSkipConnection(ishape, capture, side);
+    }
 }
