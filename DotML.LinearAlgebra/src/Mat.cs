@@ -750,27 +750,19 @@ where T:INumber<T> {
         // Transpose Convolution Output Size = (Input Size - 1) * Strides + Filter Size - 2 * Padding + Output Padding
         var in_rows_real = this.Rows;
         var in_cols_real = this.Columns;
-        var in_rows = in_rows_real + inputPaddingY * 2;
-        var in_cols = in_cols_real + inputPaddingX * 2;
-        var out_cols = (in_cols - 1) * outputStrideX + kernel.Columns - 2 * outputPaddingX; 
-        var out_rows = (in_rows - 1) * outputStrideY + kernel.Rows - 2 * outputPaddingY;
+        var out_cols = (in_cols_real - 1) * outputStrideX + kernel.Columns - 2 * inputPaddingX + outputPaddingX; 
+        var out_rows = (in_rows_real - 1) * outputStrideY + kernel.Rows - 2 * inputPaddingY + outputPaddingY;
 
         var result = new Matrix<T>(out_rows, out_cols, bias ?? T.Zero);
-        for (var r = 0; r < in_rows; r++) {
-            var region_start_y = r * outputStrideY - outputPaddingY;
+        for (var r = 0; r < in_rows_real; r++) {
+            var region_start_y = r * outputStrideY - inputPaddingY;
             var region_end_y = region_start_y + kernel_rows;
 
-            var real_r = r - inputPaddingY;
-
-            for (var c = 0; c < in_cols; c++) {
-                var region_start_x = c * outputStrideX - outputPaddingX;
+            for (var c = 0; c < in_cols_real; c++) {
+                var region_start_x = c * outputStrideX - inputPaddingX;
                 var region_end_x = region_start_x + kernel_cols;
 
-                var real_c = c - inputPaddingX;
-
-                var i = (real_r < 0 || real_c < 0 || real_r >= in_rows_real || real_c >= in_cols_real) 
-                    ? T.Zero
-                    : this[real_r, real_c];
+                var i = this[r, c];
 
                 for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
                     if (out_y < 0 || out_y >= out_rows)
@@ -780,11 +772,9 @@ where T:INumber<T> {
                         if (out_x < 0 || out_x >= out_cols)
                             continue;
 
-                        if (flip_kernel) {
-                            result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
-                        } else {
-                            result[out_y, out_x] += i * kernel[ky, kx];
-                        }
+                        var kernel_val = flip_kernel ? kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx]  : kernel[ky, kx];
+                        
+                        result[out_y, out_x] += i * kernel_val;
                     }
                 }
             }
@@ -809,8 +799,6 @@ where T:INumber<T> {
         var first = inputs.First();
         var in_rows_real = first.Rows;
         var in_cols_real = first.Columns;
-        var in_rows = in_rows_real + inputPaddingY * 2;
-        var in_cols = in_cols_real + inputPaddingX * 2;
 
         var first_k = kernels.First();
         var kernel_rows = first_k.Rows;
@@ -821,26 +809,21 @@ where T:INumber<T> {
         // TODO account for stride in output size calculation
         // https://www.digitalocean.com/community/tutorials/transpose-convolution
         // Transpose Convolution Output Size = (Input Size - 1) * Strides + Filter Size - 2 * Padding + Output Padding
-        var out_cols = (in_cols - 1) * outputStrideX + first_k.Columns - 2 * outputPaddingX; 
-        var out_rows = (in_rows - 1) * outputStrideY + first_k.Rows - 2 * outputPaddingY;
+        var out_cols = (in_cols_real - 1) * outputStrideX + kernel_cols - 2 * inputPaddingX + outputPaddingX; 
+        var out_rows = (in_rows_real - 1) * outputStrideY + kernel_rows - 2 * inputPaddingY + outputPaddingY;
 
         var result = new Matrix<T>(out_rows, out_cols, bias ?? T.Zero);
         foreach (var (input, kernel) in inputs.Zip(kernels)) {
-            for (var r = 0; r < in_rows; r++) {
-                var region_start_y = r * outputStrideY - outputPaddingY;
+            for (var r = 0; r < in_rows_real; r++) {
+                var region_start_y = r * outputStrideY - inputPaddingY;
                 var region_end_y = region_start_y + kernel_rows;
 
-                var real_r = r - inputPaddingY;
 
-                for (var c = 0; c < in_cols; c++) {
-                    var region_start_x = c * outputStrideX - outputPaddingX;
+                for (var c = 0; c < in_cols_real; c++) {
+                    var region_start_x = c * outputStrideX - inputPaddingX;
                     var region_end_x = region_start_x + kernel_cols;
 
-                    var real_c = c - inputPaddingX;
-
-                    var i = (real_r < 0 || real_c < 0 || real_r >= in_rows_real || real_c >= in_cols_real) 
-                        ? T.Zero
-                        : input[real_r, real_c];
+                    var i = input[r, c];
 
                     for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
                         if (out_y < 0 || out_y >= out_rows)
@@ -850,11 +833,9 @@ where T:INumber<T> {
                             if (out_x < 0 || out_x >= out_cols)
                                 continue;
 
-                            if (flip_kernel) {
-                                result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
-                            } else {
-                                result[out_y, out_x] += i * kernel[ky, kx];
-                            }
+                            var kernel_val = flip_kernel ? kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx]  : kernel[ky, kx];
+
+                            result[out_y, out_x] += i * kernel_val;
                         }
                     }
                 }

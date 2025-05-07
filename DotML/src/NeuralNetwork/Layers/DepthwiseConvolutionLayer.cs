@@ -10,7 +10,6 @@ namespace DotML.Network;
 /// Apply a convolution using the given kernel/filter
 /// <see href="https://towardsdatascience.com/understanding-depthwise-separable-convolutions-and-the-efficiency-of-mobilenets-6de3d6b62503"/>
 /// </summary>
-[Untested()]
 public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
     
     /// <summary>

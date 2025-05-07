@@ -5,8 +5,9 @@ using DotML.Network.Training;
 
 namespace DotML.Network;
 
-[Untested]
-[WorkInProgress]
+/// <summary>
+/// Transpose convolution layer. Uses convolution filters to perform an upscaling operation on the input data.
+/// </summary>
 public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
     private ConvolutionFilter[] filters;
     public ReadOnlyCollection<ConvolutionFilter> Filters {get; init;}
@@ -44,8 +45,10 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         var false_cols = inputColumns + 2 * InputColumnsPadding;
 
         // Copied from TransposeConvolveEach in Mat.cs
-        var out_cols                  = (false_cols - 1) * StrideX + false_cols - 2 * OutputColumnsPadding; 
-        var out_rows                  = (false_rows - 1) * StrideY + false_rows - 2 * OutputRowsPadding;
+        var out_cols                  = (inputColumns - 1) * StrideX + filterColumns - 2 * InputColumnsPadding + OutputColumnsPadding; 
+        var out_rows                  = (inputRows - 1) * StrideY + filterRows - 2 * InputRowsPadding + OutputRowsPadding;
+        //var out_cols                  = (false_cols - 1) * StrideX + false_cols - 2 * OutputColumnsPadding; 
+        //var out_rows                  = (false_rows - 1) * StrideY + false_rows - 2 * OutputRowsPadding;
 
         OutputShape = new Shape3D(
             channel:            filters.Length,
@@ -76,8 +79,10 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
 
         // Copied from TransposeConvolveEach in Mat.cs
         //                            = (in_cols - 1) * outputStrideX + kernel.Columns - 2 * outputPaddingX; 
-        var out_cols                  = (padded_input_columns - 1) * StrideX + filterColumns - 2 * OutputColumnsPadding; 
-        var out_rows                  = (padded_input_rows - 1) * StrideY + filterRows - 2 * OutputRowsPadding;
+        var out_cols = (inputColumns - 1) * StrideX + filterColumns - 2 * InputColumnsPadding + OutputColumnsPadding; 
+        var out_rows = (inputRows - 1) * StrideY + filterRows - 2 * InputRowsPadding + OutputRowsPadding;
+        //var out_cols                  = (padded_input_columns - 1) * StrideX + filterColumns - 2 * OutputColumnsPadding; 
+        //var out_rows                  = (padded_input_rows - 1) * StrideY + filterRows - 2 * OutputRowsPadding;
 
         OutputShape = new Shape3D(
             channel:            filters.Length,
@@ -147,8 +152,6 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         // dW(filter, kernel, row, col) = dy(filter, i, j) * input(c, i+k-1, j+l-1)
         // ----------------------------------------------------------------------------
         var (batch_size, in_channels, input_height, input_width) = X.Shape; // batches, inputs, rows, columns
-        var padded_input_height = input_height + 2 * InputRowsPadding;
-        var padded_input_width = input_width + 2 * InputColumnsPadding;
         var (_, _, output_height, output_width) = dY.Shape;                 // batches, outputs, rows, columns
         var (out_channels, _, filter_height, filter_width) = filter_shape;  // outputs, inputs, kernel rows, kernel columns
 
@@ -161,23 +164,18 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
             for (var feature_index = 0; feature_index < in_channels; feature_index++) {
                 var xfeats = xbatch[feature_index];
 
-                for (var r = 0; r < padded_input_height; r++) {
+                for (var r = 0; r < input_height; r++) {
                     // Y-Region on the output that this input position contributed to
-                    var region_start_y = r * StrideX - OutputRowsPadding;
+                    var region_start_y = r * StrideX - InputRowsPadding;
                     var region_end_y = region_start_y + filter_height;
 
-                    var real_r = r - InputRowsPadding;
 
-                    for (var c = 0; c < padded_input_width; c++) {
+                    for (var c = 0; c < input_width; c++) {
                         // X-Region on the output that this input position contributed to
-                        var region_start_x = c * StrideX - OutputColumnsPadding;
+                        var region_start_x = c * StrideX - InputColumnsPadding;
                         var region_end_x = region_start_x + filter_width;
 
-                        var real_c = c - InputColumnsPadding;
-
-                        var i = (real_r < 0 || real_c < 0 || real_r >= input_height || real_c >= input_width) 
-                            ? 0.0
-                            : xfeats[real_r, real_c];
+                        var i = xfeats[r, c];
 
                         for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
                             if (out_y < 0 || out_y >= output_height)
@@ -226,8 +224,8 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
 
     private BatchedFeatureSet<double> BackpropagateWrtInput(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
         var (batch_size, in_channels, out_rows, out_columns) = X.Shape; // In and out rows/columns flipped here since the "input" is dY and the output is "dX"
-        var padded_out_rows = out_rows + 2 * InputRowsPadding;
-        var padded_out_columns = out_columns + 2 * InputColumnsPadding;
+        //var padded_out_rows = out_rows + 2 * InputRowsPadding;
+        //var padded_out_columns = out_columns + 2 * InputColumnsPadding;
 
         var (_, out_channels, in_rows, in_columns) = dY.Shape;
         var (filter_count, kernel_count, kernel_height, kernel_width) = filter_shape;
@@ -250,19 +248,11 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
                     // --------------------------------------
                     // COPIED FROM Matrix<double>.Convolve();
                     // --------------------------------------
-                    for (var y = 0; y < padded_out_rows; y++) {
-                        var real_y = y - InputRowsPadding;
-                        var startY = y * StrideY - OutputRowsPadding;
-    
-                        if (real_y < 0 || real_y >= out_rows)
-                            continue;
+                    for (var y = 0; y < out_rows; y++) {
+                        var startY = y * StrideY - InputRowsPadding;
 
-                        for (var x = 0; x < padded_out_columns; x++) {
-                            var real_x = x - InputColumnsPadding;
-                            var startX = x * StrideX - OutputColumnsPadding;
-
-                            if (real_x < 0 || real_x >= out_columns)
-                                continue;
+                        for (var x = 0; x < out_columns; x++) {
+                            var startX = x * StrideX - InputColumnsPadding;
 
                             var total_sum = 0.0;
                             for (int ky = 0; ky < filterRows; ky++) {
@@ -277,7 +267,7 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
                                 }
                             }
                             
-                            result[real_y, real_x] += total_sum;
+                            result[y, x] += total_sum;
                         }
                     }
                     // --------------------------------------

@@ -6,7 +6,7 @@
     const int IMG_WIDTH = 32;
     const int IMG_HEIGHT = 32;
     const int IMG_CHANNELS = 3;
-    const int UPSCALE_FACTOR = 3;
+    const int UPSCALE_FACTOR = 4;
 }
 
 <PageTitle>Upscaling</PageTitle>
@@ -20,7 +20,7 @@
                 <p class="w3-center">
                     Upscaling from: @model.InputShape &rightarrow; @model.OutputShape
                 </p>
-                <VectorizedImage Width=@(IMG_WIDTH * UPSCALE_FACTOR) Height=@(IMG_HEIGHT * UPSCALE_FACTOR) ValueScale="255" Vector=@data.Output></VectorizedImage>
+                <BmpImage Height=@(IMG_HEIGHT * UPSCALE_FACTOR) Width=@(IMG_WIDTH * UPSCALE_FACTOR) Vector=@data.Output></BmpImage>
             </ModelRunner>
         </div>
     </div>
@@ -29,6 +29,28 @@
 @code {
     private PaintApp? painter;
     
+    private string toDataUrlBmp(Vec<double> data) {
+        var format = new BitmapFormat();
+        var image = new MemoryImage(IMG_WIDTH * UPSCALE_FACTOR, IMG_HEIGHT * UPSCALE_FACTOR);
+        var frame_size = image.Width * image.Height;
+        for (var row = 0; row < image.Height; row++) {
+            for (var col = 0; col < image.Width; col++) {
+                var i = (row * image.Width + col);
+
+                image.Pixels[row, col] = new Pixel(
+                    (byte)Math.Clamp(data[i + frame_size * 0] * 255, 0, 255), // R
+                    (byte)Math.Clamp(data[i + frame_size * 1] * 255, 0, 255), // G
+                    (byte)Math.Clamp(data[i + frame_size * 2] * 255, 0, 255)  // B
+                );
+            }
+        }
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+        format.SaveTo(writer, image);
+        var str = Convert.ToBase64String(stream.ToArray());
+        return $"data:image/bmp;base64," + str;
+    }
+
     private static double vectorize(byte b) => b / 255.0;
     private static Vec<double> vectorize(Pixel[] pixels) {
         double[] values = new double[pixels.Length * 3];

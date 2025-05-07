@@ -11,7 +11,6 @@ namespace DotML.Network;
 /// Layer that performs batch normalization 
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
-[Untested]
 public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
     private double running_mean_momentum = 0.9;

@@ -1,0 +1,33 @@
+@if (Vector.HasValue) {
+    <img src="@toDataUrlBmp(Vector.Value)" class="w3-image" style="width: 100%;image-rendering: pixelated;"/>
+}
+
+@code {
+    [Parameter] public int Width {get; set;}
+    [Parameter] public int Height {get; set;}
+    [Parameter] public Vec<double>? Vector {get; set;}
+    [Parameter] public int ValueScale {get; set;} = 255;
+
+    private string toDataUrlBmp(Vec<double> data) {
+        var format = new BitmapFormat();
+        var image = new MemoryImage(Width, Height);
+        var frame_size = image.Width * image.Height;
+        for (var row = 0; row < image.Height; row++) {
+            for (var col = 0; col < image.Width; col++) {
+                var i = (row * image.Width + col);
+
+                image.Pixels[row, col] = new Pixel(
+                    (byte)Math.Clamp(data[i + frame_size * 0] * ValueScale, 0, 255), // R
+                    (byte)Math.Clamp(data[i + frame_size * 1] * ValueScale, 0, 255), // G
+                    (byte)Math.Clamp(data[i + frame_size * 2] * ValueScale, 0, 255)  // B
+                );
+            }
+        }
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+        format.SaveTo(writer, image);
+        var str = Convert.ToBase64String(stream.ToArray());
+        return $"data:image/bmp;base64," + str;
+    }
+
+}

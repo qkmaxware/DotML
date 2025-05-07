@@ -145,7 +145,7 @@ public class SvgWriter : ILayerInputVisitor<SvgWriter.SvgBuilder> {
     }
 
     public void Visit(PoolingLayer layer, SvgBuilder args) {
-        //throw new NotImplementedException();
+        args.Writer.WriteLine(get_template("DotML.src.NeuralNetwork.IO.SvgTemplates.Pooling.svg.part"));
     }
 
     public void Visit(FlatteningLayer layer, SvgBuilder args) {
