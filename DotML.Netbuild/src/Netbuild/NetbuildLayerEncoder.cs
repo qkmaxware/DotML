@@ -37,7 +37,7 @@ public class NetbuildLayerEncoder : ILayerVisitor {
     }
 
     public void Visit(TransposeConvolutionLayer layer) {
-        sb.WriteLine($"ADD {nameof(TransposeConvolutionLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} padding-x={layer.InputColumnsPadding} padding-y={layer.InputRowsPadding} expand-x={layer.OutputColumnsPadding} expand-y={layer.OutputRowsPadding} filters={layer.FilterCount} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
+        sb.WriteLine($"ADD {nameof(TransposeConvolutionLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} in-padding-x={layer.InputColumnsPadding} in-padding-y={layer.InputRowsPadding} out-padding-x={layer.OutputColumnsPadding} out-padding-y={layer.OutputRowsPadding} filters={layer.FilterCount} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
     }
 
     public void Visit(PixelShuffle layer) {

@@ -148,12 +148,12 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
 
     public IFeedforwardNetworkLayer Visit(TransposeConvolutionLayer layer, LayerConstructionArgs args) {
         (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
-        int? x_pad      = arguments.ContainsKey("padding-x") ? arguments["padding-x"].AsInt() : null;
-        int? y_pad      = arguments.ContainsKey("padding-y") ? arguments["padding-y"].AsInt() : null;
-        int? x_expand   = arguments.ContainsKey("expand-x") ? arguments["expand-x"].AsInt() : null;
-        int? y_expand   = arguments.ContainsKey("expand-y") ? arguments["expand-y"].AsInt() : null;
-        Padding pad     = Enum.Parse<Padding>(arguments.FirstOf(Same, "padding").AsString(), true);
-        Expansion expand= Enum.Parse<Expansion>(arguments.FirstOf(Same, "expand").AsString(), true);
+        int? x_pad      = arguments.ContainsKey("in-padding-x") ? arguments["in-padding-x"].AsInt() : null;
+        int? y_pad      = arguments.ContainsKey("in-padding-y") ? arguments["in-padding-y"].AsInt() : null;
+        int? x_expand   = arguments.ContainsKey("out-padding-x") ? arguments["out-padding-x"].AsInt() : null;
+        int? y_expand   = arguments.ContainsKey("out-padding-y") ? arguments["out-padding-y"].AsInt() : null;
+        Padding pad     = Enum.Parse<Padding>(arguments.FirstOf(Same, "in-padding").AsString(), true);
+        Expansion expand= Enum.Parse<Expansion>(arguments.FirstOf(Same, "out-padding").AsString(), true);
         var x_stride    = arguments.FirstOf(One, "stride-x", "stride").AsInt();
         var y_stride    = arguments.FirstOf(One, "stride-y", "stride").AsInt();
         var filters     = arguments["filters"].AsInt(); // Not really filters, but outputs

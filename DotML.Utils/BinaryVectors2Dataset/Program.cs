@@ -3,6 +3,8 @@ using CommandLine;
 using DotML;
 using DotML.Network.Training;
 
+namespace BinaryVectors2Dataset;
+
 public class Program {
 
     public class Options {
@@ -16,34 +18,38 @@ public class Program {
     public static void Main() {
         var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
         Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(options => {
-            if (string.IsNullOrEmpty(options.OutName))
-                return;
-            var files = options.Files;
-            if (files is null || !files.Any())
-                return;
-            options.OutName = options.OutName.EndsWith(".bin") ? options.OutName : options.OutName + ".bin";
-
-            var parser = new BinaryClassifiedVectors();
-            // TrainingSet set = new TrainingSet();
-            var builder = new TrainingSetBuilder<byte>();
-            builder.ScalingFactor = 1.0 / 255.0;
-            foreach (var file in files) {
-                Console.Write($"Processing '{file}'...");
-                var info = new FileInfo(file);
-                if (!info.Exists)
-                    continue;
-                builder.AddRange(parser.ReadBytes(info, fixed_vector_size: 1024 * 3));
-                //set.AddRange(parser.Read(info));
-                Console.WriteLine("done");
-            }
-
-            using var out_stream = File.Open(options.OutName, FileMode.Create);
-            using var writer = new BinaryWriter(out_stream);
-            // set.WriteTo(writer);
-            builder.WriteTo(writer);
-            Console.WriteLine("Training set contains: " + builder.Count + " entries");
-            Console.WriteLine("File saved as " + options.OutName);
+            Main(options);
         });
+    }
+
+    public static void Main(Options options) {
+        if (string.IsNullOrEmpty(options.OutName))
+            return;
+        var files = options.Files;
+        if (files is null || !files.Any())
+            return;
+        options.OutName = options.OutName.EndsWith(".bin") ? options.OutName : options.OutName + ".bin";
+
+        var parser = new BinaryClassifiedVectors();
+        // TrainingSet set = new TrainingSet();
+        var builder = new TrainingSetBuilder<byte>();
+        builder.ScalingFactor = 1.0 / 255.0;
+        foreach (var file in files) {
+            Console.Write($"Processing '{file}'...");
+            var info = new FileInfo(file);
+            if (!info.Exists)
+                continue;
+            builder.AddRange(parser.ReadBytes(info, fixed_vector_size: 1024 * 3));
+            //set.AddRange(parser.Read(info));
+            Console.WriteLine("done");
+        }
+
+        using var out_stream = File.Open(options.OutName, FileMode.Create);
+        using var writer = new BinaryWriter(out_stream);
+        // set.WriteTo(writer);
+        builder.WriteTo(writer);
+        Console.WriteLine("Training set contains: " + builder.Count + " entries");
+        Console.WriteLine("File saved as " + options.OutName);
     }
 
 }

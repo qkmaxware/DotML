@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\DotML\DotML.csproj" />
+    <ProjectReference Include="..\..\DotML.Utils\ImageResize\ImageResize.csproj" />
+    <ProjectReference Include="..\..\DotML.Utils\Images2ImagesDataset\Images2ImagesDataset.csproj" />
   </ItemGroup>
 
 </Project>

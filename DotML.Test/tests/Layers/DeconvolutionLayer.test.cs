@@ -7,6 +7,30 @@ namespace DotML.Test.Layers;
 public class TransposeConvolutionLayerTest {
 
     [TestMethod]
+    public void TestUpsample() {
+        var input_tensor = new BatchedFeatureSet<double>(new Shape4D(1, 3, 32, 32));
+
+        var pool = new LocalMaxPoolingLayer(input_size: new Shape3D(3, 32, 32), size: 3, stride: 3, padding: 0);
+        var pooled_tensor = pool.EvaluateSync(input_tensor);
+        Assert.IsTrue(pooled_tensor.Rows < input_tensor.Rows);
+        Assert.IsTrue(pooled_tensor.Columns < input_tensor.Columns);
+
+        var deconv = new TransposeConvolutionLayer(
+            input_size: new Shape3D(pooled_tensor.Channels, pooled_tensor.Rows, pooled_tensor.Columns),
+            inputPaddingX: 0,
+            inputPaddingY: 0,
+            outputPaddingX: 2,
+            outputPaddingY: 2, 
+            strideX: 3,
+            strideY: 3,
+            filters: ConvolutionFilter.Make(3, pooled_tensor.Channels, 3)
+        );
+        var reconstructed_tensor = deconv.EvaluateSync(pooled_tensor);
+
+        Assert.AreEqual(input_tensor.Shape, reconstructed_tensor.Shape);
+    }
+
+    [TestMethod]
     public void Test3In2OutStride2Padding1OutPadding0() {
         // Configure layer
         var layer = new TransposeConvolutionLayer(

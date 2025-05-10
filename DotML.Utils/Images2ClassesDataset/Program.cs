@@ -2,9 +2,11 @@
 using CommandLine;
 using System.Text.Json;
 
+namespace Images2ClassesDataset;
+
 #pragma warning disable CA1416 // Only works in Windows
 
-public class ImagePreprocessor {
+public class Program {
 
     const int IMG_WIDTH = 256;
     const int IMG_HEIGHT = 256;
@@ -114,134 +116,138 @@ public class ImagePreprocessor {
     public static void Main() {
         var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
         Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(options => {
-            //if (options.IsTiled && (options.TileWidth <= 0 || options.TileHeight <= 0)) {
-                //throw new ArgumentException("You have indicated that images are tiled, but have provided invalid dimensions for tile-width or tile-height.");
-            //}
-
-            Directory.CreateDirectory(Path.Combine("data", "images", "raw"));
-            DirectoryInfo dir = new DirectoryInfo(Path.Combine("data", "images", "raw"));
-            var categories = dir.GetDirectories();
-            var files_per_category = categories.Select(category => category.GetFiles()).ToArray();
-            var file_count = files_per_category.Select(x => x.Length).Sum();
-            //var categories_vectors = categories.Select((cat, i) => MakeVector(i, categories)).ToArray(); // [-1,-1,...1,...-1,-1]
-
-            Directory.CreateDirectory(Path.Combine("data", "images", "processed"));
-            using var binary = new BinaryWriter(File.Open(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".training.bin"), FileMode.Create));
-            using var labelWriter = new StreamWriter(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".labels.csv"));
-
-            List<Transform> transforms = [
-                new Identity().Named("original"),
-            ];
-
-            if (options.AugmentMirror) {
-                transforms.Add(new Flip(xflip: true, yflip: false, xyflip: false).Named("x-mirror"));
-            }
-            if (options.AugmentFlip) {
-                transforms.Add(new Flip(xflip: false, yflip: true, xyflip: false).Named("y-flip"));
-            }
-            if (options.AugmentMirrorFlip) {
-                transforms.Add(new Flip(xflip: false, yflip: false, xyflip: true).Named("xy-flip"));
-            }
-
-            if (options.AugmentRotation is not null && options.AugmentRotation.Any()) {
-                transforms.Add(new Rotate(options.AugmentRotation.ToArray()).Named("rot"));
-            }
-            if (options.AugmentScale is not null && options.AugmentScale.Any()) {
-                transforms.Add(new Scale(options.AugmentScale.ToArray()).Named("scaled"));
-            }
-
-            // Write binary header
-            binary.Write([(byte)'v', (byte)'e', (byte)'c']);
-            binary.Write((byte)0b0001_0000);                                   // U8 As per VectorStorageType in DotML\src\NeuralNetwork\Training\TrainingData.cs
-            binary.Write(1.0/255.0);                                           // Scaling from 0..255 to 0..1
-            binary.Write((Int32)(categories.Length));                                   // Output count
-            binary.Write((Int32)(file_count * transforms.Select(x => x.CreatedImageCount()).Sum())); // Input count
-
-            // Write output vectors
-            int? output_length = categories.Length;
-            for (var i = 0; i < categories.Length; i++) {
-                var vector = new byte[categories.Length];
-                vector[i] = 255; // Write the max value here so it will get scaled to 1 when loaded
-                WriteVector(vector, binary);
-            }
-            binary.Flush();
-
-            // Write input/output vector pairs
-            int total_pairs = 0;
-            int? input_length = null;
-            for (var i = 0; i < categories.Length; i++) {
-                if (i > byte.MaxValue) {
-                    throw new ArgumentException("Too many categories for binary encoding of images");
-                }
-                var categoryIndex = i;
-                var category = categories[i];
-                var files = files_per_category[i];
-                //var output_vec = categories_vectors[i];
-
-                Directory.CreateDirectory(Path.Combine("data", "images", "processed", category.Name));
-
-                foreach (var file in files) {
-                    Console.Write($"Processing '{file.FullName}'...");
-                    using Bitmap original = new Bitmap(file.OpenRead());
-                    float original_aspect = (float)original.Width / (float)original.Height;
-
-                    foreach (var transform in transforms) {
-                        // Apply perturbations to the image
-                        int transform_index = 1;
-                        foreach (var transformed in transform.Apply(original)) {
-                            // Image has been perturbed
-
-                            // Scale/crop image to the size of the output vector
-                            using Bitmap processed = new Bitmap(options.ImageWidth, options.ImageHeight);
-                            using (Graphics graphics = Graphics.FromImage(processed)) {
-                                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                                graphics.Clear(Color.Black);
-
-                                if (transformed.Width > transformed.Height) {
-                                    var x_scale = (float)processed.Height/(float)transformed.Height;
-                                    var x_offset = (processed.Width - (transformed.Width * x_scale)) / 2.0f;
-                                    graphics.DrawImage(transformed, x_offset, 0, transformed.Width * x_scale, processed.Height);
-                                } else {
-                                    var y_scale = (float)processed.Width/(float)transformed.Width;
-                                    var y_offset = (processed.Height - (transformed.Height * y_scale)) / 2.0f;
-                                    graphics.DrawImage(transformed, 0, y_offset, processed.Width, transformed.Height * y_scale);
-                                }
-                            }
-
-                            // Okay, do stuff with the final bitmap
-                            var input_vec = MakeVector(processed, options.Channels);   // Create vector representation [RRRRRR, GGGGGG, BBBBBB] or whatever is selected via the channels option
-                            if (!input_length.HasValue) {
-                                input_length = input_vec.Length;
-                            } else {
-                                input_length = Math.Max(input_length.Value, input_vec.Length);
-                            }
-
-                            // Save data
-                            processed.Save(Path.Combine("data", "images", "processed", category.Name, Path.GetFileNameWithoutExtension(file.Name) + "." + transform.Name + "." + (transform_index++) + file.Extension));
-                            WriteVector(categoryIndex, input_vec, binary);
-                            total_pairs++;
-                            binary.Flush();
-                            
-                            labelWriter.WriteLine(categoryIndex + ", \""+category.Name+"\"");
-                            labelWriter.Flush();
-
-                            // Cleanup images
-                            processed.Dispose();
-                            transformed.Dispose();
-                        }
-                    }
-
-                    Console.WriteLine("done");
-                }
-            }
-            binary.Flush();
-
-            Console.WriteLine();
-
-            Console.WriteLine($"Total Training Pairs: {total_pairs}");
-            Console.WriteLine($"Input Image Size: {ChannelCount(options.Channels)}x{options.ImageHeight}x{options.ImageWidth}");
-            Console.WriteLine($"Input Vector Size: {input_length}");
-            Console.WriteLine($"Output Vector Size: {output_length}");
+            Main(options);
         });
+    }
+
+    public static void Main(Options options) {
+        //if (options.IsTiled && (options.TileWidth <= 0 || options.TileHeight <= 0)) {
+            //throw new ArgumentException("You have indicated that images are tiled, but have provided invalid dimensions for tile-width or tile-height.");
+        //}
+
+        Directory.CreateDirectory(Path.Combine("data", "images", "raw"));
+        DirectoryInfo dir = new DirectoryInfo(Path.Combine("data", "images", "raw"));
+        var categories = dir.GetDirectories();
+        var files_per_category = categories.Select(category => category.GetFiles()).ToArray();
+        var file_count = files_per_category.Select(x => x.Length).Sum();
+        //var categories_vectors = categories.Select((cat, i) => MakeVector(i, categories)).ToArray(); // [-1,-1,...1,...-1,-1]
+
+        Directory.CreateDirectory(Path.Combine("data", "images", "processed"));
+        using var binary = new BinaryWriter(File.Open(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".training.bin"), FileMode.Create));
+        using var labelWriter = new StreamWriter(Path.Combine("data", "images", "processed", DateTime.Now.ToShortDateString() + ".labels.csv"));
+
+        List<Transform> transforms = [
+            new Identity().Named("original"),
+        ];
+
+        if (options.AugmentMirror) {
+            transforms.Add(new Flip(xflip: true, yflip: false, xyflip: false).Named("x-mirror"));
+        }
+        if (options.AugmentFlip) {
+            transforms.Add(new Flip(xflip: false, yflip: true, xyflip: false).Named("y-flip"));
+        }
+        if (options.AugmentMirrorFlip) {
+            transforms.Add(new Flip(xflip: false, yflip: false, xyflip: true).Named("xy-flip"));
+        }
+
+        if (options.AugmentRotation is not null && options.AugmentRotation.Any()) {
+            transforms.Add(new Rotate(options.AugmentRotation.ToArray()).Named("rot"));
+        }
+        if (options.AugmentScale is not null && options.AugmentScale.Any()) {
+            transforms.Add(new Scale(options.AugmentScale.ToArray()).Named("scaled"));
+        }
+
+        // Write binary header
+        binary.Write([(byte)'v', (byte)'e', (byte)'c']);
+        binary.Write((byte)0b0001_0000);                                   // U8 As per VectorStorageType in DotML\src\NeuralNetwork\Training\TrainingData.cs
+        binary.Write(1.0/255.0);                                           // Scaling from 0..255 to 0..1
+        binary.Write((Int32)(categories.Length));                                   // Output count
+        binary.Write((Int32)(file_count * transforms.Select(x => x.CreatedImageCount()).Sum())); // Input count
+
+        // Write output vectors
+        int? output_length = categories.Length;
+        for (var i = 0; i < categories.Length; i++) {
+            var vector = new byte[categories.Length];
+            vector[i] = 255; // Write the max value here so it will get scaled to 1 when loaded
+            WriteVector(vector, binary);
+        }
+        binary.Flush();
+
+        // Write input/output vector pairs
+        int total_pairs = 0;
+        int? input_length = null;
+        for (var i = 0; i < categories.Length; i++) {
+            if (i > byte.MaxValue) {
+                throw new ArgumentException("Too many categories for binary encoding of images");
+            }
+            var categoryIndex = i;
+            var category = categories[i];
+            var files = files_per_category[i];
+            //var output_vec = categories_vectors[i];
+
+            Directory.CreateDirectory(Path.Combine("data", "images", "processed", category.Name));
+
+            foreach (var file in files) {
+                Console.Write($"Processing '{file.FullName}'...");
+                using Bitmap original = new Bitmap(file.OpenRead());
+                float original_aspect = (float)original.Width / (float)original.Height;
+
+                foreach (var transform in transforms) {
+                    // Apply perturbations to the image
+                    int transform_index = 1;
+                    foreach (var transformed in transform.Apply(original)) {
+                        // Image has been perturbed
+
+                        // Scale/crop image to the size of the output vector
+                        using Bitmap processed = new Bitmap(options.ImageWidth, options.ImageHeight);
+                        using (Graphics graphics = Graphics.FromImage(processed)) {
+                            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                            graphics.Clear(Color.Black);
+
+                            if (transformed.Width > transformed.Height) {
+                                var x_scale = (float)processed.Height/(float)transformed.Height;
+                                var x_offset = (processed.Width - (transformed.Width * x_scale)) / 2.0f;
+                                graphics.DrawImage(transformed, x_offset, 0, transformed.Width * x_scale, processed.Height);
+                            } else {
+                                var y_scale = (float)processed.Width/(float)transformed.Width;
+                                var y_offset = (processed.Height - (transformed.Height * y_scale)) / 2.0f;
+                                graphics.DrawImage(transformed, 0, y_offset, processed.Width, transformed.Height * y_scale);
+                            }
+                        }
+
+                        // Okay, do stuff with the final bitmap
+                        var input_vec = MakeVector(processed, options.Channels);   // Create vector representation [RRRRRR, GGGGGG, BBBBBB] or whatever is selected via the channels option
+                        if (!input_length.HasValue) {
+                            input_length = input_vec.Length;
+                        } else {
+                            input_length = Math.Max(input_length.Value, input_vec.Length);
+                        }
+
+                        // Save data
+                        processed.Save(Path.Combine("data", "images", "processed", category.Name, Path.GetFileNameWithoutExtension(file.Name) + "." + transform.Name + "." + (transform_index++) + file.Extension));
+                        WriteVector(categoryIndex, input_vec, binary);
+                        total_pairs++;
+                        binary.Flush();
+                        
+                        labelWriter.WriteLine(categoryIndex + ", \""+category.Name+"\"");
+                        labelWriter.Flush();
+
+                        // Cleanup images
+                        processed.Dispose();
+                        transformed.Dispose();
+                    }
+                }
+
+                Console.WriteLine("done");
+            }
+        }
+        binary.Flush();
+
+        Console.WriteLine();
+
+        Console.WriteLine($"Total Training Pairs: {total_pairs}");
+        Console.WriteLine($"Input Image Size: {ChannelCount(options.Channels)}x{options.ImageHeight}x{options.ImageWidth}");
+        Console.WriteLine($"Input Vector Size: {input_length}");
+        Console.WriteLine($"Output Vector Size: {output_length}");
     }
 }

@@ -35,4 +35,8 @@ public static class AssertExt {
             batch++;
         }
     }
+
+    public static void DumpAndBail(params BatchedFeatureSet<double>[] dumped) {
+        throw new AggregateException(dumped.Select(x => new Exception(x.ToJaggedArrayString())));
+    }
 }

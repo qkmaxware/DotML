@@ -1,5 +1,7 @@
 using System.Drawing;
 
+namespace Images2ClassesDataset;
+
 #pragma warning disable CA1416 // Only works in Windows
 
 public abstract class Transform {

@@ -227,6 +227,8 @@ public class BatchedFeatureSet<T> :
         StringBuilder sb = new StringBuilder();
         sb.Append('[');
         for (var batch = 0; batch < this.Batches; batch++) {
+            if (batch != 0)
+                sb.Append(',');
             sb.Append(this[batch].ToJaggedArrayString());
         }
         sb.Append(']');
@@ -497,6 +499,8 @@ public class FeatureSet<T> :
         StringBuilder sb = new StringBuilder();
         sb.Append('[');
         for (var feature = 0; feature < this.Channels; feature++) {
+            if (feature != 0)
+                sb.Append(',');
             sb.Append(this[feature].ToJaggedArrayString());
         }
         sb.Append(']');

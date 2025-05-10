@@ -103,15 +103,20 @@ public static class UNet {
 
         // Descend to lower layers
         var pool = new LocalMaxPoolingLayer(input_size: capture.OutputShape, 3);
+        yield return pool;
+        IFeedforwardNetworkLayer last_depth_layer = pool;
         foreach (var layer in level(current_depth + 1, max_depth, pool.OutputShape, activation, normalize, dropout)) {
             yield return layer;
+            last_depth_layer = layer;
         }
         var up_conv = new TransposeConvolutionLayer(
-            input_size: pool.OutputShape, 
-            padding: Padding.Same,
-            expansion: Expansion.Expand,
-            strideX: 1, 
-            strideY: 1,
+            input_size: last_depth_layer.OutputShape, 
+            inputPaddingX: 0,
+            inputPaddingY: 0,
+            outputPaddingX: 2, // May need to be 2,1 or 0
+            outputPaddingY: 2,
+            strideX: 3, 
+            strideY: 3,
             filters: ConvolutionFilter.Make(filters: pool.OutputShape.Channels, kernels_per_filter: pool.OutputShape.Channels, 3)
         );
         yield return up_conv;

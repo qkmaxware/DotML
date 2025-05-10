@@ -1,6 +1,7 @@
 @using DotML.Network
 @using DotML.Network.IO
 @using DotML.Playground.Common.Shared.Interactable
+@using System.Text.RegularExpressions
 
 <nav class="w3-bar lighter w3-border-bottom">
     <div class="w3-dropdown-hover">
@@ -10,6 +11,13 @@
             <button class="w3-bar-item w3-button" @onclick=@(() => template_modal?.Show())>New from Template</button>
             <hr>
             <button class="w3-bar-item w3-button">Save</button>
+        </div>
+    </div>
+    <div class="w3-dropdown-hover">
+        <button class="w3-button">Edit</button>
+        <div class="w3-dropdown-content w3-bar-block w3-card-4">
+            <button class="w3-bar-item w3-button" @onclick=@(() => normalize_modal?.Show())>Insert Normalization</button>
+            <button class="w3-bar-item w3-button" @onclick=@(() => activation_modal?.Show())>Change Activation Function</button>
         </div>
     </div>
     <button class="w3-bar-item w3-button w3-right highlight" @onclick=validate>Validate</button>
@@ -35,13 +43,16 @@
                         <td>Layers</td><td>@validation_report.layers</td>
                     </tr>
                     <tr>
-                        <td>Trainable Parameters</td><td>@validation_report.trainable</td>
-                    </tr>
-                    <tr>
                         <td>Untrainable Parameters</td><td>@validation_report.untrainable</td>
                     </tr>
                     <tr>
                         <td>Disk Size</td><td>@validation_report.size</td>
+                    </tr>
+                    <tr>
+                        <td>Input Shape</td><td>@validation_report.ishape</td>
+                    </tr>
+                    <tr>
+                        <td>Output Shape</td><td>@validation_report.oshape</td>
                     </tr>
                 </tbody>
             </table>
@@ -83,6 +94,26 @@
     </form>
 </Modal>
 
+<Modal Title="Normalization" @ref=normalize_modal>
+    <label>Method</label>
+    <select @bind=normalization_type class="w3-select">
+        <option value="@(nameof(LayerNorm))">Layer Normalization</option>
+        <option value="@(nameof(GroupNorm))">Group Normalization</option>
+        <option value="@(nameof(BatchNorm))">Batch Normalization</option>
+    </select>
+    <button type="button" class="w3-button highlight" style="width: 100%" @onclick=@(() => { InsertNormalization(normalization_type, null); normalize_modal?.Hide(); })>Insert</button>
+</Modal>
+
+<Modal Title="Activation Function" @ref=activation_modal>
+    <label>Functions</label>
+    <select class="w3-select">
+    @foreach(var func in ActivationFunctions.EnumerateAll()) {
+        <option>@func</option>
+    }
+    </select>
+    <button type="button" class="w3-button highlight" style="width: 100%" @onclick=@(() => { ChangeActivationFunc(ActivationFunctions.Tanh); activation_modal?.Hide(); })>Update</button>
+</Modal>
+
 @code {
 
     private Modal? validation_modal;
@@ -96,6 +127,8 @@
         public int layers;
         public int trainable;
         public int untrainable;
+        public Shape3D ishape;
+        public Shape3D oshape;
     }
     private void validate() {
         if (editor is null) {
@@ -116,7 +149,9 @@
                     size = network.StorageSize(),
                     layers = network.LayerCount,
                     trainable = network.TrainableParameterCount(),
-                    untrainable = network.UnTrainableParameterCount()
+                    untrainable = network.UnTrainableParameterCount(),
+                    ishape = network.InputShape,
+                    oshape = network.OutputShape,
                 };
                 this.validation_report = v;
             } catch (Exception e) {
@@ -321,6 +356,26 @@
                 img_width:      args["ImageWidth"].AsInt()
             ))
         ),
+        new Template(
+            "UNet",
+            new Dictionary<string, Option> {
+                { "ImageHeight", new Option(224, "number") },
+                { "ImageWidth", new Option(224, "number") },
+                { "ImageChannels", new Option(3, "number") },
+                { "OutputChannels", new Option(3, "number") },
+                { "Depth", new Option(3, "number") },
+            },
+            (args) => serializer.Serialize(UNet.Make(
+                img_channels: args["ImageChannels"].AsInt(),
+                img_width: args["ImageWidth"].AsInt(),
+                img_height: args["ImageHeight"].AsInt(),
+                output_channels: args["OutputChannels"].AsInt(),
+                depth: args["Depth"].AsInt(),
+                activation: null,
+                normalize: false,
+                dropout: null
+            ))
+        )
     ];
     private void make_new() {
         editor?.SetText(string.Empty);
@@ -344,5 +399,44 @@
         editor.SetText(str);
 
         template_modal?.Hide();
+    }
+
+    private Modal? normalize_modal;
+    private string? normalization_type;
+    private Modal? activation_modal;
+    private static Regex convo_then_activation = new Regex(@$"^(?<first>\s*ADD\s+{nameof(ConvolutionLayer)}.*)\n(?<second>\s*ADD\s+{nameof(ActivationLayer)}.*)", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    private void InsertNormalization(string? norm_type, string? additional_args) {
+        if (norm_type is null) {
+            Console.WriteLine("No normalization type provided");
+            return;
+        }
+        RegexReplace(
+            convo_then_activation, 
+            (match) => $"{match.Groups["first"].Value}\nADD {norm_type} {additional_args}\n{match.Groups["second"].Value}"
+        );
+    }
+    private static Regex activation_only = new Regex(@$"^(?<first>\s*ADD\s+{nameof(ActivationLayer)}.*)", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    private void ChangeActivationFunc(ActivationFunction? func) {
+        if (func is null) {
+            Console.WriteLine("Activation function missing");
+            return;
+        }
+        using var writer = new StringWriter();
+        var s = new DotML.Network.IO.Netbuild.NetbuildLayerEncoder(writer);
+        (new ActivationLayer(new Shape3D(), func)).Visit(s);
+        writer.Flush();
+        var str = writer.ToString();
+        
+        RegexReplace(
+            activation_only,
+            (match) => str
+        );
+    }
+    private void RegexReplace(Regex pattern, MatchEvaluator replacement) {
+        var str = editor?.GetText() ?? string.Empty;
+
+        str = pattern.Replace(str, replacement);
+
+        editor?.SetText(str);
     }
 }
