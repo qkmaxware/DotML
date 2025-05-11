@@ -21,6 +21,15 @@ public interface ITensorLike<T> {
     /// <param name="indices">list of indexes for each dimension, should match the number of dimensions</param>
     /// <returns>element at the given index</returns>
     public T GetElementAt(params int[] indices);
+
+    public IEnumerable<T> EnumerateElements() {
+        var shape = Enumerable.Range(0, this.Dimensions).Select(x => this.GetDimension(x)).ToArray();
+
+        foreach (var indices in Safetensors.iterate_over_dimensions(shape)) {
+            var index1d = Safetensors.create_1d_index(shape, indices);
+            yield return this.GetElementAt(indices);
+        }
+    }
 }
 
 /// <summary>

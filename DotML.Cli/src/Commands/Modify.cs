@@ -8,6 +8,7 @@ namespace DotML.Cli.Commands;
 netflow mod net2 tags           --add "new-tag" 
 netflow mod net2 weights        --import "my-weights.safetensors"
 netflow mod net2 weights        --transfer to_network
+netflow mod net2 weights        --quantize 
 netflow mod net2 labels         --list apple banana orange
 netflow mod net2 description    --text "This network does something..."
 */
@@ -129,6 +130,9 @@ public class Modify : BaseCommand {
 
     [Option("transfer", Required = false, HelpText = "In 'weight' mode, transfer weights to another model", Separator = ' ')]
     public string? WeightsToTransfer {get; set;}
+    
+    [Option("quantize", Required = false, HelpText = "In 'weight' mode, quantize the model weights to save disk space")]
+    public bool QuantizeWeights {get; set;} = false;
 
     public void WeightsAction(AppData appData) {
         var model = appData.GetModel(ModelName);
@@ -164,6 +168,13 @@ public class Modify : BaseCommand {
                 model_to.UpdateWeights(weights_from);
                 Console.WriteLine($"Successfully transferred weights from {model.Guid} to {model_to.Guid}");
             }   
+        }
+
+        if (QuantizeWeights) {
+            var method = new AbsmaxQuantization();
+            model.QuantizeWeights(method);
+            
+            Console.WriteLine($"Successfully quantized weights for {model.Guid} using {method.GetType().Name}");
         }
     }
     #endregion

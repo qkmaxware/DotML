@@ -1,0 +1,164 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Runtime.InteropServices
+
+<div class="w3-padding">
+    <div class="upload">
+        @if (original is not null) {
+        <table>
+            <tbody>
+                <tr>
+                    <td>Tensors</td><td>@(original.Keys().Count())</td>
+                </tr>
+                <tr>
+                    <td>Size</td><td>@size</td>
+                </tr>
+            </tbody>
+        </table>
+        }
+        <InputFile OnChange=LoadFile1></InputFile>
+    </div>
+</div>
+<div class="w3-padding w3-row w3-row-padding">
+    @if (original is not null) {
+    <div class="w3-col" style="width: 360px">
+        <input type="text" class="w3-input" placeholder="Filter" @bind="key_filter" />
+        <hr>
+        <ul class="w3-ul">
+            @if (keys is not null) {
+                foreach (var key in keys) {
+                    var self_key = key;
+                    if (key_filter is null || self_key.Contains(key_filter)) {
+                        <li>
+                            <button class="w3-button" @onclick=@(() => selected_key = self_key)>@self_key</button>
+                        </li>
+                    }
+                }
+            }
+        </ul>
+    </div>
+    <div class="w3-rest">
+        @if (original is not null && selected_key is not null && original.ContainsKey(selected_key)) {
+            var meta = original.MetadataOf(selected_key);
+            var shape = original.ShapeOf(selected_key);
+            var type = original.TypeOf(selected_key);
+            var items = Enumerable.Range(0, shape.Dimensions).Select(i => shape.GetDimension(i)).Aggregate(1, (a, b) => a * b);
+            var size = DataSize.FromValue(Marshal.SizeOf(type) * items);
+
+            <h2>@selected_key</h2>
+            <table class="w3-table">
+                <thead>
+                    <tr>
+                        <th>Property</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Data-Type</td>
+                        <td>@type</td>
+                    </tr>
+                    <tr>
+                        <td>Shape</td>
+                        <td>@shape</td>
+                    </tr>
+                    <tr>
+                        <td>Values</td>
+                        <td>@items</td>
+                    </tr>
+                    <tr>
+                        <td>Size</td>
+                        <td>@size</td>
+                    </tr>
+                    <tr>
+                        <td>Metadata</td>
+                        <td>
+                            <table class="w3-table">
+                                <tbody>
+                                    @foreach (var item in meta) {
+                                    <tr>
+                                        <td>@item.Key</td>
+                                        <td>@item.Value</td>
+                                    </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <hr>
+            <div class="w3-container">
+            <b>Values</b>
+
+            @if (shape.Dimensions == 3 || shape.Dimensions == 2) {
+                var tensor = original.GetTensorData<double>(selected_key);
+                if (indexing.Length != shape.Dimensions) {
+                    indexing = new int[shape.Dimensions];
+                }
+                if (shape.Dimensions == 3) {
+                    var channels = shape.GetDimension(0);
+                    <input type="number" class="w3-input" placeholder="Channel" @bind="selected_channel" min="0" max="@channels" />
+                    indexing[^3] = Math.Clamp(selected_channel, 0, channels);
+                }
+                var rows = shape.GetDimension(shape.Dimensions - 2);
+                var cols = shape.GetDimension(shape.Dimensions - 1);
+                <table class="w3-table">
+                    <tbody>
+                        @for (var row = 0; row < rows; row++) {
+                            indexing[^2] = row;
+                            <tr>
+                                @for (var col = 0; col < cols; col++) {
+                                    indexing[^1] = col;
+                                    var value = tensor.GetElementAt(indexing);
+                                    <td>@value</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            } else {
+                <p>Unable to display tensors with more than 3 dimensions</p>
+            }
+            </div>
+        }
+    </div>
+    }
+</div>
+
+@code {
+    private Safetensors? original;
+    private DataSize size;
+    private string? key_filter = "Layers[0]";
+    private string[]? keys;
+    private string? selected_key;
+    private int selected_channel = 0;
+    int[] indexing = new int[3];
+
+    private void prepare(Safetensors set) {
+        keys = set.Keys().ToArray();
+    }
+
+    private async Task<Safetensors?> LoadFile(InputFileChangeEventArgs e) {
+        try {
+            var file = e.GetMultipleFiles(1)[0];
+            size = DataSize.FromValue(file.Size);
+            using var stream = file.OpenReadStream(1_000_000_000);
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            memory.Position = 0;
+            using var reader = new BinaryReader(memory);
+            var set = Safetensors.ReadFrom(reader);
+            prepare(set);
+            return set;
+        }
+        catch (Exception ex) {
+            Console.WriteLine(ex);
+            return null;
+        }
+    }
+
+    private async void LoadFile1(InputFileChangeEventArgs e) {
+        original = await LoadFile(e);
+        await InvokeAsync(StateHasChanged);
+    }
+}

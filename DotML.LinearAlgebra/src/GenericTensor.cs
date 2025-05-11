@@ -18,6 +18,19 @@ public class GenericTensor<T> : IMutableTensorLike<T> {
     }
 
     /// <summary>
+    /// Create a generic tensor of the given shape
+    /// </summary>
+    /// <param name="shape">shape</param>
+    /// <param name="values">values</param>
+    public GenericTensor(int[] shape, T[] values) {
+        this.shape = shape;
+        var size = shape.Aggregate(1, (a, b) => a * b);
+        if (values.Length != size)
+            throw new ArgumentException($"Tensor size {size} does not match values size {values.Length}");
+        this.values = values;
+    }
+
+    /// <summary>
     /// Number of dimensions in tensor
     /// </summary>
     public int Dimensions => shape.Length;

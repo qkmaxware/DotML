@@ -47,8 +47,13 @@ public class Safetensors {
                 return shape[index];
             return 1;
         }
+
+        public override string ToString() {
+            return string.Join('x', shape);
+        }
     }
     private Dictionary<string, UnknownObjectTensor> tensors = new Dictionary<string, UnknownObjectTensor>();
+    private Dictionary<string, Dictionary<string, string>> tensor_metadata = new Dictionary<string, Dictionary<string, string>>();
 
     /// <summary>
     /// All keys in this safetensors set
@@ -79,6 +84,25 @@ public class Safetensors {
         }
 
         return typeof(object);
+    }
+
+    /// <summary>
+    /// Gets the metadata associated with the given tensor
+    /// </summary>
+    /// <param name="key">Tensor metadata</param>
+    /// <returns>metadata collection</returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the tensor with the given key doesn't exist</exception>
+    public Dictionary<string, string> MetadataOf(string key) {
+        if (tensor_metadata.TryGetValue(key, out var metadata)) {
+            return metadata;
+        }
+        if (!ContainsKey(key)) {
+            throw new KeyNotFoundException($"Tensor {key} not found, have you added it?");
+        }
+
+        var dict = new Dictionary<string, string>();
+        tensor_metadata.Add(key, dict);
+        return dict;
     }
 
     /// <summary>
@@ -254,6 +278,7 @@ public class Safetensors {
     public void Add(string name, Matrix<Half> matrix) { 
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
     }
+    
     /// <summary>
     /// Add a 16bit matrix to the safetensor
     /// </summary>
@@ -262,6 +287,7 @@ public class Safetensors {
     public void Add(string name, Vec<Half> vector) { 
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
     }
+
     /// <summary>
     /// Add a 32bit matrix to the safetensor
     /// </summary>
@@ -270,6 +296,7 @@ public class Safetensors {
     public void Add(string name, Matrix<float> matrix) { 
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray()  ));
     }
+
     /// <summary>
     /// Add a 32bit matrix to the safetensor
     /// </summary>
@@ -278,6 +305,7 @@ public class Safetensors {
     public void Add(string name, Vec<float> vector) {
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
     }
+
     /// <summary>
     /// Add a 64bit matrix to the safetensor
     /// </summary>
@@ -286,6 +314,7 @@ public class Safetensors {
     public void Add(string name, Matrix<double> matrix) {
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
     }
+
     /// <summary>
     /// Add a 64bit matrix to the safetensor
     /// </summary>
@@ -293,6 +322,98 @@ public class Safetensors {
     /// <param name="matrix">tensor</param>
     public void Add(string name, Vec<double> vector) { 
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
+    }
+
+    public static readonly string QuantizationMethodKey = "quantization.method";
+    public static readonly string QuantizationScaleKey = "quantization.scale";
+    public static readonly string QuantizationZeroPointKey = "quantization.zero-point";
+
+    /// <summary>
+    /// Quantize all compatible tensors in the safetensors set using the given quantizer.
+    /// Only tensors of the type TIn will be quantized to the type TOut and the others will be skipped.
+    /// </summary>
+    /// <typeparam name="TIn">Tensor input type</typeparam>
+    /// <typeparam name="TOut">Quantized tensor output type</typeparam>
+    /// <param name="quantizer">Quantization method</param>
+    public void QuantizeAll<TIn, TOut>(IQuantization<TIn, TOut> quantizer) {
+        foreach (var key in this.Keys()) {
+            Quantize(key, quantizer);
+        }
+    }
+
+    /// <summary>
+    /// Quantize the given tensors in the safetensors set using the given quantizer.
+    /// Only tensors of the type TIn will be quantized to the type TOut if the tensor is not of type TIn this method does nothing.
+    /// </summary>
+    /// <typeparam name="TIn">Tensor input type</typeparam>
+    /// <typeparam name="TOut">Quantized tensor output type</typeparam>
+    /// <param name="quantizer">Quantization method</param>
+    public void Quantize<TIn, TOut>(string key, IQuantization<TIn, TOut> quantizer) {
+        var tensor = this.tensors[key];
+        if (tensor.data is not TIn[] data) {
+            // This quantizer only works for tensors of the type TIn
+            return;
+        }
+
+        // Quantize the tensor
+        var (quantized, scale, zeroPoint) = quantizer.Quantize(data);
+
+        // Update the tensor data
+        tensor.data = quantized;
+        var metadata = this.MetadataOf(key);
+        metadata[QuantizationMethodKey] = quantizer.GetType().Name;
+        metadata[QuantizationScaleKey] = scale.ToString();
+        metadata[QuantizationZeroPointKey] = zeroPoint.ToString();
+    }
+
+    /// <summary>
+    /// Dequantize all compatible tensors in the safetensors set using the given quantizer.
+    /// Only tensors of the type TOut will be dequantized back into their original type of TIn and the others will be skipped.
+    /// Additionally, the tensor metadata must contain the quantization scale and zero-point or it will be skipped.
+    /// </summary>
+    /// <typeparam name="TIn">Tensor dequantized type</typeparam>
+    /// <typeparam name="TOut">Quantized tensor output type</typeparam>
+    /// <param name="quantizer">Quantization method</param>
+    public void DequantizeAll<TIn, TOut>(IQuantization<TIn, TOut> quantizer) {
+        foreach (var key in this.Keys()) {
+            Dequantize(key, quantizer);
+        }
+    }
+
+    /// <summary>
+    /// Dequantize the given tensor in the safetensors set using the given quantizer.
+    /// Only tensors of the type TOut will be dequantized back into their original type of TIn. If the tensor is not of type TOut this method does nothing.
+    /// Additionally, the tensor metadata must contain the quantization scale and zero-point or this method will do nothing.
+    /// </summary>
+    /// <typeparam name="TIn">Tensor dequantized type</typeparam>
+    /// <typeparam name="TOut">Quantized tensor output type</typeparam>
+    /// <param name="quantizer">Quantization method</param>
+    public void Dequantize<TIn, TOut>(string key, IQuantization<TIn, TOut> quantizer) {
+        var tensor = this.tensors[key];
+        if (tensor.data is not TOut[] data) {
+            // This quantizer only works for tensors of the type TIn
+            return;
+        }
+        var metadata = this.MetadataOf(key);
+        if (!metadata.TryGetValue(QuantizationScaleKey, out string? scaleString) || !metadata.TryGetValue(QuantizationZeroPointKey, out string? zeroPointString)) {
+            // This tensor is missing quantization metadata
+            return;
+        }
+        if (!double.TryParse(scaleString, out var scale)) {
+            scale = 1.0; // Default scale
+        }
+        if (!double.TryParse(zeroPointString, out var zeroPoint)) {
+            zeroPoint = 0.0; // Default zero-point
+        }
+        
+        // Quantize the tensor
+        var dequantized = quantizer.Dequantize(data, scale, zeroPoint);
+
+        // Update the tensor data
+        tensor.data = dequantized;
+        metadata.Remove(QuantizationMethodKey);
+        metadata.Remove(QuantizationScaleKey);  
+        metadata.Remove(QuantizationZeroPointKey);
     }
 
     /// <summary>
@@ -391,6 +512,9 @@ public class Safetensors {
                     key, 
                     new UnknownObjectTensor(shape, data)
                 );
+                if (tensorInfo.__metadata__ is not null && tensorInfo.__metadata__.Count > 0) {
+                    sb.tensor_metadata.Add(key, tensorInfo.__metadata__);
+                }
             }
         }
 
@@ -494,20 +618,19 @@ public class Safetensors {
         }
     }
 
-    private static void create_header_for(Dictionary<string, TensorInfo> header, ref ulong buffer_offset, Dictionary<string, UnknownObjectTensor> tensors) {
+    private static void create_header_for(Dictionary<string, TensorInfo> header, ref ulong buffer_offset, Dictionary<string, UnknownObjectTensor> tensors, Dictionary<string, Dictionary<string, string>> metas) {
         foreach (var matrix in tensors) {
             var shape = matrix.Value.shape;
             var type = matrix.Value.data?.GetType()?.GetElementType() ?? typeof(object);
             var matrix_byte_size = (ulong)(Marshal.SizeOf(type) * shape.Size);
+            var metadata = metas.ContainsKey(matrix.Key) ? metas[matrix.Key] : new Dictionary<string, string>();
             header.Add(
                 matrix.Key,
                 new TensorInfo { 
                     dtype           = type_to_string(type),
                     shape           = shape.Lengths,
                     data_offsets    = new ulong[]{ buffer_offset, buffer_offset + matrix_byte_size },
-                    __metadata__    = new Dictionary<string, string>{
-                        // TODO 
-                    }
+                    __metadata__    = metadata
                 }
             );
             buffer_offset = buffer_offset + matrix_byte_size;
@@ -522,7 +645,7 @@ public class Safetensors {
         // Header
         var header = new Dictionary<string, TensorInfo>();
         var buffer_offset = 0ul;
-        create_header_for(header, ref buffer_offset, tensors);
+        create_header_for(header, ref buffer_offset, tensors, tensor_metadata);
         var json = JsonSerializer.Serialize(header);
         var header_bytes = System.Text.Encoding.UTF8.GetBytes(json);
         writer.Write(header_bytes.LongLength);

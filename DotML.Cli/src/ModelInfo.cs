@@ -106,9 +106,52 @@ public class ModelInfo {
         }
         if (weights_file is not null && weights_file.Exists) {
             var st = Safetensors.ReadFromFile(weights_file);
+            // TODO see if we need to dequantize weights
+            foreach (var key in st.Keys()) {
+                var meta = st.MetadataOf(key);
+                if (meta is null) {
+                    // No metadata, skip
+                    continue;
+                }
+                if (!meta.TryGetValue(Safetensors.QuantizationMethodKey, out var method_name)) {
+                    // No quantization method, skip
+                    continue;
+                }
+
+                // Decode quantization method
+                var method = decode_quantizer(method_name);
+                if (method is null) {
+                    // No quantization method, skip
+                    continue;
+                }
+
+                // Apply quantization method for dequantization
+                st.Dequantize(key, method); 
+            }
             network.FromSafetensor(st);
         }
         return network;
+    }
+
+    private IQuantization<double, byte>? decode_quantizer(string method_name) {
+        // TODO decode quantization method
+        return (method_name) switch {
+            nameof(AbsmaxQuantization) =>
+                new AbsmaxQuantization(),
+            nameof(ZeroPointQuantization) =>
+                new ZeroPointQuantization(),
+            _ =>
+                null,
+        };
+    }
+
+    public void QuantizeWeights<TIn, TOut> (IQuantization<TIn, TOut> method) {
+        if (weights_file is null || !weights_file.Exists)
+            return;
+
+        var st = Safetensors.ReadFromFile(weights_file);
+        st.QuantizeAll(method);
+        this.UpdateWeights(st);
     }
 
     public Safetensors FetchSavedWeights() {
@@ -125,7 +168,7 @@ public class ModelInfo {
         if (weights_file is null)
             return;
 
-        using var stream = weights_file.OpenWrite();
+        using var stream = File.Open(weights_file.FullName, FileMode.Create);
         using var writer = new BinaryWriter(stream);
         tensors.WriteTo(writer);
     }
@@ -134,7 +177,7 @@ public class ModelInfo {
         if (weights_file is null)
             return;
 
-        using var ostream = weights_file.OpenWrite();
+        using var ostream = File.Open(weights_file.FullName, FileMode.Create);
         using var istream = tensors.OpenRead();
         istream.CopyTo(ostream);
     }
