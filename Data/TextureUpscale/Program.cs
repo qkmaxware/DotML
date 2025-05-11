@@ -13,7 +13,7 @@ public class Program {
         if (Directory.Exists(Path.Combine("data", "images", "processed"))) {
             Directory.Delete(Path.Combine("data", "images", "processed"), true);
         }
-        ImageResize.Program.Main(new ImageResize.Program.Options {
+        ImageResize.Program.Exec(new ImageResize.Program.Options {
             CropToAspectRatio = true,
             ImageWidth = InputWidth,
             ImageHeight = InputHeight,
@@ -29,7 +29,7 @@ public class Program {
         if (Directory.Exists(Path.Combine("data", "images", "processed"))) {
             Directory.Delete(Path.Combine("data", "images", "processed"), true);
         }
-        ImageResize.Program.Main(new ImageResize.Program.Options {
+        ImageResize.Program.Exec(new ImageResize.Program.Options {
             ImageWidth = InputWidth * ScalingFactor,
             ImageHeight = InputHeight * ScalingFactor,
         });
@@ -41,7 +41,7 @@ public class Program {
             destDirName: Path.Combine("data", "images", "to")
         );
         // Create dataset
-        Images2ImagesDataset.Program.Main(new Images2ImagesDataset.Program.Options {
+        Images2ImagesDataset.Program.Exec(new Images2ImagesDataset.Program.Options {
             Channels = Images2ImagesDataset.Program.Channel.RGB
         });
     }

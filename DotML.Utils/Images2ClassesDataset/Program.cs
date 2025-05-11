@@ -116,11 +116,11 @@ public class Program {
     public static void Main() {
         var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
         Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(options => {
-            Main(options);
+            Exec(options);
         });
     }
 
-    public static void Main(Options options) {
+    public static void Exec(Options options) {
         //if (options.IsTiled && (options.TileWidth <= 0 || options.TileHeight <= 0)) {
             //throw new ArgumentException("You have indicated that images are tiled, but have provided invalid dimensions for tile-width or tile-height.");
         //}

@@ -23,11 +23,11 @@ public class Program {
     public static void Main() {
         var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
         Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(options => {
-            Main(options);
+            Exec(options);
         });
     }
 
-    public static void Main(Options options) {
+    public static void Exec(Options options) {
         Directory.CreateDirectory(Path.Combine("data", "images", "raw"));
         Directory.CreateDirectory(Path.Combine("data", "images", "processed"));
 
