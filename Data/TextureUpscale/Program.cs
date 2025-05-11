@@ -10,24 +10,32 @@ public class Program {
 
     public static void Main() {
         // Create images of input size
+        if (Directory.Exists(Path.Combine("data", "images", "processed"))) {
+            Directory.Delete(Path.Combine("data", "images", "processed"), true);
+        }
         ImageResize.Program.Main(new ImageResize.Program.Options {
             CropToAspectRatio = true,
             ImageWidth = InputWidth,
             ImageHeight = InputHeight,
         });
-        if (Directory.Exists(Path.Combine("data", "images", "from"))
+        if (Directory.Exists(Path.Combine("data", "images", "from"))) {
             Directory.Delete(Path.Combine("data", "images", "from"), true);
+        }
         Directory.Move(
             sourceDirName: Path.Combine("data", "images", "processed"), 
             destDirName: Path.Combine("data", "images", "from")
         );
         // Create images of output size
+        if (Directory.Exists(Path.Combine("data", "images", "processed"))) {
+            Directory.Delete(Path.Combine("data", "images", "processed"), true);
+        }
         ImageResize.Program.Main(new ImageResize.Program.Options {
             ImageWidth = InputWidth * ScalingFactor,
             ImageHeight = InputHeight * ScalingFactor,
         });
-        if (Directory.Exists(Path.Combine("data", "images", "to"))
+        if (Directory.Exists(Path.Combine("data", "images", "to"))) {
             Directory.Delete(Path.Combine("data", "images", "to"), true);
+        }
         Directory.Move(
             sourceDirName: Path.Combine("data", "images", "processed"), 
             destDirName: Path.Combine("data", "images", "to")

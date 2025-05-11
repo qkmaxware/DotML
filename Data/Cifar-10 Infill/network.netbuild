@@ -1,33 +1,42 @@
-FROM scratch
-INPUT 3 32 32
-LABEL "UNet-depth-2"
+FROM scratch INPUT 3 32 32
+LABEL "UNet-Infill"
 
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=64 kernel=3
-ADD ActivationLayer fn=ReLU
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=64 kernel=3
-ADD ActivationLayer fn=ReLU
-ADD InputCapture AS output_11727494
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
+ADD InputCapture AS output_58514437
 ADD LocalMaxPoolingLayer stride-x=3 stride-y=3 padding-x=0 padding-y=0 kernel=3
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=128 kernel=3
-ADD ActivationLayer fn=ReLU
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=128 kernel=3
-ADD ActivationLayer fn=ReLU
-ADD InputCapture AS output_44288521
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
+ADD InputCapture AS output_51928234
 ADD LocalMaxPoolingLayer stride-x=3 stride-y=3 padding-x=0 padding-y=0 kernel=3
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=256 kernel=3
-ADD ActivationLayer fn=ReLU
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=256 kernel=3
-ADD ActivationLayer fn=ReLU
-ADD TransposeConvolutionLayer stride-x=3 stride-y=3 input-padding-x=0 input-padding-y=0 out-padding-x=2 out-padding-y=2 filters=128 kernel=3
-ADD ConcatenationSkipConnection residual=output_44288521 side=Left
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
+ADD TransposeConvolutionLayer stride-x=3 stride-y=3 in-padding-x=0 in-padding-y=0 out-padding-x=1 out-padding-y=1 filters=128 kernel=3
+ADD ConcatenationSkipConnection residual=output_51928234 side=Left
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=128 kernel=3
-ADD ActivationLayer fn=ReLU
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=128 kernel=3
-ADD ActivationLayer fn=ReLU
-ADD TransposeConvolutionLayer stride-x=3 stride-y=3 in-padding-x=0 input-padding-y=0 out-padding-x=2 out-padding-y=2 filters=64 kernel=3
-ADD ConcatenationSkipConnection residual=output_11727494 side=Left
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
+ADD TransposeConvolutionLayer stride-x=3 stride-y=3 in-padding-x=0 in-padding-y=0 out-padding-x=2 out-padding-y=2 filters=64 kernel=3
+ADD ConcatenationSkipConnection residual=output_58514437 side=Left
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=64 kernel=3
-ADD ActivationLayer fn=ReLU
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=64 kernel=3
-ADD ActivationLayer fn=ReLU
+ADD LayerNorm 
+ADD ActivationLayer fn=TeLU
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=0 padding-y=0 filters=3 kernel=1

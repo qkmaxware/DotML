@@ -6,7 +6,7 @@
     [Parameter] public int Width {get; set;}
     [Parameter] public int Height {get; set;}
     [Parameter] public Vec<double>? Vector {get; set;}
-    [Parameter] public int ValueScale {get; set;} = 255;
+    [Parameter] public double ValueScale {get; set;} = 255;
 
     private string toDataUrlBmp(Vec<double> data) {
         var format = new BitmapFormat();

@@ -106,12 +106,13 @@
 
 <Modal Title="Activation Function" @ref=activation_modal>
     <label>Functions</label>
-    <select class="w3-select">
+    <select class="w3-select" @bind=selected_activation_func>
+        <option>None</option>
     @foreach(var func in ActivationFunctions.EnumerateAll()) {
         <option>@func</option>
     }
     </select>
-    <button type="button" class="w3-button highlight" style="width: 100%" @onclick=@(() => { ChangeActivationFunc(ActivationFunctions.Tanh); activation_modal?.Hide(); })>Update</button>
+    <button type="button" class="w3-button highlight" style="width: 100%" @onclick=@(() => { ChangeActivationFunc(ActivationFunctions.EnumerateAll().Where(f => f.ToString() == selected_activation_func).FirstOrDefault()); activation_modal?.Hide(); })>Update</button>
 </Modal>
 
 @code {
@@ -402,7 +403,7 @@
     }
 
     private Modal? normalize_modal;
-    private string? normalization_type;
+    private string? normalization_type = nameof(LayerNorm);
     private Modal? activation_modal;
     private static Regex convo_then_activation = new Regex(@$"^(?<first>\s*ADD\s+{nameof(ConvolutionLayer)}.*)\n(?<second>\s*ADD\s+{nameof(ActivationLayer)}.*)", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     private void InsertNormalization(string? norm_type, string? additional_args) {
@@ -415,6 +416,7 @@
             (match) => $"{match.Groups["first"].Value}\nADD {norm_type} {additional_args}\n{match.Groups["second"].Value}"
         );
     }
+    private string? selected_activation_func = null;
     private static Regex activation_only = new Regex(@$"^(?<first>\s*ADD\s+{nameof(ActivationLayer)}.*)", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     private void ChangeActivationFunc(ActivationFunction? func) {
         if (func is null) {
@@ -425,7 +427,7 @@
         var s = new DotML.Network.IO.Netbuild.NetbuildLayerEncoder(writer);
         (new ActivationLayer(new Shape3D(), func)).Visit(s);
         writer.Flush();
-        var str = writer.ToString();
+        var str = writer.ToString().Trim();
         
         RegexReplace(
             activation_only,

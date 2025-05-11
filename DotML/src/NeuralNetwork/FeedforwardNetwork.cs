@@ -263,12 +263,18 @@ public class FeedforwardNetwork:
 
     public void ValidateSizes() {
         var input_size = this.InputShape;
+        if (input_size.Channels < 0 || input_size.Rows < 0 || input_size.Columns < 0) {
+            throw new ArgumentException("Input shape is invalid");
+        }
         int layer_index = 0;
         foreach (var layer in this.layers) { 
             if (!layer.DoesShapeMatchInputShape(input_size)) {
                 throw new ArgumentException($"Layer {layer_index} expects an input shape of {layer.InputShape} but is receiving an input of shape {input_size} from the previous layer.");
             }
             input_size = layer.OutputShape;
+            if (input_size.Channels < 0 || input_size.Rows < 0 || input_size.Columns < 0) {
+                throw new ArgumentException($"Output shape for layer {layer_index} is invalid");
+            }
             layer_index++;
         }
     }

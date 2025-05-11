@@ -109,12 +109,17 @@ public static class UNet {
             yield return layer;
             last_depth_layer = layer;
         }
+        // Determine how much padding is needed to get back to the original size
+        // Copied from TransposeConvolveEach in Mat.cs
+        var last_out = last_depth_layer.OutputShape;
+        var OutputColumnsPadding = capture.OutputShape.Columns - ((last_out.Columns - 1) * 3 + 3); 
+        var OutputRowsPadding = capture.OutputShape.Rows - ((last_out.Rows - 1) * 3 + 3);
         var up_conv = new TransposeConvolutionLayer(
             input_size: last_depth_layer.OutputShape, 
             inputPaddingX: 0,
             inputPaddingY: 0,
-            outputPaddingX: 2, // May need to be 2,1 or 0
-            outputPaddingY: 2,
+            outputPaddingX: Math.Clamp(OutputColumnsPadding, 0, 2), // May need to be 2,1 or 0
+            outputPaddingY: Math.Clamp(OutputRowsPadding, 0, 2),
             strideX: 3, 
             strideY: 3,
             filters: ConvolutionFilter.Make(filters: pool.OutputShape.Channels, kernels_per_filter: pool.OutputShape.Channels, 3)

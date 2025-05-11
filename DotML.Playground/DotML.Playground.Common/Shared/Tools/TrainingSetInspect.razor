@@ -4,7 +4,10 @@
 
 @inject IJSRuntime js
 <header>
-@if (set is not null) {
+@if (loading) {
+    <Spinner Text="Loading"></Spinner>
+}
+else if (set is not null) {
     <table class="w3-table">
         <thead>
             <th></th>
@@ -39,6 +42,9 @@
 </header>
 <div class="w3-padding">
     <div class="load">
+        @if (failed_load is not null) {
+            <Error Message=failed_load></Error>
+        }
         @if (set is null) {
             <text>No training data set loaded. </text>
         } else {
@@ -94,11 +100,14 @@
     private TrainingSetBuilder? set;
     private int selected_pair = 0;
 
+    private Exception? failed_load = null;
+    private bool loading = false;
     private TrainingPairVisualizations.Visualization input_visualization = TrainingPairVisualizations.Visualization.None;
     private TrainingPairVisualizations.Visualization output_visualization = TrainingPairVisualizations.Visualization.None;
 
     private async Task<(string? FileName, TrainingSetBuilder Builder)?> TryLoadFile(InputFileChangeEventArgs e) {
         try {
+            failed_load = null;
             var file = e.GetMultipleFiles(1)[0];
             using var stream = file.OpenReadStream(100_000_000_000);
             using var memory = new MemoryStream();
@@ -109,22 +118,27 @@
             return (file.Name, set);
         }
         catch (Exception ex) {
-            Console.WriteLine(ex);
+            failed_load = ex;
             return null;
         }
     }
 
-    private async void LoadFile(InputFileChangeEventArgs e) {
-        var results = await TryLoadFile(e);
-        if (!results.HasValue) {
-            this.fileaname = string.Empty;
-            this.set = null;
+    private void LoadFile(InputFileChangeEventArgs e) {
+        Task.Run(async () => {
+            loading = true;
             await InvokeAsync(StateHasChanged);
-            return; 
-        }
+            var results = await TryLoadFile(e);
+            loading = false;
+            if (!results.HasValue) {
+                this.fileaname = string.Empty;
+                this.set = null;
+                await InvokeAsync(StateHasChanged);
+                return; 
+            }
 
-        this.fileaname = results.Value.FileName ?? string.Empty;
-        this.set = results.Value.Builder;
-        await InvokeAsync(StateHasChanged);
+            this.fileaname = results.Value.FileName ?? string.Empty;
+            this.set = results.Value.Builder;
+            await InvokeAsync(StateHasChanged);
+        });
     }
 }
