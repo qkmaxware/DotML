@@ -28,7 +28,20 @@ public abstract class BaseCommand {
         }
     }
 
-    private static string[] truthy = ["true", "yes"];
+    private static string[] truthy = [
+        // English
+        "true", "yes", "y", 
+        // French
+        "oui", 
+        // Spanish, Italian
+        "si", 
+        // German, Dutch, Danish, Norwegian 
+        "ja", 
+        // Finnish
+        "kyllä",
+        // Japanese
+        "はい", "hai",
+    ];  
     protected static bool IsSet(string? value) {
         return 
             !string.IsNullOrEmpty(value)    // Not empty

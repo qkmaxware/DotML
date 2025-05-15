@@ -9,7 +9,7 @@ public class FeatureSetTest {
     [TestMethod]
     public void TestDimensions() {
         var batched = new BatchedFeatureSet<double>(new Shape4D(1, 2, 3, 4));
-        Assert.AreEqual(4, batched.Dimensions);
+        Assert.AreEqual(4, batched.Rank);
         Assert.AreEqual(1, batched.Batches);
         Assert.AreEqual(1, batched.GetDimension(0));
         Assert.AreEqual(2, batched.Channels);
@@ -21,7 +21,7 @@ public class FeatureSetTest {
         Assert.AreEqual(batched.Shape.Count, batched.Size);
 
         var unbatched = new FeatureSet<double>(new Shape3D(1, 2, 3));
-        Assert.AreEqual(3, unbatched.Dimensions);
+        Assert.AreEqual(3, unbatched.Rank);
         Assert.AreEqual(1, unbatched.Channels);
         Assert.AreEqual(1, unbatched.GetDimension(0));
         Assert.AreEqual(2, unbatched.Rows);

@@ -26,7 +26,7 @@ public class BooleanVector : IDecoder {
             }
         }
 
-        public void FileOutput(FileInfo file) {
+        public IEnumerable<FileInfo> FileOutput(FileInfo file) {
             using (var writer = new StreamWriter(file.OpenWrite())) {
                 foreach (var vector in vectors) {
                     Console.Write('[');
@@ -41,6 +41,7 @@ public class BooleanVector : IDecoder {
                     Console.WriteLine(']');
                 }
             }
+            yield return file;
         }
 
         public void Dispose() { }

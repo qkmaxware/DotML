@@ -9,20 +9,23 @@ public class LayerNormTest {
     public void TestSafetensors() {
         var layer = new LayerNorm(input_size: new Shape3D(1, 5, 5));
         var writer = new LayerSafetensorWriter(); 
-        layer.Visit(writer, 0);
+        var weight_fill = 6.0;
+        var bias_fill = 2.0;
         foreach (var gamma in layer.Gammas) {
-            gamma.Fill(1.0);
+            gamma.Fill(weight_fill);
             foreach (var item in gamma) {
-                Assert.AreEqual(1.0, item, 0.001, "Weights should be initialized to 1.0.");
+                Assert.AreEqual(weight_fill, item, 0.001, "Weights should be initialized to 1.0.");
             }
         }
         foreach (var beta in layer.Betas) {
-            beta.Fill(1.0);
+            beta.Fill(bias_fill);
             foreach (var item in beta) {
-                Assert.AreEqual(1.0, item, 0.001, "Weights should be initialized to 1.0.");
+                Assert.AreEqual(bias_fill, item, 0.001, "Weights should be initialized to 1.0.");
             }
         }
+        layer.Visit(writer, 0);
         var tensors = writer.ToSafetensors();
+        tensors.WriteToFile("LayerNorm.Serialize.safetensors");
         Assert.AreEqual(layer.Gammas.Count() + layer.Betas.Count(), tensors.Keys().Count(), "Layer should have many tensors.");
         
 
@@ -31,12 +34,12 @@ public class LayerNormTest {
         layer.Visit(reader, 0);
         foreach (var gamma in layer.Gammas) {
             foreach (var item in gamma) {
-                Assert.AreEqual(1.0, item, 0.001, "Weights should be initialized to 1.0.");
+                Assert.AreEqual(weight_fill, item, 0.001, "Weights should be initialized to 1.0.");
             }
         }
         foreach (var beta in layer.Betas) {
             foreach (var item in beta) {
-                Assert.AreEqual(1.0, item, 0.001, "Weights should be initialized to 1.0.");
+                Assert.AreEqual(bias_fill, item, 0.001, "Weights should be initialized to 1.0.");
             }
         }
     }

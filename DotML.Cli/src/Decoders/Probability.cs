@@ -17,12 +17,13 @@ public class Probability : IDecoder, IWithLabels {
             }
         }
 
-        public void FileOutput(FileInfo file) {
+        public IEnumerable<FileInfo> FileOutput(FileInfo file) {
             using (var writer = new StreamWriter(file.OpenWrite())) {
                 foreach (var dist in this.dists) {
                     writer.Write(dist.ToString().ReplaceLineEndings());
                 }
             }
+            yield return file;
         }
 
         public void Dispose() { }

@@ -34,15 +34,22 @@ public class LayerNorm : FeedforwardNetworkLayer, INormalizationLayer {
             Betas[i] = new Matrix<double>(input_size.Rows, input_size.Columns, 0.0);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ComputeMeansAndVariances(FeatureSet<double> features, out double mean_vec, out double variance_vec) {
         var channels = features.Channels;
         var item_count = channels * features.Rows * features.Columns;
+
         var mean_sum = 0.0;
         for (var c = 0; c < channels; c++) {
             var arr = features[c].AsSpan();
-            for (var i = 0; i < arr.Length; i++) {
-                var x = arr[i];
-                mean_sum += x;
+            int i = 0;
+
+            for (; i < arr.Length - 4; i += 4) {
+                mean_sum += arr[i] + arr[i+1] + arr[i+2] + arr[i+3];
+            }
+
+            for (; i < arr.Length; i++) {
+                mean_sum += arr[i];
             }
         }
         var layer_mean = mean_sum / item_count;
@@ -50,20 +57,25 @@ public class LayerNorm : FeedforwardNetworkLayer, INormalizationLayer {
         var variance_sum = 0.0;
         for (var c = 0; c < channels; c++) {
             var arr = features[c].AsSpan();
-            for (var i = 0; i < arr.Length; i++) {
-                var x = arr[i];
-                var x_mean = x - layer_mean;
-                variance_sum += x_mean * x_mean;
+            int i = 0;
+
+            for (; i < arr.Length - 4; i += 4) {
+                var d0 = arr[i]   - layer_mean;
+                var d1 = arr[i+1] - layer_mean;
+                var d2 = arr[i+2] - layer_mean;
+                var d3 = arr[i+3] - layer_mean;
+
+                variance_sum += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
+            }
+
+            for (; i < arr.Length; i++) {
+                var d = arr[i] - layer_mean;
+                variance_sum += d * d;
             }
         }
-        var layer_variance = variance_sum / item_count;
-        
-        //var layer_mean = features.SelectMany(x => x).Average();
-        //var layer_variance = features.SelectMany(x => x).Select(v => Math.Pow(v - layer_mean, 2)).Average();
-        //var layer_variance = features.SelectMany(x => x).Select(v => ((v - layer_mean) * (v - layer_mean))).Average();
 
         mean_vec = layer_mean;
-        variance_vec = layer_variance;
+        variance_vec = variance_sum / item_count;
     }
 
     const double epsilon = 1e-8;
@@ -88,8 +100,9 @@ public class LayerNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
             // Apply scaling (gamma) and shifting (beta)
             // output = output.HadamardWith(Gammas[channel]);
-            output.HadamardWithInplace(Gammas[channel]); // output = output .* gamma
-            output.AddWithInplace(Betas[channel]); // output = output + beta
+            output.ElementWiseInplace(Gammas[channel], Betas[channel], (val, gamma, beta) => val * gamma + beta);
+            //output.HadamardWithInplace(Gammas[channel]); // output = output .* gamma
+            //output.AddWithInplace(Betas[channel]); // output = output + beta
 
             // Save results
             outputs[channel] = output;                              
@@ -171,9 +184,10 @@ public class LayerNorm : FeedforwardNetworkLayer, INormalizationLayer {
                 //}
                 
                 var loss_wrt_y_k = args.OutputErrors[batchIndex][channel];
-                var loss_wrt_y_times_xHat = xhat_k;
-                loss_wrt_y_times_xHat.HadamardWithInplace(loss_wrt_y_k);
-                gradient_gamma.AddWithInplace(loss_wrt_y_times_xHat);
+                //var loss_wrt_y_times_xHat = xhat_k;
+                //loss_wrt_y_times_xHat.HadamardWithInplace(loss_wrt_y_k);  
+                //gradient_gamma.AddWithInplace(loss_wrt_y_times_xHat); //gradient_gamma .+ xhat_k .* loss_wrt_y_k
+                gradient_gamma.ElementWiseInplace(xhat_k, loss_wrt_y_k, (val, xk, dyk) =>  val + xk * dyk);
             }
             gradient_gammas[channel] = gradient_gamma;
         }

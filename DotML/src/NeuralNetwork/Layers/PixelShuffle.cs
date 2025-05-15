@@ -11,7 +11,6 @@ namespace DotML.Network;
 /// A layer that helps super-resolution models implement efficient sub-pixel convolutions.
 /// <see href="https://paperswithcode.com/method/pixelshuffle"/>
 /// </summary>
-[WorkInProgress]
 public class PixelShuffle : FeedforwardNetworkLayer {
     /// <summary>
     /// Upscaling factor for the output image size

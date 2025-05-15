@@ -10,5 +10,5 @@ public interface IFileOnlyDecoder : IDecoder {
 
 public interface IDecodedResult : IDisposable {
     public void ConsoleOutput();
-    public void FileOutput(FileInfo file);
+    public IEnumerable<FileInfo> FileOutput(FileInfo file);
 }

@@ -43,7 +43,7 @@ where T:INumber<T> {
     /// <summary>
     /// Number of tensor dimensions
     /// </summary>
-    public readonly int Dimensions => 2;
+    public readonly int Rank => 2;
 
     /// <summary>
     /// Matrix shape (rows & columns)
@@ -607,9 +607,9 @@ where T:INumber<T> {
     /// <summary>
     /// Perform an element-wise operation between this matrix and another matrix. Results are stored in this matrix.
     /// </summary>
-    /// <typeparam name="R">result element type</typeparam>
     /// <param name="other">other matrix</param>
     /// <param name="operation">element-wise operation</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public void ElementWiseInplace(Matrix<T> other, Func<T, T, T> operation) {
         if (this.Rows != other.Rows || this.Columns != other.Columns)
             throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {other.Shape}.");
@@ -622,6 +622,27 @@ where T:INumber<T> {
     }
 
     /// <summary>
+    /// Perform an element-wise operation between this matrix and 2 other matrices. Results are stored in this matrix.
+    /// </summary>
+    /// <param name="other1">first other matrix</param>
+    /// <param name="other2">second other matrix</param>
+    /// <param name="operation">element-wise operation</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+    public void ElementWiseInplace(Matrix<T> other1, Matrix<T> other2, Func<T, T, T, T> operation) {
+        if (this.Rows != other1.Rows || this.Columns != other1.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {other1.Shape}.");
+        if (this.Rows != other2.Rows || this.Columns != other2.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {other2.Shape}.");
+
+        var lhs_values = values.AsSpan(); 
+        var rhs1_values = other1.values.AsSpan();
+        var rhs2_values = other2.values.AsSpan();
+        var len = lhs_values.Length;
+        for (var i = 0; i < len; i++)
+            lhs_values[i] = operation(lhs_values[i], rhs1_values[i], rhs2_values[i]);
+    }
+
+    /// <summary>
     /// Perform an element-wise operation between this matrix and another matrix. Results are stored in the result matrix.
     /// </summary>
     /// <param name="result">matrix storing the results</param>
@@ -629,6 +650,7 @@ where T:INumber<T> {
     /// <param name="rhs">second matrix</param>
     /// <param name="operation">element-wise operation</param>
     /// <exception cref="ArithmeticException">thrown when the matrix shapes are incompatible</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public static void ElementWiseInplace(Matrix<T> result, Matrix<T> lhs, Matrix<T> rhs, Func<T, T, T> operation) {
         if (result.Rows != lhs.Rows || result.Columns != lhs.Columns || result.Rows != rhs.Rows || result.Columns != rhs.Columns)
             throw new ArithmeticException($"Invalid dimensions for element-wise operation between {lhs.Shape} and {rhs.Shape}.");

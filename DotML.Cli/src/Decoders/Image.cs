@@ -25,7 +25,7 @@ public class Image : IDecoder, IFileOnlyDecoder {
             }
         }
 
-        public void FileOutput(FileInfo file) {
+        public IEnumerable<FileInfo> FileOutput(FileInfo file) {
             if (file.Extension != ".png") {
                 file = new FileInfo(file.FullName + ".png");
             }
@@ -35,6 +35,7 @@ public class Image : IDecoder, IFileOnlyDecoder {
                 using (var stream = File.Open(file.FullName, FileMode.Create)) {
                     bitmap.Encode(stream, SKEncodedImageFormat.Png, 100);
                 }
+                yield return file;
             } else {
                 var path = file.FullName;
                 for (var i = 0; i < bitmaps.Length; i++) {
@@ -43,6 +44,7 @@ public class Image : IDecoder, IFileOnlyDecoder {
                     using (var stream = File.Open(save_to, FileMode.Create)) {
                         bitmap.Encode(stream, SKEncodedImageFormat.Png, 100);
                     }
+                    yield return new FileInfo(save_to);
                 }
             }
         }

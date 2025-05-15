@@ -1,6 +1,30 @@
 namespace DotML;
 
 /// <summary>
+/// A generic shape
+/// </summary>
+public class GenericShape : IShape {
+
+    private int[] shape;
+
+    public GenericShape(int[] shape) {
+        this.shape = shape;
+    }
+
+    /// <summary>
+    /// Number of dimensions in the shape
+    /// </summary>
+    public int Dimensions => shape.Length;
+
+    /// <summary>
+    /// Length/size of a particular dimension
+    /// </summary>
+    /// <param name="index">dimension index</param>
+    /// <returns>dimension length</returns>
+    public int GetDimension(int index) => shape[index];
+}
+
+/// <summary>
 /// A generic tensor storage container
 /// </summary>
 /// <typeparam name="T">Element type</typeparam>
@@ -9,12 +33,18 @@ public class GenericTensor<T> : IMutableTensorLike<T> {
     private T[] values;
 
     /// <summary>
+    /// Shape of the tensor
+    /// </summary>
+    public IShape Shape {get; init;}
+
+    /// <summary>
     /// Create a generic tensor of the given shape
     /// </summary>
     /// <param name="shape">shape</param>
     public GenericTensor(params int[] shape) {
         this.shape = shape;
         this.values = new T[shape.Aggregate(1, (a, b) => a * b)];
+        this.Shape = new GenericShape(this.shape);
     }
 
     /// <summary>
@@ -28,12 +58,13 @@ public class GenericTensor<T> : IMutableTensorLike<T> {
         if (values.Length != size)
             throw new ArgumentException($"Tensor size {size} does not match values size {values.Length}");
         this.values = values;
+        this.Shape = new GenericShape(this.shape);
     }
 
     /// <summary>
     /// Number of dimensions in tensor
     /// </summary>
-    public int Dimensions => shape.Length;
+    public int Rank => shape.Length;
 
     /// <summary>
     /// Length/size of a particular dimension

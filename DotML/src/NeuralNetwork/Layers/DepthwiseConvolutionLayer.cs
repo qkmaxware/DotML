@@ -62,6 +62,9 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
             rows: (inputRows - filterRows + 2 * RowsPadding) / StrideY + 1,
             columns: (inputColumns - filterColumns + 2 * ColumnsPadding) / StrideX + 1
         );
+
+        this.Weights = new WeightTensor(filters, filterRows, filterColumns);
+        this.Biases = new BiasTensor(filters);
     }
 
     public override void Initialize(IInitializer initializer) {
@@ -289,4 +292,76 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
     public override void Visit<TIn>(ILayerInputVisitor<TIn> visitor, TIn args) => visitor.Visit(this, args);
     public override T Visit<T>(ILayerOutputVisitor<T> visitor) => visitor.Visit(this);
     public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
+
+
+    /// <summary>
+    /// Weight tensor for the convolution layer comprised of all kernels of all filters
+    /// </summary>
+    public WeightTensor Weights {get; init;}
+
+    /// <summary>
+    /// Bias tensor for the convolution layer comprised of all biases of all filters
+    /// </summary>
+    public BiasTensor Biases {get; init;}
+
+    public class WeightTensor : IMutableTensorLike<double> {
+        private ConvolutionFilter[] filters;
+        private int kernel_columns;
+        private int kernel_rows;
+
+        public WeightTensor(ConvolutionFilter[] filters, int kernel_rows, int kernel_columns) {
+            this.filters = filters;
+            this.kernel_rows = kernel_rows;
+            this.kernel_columns = kernel_columns;
+        }
+
+        public int Filters => filters.Length;
+
+        public int Rows => kernel_rows;
+
+        public int Columns => kernel_columns;
+
+        public int Rank => 3;
+
+        public int GetDimension(int index) => index switch {
+            0 => filters.Length,
+            1 => kernel_rows,
+            2 => kernel_columns,
+            _ => throw new ArgumentOutOfRangeException(nameof(index))
+        };
+
+        public double GetElementAt(params int[] indices) {
+            return filters[indices[0]][0][indices[1], indices[2]];
+        }
+
+        public void SetElementAt(double value, params int[] indices) {
+            var mtx = filters[indices[0]][0];
+            mtx[indices[1], indices[2]] = value;
+        }
+    }
+
+    public class BiasTensor : IMutableTensorLike<double> {
+        private ConvolutionFilter[] filters;
+
+        public BiasTensor(ConvolutionFilter[] filters) {
+            this.filters = filters;
+        }
+
+        public int Filters => filters.Length;
+
+        public int Rank => 1;
+
+        public int GetDimension(int index) => index switch {
+            0 => filters.Length,
+            _ => throw new ArgumentOutOfRangeException(nameof(index))
+        };
+
+        public double GetElementAt(params int[] indices) {
+            return filters[indices[0]].Bias;
+        }
+
+        public void SetElementAt(double value, params int[] indices) {
+            filters[indices[0]].Bias = value;
+        }
+    }
 }

@@ -113,7 +113,8 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
                     var variance = variances[channelIndex];
 
                     // Normalize the channel using mean and variance
-                    var normalizedMatrix = matrix.Transform(x => (x - mean)  / Math.Sqrt(variance + 1e-8));
+                    var v = Math.Sqrt(variance + 1e-8);
+                    var normalizedMatrix = matrix.Transform(x => (x - mean)  / v);
 
                     // Apply scaling (gamma) and shifting (beta)
                     // 0, 2, 1, 1

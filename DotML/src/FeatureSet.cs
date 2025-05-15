@@ -45,7 +45,7 @@ public class BatchedFeatureSet<T> :
     /// <summary>
     /// Number of dimensions in this tensor
     /// </summary>
-    public override int Dimensions => 4;
+    public override int Rank => 4;
 
     /// <summary>
     /// Create a new empty batched feature set
@@ -360,7 +360,7 @@ public class FeatureSet<T> :
     /// <summary>
     /// Number of dimensions in this tensor
     /// </summary>
-    public override int Dimensions => 3;
+    public override int Rank => 3;
 
     /// <summary>
     /// Get the length of the given tensor dimension by index
@@ -514,7 +514,7 @@ public class FeatureSet<T> :
 /// <typeparam name="T">feature value type</typeparam>
 public abstract class BaseFeatureTensor<T> : IMutableTensorLike<T> where T:INumber<T> {
     #region Implement IMutableTensorLike
-    public abstract int Dimensions { get; }
+    public abstract int Rank { get; }
 
     public abstract int GetDimension(int index);
 
@@ -526,20 +526,20 @@ public abstract class BaseFeatureTensor<T> : IMutableTensorLike<T> where T:INumb
     /// <summary>
     /// Size of the tensor (number of elements)
     /// </summary>
-    public int Size => Enumerable.Range(0, Dimensions).Aggregate(1, (old, diff) => old * GetDimension(diff));
+    public int Size => Enumerable.Range(0, Rank).Aggregate(1, (old, diff) => old * GetDimension(diff));
 
     /// <summary>
     /// Enumerate over the elements of the features tensor in row-major order
     /// </summary>
     /// <returns>Enumerable of items</returns>
     public IEnumerable<T> FlattenElements() {
-        int[] indices = new int[Dimensions];
+        int[] indices = new int[Rank];
         while (true) {
             // Return the combination
             yield return GetElementAt(indices);
 
             // Find the rightmost dimension to increment
-            int i = Dimensions - 1;
+            int i = Rank - 1;
             while (i >= 0) {
                 indices[i]++;
                 if (indices[i] < GetDimension(i)) // If the index is within bounds
@@ -573,13 +573,13 @@ public abstract class BaseFeatureTensor<T> : IMutableTensorLike<T> where T:INumb
     /// <param name="dim4">dimension to use for the fourth dimension (columns)</param>
     /// <returns>Permuted batched feature set</returns>
     public BatchedFeatureSet<T> Permute(int dim1, int dim2, int dim3, int dim4) {
-        dim1 = Math.Clamp(dim1, 0, Dimensions);
-        dim2 = Math.Clamp(dim2, 0, Dimensions);
-        dim3 = Math.Clamp(dim3, 0, Dimensions);
-        dim4 = Math.Clamp(dim4, 0, Dimensions);
+        dim1 = Math.Clamp(dim1, 0, Rank);
+        dim2 = Math.Clamp(dim2, 0, Rank);
+        dim3 = Math.Clamp(dim3, 0, Rank);
+        dim4 = Math.Clamp(dim4, 0, Rank);
 
         var next = new BatchedFeatureSet<T>(new Shape4D(GetDimension(dim1), GetDimension(dim2), GetDimension(dim3), GetDimension(dim4)));
-        var dim_mapping = new int[Math.Max(4, Dimensions)];
+        var dim_mapping = new int[Math.Max(4, Rank)];
         for (var i = 0; i < next.Batches; i++) {
             dim_mapping[dim1] = i;
             var batch = next[i];
@@ -606,12 +606,12 @@ public abstract class BaseFeatureTensor<T> : IMutableTensorLike<T> where T:INumb
     /// <param name="dim3">dimension to use for the fourth dimension (columns)</param>
     /// <returns>Permuted feature set</returns>
     public FeatureSet<T> Permute(int dim1, int dim2, int dim3) {
-        dim1 = Math.Clamp(dim1, 0, Dimensions);
-        dim2 = Math.Clamp(dim2, 0, Dimensions);
-        dim3 = Math.Clamp(dim3, 0, Dimensions);
+        dim1 = Math.Clamp(dim1, 0, Rank);
+        dim2 = Math.Clamp(dim2, 0, Rank);
+        dim3 = Math.Clamp(dim3, 0, Rank);
 
         var next = new FeatureSet<T>(new Shape3D(GetDimension(dim1), GetDimension(dim2), GetDimension(dim3)));
-        var dim_mapping = new int[Math.Max(3, Dimensions)];
+        var dim_mapping = new int[Math.Max(3, Rank)];
 
         for (var f = 0; f < next.Channels; f++) {
             dim_mapping[dim1] = f;
@@ -634,11 +634,11 @@ public abstract class BaseFeatureTensor<T> : IMutableTensorLike<T> where T:INumb
     /// <param name="dim2">dimension to use for the third dimension (columns)</param>
     /// <returns>Permuted feature</returns>
     public Matrix<T> Permute(int dim1, int dim2) {
-        dim1 = Math.Clamp(dim1, 0, Dimensions);
-        dim2 = Math.Clamp(dim2, 0, Dimensions);
+        dim1 = Math.Clamp(dim1, 0, Rank);
+        dim2 = Math.Clamp(dim2, 0, Rank);
 
         var next = new Matrix<T>(new Shape2D(GetDimension(dim1), GetDimension(dim2)));
-        var dim_mapping = new int[Math.Max(2, Dimensions)];
+        var dim_mapping = new int[Math.Max(2, Rank)];
 
 
         for (var r = 0; r < next.Rows; r++) {

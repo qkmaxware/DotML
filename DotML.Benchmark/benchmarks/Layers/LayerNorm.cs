@@ -10,7 +10,7 @@ public class BenchmarkLayerNorm {
     [Params(3)]
     public int IMG_CHANNELS = 96;
 
-    [Params(32, 64, 128, 256, 512, 1024)]
+    [Params(32, 64, 128, 256, 512, 1024, 2048)]
     public int DIM_LENGTH {get; set;}
 
     private BatchedFeatureSet<double> input;

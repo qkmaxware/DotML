@@ -42,7 +42,7 @@ public class Run : BaseCommand {
     [Option("labels", HelpText = "Labels for classifications/categories", Required = false)]
     public IEnumerable<string>? Labels {get; set;}
 
-    [Option("log", HelpText = "List of items to save to the logs as the network is run (tensors, images, etc.)", Required = false)]
+    [Option("log", HelpText = "List of items to save to the logs as the network is run (tensors, images, stats, etc.)", Required = false)]
     public IEnumerable<string>? OutputLoggers {get; set;}
 
     public override void Action(AppData appData) {
@@ -144,9 +144,10 @@ public class Run : BaseCommand {
             result.ConsoleOutput();
 
             if (!string.IsNullOrEmpty(OutputFile)) {
-                result.FileOutput(new FileInfo(OutputFile));
                 Console.WriteLine();
-                Console.WriteLine($"Created file '{OutputFile}'");
+                foreach (var file in result.FileOutput(new FileInfo(OutputFile))) {
+                    Console.WriteLine($"Created file '{file.Name}'");
+                }
             }
 
             if (is_logging) {

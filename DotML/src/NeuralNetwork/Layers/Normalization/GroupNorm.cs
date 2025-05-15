@@ -108,8 +108,9 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
                 var output = x[channel].Transform(v => (v - mean) * sqrt);
 
                 // Apply scaling (gamma) and shifting (beta)
-                output.HadamardWithInplace(Gammas[channel]); // output = output .* gamma
-                output.AddWithInplace(Betas[channel]); // output = output + beta
+                //output.HadamardWithInplace(Gammas[channel]); // output = output .* gamma
+                //output.AddWithInplace(Betas[channel]); // output = output + beta
+                output.ElementWiseInplace(Gammas[channel], Betas[channel], (val, gamma, beta) => val * gamma + beta);
 
                 // Save results
                 outputs[channel] = output;  
@@ -177,9 +178,10 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
                 xhat_k.ElementWiseInplace(gamma, (xhat, g) => xhat / (g + epsilon));
                 
                 var loss_wrt_y_k = args.OutputErrors[batchIndex][channel];
-                var loss_wrt_y_times_xHat = xhat_k;
-                loss_wrt_y_times_xHat.HadamardWithInplace(loss_wrt_y_k);
-                gradient_gamma.AddWithInplace(loss_wrt_y_times_xHat);
+                //var loss_wrt_y_times_xHat = xhat_k;
+                //loss_wrt_y_times_xHat.HadamardWithInplace(loss_wrt_y_k);
+                //gradient_gamma.AddWithInplace(loss_wrt_y_times_xHat);
+                gradient_gamma.ElementWiseInplace(xhat_k, loss_wrt_y_k, (val, xk, dyk) => val + xk * dyk);
             }
             gradient_gammas[channel] = gradient_gamma;
         }

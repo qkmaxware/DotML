@@ -29,7 +29,7 @@ public interface IQuantization<TIn, TOut> {
     /// <param name="X">Input tensor</param>
     /// <returns>Output tensor</returns>
     public (ITensorLike<TOut> Tensor, double Scale, double ZeroPoint) Quantize(ITensorLike<TIn> X) {
-        var shape = Enumerable.Range(0, X.Dimensions).Select(i => X.GetDimension(i)).ToArray();
+        var shape = Enumerable.Range(0, X.Rank).Select(i => X.GetDimension(i)).ToArray();
 
         // TODO, don't like this for the additional memory allocation, but I need arrays for length computation
         var (data, scale, zero) = Quantize(X.EnumerateElements().ToArray());
@@ -44,7 +44,7 @@ public interface IQuantization<TIn, TOut> {
     /// <param name="Y">Output tensor</param>
     /// <returns>Input tensor</returns>
     public ITensorLike<TIn> Dequantize(ITensorLike<TOut> Y, double scale, double zeroPoint) {
-        var shape = Enumerable.Range(0, Y.Dimensions).Select(i => Y.GetDimension(i)).ToArray();
+        var shape = Enumerable.Range(0, Y.Rank).Select(i => Y.GetDimension(i)).ToArray();
 
         // TODO, don't like this for the additional memory allocation, but I need arrays for length computation
         var data = Dequantize(Y.EnumerateElements().ToArray(), scale, zeroPoint);

@@ -88,20 +88,29 @@
             </table>
             <hr>
             <div class="w3-container">
-            <b>Values</b>
-
-            @if (shape.Dimensions == 3 || shape.Dimensions == 2) {
-                var tensor = original.GetTensorData<double>(selected_key);
+            <b>Values</b><br>
+            @if (shape.Dimensions >= 2) {
+                var tensor = original.GetTensor<double>(selected_key);
                 if (indexing.Length != shape.Dimensions) {
                     indexing = new int[shape.Dimensions];
                 }
-                if (shape.Dimensions == 3) {
-                    var channels = shape.GetDimension(0);
-                    <input type="number" class="w3-input" placeholder="Channel" @bind="selected_channel" min="0" max="@channels" />
-                    indexing[^3] = Math.Clamp(selected_channel, 0, channels);
+
+                <div class="line">
+                @for (var dim = 0; dim < shape.Dimensions - 2; dim++) {
+                    var dimensionIndex = dim;
+                    var dimensionLen = shape.GetDimension(dimensionIndex);
+                    <div class="line-item">
+                        <label>dim(@dimensionIndex): </label>
+                        <input type="number" class="w3-input" placeholder="Dimension @(dimensionIndex)" @bind="indexing[dimensionIndex]" min="0" max="@(dimensionLen - 1)" />
+                    </div>
                 }
+                </div>
+
                 var rows = shape.GetDimension(shape.Dimensions - 2);
                 var cols = shape.GetDimension(shape.Dimensions - 1);
+                for (var dim = 0; dim < shape.Dimensions; dim++) {
+                    indexing[dim] = Math.Clamp(indexing[dim], 0, shape.GetDimension(dim) - 1);
+                }
                 <table class="w3-table">
                     <tbody>
                         @for (var row = 0; row < rows; row++) {
@@ -116,8 +125,9 @@
                         }
                     </tbody>
                 </table>
-            } else {
-                <p>Unable to display tensors with more than 3 dimensions</p>
+            }
+            else {
+                <p>Unable to display tensors with less than 2 dimensions</p>
             }
             </div>
         }
@@ -131,7 +141,6 @@
     private string? key_filter = "Layers[0]";
     private string[]? keys;
     private string? selected_key;
-    private int selected_channel = 0;
     int[] indexing = new int[3];
 
     private void prepare(Safetensors set) {

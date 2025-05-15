@@ -18,7 +18,9 @@ public class Safetensors {
             this.data = data;
         }
 
-        public int Dimensions => shape.Dimensions;
+        public int Len() => ((Array)data).Length;
+
+        public int Rank => shape.Dimensions;
 
         public int GetDimension(int index) => shape.GetDimension(index);
 
@@ -131,17 +133,47 @@ public class Safetensors {
         var tensor = tensors[fromKey];
         tensors.Remove(fromKey);
         tensors.Add(toKey, tensor);
+        if (tensor_metadata.TryGetValue(fromKey, out var metadata)) {
+            tensor_metadata.Remove(fromKey);
+            tensor_metadata.Add(toKey, metadata);
+        }
+        
         return true;
     }
 
     /// <summary>
-    /// Get the tensor associated with the given key
+    /// Get the tensor associated with the given key (tensor must be rank 1)
+    /// </summary>
+    /// <typeparam name="TOut">output type</typeparam>
+    /// <param name="key">tensor key</param>
+    /// <returns>vector</returns>
+    /// <exception cref="KeyNotFoundException">thrown when the given key doesn't exist in the safetensors set</exception>
+    public Vec<TOut> GetVector<TOut>(string key) where TOut:INumber<TOut> { // TODO rename this to GetMatrix or GetTensorAsMatrix
+        if (!tensors.TryGetValue(key, out var tensor)) {
+            throw new KeyNotFoundException(key);
+        }
+        var shape = tensor.shape;
+        if (shape.Dimensions != 1)
+            throw new ArgumentException($"Cannot load a tensor of dimensionality {shape.Dimensions} into a vector");
+
+        if (tensor.data is TOut[] elements) {
+            // No additional memory allocation, just use the array as is. 
+            return new Vec<TOut>(elements);
+        } else {
+            var new_matrix = new Vec<TOut>(tensor.Len());
+            LoadTensorInto<Vec<TOut>, TOut>(key, new_matrix);
+            return new_matrix;
+        }
+    }
+
+    /// <summary>
+    /// Get the tensor associated with the given key (tensor must be rank 2)
     /// </summary>
     /// <typeparam name="TOut">output type</typeparam>
     /// <param name="key">tensor key</param>
     /// <returns>matrix</returns>
     /// <exception cref="KeyNotFoundException">thrown when the given key doesn't exist in the safetensors set</exception>
-    public Matrix<TOut> GetTensor<TOut>(string key) where TOut:INumber<TOut> { // TODO rename this to GetMatrix or GetTensorAsMatrix
+    public Matrix<TOut> GetMatrix<TOut>(string key) where TOut:INumber<TOut> { // TODO rename this to GetMatrix or GetTensorAsMatrix
         if (!tensors.TryGetValue(key, out var tensor)) {
             throw new KeyNotFoundException(key);
         }
@@ -166,14 +198,20 @@ public class Safetensors {
     /// <param name="key">tensor key</param>
     /// <returns>matrix</returns>
     /// <exception cref="KeyNotFoundException">thrown when the given key doesn't exist in the safetensors set</exception>
-    public GenericTensor<TElement> GetTensorData<TElement>(string key) {
+    public GenericTensor<TElement> GetTensor<TElement>(string key) {
         if (!tensors.TryGetValue(key, out var tensor)) {
             throw new KeyNotFoundException(key);
         }
         var shape = tensor.shape;
-        var obj = new GenericTensor<TElement>(shape.Lengths);
-        LoadTensorInto<GenericTensor<TElement>, TElement>(key, obj);
-        return obj;
+        if (tensor.data is TElement[] elements) {
+            // No additional memory allocation, just use the array as is. 
+            return new GenericTensor<TElement>(shape.Lengths, elements);
+        } else {
+            // Allocate a new array transform the data and copy it
+            var obj = new GenericTensor<TElement>(shape.Lengths);
+            LoadTensorInto<GenericTensor<TElement>, TElement>(key, obj);
+            return obj;
+        }
     }
 
     // Desired usage Matrix<double> matrix = GetTensorAs<Matrix<double>, double>(key);
@@ -226,7 +264,7 @@ public class Safetensors {
         if (!tensors.TryGetValue(key, out var tensor)) {
             throw new KeyNotFoundException(key);
         }
-        var shape = Enumerable.Range(0, result.Dimensions).Select(x => result.GetDimension(x)).ToArray();
+        var shape = Enumerable.Range(0, result.Rank).Select(x => result.GetDimension(x)).ToArray();
         if (!tensor.shape.Lengths.SequenceEqual(shape)) {
             throw new IndexOutOfRangeException($"Resulting shape {string.Join('x', shape)} doesn't match shape of tensor {key} {string.Join('x', tensor.shape.Lengths)}.");
         }
@@ -248,7 +286,7 @@ public class Safetensors {
     /// <param name="matrix">tensor</param>
     public void Add<T>(string name, ITensorLike<T> tensor) {
         // Create a shape that matches the generic tensor
-        var shape = new int[tensor.Dimensions];
+        var shape = new int[tensor.Rank];
         for (var i = 0; i < shape.Length; i++)
             shape[i] = tensor.GetDimension(i);
         var count = shape.Aggregate(1, (lhs, rhs) => lhs * rhs);

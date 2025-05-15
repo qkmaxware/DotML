@@ -44,7 +44,7 @@ public class TransposeConvolutionLayerTest {
             filters: [
                 // This ordering is Inverse of PyTorch.
                 // I use 2 filters (1 per output) with 3 kernels (1 per input) so that bias can be put into the object
-                // PyTorch uses 3 filters with 2 kernels and the bias is separate.
+                // PyTorch uses 3 filters with 2 kernels and the bias is separate. AKA filters and kernels are transposed.
                 // My way fit better into objects, their way makes more sense as a "transposed" operation the weights are also transposed in shape
                 new ConvolutionFilter(
                     bias: 0.20820827782154083,

@@ -28,7 +28,7 @@ public class Xml : IFileOnlyDecoder, IDecoder {
             }
         }
 
-        public void FileOutput(FileInfo file) {
+        public IEnumerable<FileInfo> FileOutput(FileInfo file) {
             if (file.Extension != Excel2003.Extension) {
                 file = new FileInfo(file.FullName + Excel2003.Extension);
             }
@@ -37,12 +37,14 @@ public class Xml : IFileOnlyDecoder, IDecoder {
             if (this.values.Batches == 1) {
                 using var writer = new StreamWriter(path);
                 Excel2003.Write(writer, this.values[0]);
+                yield return file;
             } else {
                 var batch_id = 0;
                 foreach (var features in this.values) {
                     var name = Path.ChangeExtension(path, $".{batch_id}{Excel2003.Extension}");
                     using var writer = new StreamWriter(path);
                     Excel2003.Write(writer, features);
+                    yield return new FileInfo(name);
                 }
             }
         }

@@ -17,12 +17,13 @@ public class Vector : IDecoder {
             }
         }
 
-        public void FileOutput(FileInfo file) {
+        public IEnumerable<FileInfo> FileOutput(FileInfo file) {
             using (var writer = new StreamWriter(file.OpenWrite())) {
                 foreach (var vector in vectors) {
                     writer.Write(vector.ToString());
                 }
             }
+            yield return file;
         }
 
         public void Dispose() { }
