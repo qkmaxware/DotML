@@ -41,6 +41,9 @@ public class Fit : BaseCommand {
     [Option("data-training", HelpText = "The data-set used for training", Required = true)]
     public string? TrainingDataPath {get; set;}
 
+    [Option("samples-per-epoch", HelpText = "The number of samples from the training set to evaluate each epoch, leave blank to test all samples in the training set", Required = false, Default = null)]
+    public int? SamplesPerEpoch {get; set;}
+
     [Option("data-validation", HelpText = "The data-set used for validation", Required = false)]
     public string? ValidationDataPath {get; set;}
 
@@ -72,6 +75,10 @@ public class Fit : BaseCommand {
     [Option("skip-testing", HelpText = "Flag to indicate if the testing phase should be skipped", Required = false, Default = "false")]
     public string? SkipTestingStr {get; set;}
     public bool SkipTesting => IsSet(SkipTestingStr);
+
+    [Option("skip-initial-test", HelpText = "Flag to indicate if the initial validation and testing phase should be skipped", Required = false, Default = "false")]
+    public string? SkipInitialTestStr {get; set;}
+    public bool SkipInitialTest => IsSet(SkipInitialTestStr);
 
     [Option("continue", HelpText = "Flag to indicate if the existing weights should be used or if the network should be re-initialized", Required = false, Default = "false")]
     public string? ContinueStr {get; set;}
@@ -264,8 +271,10 @@ public class Fit : BaseCommand {
             }
         }
         var batch_size              = trainer.BatchSize;
-        var batch_count             = (trainingPairs.Size + trainer.BatchSize - 1) / trainer.BatchSize;
-        var validation_batch_count  = (validationPairs.Size + trainer.BatchSize - 1) / trainer.BatchSize;
+        var training_per_epoch      = SamplesPerEpoch.HasValue ? Math.Clamp(SamplesPerEpoch.Value, 1,  trainingPairs.Size) : trainingPairs.Size;
+        var batch_count             = (training_per_epoch + trainer.BatchSize - 1) / trainer.BatchSize;
+        var validation_per_epoch    = SamplesPerEpoch.HasValue ? Math.Clamp(SamplesPerEpoch.Value, 1, validationPairs.Size) : validationPairs.Size;
+        var validation_batch_count  = (validation_per_epoch + trainer.BatchSize - 1) / trainer.BatchSize;
         var iteration_count         = batch_count + validation_batch_count;
         #endregion
 
@@ -324,7 +333,13 @@ public class Fit : BaseCommand {
         try {
 
         #region Training
-        var session = trainer.EnumerateTraining(network, trainingPairs.SampleRandomly(), validationPairs.SampleSequentially());
+        var training_sampler = SamplesPerEpoch.HasValue 
+            ? trainingPairs.SampleRandomly(training_per_epoch)  // Only sample this many
+            : trainingPairs.SampleRandomly();                   // Sample them all
+        var validation_sampler = SamplesPerEpoch.HasValue 
+            ? validationPairs.SampleRandomly(validation_per_epoch)
+            : validationPairs.SampleSequentially();             // Sample them all
+        var session = trainer.EnumerateTraining(network, training_sampler, validation_sampler);
         session.Reset();
 
         #region Training / Load checkpoint
@@ -401,17 +416,19 @@ public class Fit : BaseCommand {
         }
         
         // Do an initial status test to see "how good it is" originally
-        validation_report.Reset();
-        Test(network, testingPairs, validation_report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
-        validation_writer.WriteLine($"{0}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}, {validation_report.AverageLoss}, {validation_report.MaxLoss}, {validation_report.MinLoss}, {validation_report.Accuracy}, {validation_report.Precision}, {validation_report.Recall}, {validation_report.F1Score}, \"n/a\"");
-        validation_writer.Flush();
-        validation_report.Reset();
-        if (!SkipTesting && testing_report is not null) {
-            var report = testing_report;
-            Test(network, testingPairs, report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
+        if (!SkipInitialTest) {
+            validation_report.Reset();
+            Test(network, testingPairs, validation_report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
+            validation_writer.WriteLine($"{0}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}, {validation_report.AverageLoss}, {validation_report.MaxLoss}, {validation_report.MinLoss}, {validation_report.Accuracy}, {validation_report.Precision}, {validation_report.Recall}, {validation_report.F1Score}, \"n/a\"");
+            validation_writer.Flush();
+            validation_report.Reset();
+            if (!SkipTesting && testing_report is not null) {
+                var report = testing_report;
+                Test(network, testingPairs, report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
 
-            testing_writer.WriteLine($"{0}, {report.TestsPassedCount}, {report.TestsFailedCount}, {report.AverageLoss}, {report.MaxLoss}, {report.MinLoss}, {report.Accuracy}, {report.Precision}, {report.Recall}, {report.F1Score}, \"n/a\"");
-            testing_writer.Flush();
+                testing_writer.WriteLine($"{0}, {report.TestsPassedCount}, {report.TestsFailedCount}, {report.AverageLoss}, {report.MaxLoss}, {report.MinLoss}, {report.Accuracy}, {report.Precision}, {report.Recall}, {report.F1Score}, \"n/a\"");
+                testing_writer.Flush();
+            }
         }
 
         while (has_next) {
