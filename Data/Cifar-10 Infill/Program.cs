@@ -4,7 +4,8 @@ using DotML.Network.Training;
 
 public class Program {
 
-    public static int MasksPerImage = 8;
+    public static int MasksPerImage = 4;
+    public static int InstancesPerMask = 2;
     public static int MinMaskSize = 4;
     public static int MaxMaskSize = 12;
 
@@ -110,15 +111,18 @@ public class Program {
             for (var i = 0; i < MasksPerImage; i++) {
                 var edited_input = input_image.Clone();
 
-                var mask_size = rng.Next(minValue: MinMaskSize, maxValue: MaxMaskSize + 1);
-                var mask_half_size = mask_size / 2;
-                var mask_center = new Point(x: mask_half_size + rng.Next(edited_input.Width - mask_size), y: mask_half_size + rng.Next(edited_input.Height - mask_size));
-                for (int y = mask_center.Y - mask_half_size, my = 0; my < mask_size; my++, y++) { 
-                    for (int x = mask_center.X - mask_half_size, mx = 0; mx < mask_size; mx++, x++) {
-                        // Clear the pixel
-                        edited_input[Channel.R, x, y] = 0;
-                        edited_input[Channel.G, x, y] = 0;
-                        edited_input[Channel.B, x, y] = 0;
+                var mask_count = InstancesPerMask;
+                for (var j = 0; j < mask_count; j++) { 
+                    var mask_size = rng.Next(minValue: MinMaskSize, maxValue: MaxMaskSize + 1);
+                    var mask_half_size = mask_size / 2;
+                    var mask_center = new Point(x: mask_half_size + rng.Next(edited_input.Width - mask_size), y: mask_half_size + rng.Next(edited_input.Height - mask_size));
+                    for (int y = mask_center.Y - mask_half_size, my = 0; my < mask_size; my++, y++) { 
+                        for (int x = mask_center.X - mask_half_size, mx = 0; mx < mask_size; mx++, x++) {
+                            // Clear the pixel
+                            edited_input[Channel.R, x, y] = 0;
+                            edited_input[Channel.G, x, y] = 0;
+                            edited_input[Channel.B, x, y] = 0;
+                        }
                     }
                 }
 

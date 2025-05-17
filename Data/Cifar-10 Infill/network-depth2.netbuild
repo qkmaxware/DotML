@@ -1,5 +1,5 @@
 FROM scratch INPUT 3 32 32
-LABEL "UNet-Infill"
+LABEL "UNet-Infill-d2"
 
 ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=64 kernel=3
 ADD LayerNorm 

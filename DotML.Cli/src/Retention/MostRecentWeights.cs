@@ -15,7 +15,7 @@ public class MostRecentWeights  : IRetentionPolicy<Safetensors> {
         if (!string.IsNullOrEmpty(last_weights) && File.Exists(last_weights)) {
             File.Delete(last_weights);
         }
-        var next_weights = Path.Combine(root_dir,  name);
+        var next_weights = Path.Combine(root_dir, GetType().Name + "." + name);
         backup.WriteToFile(next_weights);
         this.last_weights = next_weights;
     }

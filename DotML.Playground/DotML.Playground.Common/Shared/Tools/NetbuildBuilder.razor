@@ -40,7 +40,7 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Layers</td><td>@validation_report.layers</td>
+                        <td>Layers</td><td>@validation_report.network.LayerCount</td>
                     </tr>
                     <tr>
                         <td>Untrainable Parameters</td><td>@validation_report.untrainable</td>
@@ -49,13 +49,33 @@
                         <td>Disk Size</td><td>@validation_report.size</td>
                     </tr>
                     <tr>
-                        <td>Input Shape</td><td>@validation_report.ishape</td>
+                        <td>Input Shape</td><td>@validation_report.network.InputShape</td>
                     </tr>
                     <tr>
-                        <td>Output Shape</td><td>@validation_report.oshape</td>
+                        <td>Output Shape</td><td>@validation_report.network.OutputShape</td>
                     </tr>
                 </tbody>
             </table>
+            <details class="w3-margin-top w3-border-bottom w3-border-right">
+                <summary>Layer Breakdown</summary>
+                <table class="w3-table">
+                    <thead>
+                        <th>Type</th>
+                        <th>Input Shape</th>
+                        <th>Output Shape</th>
+                    </thead>
+                    <tbody>
+                        @for (var layerIndex = 0; layerIndex < validation_report.network.LayerCount; layerIndex++) {
+                            var layer = validation_report.network.GetLayer(layerIndex);
+                            <tr>
+                                <td>@layer.GetType().Name</td>
+                                <td>@layer.InputShape</td>
+                                <td>@layer.OutputShape</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </details>
         } else {
             <div class="w3-panel w3-red w3-margin-bottom">
                 <h3>&times; Invalid!</h3>
@@ -125,11 +145,9 @@
         public Exception? exception;
 
         public DataSize size;
-        public int layers;
         public int trainable;
         public int untrainable;
-        public Shape3D ishape;
-        public Shape3D oshape;
+        public FeedforwardNetwork network;
     }
     private void validate() {
         if (editor is null) {
@@ -148,11 +166,9 @@
                 var v = new ValidationReport {
                     Success = true,
                     size = network.StorageSize(),
-                    layers = network.LayerCount,
                     trainable = network.TrainableParameterCount(),
                     untrainable = network.UnTrainableParameterCount(),
-                    ishape = network.InputShape,
-                    oshape = network.OutputShape,
+                    network = network
                 };
                 this.validation_report = v;
             } catch (Exception e) {

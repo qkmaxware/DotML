@@ -12,7 +12,7 @@ public class LastNWeights : IRetentionPolicy<Safetensors> {
 
     public void Backup(string name, Safetensors backup) {
         // Save weights
-        var next_weights = Path.Combine(root_dir,  name);
+        var next_weights = Path.Combine(root_dir, GetType().Name + count + "." + name);
         backup.WriteToFile(next_weights);
         last_weights.AddLast(next_weights);
 
