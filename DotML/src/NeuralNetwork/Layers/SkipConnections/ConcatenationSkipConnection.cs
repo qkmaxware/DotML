@@ -27,7 +27,7 @@ public class ConcatenationSkipConnection : SkipConnection {
         if (skipConnection is null)
             return inputs;
 
-        if (skipConnection.Batches != inputs.Batches || skipConnection.Rows != inputs.Rows || skipConnection.Columns != inputs.Columns || (skipConnection.Channels + inputs.Channels) != inputs.Channels)
+        if (skipConnection.Batches != inputs.Batches || skipConnection.Rows != inputs.Rows || skipConnection.Columns != inputs.Columns || (skipConnection.Channels + inputs.Channels) != OutputShape.Channels)
             throw new ArgumentException("Incompatible tensor shapes");
 
         var batches = skipConnection.Batches;
