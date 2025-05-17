@@ -10,6 +10,7 @@ public class SvgWriter : ILayerInputVisitor<SvgWriter.SvgBuilder> {
     private int PaddingBottom = 10;
     private int LayerWidth = 64;
     private int LayerHeight = 128;
+    private int ConnectionPadding = 9;
 
     public struct SvgBuilder {
         public FeedforwardNetwork Network {get; private set;}
@@ -45,7 +46,7 @@ public class SvgWriter : ILayerInputVisitor<SvgWriter.SvgBuilder> {
     public void WriteTo(FeedforwardNetwork network, TextWriter writer) {
         var layers = network.LayerCount;
         var width = (layers + 2) * LayerWidth;
-        var PaddingBottom = this.PaddingBottom + 3 * Enumerable.Range(0, network.LayerCount).Select((ind) => network.GetLayer(ind)).Count();
+        var PaddingBottom = this.PaddingBottom + ConnectionPadding * Enumerable.Range(0, network.LayerCount).Select((ind) => network.GetLayer(ind)).Count();
         var height = LayerHeight + PaddingTop + PaddingBottom;
 
         writer.WriteLine($"<svg width=\"{width}\" height=\"{height}\" xmlns=\"http://www.w3.org/2000/svg\">");
@@ -221,7 +222,7 @@ public class SvgWriter : ILayerInputVisitor<SvgWriter.SvgBuilder> {
         var cbottom_start = cy + r;
         var cbottom_end = cy + Math.Ceiling(r);
         var capture = skip.CaptureSource;
-        var hline_height = LayerHeight + args.SkipDepth * 3 + 1; // From the number of skips deep in the network TODO
+        var hline_height = LayerHeight + args.SkipDepth * ConnectionPadding + 1; // From the number of skips deep in the network TODO
         var layer_index = Enumerable.Range(0, args.Network.LayerCount).Where((ind) => ReferenceEquals(args.Network.GetLayer(ind), capture)).FirstOrDefault(-1);
         if (layer_index == -1)
             return;

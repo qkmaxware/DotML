@@ -236,7 +236,7 @@ public class Fit : BaseCommand {
         var randgen = new Random();
         TrainingSet trainingPairs   = ReadData(training_file);                                                      // Data used in backpropagation
         TrainingSet validationPairs = validation_file is not null ? ReadData(validation_file) : new TrainingSet(trainingPairs.SampleRandomly((int)Math.Max(1, 0.25 * trainingPairs.Size)).AsEnumerable());    // Data used in early-stop & validation
-        TrainingSet testingPairs    = testing_file is not null ? ReadData(testing_file) : trainingPairs;             // Data used in verify model "generality"
+        TrainingSet testingPairs    = testing_file is not null ? ReadData(testing_file) : new TrainingSet(trainingPairs.SampleRandomly((int)Math.Max(1, 0.25 * trainingPairs.Size)).AsEnumerable());             // Data used in verify model "generality"
         if (trainingPairs.Size != 0) {
             var first = trainingPairs[0];
             if (first.Input.Dimensionality != network.InputShape.Count) {
@@ -275,7 +275,10 @@ public class Fit : BaseCommand {
         var batch_count             = (training_per_epoch + trainer.BatchSize - 1) / trainer.BatchSize;
         var validation_per_epoch    = SamplesPerEpoch.HasValue ? Math.Clamp(SamplesPerEpoch.Value, 1, validationPairs.Size) : validationPairs.Size;
         var validation_batch_count  = (validation_per_epoch + trainer.BatchSize - 1) / trainer.BatchSize;
-        var iteration_count         = batch_count + validation_batch_count;
+        var testing_per_epoch       = SkipTesting ? 0 : testingPairs.Size;
+        var testing_batch_count     = (testing_per_epoch + trainer.BatchSize - 1) / trainer.BatchSize;
+
+        var iteration_count         = batch_count + validation_batch_count + testing_batch_count;
         #endregion
 
         // TODO print header
@@ -418,17 +421,46 @@ public class Fit : BaseCommand {
         // Do an initial status test to see "how good it is" originally
         if (!SkipInitialTest) {
             validation_report.Reset();
-            Test(network, testingPairs, validation_report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
+            Console.Write(ColumnValue(0, training_header_len[0]));
+            Console.Write(' '); 
+
+            var bar = new ProgressBar(training_header_len[1] - 5);
+            var entire_length = validation_batch_count + testing_batch_count;
+            bar.Mark(validation_batch_count, entire_length);  
+            var timer = Stopwatch.StartNew();
+            Test(network, testingPairs, validation_report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction, (current, total) => {
+                bar.Update(current, entire_length);
+            });
+            if (!SkipTesting && testing_report is not null) {
+                testing_report.Reset();
+                Test(network, testingPairs, testing_report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction, (current, total) => {
+                    bar.Update(validation_batch_count + current, entire_length);
+                });
+
+                testing_writer.WriteLine($"{0}, {testing_report.TestsPassedCount}, {testing_report.TestsFailedCount}, {testing_report.AverageLoss}, {testing_report.MaxLoss}, {testing_report.MinLoss}, {testing_report.Accuracy}, {testing_report.Precision}, {testing_report.Recall}, {testing_report.F1Score}, \"n/a\"");
+                testing_writer.Flush();
+                testing_report.Reset();
+            }
+            timer.Stop();
+            Console.Write(' ');
+
+            var report = validation_report;
+            Console.Write(ColumnValue(report.Accuracy, training_header_len[2]));
+            Console.Write(' '); 
+            Console.Write(ColumnValue(report.Precision, training_header_len[3]));
+            Console.Write(' '); 
+            Console.Write(ColumnValue(report.Recall, training_header_len[4]));
+            Console.Write(' '); 
+            Console.Write(ColumnValue(report.AverageLoss, training_header_len[5]));
+            Console.Write(' '); 
+            Console.Write(ColumnValue(report.TestsPassedCount + "/" + report.TestCount, training_header_len[6]));
+            Console.Write(' '); 
+            Console.Write(ColumnValue(timer.Elapsed.TotalMinutes + "m", training_header_len[7]));
+            Console.WriteLine();
+
             validation_writer.WriteLine($"{0}, {validation_report.TestsPassedCount}, {validation_report.TestsFailedCount}, {validation_report.AverageLoss}, {validation_report.MaxLoss}, {validation_report.MinLoss}, {validation_report.Accuracy}, {validation_report.Precision}, {validation_report.Recall}, {validation_report.F1Score}, \"n/a\"");
             validation_writer.Flush();
             validation_report.Reset();
-            if (!SkipTesting && testing_report is not null) {
-                var report = testing_report;
-                Test(network, testingPairs, report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
-
-                testing_writer.WriteLine($"{0}, {report.TestsPassedCount}, {report.TestsFailedCount}, {report.AverageLoss}, {report.MaxLoss}, {report.MinLoss}, {report.Accuracy}, {report.Precision}, {report.Recall}, {report.F1Score}, \"n/a\"");
-                testing_writer.Flush();
-            }
         }
 
         while (has_next) {
@@ -442,11 +474,26 @@ public class Fit : BaseCommand {
             #region Training / Epoch Step
             // Print the training progress for the epoch to the CLI
             current_progress = new ProgressBar(training_header_len[1] - 5);
-            current_progress.Mark(batch_count, iteration_count); // Create a mark at the given divider between batching and validation
+            current_progress.Mark(batch_count, iteration_count);                            // Create a mark at the given divider between batching and validation
+            current_progress.Mark(batch_count + validation_batch_count, iteration_count);   // Create a mark at the given divider between validation and testing
             var timer = Stopwatch.StartNew();
             has_next = session.MoveNext();
             timer.Stop();
             var elapsed = timer.Elapsed;
+            TimeSpan test_time = TimeSpan.Zero;
+            // Save testing report entry (currently no UI to monitor this)
+            if (!SkipTesting && testing_report is not null) {
+                var self_timer = Stopwatch.StartNew();
+                Test(network, testingPairs, testing_report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction, (current, total) =>
+                {
+                    current_progress.Update(batch_count + validation_batch_count + current, iteration_count);
+                });
+                self_timer.Stop();
+                test_time = self_timer.Elapsed;
+
+                testing_writer.WriteLine($"{epoch_id}, {testing_report.TestsPassedCount}, {testing_report.TestsFailedCount}, {testing_report.AverageLoss}, {testing_report.MaxLoss}, {testing_report.MinLoss}, {testing_report.Accuracy}, {testing_report.Precision}, {testing_report.Recall}, {testing_report.F1Score}, \"{self_timer.Elapsed}\"");
+                testing_writer.Flush();
+            }
             current_progress.Update(1.0);
             Console.Write(' ');
             #endregion
@@ -475,7 +522,7 @@ public class Fit : BaseCommand {
             Console.Write(ColumnValue(report.TestsPassedCount + "/" + report.TestCount, training_header_len[6]));
             Console.Write(' '); 
             Console.ForegroundColor = def_colour;
-            Console.Write(ColumnValue(elapsed.TotalMinutes + "m", training_header_len[7]));
+            Console.Write(ColumnValue((elapsed + test_time).TotalMinutes + "m", training_header_len[7]));
             Console.WriteLine();
             prev_report = (report.Accuracy, report.Precision, report.Recall, report.MinLoss, report.MaxLoss, report.AverageLoss, report.TestsPassedCount);
 
@@ -487,15 +534,6 @@ public class Fit : BaseCommand {
                 notifier?.NotifyNewBest(network, epoch_id, trainer.Epochs, validation_report);
             }
             best_loss = Math.Min(report.AverageLoss, best_loss);
-
-            // Save testing report entry (currently no UI to monitor this)
-            if (!SkipTesting && testing_report is not null) {
-                report = testing_report;
-                Test(network, testingPairs, report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction);
-
-                testing_writer.WriteLine($"{epoch_id}, {report.TestsPassedCount}, {report.TestsFailedCount}, {report.AverageLoss}, {report.MaxLoss}, {report.MinLoss}, {report.Accuracy}, {report.Precision}, {report.Recall}, {report.F1Score}, \"{elapsed}\"");
-                testing_writer.Flush();
-            }
 
             // Save performance metrics, always re-write and not append (unlike the validation report)
             if (performance_report is not null) {
@@ -631,7 +669,7 @@ public class Fit : BaseCommand {
             return new HeInitialization();
         }
     }
-    public static void Test(FeedforwardNetwork network, TrainingSet data, IValidationReport report, int batch_size, double pass_threshold, LossFunction loss_fn) {
+    public static void Test(FeedforwardNetwork network, TrainingSet data, IValidationReport report, int batch_size, double pass_threshold, LossFunction loss_fn, Action<int, int>? on_progress = null) {
         var data_iterator = data.SampleSequentially(); 
         var max_error = double.MinValue;
         var all_less_threshold = true;
@@ -644,17 +682,23 @@ public class Fit : BaseCommand {
             batch.Add((input, pair.Input, pair.Output));
         }
         var batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.InMatrix).ToArray());
+        var batches_to_do = (data.Size + concurrency_level - 1) / concurrency_level;
 
-        while (batch.Count > 0) {
+        var batch_index = 0;
+        on_progress?.Invoke(batch_index, batches_to_do);
+
+        while (batch.Count > 0)
+        {
             // Perform Feed-Forward
             var batch_predicted = network.PredictSync(batch_input);
 
             // Measure loss across batch
-            for (var batchIndex = 0; batchIndex < batch_input.Batches; batchIndex++) {
+            for (var batchIndex = 0; batchIndex < batch_input.Batches; batchIndex++)
+            {
                 var input = batch[batchIndex].In;
                 var @true = batch[batchIndex].Out;
-                var predicted =  Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
-                
+                var predicted = Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
+
                 var loss = loss_fn.Invoke(predicted, @true);
                 max_error = Math.Max(max_error, loss);
                 var passed = loss < pass_threshold;
@@ -663,11 +707,12 @@ public class Fit : BaseCommand {
             }
 
             // Update UI
-
+            on_progress?.Invoke(++batch_index, batches_to_do);
 
             // Compute next batch
             batch.Clear();
-            while (data_iterator.MoveNext() && batch.Count < concurrency_level) {
+            while (data_iterator.MoveNext() && batch.Count < concurrency_level)
+            {
                 var pair = data_iterator.Current;
                 var input = new FeatureSet<double>(pair.Input.Shape(network.InputShape).ToArray());
                 batch.Add((input, pair.Input, pair.Output));
