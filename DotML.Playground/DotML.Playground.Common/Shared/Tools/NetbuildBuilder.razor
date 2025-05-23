@@ -163,8 +163,10 @@
         Task.Run(async () => {
             try {
                 var network = decoder.Deserialize(code);
+                var size_valid = network.ValidateSizes();
                 var v = new ValidationReport {
-                    Success = true,
+                    Success = size_valid,
+                    exception = size_valid ? null : new Exception("Invalid layer size detected, see layer breakdown for more information"),
                     size = network.StorageSize(),
                     trainable = network.TrainableParameterCount(),
                     untrainable = network.UnTrainableParameterCount(),

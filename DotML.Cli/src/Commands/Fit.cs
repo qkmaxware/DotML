@@ -211,7 +211,7 @@ public class Fit : BaseCommand {
             }
         }
         List<IRetentionPolicy<Safetensors>> retention_policies = this.Retention?.Select(policy => {
-            IRetentionPolicy<Safetensors> retention_policy = policy switch {
+            IRetentionPolicy<Safetensors> retention_policy = policy.Trim() switch {
                 "all"             => new AllWeights(weights_dir),
                 "most_recent"     => new MostRecentWeights(weights_dir),
                 string s when s.StartsWith("last") => new LastNWeights(weights_dir, int.Parse(string.Concat(s.Where( Char.IsDigit )))),
@@ -421,7 +421,7 @@ public class Fit : BaseCommand {
             var entire_length = validation_batch_count + testing_batch_count;
             bar.Mark(validation_batch_count, entire_length);  
             var timer = Stopwatch.StartNew();
-            Test(network, testingPairs, validation_report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction, (current, total) => {
+            Test(network, validationPairs, validation_report, trainer.BatchSize, trainer.EarlyStopAccuracy, trainer.LossFunction, (current, total) => {
                 bar.Update(current, entire_length);
             });
             if (!SkipTesting && testing_report is not null) {
@@ -435,6 +435,7 @@ public class Fit : BaseCommand {
                 testing_report.Reset();
             }
             timer.Stop();
+            bar.Update(1.0);
             Console.Write(' ');
 
             var report = validation_report;

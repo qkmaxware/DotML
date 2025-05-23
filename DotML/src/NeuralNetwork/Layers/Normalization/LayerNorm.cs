@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using DotML.Network.Initialization;
@@ -36,6 +37,61 @@ public class LayerNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ComputeMeansAndVariances(FeatureSet<double> features, out double mean_vec, out double variance_vec) {
+        if (
+            Vector<double>.IsSupported
+            && Vector.IsHardwareAccelerated
+        ) {
+            ComputeMeansAndVariancesVector(features, out mean_vec, out variance_vec);
+        } else {
+            ComputeMeansAndVariancesArray(features, out mean_vec, out variance_vec);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ComputeMeansAndVariancesVector(FeatureSet<double> features, out double mean_vec, out double variance_vec) {
+        var channels = features.Channels;
+        var item_count = channels * features.Rows * features.Columns;
+
+        var mean_sum = 0.0;
+        var vec_size = Vector<double>.Count;
+        for (var c = 0; c < channels; c++) {
+            var arr = features[c].AsSpan();
+            int i = 0;
+            
+            for (; i < arr.Length - vec_size; i += vec_size) {
+                mean_sum += Vector.Sum(new Vector<double>(arr.Slice(i, vec_size)));
+            }
+
+            for (; i < arr.Length; i++) {
+                mean_sum += arr[i];
+            }
+        }
+        var layer_mean = mean_sum / item_count;
+
+        var variance_sum = 0.0;
+        var layer_mean_vec = new Vector<double>(layer_mean);
+        for (var c = 0; c < channels; c++) {
+            var arr = features[c].AsSpan();
+            int i = 0;
+
+            for (; i < arr.Length - vec_size; i += vec_size) {
+                var ds = Vector.Subtract(new Vector<double>(arr.Slice(i, vec_size)), layer_mean_vec);
+            
+                variance_sum += Vector.Sum(Vector.Multiply(ds, ds));
+            }
+
+            for (; i < arr.Length; i++) {
+                var d = arr[i] - layer_mean;
+                variance_sum += d * d;
+            }
+        }
+
+        mean_vec = layer_mean;
+        variance_vec = variance_sum / item_count;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ComputeMeansAndVariancesArray(FeatureSet<double> features, out double mean_vec, out double variance_vec) {
         var channels = features.Channels;
         var item_count = channels * features.Rows * features.Columns;
 
