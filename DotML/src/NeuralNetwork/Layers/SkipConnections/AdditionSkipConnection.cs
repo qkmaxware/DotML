@@ -12,7 +12,7 @@ public class AdditionSkipConnection : SkipConnection {
     /// <param name="skipConnection">capture source features</param>
     /// <param name="input">input features</param>
     /// <returns>combined features</returns>
-    public override BatchedFeatureSet<double> Combine(BatchedFeatureSet<double>? skipConnection, BatchedFeatureSet<double> inputs) {
+    public override BatchedFeatureSet<float> Combine(BatchedFeatureSet<float>? skipConnection, BatchedFeatureSet<float> inputs) {
         if (skipConnection is null)
             return inputs;
 
@@ -22,9 +22,9 @@ public class AdditionSkipConnection : SkipConnection {
         var shape = inputs.Shape;
 
         // Loop over all channels and perform matrix addition
-        FeatureSet<double>[] values = new FeatureSet<double>[shape.Batches];
+        FeatureSet<float>[] values = new FeatureSet<float>[shape.Batches];
         for (var batchIndex = 0; batchIndex < values.Length; batchIndex++) {
-            Matrix<double>[] features = new Matrix<double>[shape.Channels];
+            Matrix<float>[] features = new Matrix<float>[shape.Channels];
             var captured = skipConnection[batchIndex];
             var input = inputs[batchIndex];
 
@@ -32,10 +32,10 @@ public class AdditionSkipConnection : SkipConnection {
                 features[i] = captured[i] + input[i];
             }
 
-            values[batchIndex] = new FeatureSet<double>(features);
+            values[batchIndex] = new FeatureSet<float>(features);
         }
 
-        return new BatchedFeatureSet<double>(values);
+        return new BatchedFeatureSet<float>(values);
     }
 
     public override void Initialize(IInitializer initializer) { }

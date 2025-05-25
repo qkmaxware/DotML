@@ -4,5 +4,5 @@ namespace DotML.Cli;
 
 public interface ITrainingDataFormat {
     public bool IsInFormat(FileInfo file);
-    public TrainingSet Read(FileInfo file);
+    public TrainingSet<float> Read(FileInfo file);
 }

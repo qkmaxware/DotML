@@ -65,18 +65,18 @@ public static class VecExtensions {
     /// </summary>
     /// <param name="vec">vector</param>
     /// <returns>true if the vector exhibits properties commonly associated with probability distributions</returns>
-    public static bool IsLikelyAProbabilityDistribution(this Vec<double> vec) {
+    public static bool IsLikelyAProbabilityDistribution<T>(this Vec<T> vec)  where T:IFloatingPoint<T> {
         const double epsilon = 1e-8;
         
-        var sum = 0.0;
+        var sum = T.Zero; 
         foreach (var p in vec) {
-            if (p < 0.0 || p > 1.0) {
+            if (p < T.Zero || p > T.One) {
                 return false;
             }
             sum += p;
         }
         
-        return Math.Abs(sum - 1.0) < epsilon;
-    } // TODO make this not a double exclusive thing
+        return Convert.ToDouble(T.Abs(sum - T.One)) < epsilon;
+    }
 
 }

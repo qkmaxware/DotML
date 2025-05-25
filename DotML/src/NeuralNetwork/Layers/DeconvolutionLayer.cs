@@ -117,13 +117,13 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         return Filters.Select(filter => filter.Select(kernel => kernel.Rows * kernel.Columns).Sum()).Sum() + FilterCount;
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> channels) {
         var channel_count = OutputShape.Channels;
-        var outputs = new Matrix<double>[channel_count];
+        var outputs = new Matrix<float>[channel_count];
 
         for (var channel = 0; channel < channel_count; channel++) {
             var filter = filters[channel];
-            var output = Matrix<double>.TransposeConvolveEach(
+            var output = Matrix<float>.TransposeConvolveEach(
                 channels,
                 filter,
                 inputPaddingX: InputColumnsPadding, inputPaddingY: InputRowsPadding,
@@ -134,7 +134,7 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
             outputs[channel] = output;
         }
 
-        return new FeatureSet<double>(outputs);
+        return new FeatureSet<float>(outputs);
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
@@ -153,7 +153,7 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         );
     }
 
-    private BatchedFeatureSet<double> BackpropagateWrtWeights(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
+    private BatchedFeatureSet<float> BackpropagateWrtWeights(BatchedFeatureSet<float> X, BatchedFeatureSet<float> dY, Shape4D filter_shape) {
         // Kernel/Weight Gradients
         // dW(filter, kernel, row, col) = dy(filter, i, j) * input(c, i+k-1, j+l-1)
         // ----------------------------------------------------------------------------
@@ -161,7 +161,7 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         var (_, _, output_height, output_width) = dY.Shape;                 // batches, outputs, rows, columns
         var (out_channels, _, filter_height, filter_width) = filter_shape;  // outputs, inputs, kernel rows, kernel columns
 
-        var dW = new BatchedFeatureSet<double>(filter_shape);               // outputs, kernels, kernel rows, kernel columns
+        var dW = new BatchedFeatureSet<float>(filter_shape);               // outputs, kernels, kernel rows, kernel columns
 
         for (var batch_index = 0; batch_index < batch_size; batch_index++) {
             var xbatch = X[batch_index];
@@ -205,7 +205,7 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         return dW;
     }
 
-    private Vec<double> BackpropagateWrtBias(BatchedFeatureSet<double> dY) {
+    private Vec<float> BackpropagateWrtBias(BatchedFeatureSet<float> dY) {
         // Bias Gradients
         // dL/dB = dL/dY * dY/dB = dY * dY/dB
         // dY/dB = [1; ... ; 1] because b is constant wrt y
@@ -213,10 +213,10 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         // -----------------------------------------------------------------------
         // Compute dL/dB by summing over batches, rows, and columns
         var featureCount = dY.Channels; // Should be equal to FilterCount
-        var dB = new double[featureCount];
+        var dB = new float[featureCount];
         for (var featureIndex = 0; featureIndex < featureCount; featureIndex++) {
             // Compute sum 
-            var sum = 0.0;
+            var sum = 0.0f;
             for (var batchIndex = 0; batchIndex < dY.Batches; batchIndex++) {
                 sum += dY[batchIndex, featureIndex].Sum();
             }
@@ -225,10 +225,10 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
             dB[featureIndex] = sum;
         }
 
-        return Vec<double>.Wrap(dB);
+        return Vec<float>.Wrap(dB);
     }
 
-    private BatchedFeatureSet<double> BackpropagateWrtInput(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
+    private BatchedFeatureSet<float> BackpropagateWrtInput(BatchedFeatureSet<float> X, BatchedFeatureSet<float> dY, Shape4D filter_shape) {
         var (batch_size, in_channels, out_rows, out_columns) = X.Shape; // In and out rows/columns flipped here since the "input" is dY and the output is "dX"
         //var padded_out_rows = out_rows + 2 * InputRowsPadding;
         //var padded_out_columns = out_columns + 2 * InputColumnsPadding;
@@ -236,7 +236,7 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         var (_, out_channels, in_rows, in_columns) = dY.Shape;
         var (filter_count, kernel_count, kernel_height, kernel_width) = filter_shape;
 
-        var dX = new BatchedFeatureSet<double>(X.Shape);
+        var dX = new BatchedFeatureSet<float>(X.Shape);
         
         // How it worked.
         // Each filter was an output channel
@@ -260,7 +260,7 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
                         for (var x = 0; x < out_columns; x++) {
                             var startX = x * StrideX - InputColumnsPadding;
 
-                            var total_sum = 0.0;
+                            var total_sum = 0.0f;
                             for (int ky = 0; ky < filterRows; ky++) {
                                 var inY = startY + ky;
                                 if (inY < 0 || inY >= in_rows) continue; // Skip out-of-bounds rows
@@ -281,21 +281,21 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
             }
         }
 
-        return new BatchedFeatureSet<double>(dX);
+        return new BatchedFeatureSet<float>(dX);
     }
 
     public class Gradients : LayerGradients {
         private ConvolutionFilter[] Filters;
-        public BatchedFeatureSet<double> FilterKernelGradients;
-        public Vec<double> BiasGradients;
+        public BatchedFeatureSet<float> FilterKernelGradients;
+        public Vec<float> BiasGradients;
 
-        public Gradients(ConvolutionFilter[] filters, BatchedFeatureSet<double> weights, Vec<double> bias) {
+        public Gradients(ConvolutionFilter[] filters, BatchedFeatureSet<float> weights, Vec<float> bias) {
             this.Filters = filters;
             this.FilterKernelGradients = weights;
             this.BiasGradients = bias;
         }
 
-        public override void Clip(double weight_threshold, double bias_threshold) {
+        public override void Clip(float weight_threshold, float bias_threshold) {
             base.ClipBatch(FilterKernelGradients, weight_threshold);
             base.ClipVector(BiasGradients, bias_threshold);
         }
@@ -355,7 +355,7 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
     /// </summary>
     public BiasTensor Biases {get; init;}
 
-    public class WeightTensor : IMutableTensorLike<double> {
+    public class WeightTensor : IMutableTensorLike<float> {
         private ConvolutionFilter[] filters;
         private int kernel_count;
         private int kernel_columns;
@@ -388,17 +388,17 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
             _ => throw new ArgumentOutOfRangeException(nameof(index))
         };
 
-        public double GetElementAt(params int[] indices) {
+        public float GetElementAt(params int[] indices) {
             return filters[indices[1]][indices[0]][indices[2], indices[3]];
         }
 
-        public void SetElementAt(double value, params int[] indices) {
+        public void SetElementAt(float value, params int[] indices) {
             var mtx = filters[indices[1]][indices[0]];
             mtx[indices[2], indices[3]] = value;
         }
     }
 
-    public class BiasTensor : IMutableTensorLike<double> {
+    public class BiasTensor : IMutableTensorLike<float> {
         private ConvolutionFilter[] filters;
 
         public BiasTensor(ConvolutionFilter[] filters) {
@@ -414,11 +414,11 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
             _ => throw new ArgumentOutOfRangeException(nameof(index))
         };
 
-        public double GetElementAt(params int[] indices) {
+        public float GetElementAt(params int[] indices) {
             return filters[indices[0]].Bias;
         }
 
-        public void SetElementAt(double value, params int[] indices) {
+        public void SetElementAt(float value, params int[] indices) {
             filters[indices[0]].Bias = value;
         }
     }

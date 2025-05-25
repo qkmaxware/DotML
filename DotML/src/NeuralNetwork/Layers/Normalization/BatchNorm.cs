@@ -13,57 +13,57 @@ namespace DotML.Network;
 /// </summary>
 public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
-    private double running_mean_momentum = 0.9;
-    public Vec<double> RunningMean;
-    private double running_variance_momentum = 0.9;
-    public Vec<double> RunningVariance;
+    private float running_mean_momentum = 0.9f;
+    public Vec<float> RunningMean;
+    private float running_variance_momentum = 0.9f;
+    public Vec<float> RunningVariance;
 
     /// <summary>
     /// Normalization scaling factor
     /// </summary>
-    public Vec<double> Gammas;
+    public Vec<float> Gammas;
 
     /// <summary>
     /// Normalization shifting offset
     /// </summary>
-    public Vec<double> Betas;
+    public Vec<float> Betas;
 
-    public BatchNorm(Shape3D input_size, double mean_momentum = 0.9, double variance_momentum = 0.9) {
+    public BatchNorm(Shape3D input_size, float mean_momentum = 0.9f, float variance_momentum = 0.9f) {
         this.InputShape = input_size;
         this.OutputShape = input_size;
 
         this.running_mean_momentum = mean_momentum;
         this.running_variance_momentum = variance_momentum;
 
-        var rmean = new double[input_size.Channels];
-        Array.Fill(rmean, 0.0);
+        var rmean = new float[input_size.Channels];
+        Array.Fill(rmean, 0.0f);
         this.RunningMean = rmean;
-        var rvariance = new double[input_size.Channels];
-        Array.Fill(rvariance, 1.0);
+        var rvariance = new float[input_size.Channels];
+        Array.Fill(rvariance, 1.0f);
         this.RunningVariance = rvariance;
 
-        this.Gammas = new Vec<double>(input_size.Channels, 1.0);
-        this.Betas = new Vec<double>(input_size.Channels, 0);
+        this.Gammas = new Vec<float>(input_size.Channels, 1.0f);
+        this.Betas = new Vec<float>(input_size.Channels, 0);
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> channels) {
         // Basically this is used when not training
         // Not sure if this is how to do it when there is no batching (like during evaluation rather than training)
-        return EvaluateSync(new BatchedFeatureSet<double>(channels))[0];
+        return EvaluateSync(new BatchedFeatureSet<float>(channels))[0];
     }
 
-    public void ComputeMeansAndVariances(BatchedFeatureSet<double> features, out double[] mean_vec, out double[] variance_vec) {
+    public void ComputeMeansAndVariances(BatchedFeatureSet<float> features, out float[] mean_vec, out float[] variance_vec) {
         if (IsInference) {
-            mean_vec = (double[])this.RunningMean;
-            variance_vec = (double[])this.RunningVariance;
+            mean_vec = (float[])this.RunningMean;
+            variance_vec = (float[])this.RunningVariance;
             return;
         } 
 
-        mean_vec = new double[features.Channels];
-        variance_vec = new double[features.Channels];
+        mean_vec = new float[features.Channels];
+        variance_vec = new float[features.Channels];
         for (var channelIndex = 0; channelIndex < variance_vec.Length; channelIndex++) {
-            double mean = 0.0;
-            double m2 = 0.0;
+            float mean = 0.0f;
+            float m2 = 0.0f;
             int count = 0;
 
             foreach (var featureSet in features) {
@@ -73,7 +73,7 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
                 for (int i = 0; i < rows; i++) {
                     for (int j = 0; j < cols; j++) {
                         count++;
-                        double value = matrix[i, j];
+                        float value = matrix[i, j];
                         var delta = value - mean;
                         mean += delta / count;
                         var delta2 = value - mean;
@@ -87,7 +87,7 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
         }
     }
 
-    public override BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
+    public override BatchedFeatureSet<float> EvaluateSync(BatchedFeatureSet<float> features) {
         // Compute mean and variance across the whole batch per channel
         this.ComputeMeansAndVariances(features, out var means, out var variances);
 
@@ -97,23 +97,23 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
                 var mean = means[channelIndex];
                 var variance = variances[channelIndex];
                 
-                ((double[])RunningMean)[channelIndex] = running_mean_momentum * mean + (1 - running_mean_momentum) * RunningMean[channelIndex];
-                ((double[])RunningVariance)[channelIndex] = running_variance_momentum * variance + (1 - running_variance_momentum) * RunningVariance[channelIndex];
+                ((float[])RunningMean)[channelIndex] = running_mean_momentum * mean + (1 - running_mean_momentum) * RunningMean[channelIndex];
+                ((float[])RunningVariance)[channelIndex] = running_variance_momentum * variance + (1 - running_variance_momentum) * RunningVariance[channelIndex];
             }
         }
 
         // When run with a batch size of > 1
-        var results = new FeatureSet<double>[features.Batches];
+        var results = new FeatureSet<float>[features.Batches];
         Parallel.For(0, features.Batches, (batchIndex) => {
             var featureSet = features[batchIndex];
-            results[batchIndex] = new FeatureSet<double>(
+            results[batchIndex] = new FeatureSet<float>(
                 featureSet.Select((matrix, channelIndex) => {
                     // Compute mean and variance for the channel
                     var mean = means[channelIndex];
                     var variance = variances[channelIndex];
 
                     // Normalize the channel using mean and variance
-                    var v = Math.Sqrt(variance + 1e-8);
+                    var v = MathF.Sqrt(variance + 1e-8f);
                     var normalizedMatrix = matrix.Transform(x => (x - mean)  / v);
 
                     // Apply scaling (gamma) and shifting (beta)
@@ -126,14 +126,14 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
                 }).ToArray()
             );
         });
-        return new BatchedFeatureSet<double>(results);
+        return new BatchedFeatureSet<float>(results);
     }
 
-    const double epsilon = 1e-8;
+    const float epsilon = 1e-8f;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static double SumAll(Matrix<double>[,] matrices, int channel_to_sum) {
-        double sum = 0;
+    private static float SumAll(Matrix<float>[,] matrices, int channel_to_sum) {
+        float sum = 0;
         var batches = matrices.GetLength(0);
         for (var batchIndex = 0; batchIndex < batches; batchIndex++) {
             var matrix = matrices[batchIndex, channel_to_sum];
@@ -162,18 +162,18 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
         var channels = args.OutputErrors.Channels;
         var rows = args.OutputErrors.Rows;
         var columns = args.OutputErrors.Columns;
-        var one_over_features = 1.0 / (rows * columns);
+        var one_over_features = 1.0f / (rows * columns);
     
-        Vec<double> gradient_betas = new Vec<double>(channels);
-        Vec<double> gradient_gammas = new Vec<double>(channels);
-        var input_gradients = new Matrix<double>[batches][];
+        Vec<float> gradient_betas = new Vec<float>(channels);
+        Vec<float> gradient_gammas = new Vec<float>(channels);
+        var input_gradients = new Matrix<float>[batches][];
         for (var batch = 0; batch < batches; batch++) {
-            input_gradients[batch] = new Matrix<double>[channels];
+            input_gradients[batch] = new Matrix<float>[channels];
         }
 
         // Compute the mean and variances for for the inputs across each batch
-        double[] mean_per_channel;
-        double[] variance_per_channel;
+        float[] mean_per_channel;
+        float[] variance_per_channel;
         ComputeMeansAndVariances(args.InputBatch, out mean_per_channel, out variance_per_channel);
 
         // Gradient of L with respect to beta
@@ -205,7 +205,7 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
         // Gradient of L with respect to xHat
         // dL/dXHat = dL/dY * gamma
-        var dL_dXHats = new Matrix<double>[batches, channels];
+        var dL_dXHats = new Matrix<float>[batches, channels];
         for (var batchIndex = 0; batchIndex < batches; batchIndex++) {
             var xs = args.InputBatch[batchIndex];
             var ys = args.OutputBatch[batchIndex];
@@ -223,15 +223,15 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
             var var = variance_per_channel[channelIndex];
             var mean = mean_per_channel[channelIndex];
             var m = batches * rows * columns; 
-            var _m = 1.0 / m;
+            var _m = 1.0f / m;
             var var_plus_epsilon = var + epsilon;
-            var inv_var_plus_epsilon = 1.0 / var_plus_epsilon;
-            var sqrt = Math.Sqrt(var_plus_epsilon);
-            var _sqrt = 1.0 / sqrt;
+            var inv_var_plus_epsilon = 1.0f / var_plus_epsilon;
+            var sqrt = MathF.Sqrt(var_plus_epsilon);
+            var _sqrt = 1.0f / sqrt;
             var sum_all_dl_dxhat = SumAll(dL_dXHats, channelIndex); //loss_wrt_xhats.SelectMany(xhat => xhat).Sum();
             var term2_scalar = -sum_all_dl_dxhat / (m * sqrt);
 
-            var sum_all_dxHat_and_x = 0.0;
+            var sum_all_dxHat_and_x = 0.0f;
             {
                 var x_count = batches;
                 for (var i = 0; i < x_count; i++) {
@@ -260,7 +260,7 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
         // Return the gradients
         return new BackpropagationReturns(
-            new BatchedFeatureSet<double>(input_gradients.Select(x => new FeatureSet<double>(x)).ToArray()),
+            new BatchedFeatureSet<float>(input_gradients.Select(x => new FeatureSet<float>(x)).ToArray()),
             new Gradients (
                 this.Gammas,
                 this.Betas,
@@ -300,19 +300,19 @@ public class BatchNorm : FeedforwardNetworkLayer, INormalizationLayer {
     public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 
     public class Gradients : LayerGradients {
-        private Vec<double> Gammas;
-        private Vec<double> Betas;
-        public Vec<double> GammaGradients;
-        public Vec<double> BetaGradients;
+        private Vec<float> Gammas;
+        private Vec<float> Betas;
+        public Vec<float> GammaGradients;
+        public Vec<float> BetaGradients;
 
-        public Gradients(Vec<double> gamma, Vec<double> beta, Vec<double> gammagrad, Vec<double> betagrad) {
+        public Gradients(Vec<float> gamma, Vec<float> beta, Vec<float> gammagrad, Vec<float> betagrad) {
             this.Gammas = gamma;
             this.Betas = beta;
             this.GammaGradients = gammagrad;
             this.BetaGradients = betagrad;
         }
 
-        public override void Clip(double weight_threshold, double bias_threshold) {
+        public override void Clip(float weight_threshold, float bias_threshold) {
             ClipVector(GammaGradients, weight_threshold);
             ClipVector(BetaGradients, weight_threshold);
         }

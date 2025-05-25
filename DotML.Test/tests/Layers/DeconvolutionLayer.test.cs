@@ -8,7 +8,7 @@ public class TransposeConvolutionLayerTest {
 
     [TestMethod]
     public void TestUpsample() {
-        var input_tensor = new BatchedFeatureSet<double>(new Shape4D(1, 3, 32, 32));
+        var input_tensor = new BatchedFeatureSet<float>(new Shape4D(1, 3, 32, 32));
 
         var pool = new LocalMaxPoolingLayer(input_size: new Shape3D(3, 32, 32), size: 3, stride: 3, padding: 0);
         var pooled_tensor = pool.EvaluateSync(input_tensor);
@@ -47,7 +47,7 @@ public class TransposeConvolutionLayerTest {
                 // PyTorch uses 3 filters with 2 kernels and the bias is separate. AKA filters and kernels are transposed.
                 // My way fit better into objects, their way makes more sense as a "transposed" operation the weights are also transposed in shape
                 new ConvolutionFilter(
-                    bias: 0.20820827782154083,
+                    bias: 0.20820827782154083f,
                     kernels: [
                         Matrix<double>.FromJagged(
                             [
@@ -67,7 +67,7 @@ public class TransposeConvolutionLayerTest {
                                     0.1361919492483139
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -86,7 +86,7 @@ public class TransposeConvolutionLayerTest {
                                     -0.01662386953830719
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -105,11 +105,11 @@ public class TransposeConvolutionLayerTest {
                                     0.1157241016626358
                                 ]
                             ]
-                        )
+                        ).ToFloatSet()
                     ]
                 ),
                 new ConvolutionFilter(
-                    bias: -0.10294412076473236,
+                    bias: -0.10294412076473236f,
                     kernels: [
                         Matrix<double>.FromJagged(
                             [
@@ -129,7 +129,7 @@ public class TransposeConvolutionLayerTest {
                                     -0.08856907486915588
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -148,7 +148,7 @@ public class TransposeConvolutionLayerTest {
                                     -0.06243380904197693
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -167,7 +167,7 @@ public class TransposeConvolutionLayerTest {
                                     0.031050637364387512
                                 ]
                             ]
-                        )
+                        ).ToFloatSet()
                     ]
                 )
             ]
@@ -238,7 +238,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(x_true.Shape.Channels, layer.InputShape.Channels);
         Assert.AreEqual(x_true.Shape.Rows, layer.InputShape.Rows);
         Assert.AreEqual(x_true.Shape.Columns, layer.InputShape.Columns);
@@ -322,7 +322,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(y_true.Shape.Channels, layer.OutputShape.Channels);
         Assert.AreEqual(y_true.Shape.Rows, layer.OutputShape.Rows);
         Assert.AreEqual(y_true.Shape.Columns, layer.OutputShape.Columns);
@@ -409,7 +409,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(y_true.Shape, dY_truth.Shape);
         var dX_truth = BatchedFeatureSet<double>.FromJagged(
             [
@@ -467,7 +467,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dB_truth = Vec<double>.Wrap([
             5.23502779006958,
             4.6497673988342285
@@ -581,7 +581,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
 
         var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
@@ -614,7 +614,7 @@ public class TransposeConvolutionLayerTest {
                 // PyTorch uses 3 filters with 2 kernels and the bias is separate.
                 // My way fit better into objects, their way makes more sense as a "transposed" operation the weights are also transposed in shape
                 new ConvolutionFilter(
-                    bias: -0.1144438087940216,
+                    bias: -0.1144438087940216f,
                     kernels: [
                         Matrix<double>.FromJagged(
                             [
@@ -634,7 +634,7 @@ public class TransposeConvolutionLayerTest {
                                     0.030627533793449402
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -653,7 +653,7 @@ public class TransposeConvolutionLayerTest {
                                     0.06612609326839447
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -672,11 +672,11 @@ public class TransposeConvolutionLayerTest {
                                     0.09281061589717865
                                 ]
                             ]
-                        )
+                        ).ToFloatSet()
                     ]
                 ),
                 new ConvolutionFilter(
-                    bias: -0.06157280504703522,
+                    bias: -0.06157280504703522f,
                     kernels: [
                         Matrix<double>.FromJagged(
                             [
@@ -696,7 +696,7 @@ public class TransposeConvolutionLayerTest {
                                     -0.17615576088428497
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -715,7 +715,7 @@ public class TransposeConvolutionLayerTest {
                                     0.06182633340358734
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -734,7 +734,7 @@ public class TransposeConvolutionLayerTest {
                                     0.2106391340494156
                                 ]
                             ]
-                        )
+                        ).ToFloatSet()
                     ]
                 )
             ]
@@ -805,7 +805,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(x_true.Shape.Channels, layer.InputShape.Channels);
         Assert.AreEqual(x_true.Shape.Rows, layer.InputShape.Rows);
         Assert.AreEqual(x_true.Shape.Columns, layer.InputShape.Columns);
@@ -979,7 +979,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(y_true.Shape.Channels, layer.OutputShape.Channels);
         Assert.AreEqual(y_true.Shape.Rows, layer.OutputShape.Rows);
         Assert.AreEqual(y_true.Shape.Columns, layer.OutputShape.Columns);
@@ -1156,7 +1156,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(y_true.Shape, dY_truth.Shape);
         var dX_truth = BatchedFeatureSet<double>.FromJagged(
             [
@@ -1214,7 +1214,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dB_truth = Vec<double>.Wrap([
             0.08973312377929688,
             -2.828423023223877
@@ -1328,7 +1328,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
 
         var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
@@ -1361,7 +1361,7 @@ public class TransposeConvolutionLayerTest {
                 // PyTorch uses 3 filters with 2 kernels and the bias is separate.
                 // My way fit better into objects, their way makes more sense as a "transposed" operation the weights are also transposed in shape
                 new ConvolutionFilter(
-                    bias: -0.11500012129545212,
+                    bias: -0.11500012129545212f,
                     kernels: [
                         Matrix<double>.FromJagged(
                             [
@@ -1381,7 +1381,7 @@ public class TransposeConvolutionLayerTest {
                                     -0.1363457292318344
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -1400,7 +1400,7 @@ public class TransposeConvolutionLayerTest {
                                     -0.08466045558452606
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -1419,11 +1419,11 @@ public class TransposeConvolutionLayerTest {
                                     0.11754472553730011
                                 ]
                             ]
-                        )
+                        ).ToFloatSet()
                     ]
                 ),
                 new ConvolutionFilter(
-                    bias: 0.10262040793895721,
+                    bias: 0.10262040793895721f,
                     kernels: [
                         Matrix<double>.FromJagged(
                             [
@@ -1443,7 +1443,7 @@ public class TransposeConvolutionLayerTest {
                                     0.17945371568202972
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -1462,7 +1462,7 @@ public class TransposeConvolutionLayerTest {
                                     -0.008389800786972046
                                 ]
                             ]
-                        ),
+                        ).ToFloatSet(),
                         Matrix<double>.FromJagged(
                             [
                                 [
@@ -1481,7 +1481,7 @@ public class TransposeConvolutionLayerTest {
                                     0.050800517201423645
                                 ]
                             ]
-                        )
+                        ).ToFloatSet()
                     ]
                 )
             ]
@@ -1552,7 +1552,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(x_true.Shape.Channels, layer.InputShape.Channels);
         Assert.AreEqual(x_true.Shape.Rows, layer.InputShape.Rows);
         Assert.AreEqual(x_true.Shape.Columns, layer.InputShape.Columns);
@@ -1662,7 +1662,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(y_true.Shape.Channels, layer.OutputShape.Channels);
         Assert.AreEqual(y_true.Shape.Rows, layer.OutputShape.Rows);
         Assert.AreEqual(y_true.Shape.Columns, layer.OutputShape.Columns);
@@ -1775,7 +1775,7 @@ public class TransposeConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(y_true.Shape, dY_truth.Shape);
         var dX_truth = BatchedFeatureSet<double>.FromJagged(
             [

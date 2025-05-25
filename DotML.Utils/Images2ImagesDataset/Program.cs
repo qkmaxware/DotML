@@ -84,7 +84,7 @@ public class Program {
         var from = new DirectoryInfo(Path.Combine("data", "images", "from"));
         var to = new DirectoryInfo(Path.Combine("data", "images", "to"));
 
-        TrainingSet data = new TrainingSet();
+        TrainingSet<double> data = new TrainingSet<double>();
         foreach (var file in from.EnumerateFiles()) {
             var pair = Path.Combine("data", "images", "to", file.Name);
             if (!File.Exists(pair))
@@ -99,7 +99,7 @@ public class Program {
             var modified_bytes = MakeVector(modified, options.Channels);
             var scaled_modified_bytes = modified_bytes.Select(x => x / 255.0).ToArray();
 
-            data.Add(new TrainingPair { Input = Vec<double>.Wrap(scaled_original_bytes), Output = Vec<double>.Wrap(scaled_modified_bytes) });
+            data.Add(new TrainingPair<double> { Input = Vec<double>.Wrap(scaled_original_bytes), Output = Vec<double>.Wrap(scaled_modified_bytes) });
         }
 
         using var writer = new BinaryWriter(File.OpenWrite(Path.Combine("data", "datasets", "training.bin")));

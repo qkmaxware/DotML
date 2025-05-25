@@ -8,20 +8,20 @@ public class NormalXavierInitialization
     private static Random rng = new Random();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static double NormalRandom(double mean, double stddev) {
+    protected static float NormalRandom(double mean, double stddev) {
         double u1 = rng.NextDouble();
         double u2 = rng.NextDouble();
         double z0 = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
-        return mean + z0 * stddev;
+        return (float)(mean + z0 * stddev);
     }
 
-    public double RandomWeight(int input_count, int output_count, int parameterCount) {
+    public float RandomWeight(int input_count, int output_count, int parameterCount) {
         double stddev = Math.Sqrt(2.0 / (input_count + output_count));
         return NormalRandom(0, stddev);
     }
 
-    public double RandomBias(int input_count, int output_count, int parameterCount) {
-        return 0.01;
+    public float RandomBias(int input_count, int output_count, int parameterCount) {
+        return 0.01f;
     }
 
     public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
@@ -43,7 +43,7 @@ public class NormalXavierInitialization
             layer.ForeachNeuron(neuron => {
                 //double stddev = Math.Sqrt(2.0 / (layer.InputCount + layer.OutputCount));
                 //neuron.Bias = NormalRandom(0, stddev);
-                neuron.Bias = 0.01;
+                neuron.Bias = 0.01f;
             });
         });
     }
@@ -55,17 +55,17 @@ public class UniformXavierInitialization
     private static Random rng = new Random();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static double UniformRandom(double limit) {
-        return (rng.NextDouble() * 2 * limit) - limit;
+    protected static float UniformRandom(double limit) {
+        return (float)((rng.NextDouble() * 2 * limit) - limit);
     }
 
-    public double RandomWeight(int input_count, int output_count, int parameterCount) {
+    public float RandomWeight(int input_count, int output_count, int parameterCount) {
         double limit = Math.Sqrt(6.0 / (input_count + output_count));
         return UniformRandom(limit);
     }
 
-    public double RandomBias(int input_count, int output_count, int parameterCount) {
-        return 0.01;
+    public float RandomBias(int input_count, int output_count, int parameterCount) {
+        return 0.01f;
     }
 
     public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
@@ -87,7 +87,7 @@ public class UniformXavierInitialization
             layer.ForeachNeuron(neuron => {
                 //double limit = Math.Sqrt(6.0 / (layer.InputCount + layer.OutputCount));
                 //neuron.Bias = UniformRandom(limit);
-                neuron.Bias = 0.01;
+                neuron.Bias = 0.01f;
             });
         });
     }

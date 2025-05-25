@@ -124,8 +124,8 @@
             await js.InvokeVoidAsync("BlazorComponents.Files.download", "merged.training.bin", memory.ToArray());
         } else {
             // Different storage types or scaling factors, need to convert
-            var next = first.ToTrainingSet();
-            next.AddRange(second.ToTrainingSet());
+            var next = first.ToDoubleTrainingSet();
+            next.AddRange(second.ToDoubleTrainingSet());
 
             using var memory = new MemoryStream();
             using var writer = new BinaryWriter(memory);

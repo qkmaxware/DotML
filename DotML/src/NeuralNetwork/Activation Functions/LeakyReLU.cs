@@ -8,12 +8,12 @@ public class LeakyReLU : ActivationFunction {
 
     public static readonly ActivationFunction Instance = new LeakyReLU();
 
-    public override double Invoke(double x) {
-        return x <= 0 ? 0.01 * x : x;
+    public override float Invoke(float x) {
+        return x <= 0 ? 0.01f * x : x;
     }
 
-    public override double InvokeDerivative(double x) {
-        return x <= 0 ? 0.01 : 1;
+    public override float InvokeDerivative(float x) {
+        return x <= 0 ? 0.01f : 1f;
     }
 
     public override void ToHtml(TextWriter writer) {

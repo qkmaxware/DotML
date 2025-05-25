@@ -1140,6 +1140,33 @@ where T:INumber<T> {
     #endregion
     #region Operators
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+    private static void HadamardHelper(Matrix<T> result, Matrix<T> lhs, Matrix<T> rhs) {
+        if (!Vector<T>.IsSupported || !Vector.IsHardwareAccelerated) {
+            ElementWiseInplace(result, lhs, rhs, (l, r) => l * r);
+            return;
+        }
+        
+        var vec_size = Vector<T>.Count;
+        var len = result.Size;
+
+        var result_span = result.values;
+        var v0s = lhs.values;
+        var v1s = rhs.values;
+
+        var i = 0; var buffer = len - vec_size;
+        for (; i < buffer; i += vec_size) {
+            Vector<T> x = new Vector<T>(v0s, i);
+            Vector<T> y = new Vector<T>(v1s, i);
+            (x * y).CopyTo(result_span, i);
+        }
+        for (; i < len; i++) {
+            result[i] = lhs[i] * rhs[i];
+        }
+        
+        return;
+    }
+
     /// <summary>
     /// Perform element-wise (hadamard) multiplication between this matrix and another
     /// </summary>
@@ -1147,7 +1174,12 @@ where T:INumber<T> {
     /// <returns>element-wise multiplication</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public Matrix<T> HadamardWith(Matrix<T> rhs) {
-        return this.ElementWise(rhs, (l, r) => l * r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        var result = new Matrix<T>(rhs.Rows, rhs.Columns);
+        HadamardHelper(result, this, rhs);
+        return result;
     }
 
     /// <summary>
@@ -1156,7 +1188,58 @@ where T:INumber<T> {
     /// <param name="rhs">second matrix</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public void HadamardWithInplace(Matrix<T> rhs) {
-        this.ElementWiseInplace(rhs, (l, r) => l * r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        HadamardHelper(this, this, rhs);
+        return;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+    private static void AddHelper(Matrix<T> result, Matrix<T> lhs, Matrix<T> rhs) {
+        if (!Vector<T>.IsSupported || !Vector.IsHardwareAccelerated) {
+            ElementWiseInplace(result, lhs, rhs, (l, r) => l + r);
+            return;
+        }
+        
+        var vec_size = Vector<T>.Count;
+        var len = result.Size;
+        //var num_vectors = len / vec_size;
+        //var ceiling = num_vectors * vec_size;
+
+        var result_span = result.values;
+        var v0s = lhs.values;
+        var v1s = rhs.values;
+
+        /*
+        var result_span = result.AsSpan();
+        var v0s = v0f.AsSpan();
+        var v1s = v1f.AsSpan();
+        ReadOnlySpan<Vector<T>> lhs_vec = MemoryMarshal.Cast<T, Vector<T>>(v0s);
+        ReadOnlySpan<Vector<T>> rhs_vec = MemoryMarshal.Cast<T, Vector<T>>(v1s);
+        Span<Vector<T>> store = MemoryMarshal.Cast<T, Vector<T>>(result_span);
+
+        for (int i = 0; i < num_vectors; i++)
+        {
+            store[i] = lhs_vec[i] + rhs_vec[i];
+        }
+        for (var i = ceiling; i < len; i++)
+        {
+            result[i] = v0s[i] + v1s[i];
+        }
+        */
+
+        var i = 0; var buffer = len - vec_size;
+        for (; i < buffer; i += vec_size) {
+            Vector<T> x = new Vector<T>(v0s, i);
+            Vector<T> y = new Vector<T>(v1s, i);
+            (x + y).CopyTo(result_span, i);
+        }
+        for (; i < len; i++) {
+            result[i] = lhs[i] + rhs[i];
+        }
+        
+        return;
     }
 
     /// <summary>
@@ -1166,7 +1249,12 @@ where T:INumber<T> {
     /// <returns>result of the matrix addition</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public Matrix<T> AddWith(Matrix<T> rhs) {
-        return this.ElementWise(rhs, (l, r) => l + r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        var result = new Matrix<T>(rhs.Rows, rhs.Columns);
+        AddHelper(result, this, rhs);
+        return result;
     }
 
     /// <summary>
@@ -1175,7 +1263,11 @@ where T:INumber<T> {
     /// <param name="rhs">rhs matrix</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public void AddWithInplace(Matrix<T> rhs) {
-        this.ElementWiseInplace(rhs, (l, r) => l + r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        AddHelper(this, this, rhs);
+        return;
     }
 
     /// <summary>
@@ -1186,6 +1278,33 @@ where T:INumber<T> {
     /// <returns>result of the matrix addition</returns>
     public static Matrix<T> operator + (Matrix<T> lhs, Matrix<T> rhs) => lhs.AddWith(rhs);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+    private static void SubtractHelper(Matrix<T> result, Matrix<T> lhs, Matrix<T> rhs) {
+        if (!Vector<T>.IsSupported || !Vector.IsHardwareAccelerated) {
+            ElementWiseInplace(result, lhs, rhs, (l, r) => l - r);
+            return;
+        }
+        
+        var vec_size = Vector<T>.Count;
+        var len = result.Size;
+
+        var result_span = result.values;
+        var v0s = lhs.values;
+        var v1s = rhs.values;
+
+        var i = 0; var buffer = len - vec_size;
+        for (; i < buffer; i += vec_size) {
+            Vector<T> x = new Vector<T>(v0s, i);
+            Vector<T> y = new Vector<T>(v1s, i);
+            (x - y).CopyTo(result_span, i);
+        }
+        for (; i < len; i++) {
+            result[i] = lhs[i] - rhs[i];
+        }
+        
+        return;
+    }
+
     /// <summary>
     /// Subtract this matrix and another matrix together
     /// </summary>
@@ -1193,7 +1312,12 @@ where T:INumber<T> {
     /// <returns>result of the matrix subtraction</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public Matrix<T> SubtractWith(Matrix<T> rhs) {
-        return this.ElementWise(rhs, (l, r) => l - r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        var result = new Matrix<T>(rhs.Rows, rhs.Columns);
+        SubtractHelper(result, this, rhs);
+        return result;
     }
 
     /// <summary>
@@ -1202,7 +1326,11 @@ where T:INumber<T> {
     /// <param name="rhs">rhs matrix</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public void SubtractWithInplace(Matrix<T> rhs) {
-        this.ElementWiseInplace(rhs, (l, r) => l - r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        SubtractHelper(this, this, rhs);
+        return;
     }
 
     /// <summary>

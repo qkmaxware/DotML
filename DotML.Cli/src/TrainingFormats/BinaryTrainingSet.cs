@@ -7,10 +7,10 @@ namespace DotML.Cli.TrainingData;
 /// </summary>
 public class BinaryTrainingSet : ITrainingDataFormat {
     public bool IsInFormat(FileInfo file) {
-        return TrainingSet.IsBinaryTrainingSet(file);
+        return TrainingSet<float>.IsBinaryTrainingSet(file);
     }
-    public TrainingSet Read(FileInfo file) {
-        TrainingSet set = new TrainingSet();
+    public TrainingSet<float> Read(FileInfo file) {
+        TrainingSet<float> set = new TrainingSet<float>();
 
         using var reader = new BinaryReader(file.OpenRead());
         set.AddFrom(reader);

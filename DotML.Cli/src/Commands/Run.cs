@@ -96,7 +96,7 @@ public class Run : BaseCommand {
         Console.WriteLine("done");
 
         Console.Write($"Vectorizing '{(string.IsNullOrEmpty(InputFile) ? "stdin" : InputFile)}'...");
-        BatchedFeatureSet<double> input_vector;
+        BatchedFeatureSet<float> input_vector;
         if (string.IsNullOrEmpty(InputFile)) {
             using var reader = new StreamReader(Console.OpenStandardInput(), Console.InputEncoding);
             var input = reader.ReadToEnd();

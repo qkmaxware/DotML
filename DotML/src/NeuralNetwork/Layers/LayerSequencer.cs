@@ -222,7 +222,7 @@ public static class LayerSequencingExtensions {
     /// <param name="layer">Starting layer</param>
     /// <param name="amount">Dropout normalized percent</param>
     /// <returns>layer sequence</returns>
-    public static LayerSequence WithDropout(this IFeedforwardNetworkLayer layer, double amount) {
+    public static LayerSequence WithDropout(this IFeedforwardNetworkLayer layer, float amount) {
         yield return layer;
         yield return new DropoutLayer(layer.OutputShape, amount);
     }
@@ -435,7 +435,7 @@ public static class LayerSequencingExtensions {
     /// <param name="layer">Starting layer</param>
     /// <param name="amount">Dropout normalized percent</param>
     /// <returns>layer sequence</returns>
-    public static LayerSequence WithDropout(this LayerSequence seq, double amount) {
+    public static LayerSequence WithDropout(this LayerSequence seq, float amount) {
         Shape3D shape = new Shape3D();
         foreach (var layer in seq) {
             yield return layer;

@@ -8,8 +8,8 @@ namespace DotML.Network;
 /// Base interface for all CNN layers
 /// </summary>
 public interface IFeedforwardNetworkLayer : ILayer {
-    public FeatureSet<double> EvaluateSync(FeatureSet<double> features);
-    public BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features);
+    public FeatureSet<float> EvaluateSync(FeatureSet<float> features);
+    public BatchedFeatureSet<float> EvaluateSync(BatchedFeatureSet<float> features);
     public BackpropagationReturns Backpropagate(BackpropagationArgs args);
     public void SubtractGradients(LayerGradients? gradients);
 
@@ -73,14 +73,14 @@ public abstract class FeedforwardNetworkLayer : IFeedforwardNetworkLayer {
     /// </summary>
     /// <param name="channels">Input image represented in channels </param>
     /// <returns>output channel values</returns>
-    public abstract FeatureSet<double> EvaluateSync(FeatureSet<double> channels);
+    public abstract FeatureSet<float> EvaluateSync(FeatureSet<float> channels);
 
-    public virtual BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
-        var results = new FeatureSet<double>[features.Batches];
+    public virtual BatchedFeatureSet<float> EvaluateSync(BatchedFeatureSet<float> features) {
+        var results = new FeatureSet<float>[features.Batches];
         Parallel.For(0, results.Length, i => {
             results[i] = EvaluateSync(features[i]);
         });
-        return new BatchedFeatureSet<double>(results);
+        return new BatchedFeatureSet<float>(results);
     }
 
     public abstract BackpropagationReturns Backpropagate(BackpropagationArgs args);

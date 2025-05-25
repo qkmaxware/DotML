@@ -5,10 +5,10 @@
 @code {
     [Parameter] public int Width {get; set;}
     [Parameter] public int Height {get; set;}
-    [Parameter] public Vec<double>? Vector {get; set;}
+    [Parameter] public Vec<float>? Vector {get; set;}
     [Parameter] public double ValueScale {get; set;} = 255;
 
-    private string toDataUrlBmp(Vec<double> data) {
+    private string toDataUrlBmp(Vec<float> data) {
         var format = new BitmapFormat();
         var image = new MemoryImage(Width, Height);
         var frame_size = image.Width * image.Height;

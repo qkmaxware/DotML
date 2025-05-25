@@ -55,7 +55,7 @@ public class Image : IDecoder, IFileOnlyDecoder {
         }
     }
 
-    public IDecodedResult Decode(BatchedFeatureSet<double> output) {
+    public IDecodedResult Decode(BatchedFeatureSet<float> output) {
         var images = new SKBitmap[output.Batches];
         var channels = Math.Max(output.Channels, 3);
         for (var batch = 0; batch < images.Length; batch++) {

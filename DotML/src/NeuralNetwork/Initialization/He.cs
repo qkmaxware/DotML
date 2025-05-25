@@ -7,19 +7,19 @@ public class HeInitialization
 {
     private static Random rng = new Random();
 
-    public double RandomBias(int input_count, int output_count, int parameterCount) {
-        return 0.01;
+    public float RandomBias(int input_count, int output_count, int parameterCount) {
+        return 0.01f;
     }
 
-    private double NextGaussian() {
+    private float NextGaussian() {
         double u1 = rng.NextDouble();
         double u2 = rng.NextDouble();
         double z0 = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
-        return z0;
+        return (float)z0;
     }
 
-    public double RandomWeight(int input_count, int output_count, int parameterCount) {
-        double stddev = Math.Sqrt(2.0 / (input_count + output_count));
+    public float RandomWeight(int input_count, int output_count, int parameterCount) {
+        float stddev = MathF.Sqrt(2.0f / (input_count + output_count));
         return NextGaussian() * stddev;
     }
 }

@@ -8,47 +8,47 @@ namespace DotML.Cli.TrainingData;
 public class BinaryClassifiedVectors : ITrainingDataFormat {
 
     public int OutputClasses = 10;
-    public double ZeroValue = 0.0;
-    public double OneValue = 1.0;
+    public float ZeroValue = 0.0f;
+    public float OneValue = 1.0f;
 
     public bool IsInFormat(FileInfo file) {
-        return file.Extension == ".bin" && !TrainingSet.IsBinaryTrainingSet(file);
+        return file.Extension == ".bin" && !TrainingSet<float>.IsBinaryTrainingSet(file);
     }
 
-    public TrainingSet Read(FileInfo file) {
+    public TrainingSet<float> Read(FileInfo file) {
         return read_classified_binary_vectors(file, ZeroValue, OneValue, x => x.ReadByte());
     }
 
-    private static Vec<double> vector_from_label_index(int index, int classes, double off = -1, double on = 1) {
-        double[] values = new double[classes];
+    private static Vec<float> vector_from_label_index(int index, int classes, float off = -1, float on = 1) {
+        float[] values = new float[classes];
         Array.Fill(values, off);
         if (index >= 0 && index < classes)
             values[index] = on;
-        return Vec<double>.Wrap(values);
+        return Vec<float>.Wrap(values);
     }
 
-    private static TrainingSet read_classified_binary_vectors(FileInfo file, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
+    private static TrainingSet<float> read_classified_binary_vectors(FileInfo file, float category_off, float category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
         using var stream = file.OpenRead();
         using var reader = new BinaryReader(stream);
         
-        List<(Vec<double>, int)> items = new List<(Vec<double>, int)>();
+        List<(Vec<float>, int)> items = new List<(Vec<float>, int)>();
         int category_count = 1;
         while (stream.Position < stream.Length) {
             var category_index  = reader.ReadByte();
             category_count = Math.Max(category_count, category_index + 1);
             var vector_size     = fixed_vector_size.HasValue ? fixed_vector_size.Value : reader.ReadInt32();
-            double[] input_vec  = new double[vector_size];
+            float[] input_vec  = new float[vector_size];
 
             for (var i = 0; i < vector_size; i++) {
                 try {
-                    input_vec[i] = element_parser(reader);
+                    input_vec[i] = (float)element_parser(reader);
                 } catch {
-                    input_vec[i] = default(double);
+                    input_vec[i] = default(float);
                 }
             } 
-            items.Add((Vec<double>.Wrap(input_vec), category_index));
+            items.Add((Vec<float>.Wrap(input_vec), category_index));
         }
         
-        return new TrainingSet(items.Select(item => new TrainingPair { Input=item.Item1, Output=vector_from_label_index(item.Item2, category_count, category_off, category_on) }));
+        return new TrainingSet<float>(items.Select(item => new TrainingPair<float> { Input=item.Item1, Output=vector_from_label_index(item.Item2, category_count, category_off, category_on) }));
     }
 }

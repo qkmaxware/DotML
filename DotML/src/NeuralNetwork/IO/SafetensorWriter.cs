@@ -58,9 +58,9 @@ public class LayerSafetensorWriter : ILayerInputVisitor<int> {
     public void Visit(DropoutLayer layer, int layerIndex) { return; }
 
     public void Visit(LayerNorm norm, int layerIndex) {
-        var gamma_features = new FeatureSet<double>(norm.Gammas);
+        var gamma_features = new FeatureSet<float>(norm.Gammas);
         sb.Add($"Layers[{layerIndex}].Gammas", gamma_features);
-        var beta_features = new FeatureSet<double>(norm.Betas);
+        var beta_features = new FeatureSet<float>(norm.Betas);
         sb.Add($"Layers[{layerIndex}].Betas", beta_features);
         return;
     }

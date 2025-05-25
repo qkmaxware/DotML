@@ -28,11 +28,11 @@
 
 @code {
     [Parameter] public FeedforwardNetwork? Network { get; set; }
-    [Parameter] public Func<Task<Vec<double>?>>? InputProvider { get; set; }
-    [Parameter] public RenderFragment<(Vec<double>? Input, Vec<double> Output)>? ChildContent { get; set; }
+    [Parameter] public Func<Task<Vec<float>?>>? InputProvider { get; set; }
+    [Parameter] public RenderFragment<(Vec<float>? Input, Vec<float> Output)>? ChildContent { get; set; }
 
-    private Vec<double>? last_input;
-    private Vec<double>? last_output;
+    private Vec<float>? last_input;
+    private Vec<float>? last_output;
 
     private Exception? error = null;    
     private Task? computation = null;

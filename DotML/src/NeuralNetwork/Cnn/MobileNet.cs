@@ -40,7 +40,7 @@ public static class MobileNet {
         yield return new ActivationLayer(input_size: first.OutputShape, activation: activation ?? ReLU.Instance);
     }
 
-    private static IEnumerable<IFeedforwardNetworkLayer> PointwiseBlock(Shape3D size, int filter_count, int kernel_size = 1, int stride=1, Padding padding = Padding.Same, bool dropout = false, double dropout_percent = 0.1, ActivationFunction? activation = null) {
+    private static IEnumerable<IFeedforwardNetworkLayer> PointwiseBlock(Shape3D size, int filter_count, int kernel_size = 1, int stride=1, Padding padding = Padding.Same, bool dropout = false, float dropout_percent = 0.1f, ActivationFunction? activation = null) {
         var first = new ConvolutionLayer(input_size: size, padding: padding, stride: stride, filters: ConvolutionFilter.Make(filter_count, size.Channels, kernel_size));
         yield return first;
         yield return new LayerNorm(input_size: first.OutputShape);

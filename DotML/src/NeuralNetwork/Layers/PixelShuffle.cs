@@ -37,7 +37,7 @@ public class PixelShuffle : FeedforwardNetworkLayer {
         this.OutputShape = new Shape3D(outChannels, outHeight, outWidth);
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> input) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> input) {
         var inHeight = InputShape.Rows;
         var inWidth = InputShape.Columns;
         var inChannels = InputShape.Channels;
@@ -46,7 +46,7 @@ public class PixelShuffle : FeedforwardNetworkLayer {
         var outChannels = OutputShape.Channels;
         var outHeight = OutputShape.Rows;
         var outWidth = OutputShape.Columns;
-        var features = new FeatureSet<double>(this.OutputShape);
+        var features = new FeatureSet<float>(this.OutputShape);
 
         for (var channel = 0; channel < outChannels; channel++) {
             var feature = features[channel];
@@ -79,7 +79,7 @@ public class PixelShuffle : FeedforwardNetworkLayer {
         var inHeight = outHeight / upscale_factor;
         var inWidth = outWidth / upscale_factor;
         var in_shape = new Shape4D(args.dY.Batches, inChannels, inHeight, inWidth);
-        var dX = new BatchedFeatureSet<double>(in_shape);
+        var dX = new BatchedFeatureSet<float>(in_shape);
 
         Parallel.For(0, in_shape.Batches, (batch) => {
             var error_features = args.OutputErrors[batch];

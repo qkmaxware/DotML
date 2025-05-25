@@ -250,7 +250,7 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
 
     public IFeedforwardNetworkLayer Visit(DropoutLayer? layer, LayerConstructionArgs args) {
         (Shape3D ishape, ArgumentMap argument) = (args.InputShape, args.Arguments);
-        var dropout = argument["percent"].AsDouble();
+        var dropout = argument["percent"].AsFloat();
 
         return new DropoutLayer(ishape, dropout);
     }
@@ -279,7 +279,7 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
         (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
         var activation = activations.Decode(
             arguments["fn"].AsString().ToLower(),
-            arguments.ContainsKey("alpha") ? arguments["alpha"].AsDouble() : 0.0
+            arguments.ContainsKey("alpha") ? arguments["alpha"].AsFloat() : 0.0f
         );
 
         return new ActivationLayer(ishape, activation);

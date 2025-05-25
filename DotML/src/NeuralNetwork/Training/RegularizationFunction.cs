@@ -9,7 +9,7 @@ public abstract class RegularizationFunction {
     /// </summary>
     /// <param name="x">function input</param>
     /// <returns>function result</returns>
-    public abstract double Invoke(double x);    
+    public abstract float Invoke(float x);    
 }
 
 /// <summary>
@@ -51,7 +51,7 @@ public class NoRegularization : RegularizationFunction {
 
     public NoRegularization() { }
 
-    public override double Invoke(double x) => 0.0d;
+    public override float Invoke(float x) => 0.0f;
 
     //public double InvokeDerivative(double y) {
         //return y < 0 ? -1 : (y > 0 ? 1 : 0);
@@ -63,14 +63,14 @@ public class NoRegularization : RegularizationFunction {
 /// </summary>
 public class L1Regularization : RegularizationFunction {
 
-    public double Hyperparameter {get; set;}
+    public float Hyperparameter {get; set;}
 
-    public L1Regularization(double lambda = 0.01) {
+    public L1Regularization(float lambda = 0.01f) {
         this.Hyperparameter = lambda;
     }
 
-    public override double Invoke(double x) {
-        return Hyperparameter * Math.Abs(x);
+    public override float Invoke(float x) {
+        return Hyperparameter * MathF.Abs(x);
     }
 
     //public double InvokeDerivative(double y) {
@@ -83,13 +83,13 @@ public class L1Regularization : RegularizationFunction {
 /// </summary>
 public class L2Regularization : RegularizationFunction {
 
-    public double Hyperparameter {get; set;}
+    public float Hyperparameter {get; set;}
 
-    public L2Regularization(double lambda = 0.01) {
+    public L2Regularization(float lambda = 0.01f) {
         this.Hyperparameter = lambda;
     }
 
-    public override double Invoke(double x) {
+    public override float Invoke(float x) {
         return Hyperparameter * x * x;
     }
 

@@ -14,16 +14,16 @@ public class Sinusoid : ActivationFunction {
     /// </summary>
     /// <param name="x">function input</param>
     /// <returns>function result</returns>
-    public override double Invoke(double x) {
-        return Math.Sin(x);
+    public override float Invoke(float x) {
+        return MathF.Sin(x);
     }
     /// <summary>
     /// Invoke the derivative of the activation function with the given output from the neuron
     /// </summary>
     /// <param name="y">neuron  output</param>
     /// <returns>derivative result</returns>
-    public override double InvokeDerivative(double x) {
-        return Math.Cos(x);
+    public override float InvokeDerivative(float x) {
+        return MathF.Cos(x);
     }
 
     public override void ToHtml(TextWriter writer) {

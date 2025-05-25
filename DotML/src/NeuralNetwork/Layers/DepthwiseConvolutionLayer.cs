@@ -86,9 +86,9 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
 
     public override int TrainableParameterCount() => filters.Select(filter => filter.Select(kernel => kernel.Rows * kernel.Columns).Sum()).Sum() + filters.Length; 
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> channels) {
         var len = channels.Channels;
-        var outputs = new Matrix<double>[len];
+        var outputs = new Matrix<float>[len];
 
         for (var i = 0; i < len; i++) {
             var channel = channels[i];
@@ -99,21 +99,21 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
             outputs[i] = result;
         }
 
-        return (FeatureSet<double>)outputs;
+        return (FeatureSet<float>)outputs;
     }
 
     public class Gradients : LayerGradients {
         private ConvolutionFilter[] Filters;
-        public BatchedFeatureSet<double> FilterKernelGradients;
-        public Vec<double> BiasGradients;
+        public BatchedFeatureSet<float> FilterKernelGradients;
+        public Vec<float> BiasGradients;
 
-        public Gradients(ConvolutionFilter[] filters, BatchedFeatureSet<double> filter, Vec<double> bias) {
+        public Gradients(ConvolutionFilter[] filters, BatchedFeatureSet<float> filter, Vec<float> bias) {
             this.Filters = filters;
             this.FilterKernelGradients = filter;
             this.BiasGradients = bias;
         }
 
-        public override void Clip(double weight_threshold, double bias_threshold) {
+        public override void Clip(float weight_threshold, float bias_threshold) {
             ClipBatch(FilterKernelGradients, weight_threshold);
             ClipVector(BiasGradients, bias_threshold);
         }
@@ -170,12 +170,12 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
         }  
     }
 
-    private BatchedFeatureSet<double> BackpropagateWrtWeights(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
+    private BatchedFeatureSet<float> BackpropagateWrtWeights(BatchedFeatureSet<float> X, BatchedFeatureSet<float> dY, Shape4D filter_shape) {
         var (batch_size, in_channels, height, width) = X.Shape;
         var (_, _, output_height, output_width) = dY.Shape;
         var (filter_count, _, filter_height, filter_width) = filter_shape;
 
-        var dW = new BatchedFeatureSet<double>(filter_shape); // (filter_count, 1, filter_height, filter_width)
+        var dW = new BatchedFeatureSet<float>(filter_shape); // (filter_count, 1, filter_height, filter_width)
 
         for (var oY = 0; oY < output_height; oY++) {
             for (var oX = 0; oX < output_width; oX++) {
@@ -211,11 +211,11 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
         return dW;
     }
 
-    private Vec<double> BackpropagateWrtBias(BatchedFeatureSet<double> dY) {
+    private Vec<float> BackpropagateWrtBias(BatchedFeatureSet<float> dY) {
         var (batches, in_channels, _, _) = dY.Shape;
         var filterCount = this.filters.Length;
 
-        Vec<double> results = new Vec<double>(filterCount);
+        Vec<float> results = new Vec<float>(filterCount);
 
         for (var filterIndex = 0; filterIndex < filterCount; filterIndex++) {
             // Sum of all elements over all spatial dimensions in dY
@@ -225,7 +225,7 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
         return results;
     }
 
-    private BatchedFeatureSet<double> BackpropagateWrtInput(BatchedFeatureSet<double> X, BatchedFeatureSet<double> Y, BatchedFeatureSet<double> dY) {
+    private BatchedFeatureSet<float> BackpropagateWrtInput(BatchedFeatureSet<float> X, BatchedFeatureSet<float> Y, BatchedFeatureSet<float> dY) {
         // Input Gradient
         // To compute the gradients w.r.t. the input (dinput), you perform a convolution of dY with the filter weights, flipping them. 
         // This is the same process used to calculate the forward pass convolution but with flipped weights
@@ -236,8 +236,7 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
         var kernel_rows_m1 = kernel_height - 1;
         var kernel_cols_m1 = kernel_width - 1;
 
-        var dX = new BatchedFeatureSet<double>(X.Shape);
-        const bool flip_kernel = false;
+        var dX = new BatchedFeatureSet<float>(X.Shape);
         
         // How it worked.
         // Each filter was an output channel
@@ -272,11 +271,7 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
                                 if (out_x < 0 || out_x >= out_columns)
                                     continue;
 
-                                if (flip_kernel) {
-                                    result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
-                                } else {
-                                    result[out_y, out_x] += i * kernel[ky, kx];
-                                }
+                                result[out_y, out_x] += i * kernel[ky, kx];
                             }
                         }
                     }
@@ -285,7 +280,7 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
             }
         }
 
-        return new BatchedFeatureSet<double>(dX);
+        return new BatchedFeatureSet<float>(dX);
     }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
@@ -304,7 +299,7 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
     /// </summary>
     public BiasTensor Biases {get; init;}
 
-    public class WeightTensor : IMutableTensorLike<double> {
+    public class WeightTensor : IMutableTensorLike<float> {
         private ConvolutionFilter[] filters;
         private int kernel_columns;
         private int kernel_rows;
@@ -330,17 +325,17 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
             _ => throw new ArgumentOutOfRangeException(nameof(index))
         };
 
-        public double GetElementAt(params int[] indices) {
+        public float GetElementAt(params int[] indices) {
             return filters[indices[0]][0][indices[1], indices[2]];
         }
 
-        public void SetElementAt(double value, params int[] indices) {
+        public void SetElementAt(float value, params int[] indices) {
             var mtx = filters[indices[0]][0];
             mtx[indices[1], indices[2]] = value;
         }
     }
 
-    public class BiasTensor : IMutableTensorLike<double> {
+    public class BiasTensor : IMutableTensorLike<float> {
         private ConvolutionFilter[] filters;
 
         public BiasTensor(ConvolutionFilter[] filters) {
@@ -356,11 +351,11 @@ public class DepthwiseConvolutionLayer : FeedforwardNetworkLayer {
             _ => throw new ArgumentOutOfRangeException(nameof(index))
         };
 
-        public double GetElementAt(params int[] indices) {
+        public float GetElementAt(params int[] indices) {
             return filters[indices[0]].Bias;
         }
 
-        public void SetElementAt(double value, params int[] indices) {
+        public void SetElementAt(float value, params int[] indices) {
             filters[indices[0]].Bias = value;
         }
     }

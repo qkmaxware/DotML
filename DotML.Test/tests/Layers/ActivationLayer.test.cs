@@ -43,7 +43,7 @@ public class ActivationLayerTest {
             0.19191160798072815,
             -0.9647641777992249,
             0.3880631923675537
-        ]);
+        ]).Transform(x => (float)x);
         var Y_truth = Matrix<double>.FromFlattened(5, 5, [
             0.158983513712883,
             0.0,
@@ -70,8 +70,8 @@ public class ActivationLayerTest {
             0.19191160798072815,
             0.0,
             0.3880631923675537
-        ]);
-        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0, 0];
+        ]).Transform(x => (float)x);
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<float>(new FeatureSet<float>(X)))[0, 0];
         Assert.AreEqual(Y_truth.Shape, Y_projected.Shape);
         foreach (var (projected, truth) in Y_projected.Zip(Y_truth)) {
             Assert.AreEqual(truth, projected, 0.001);
@@ -103,7 +103,7 @@ public class ActivationLayerTest {
             -0.3737569749355316,
             0.2194594293832779,
             -0.8325057029724121
-        ]);
+        ]).Transform(x => (float)x);
 
         var dX_truth = Matrix<double>.FromFlattened(5, 5, [
             1.155787467956543,
@@ -131,12 +131,12 @@ public class ActivationLayerTest {
             -0.3737569749355316,
             0.0,
             -0.8325057029724121
-        ]);
+        ]).Transform(x => (float)x);
         var dX_projected = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
-            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
-            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY_truth)) 
+            input: new BatchedFeatureSet<float>(new FeatureSet<float>(X)),
+            output: new BatchedFeatureSet<float>(new FeatureSet<float>(Y_truth)),
+            error: new BatchedFeatureSet<float>(new FeatureSet<float>(dY_truth)) 
         )).dX[0,0];
 
         Assert.AreEqual(dX_truth.Shape, dX_projected.Shape);
@@ -174,7 +174,7 @@ public class ActivationLayerTest {
             -0.3975522518157959,
             1.107969045639038,
             1.2903298139572144
-        ]);
+        ]).Transform(x => (float)x);
         var Y_truth = Matrix<double>.FromFlattened(5, 5, [
             0.0,
             0.3062525689601898,
@@ -201,8 +201,8 @@ public class ActivationLayerTest {
             0.0,
             1.107969045639038,
             1.2903298139572144
-        ]);
-        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0, 0];
+        ]).Transform(x => (float)x);
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<float>(new FeatureSet<float>(X)))[0, 0];
         Assert.AreEqual(Y_truth.Shape, Y_projected.Shape);
         foreach (var (projected, truth) in Y_projected.Zip(Y_truth)) {
             Assert.AreEqual(truth, projected, 0.001);
@@ -234,7 +234,7 @@ public class ActivationLayerTest {
             1.3149069547653198,
             0.7884289622306824,
             1.2901266813278198
-        ]);
+        ]).Transform(x => (float)x);
 
         var dX_truth = Matrix<double>.FromFlattened(5, 5, [
             0.0,
@@ -262,12 +262,12 @@ public class ActivationLayerTest {
             0.0,
             0.7884289622306824,
             1.2901266813278198
-        ]);
+        ]).Transform(x => (float)x);
         var dX_projected = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
-            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
-            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY_truth)) 
+            input: new BatchedFeatureSet<float>(new FeatureSet<float>(X)),
+            output: new BatchedFeatureSet<float>(new FeatureSet<float>(Y_truth)),
+            error: new BatchedFeatureSet<float>(new FeatureSet<float>(dY_truth)) 
         )).dX[0,0];
 
         Assert.AreEqual(dX_truth.Shape, dX_projected.Shape);

@@ -23,7 +23,7 @@ public class ConcatenationSkipConnection : SkipConnection {
     /// <param name="skipConnection">capture source features</param>
     /// <param name="input">input features</param>
     /// <returns>combined features</returns>
-    public override BatchedFeatureSet<double> Combine(BatchedFeatureSet<double>? skipConnection, BatchedFeatureSet<double> inputs) {
+    public override BatchedFeatureSet<float> Combine(BatchedFeatureSet<float>? skipConnection, BatchedFeatureSet<float> inputs) {
         if (skipConnection is null)
             return inputs;
 
@@ -34,12 +34,12 @@ public class ConcatenationSkipConnection : SkipConnection {
         var shape = this.OutputShape;
 
         // Loop over all channels and perform matrix addition
-        FeatureSet<double>[] values = new FeatureSet<double>[batches];
+        FeatureSet<float>[] values = new FeatureSet<float>[batches];
         for (var batchIndex = 0; batchIndex < values.Length; batchIndex++) {
             var captured = skipConnection[batchIndex];
             var input = inputs[batchIndex];
 
-            Matrix<double>[] features = new Matrix<double>[shape.Channels];
+            Matrix<float>[] features = new Matrix<float>[shape.Channels];
             var i = 0;
             if (ConcatenationSide == Side.Right) {
                 // Residual to the Right
@@ -63,10 +63,10 @@ public class ConcatenationSkipConnection : SkipConnection {
                 }
             }
 
-            values[batchIndex] = new FeatureSet<double>(features);
+            values[batchIndex] = new FeatureSet<float>(features);
         }
 
-        return new BatchedFeatureSet<double>(values);
+        return new BatchedFeatureSet<float>(values);
     }
 
     public override void Initialize(IInitializer initializer) { }
@@ -81,32 +81,32 @@ public class ConcatenationSkipConnection : SkipConnection {
 
         if (ConcatenationSide == Side.Left) {
             // Remove LHS channels
-            var error_trim = new FeatureSet<double>[args.dY.Batches];
+            var error_trim = new FeatureSet<float>[args.dY.Batches];
             for (var batch = 0; batch < args.dY.Batches; batch++) {
-                var error_feats = new Matrix<double>[input_size];
+                var error_feats = new Matrix<float>[input_size];
                 for (var i = 0; i < input_size; i++) {
                     error_feats[i] = args.dY[batch, i + residual_size];
                 }
-                error_trim[batch] = new FeatureSet<double>(error_feats);
+                error_trim[batch] = new FeatureSet<float>(error_feats);
             } 
 
             return new BackpropagationReturns (
-                error: new BatchedFeatureSet<double>(error_trim), 
+                error: new BatchedFeatureSet<float>(error_trim), 
                 gradients: null
             );
         } else {
             // Remove RHS channels
-            var error_trim = new FeatureSet<double>[args.dY.Batches];
+            var error_trim = new FeatureSet<float>[args.dY.Batches];
             for (var batch = 0; batch < args.dY.Batches; batch++) {
-                var error_feats = new Matrix<double>[input_size];
+                var error_feats = new Matrix<float>[input_size];
                 for (var i = 0; i < input_size; i++) {
                     error_feats[i] = args.dY[batch, i];
                 }
-                error_trim[batch] = new FeatureSet<double>(error_feats);
+                error_trim[batch] = new FeatureSet<float>(error_feats);
             } 
 
             return new BackpropagationReturns (
-                error: new BatchedFeatureSet<double>(error_trim), 
+                error: new BatchedFeatureSet<float>(error_trim), 
                 gradients: null
             );
         }

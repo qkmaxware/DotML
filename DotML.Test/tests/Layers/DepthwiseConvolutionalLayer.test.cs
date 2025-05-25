@@ -10,7 +10,7 @@ public class DepthwiseConvolutionLayerTest {
 
     [TestMethod]
     public void TestSafetensors() {
-        var initializer = new DotML.Network.Initialization.ConstantInitialization(1.0);
+        var initializer = new DotML.Network.Initialization.ConstantInitialization(1.0f);
         var layer = new DepthwiseConvolutionLayer(new Shape3D(1, 5, 5), Padding.Valid, ConvolutionFilter.Make(1, 1, 3));
         layer.Initialize(initializer);
         var writer = new LayerSafetensorWriter(); 
@@ -39,7 +39,7 @@ public class DepthwiseConvolutionLayerTest {
             padding: Padding.Same,
             stride: 1,
             filter: [
-                new ConvolutionFilter(-0.32140570878982544, Matrix<double>.FromJagged([
+                new ConvolutionFilter(-0.32140570878982544f, Matrix<double>.FromJagged([
                     [
                         -0.054937511682510376,
                         -0.03491497039794922,
@@ -55,8 +55,8 @@ public class DepthwiseConvolutionLayerTest {
                         0.05100521445274353,
                         0.13405287265777588
                     ]
-                ])),
-                new ConvolutionFilter(0.26557299494743347, Matrix<double>.FromJagged([
+                ]).ToFloatSet()),
+                new ConvolutionFilter(0.26557299494743347f, Matrix<double>.FromJagged([
                     [
                         -0.31511175632476807,
                         -0.02245423197746277,
@@ -72,8 +72,8 @@ public class DepthwiseConvolutionLayerTest {
                         -0.30638664960861206,
                         -0.30318593978881836
                     ]
-                ])),
-                new ConvolutionFilter(-0.1666814535856247, Matrix<double>.FromJagged([
+                ]).ToFloatSet()),
+                new ConvolutionFilter(-0.1666814535856247f, Matrix<double>.FromJagged([
                     [
                         -0.18397371470928192,
                         0.3200940191745758,
@@ -89,7 +89,7 @@ public class DepthwiseConvolutionLayerTest {
                         -0.050362199544906616,
                         -0.11974000930786133
                     ]
-                ]))
+                ]).ToFloatSet())
             ]
         );
 
@@ -209,7 +209,7 @@ public class DepthwiseConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
 
         // Step 2: Forward propagate
         var Y_projected = layer.EvaluateSync(Xs);
@@ -329,7 +329,7 @@ public class DepthwiseConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         AssertExt.AreEqual(Y_truth, Y_projected);
 
         // Step 3: Backpropagate
@@ -449,7 +449,7 @@ public class DepthwiseConvolutionLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         Assert.AreEqual(Y_truth.Shape, dY_truth.Shape);
         var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
             layer: -1, 

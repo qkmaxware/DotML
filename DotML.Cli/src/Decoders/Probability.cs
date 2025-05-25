@@ -7,7 +7,7 @@ public class Probability : IDecoder, IWithLabels {
     public class Result : IDecodedResult {
         private ProbabilityDistribution[] dists;
 
-        public Result(string[]? labels, Vec<double>[] vectors) {
+        public Result(string[]? labels, Vec<float>[] vectors) {
             this.dists = vectors.Select(x => new ProbabilityDistribution(x, labels)).ToArray();
         }
 
@@ -31,11 +31,11 @@ public class Probability : IDecoder, IWithLabels {
     
     public string[]? Labels {get; set;}
 
-    public IDecodedResult Decode(BatchedFeatureSet<double> output) {
+    public IDecodedResult Decode(BatchedFeatureSet<float> output) {
         return new Result(
             this.Labels,
             output.Select(
-                b => Vec<double>.Wrap(b.SelectMany(f => f.FlattenRows()).ToArray())
+                b => Vec<float>.Wrap(b.SelectMany(f => f.FlattenRows()).ToArray())
             ).ToArray()
         );
     }

@@ -18,22 +18,22 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
             for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
                 var key = $"Layers[{layerIndex}].Filters[{filterIndex}].Kernel[{kernelIndex}]";
                 if (sb.ContainsKey(key)) {
-                    filter[kernelIndex] = sb.GetMatrix<double>(key);
+                    filter[kernelIndex] = sb.GetMatrix<float>(key);
                 }
             }
             var fbkey = $"Layers[{layerIndex}].Filters[{filterIndex}].Bias";
             if (sb.ContainsKey(fbkey)) {
-                filter.Bias = sb.GetMatrix<double>(fbkey)[0, 0];
+                filter.Bias = sb.GetMatrix<float>(fbkey)[0, 0];
             }
         }
 
         // New generic tensor method
         if (sb.ContainsKey($"Layers[{layerIndex}].Weights")) {
-            var weights = sb.GetTensor<double>($"Layers[{layerIndex}].Weights");
+            var weights = sb.GetTensor<float>($"Layers[{layerIndex}].Weights");
             weights.CopyTo(convo.Weights);
         }
         if (sb.ContainsKey($"Layers[{layerIndex}].Biases")) {
-            var biases = sb.GetTensor<double>($"Layers[{layerIndex}].Biases");
+            var biases = sb.GetTensor<float>($"Layers[{layerIndex}].Biases");
             biases.CopyTo(convo.Biases);
         }
         return;
@@ -46,24 +46,24 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
             var kernel = filter[kernelIndex][0];
             var kkey = $"Layers[{layerIndex}].Filter.Kernel[{kernelIndex}]";
             if (sb.ContainsKey(kkey)) {
-                filter[kernelIndex][0] = sb.GetMatrix<double>(kkey);
+                filter[kernelIndex][0] = sb.GetMatrix<float>(kkey);
             }
         }
         var bkey = $"Layers[{layerIndex}].Filter.Bias";
         if (sb.ContainsKey(bkey)) {
             int index = 0;
-            foreach (var bias in sb.GetMatrix<double>(bkey)) {
+            foreach (var bias in sb.GetMatrix<float>(bkey)) {
                 filter[index++].Bias = bias;
             }
         }
 
         // New generic tensor method
         if (sb.ContainsKey($"Layers[{layerIndex}].Weights")) {
-            var weights = sb.GetTensor<double>($"Layers[{layerIndex}].Weights");
+            var weights = sb.GetTensor<float>($"Layers[{layerIndex}].Weights");
             weights.CopyTo(convo.Weights);
         }
         if (sb.ContainsKey($"Layers[{layerIndex}].Biases")) {
-            var biases = sb.GetTensor<double>($"Layers[{layerIndex}].Biases");
+            var biases = sb.GetTensor<float>($"Layers[{layerIndex}].Biases");
             biases.CopyTo(convo.Biases);
         }
         return;
@@ -76,22 +76,22 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
             for (var kernelIndex = 0; kernelIndex < filter.Count; kernelIndex++) {
                 var key = $"Layers[{layerIndex}].Filters[{filterIndex}].Kernel[{kernelIndex}]";
                 if (sb.ContainsKey(key)) {
-                    filter[kernelIndex] = sb.GetMatrix<double>(key);
+                    filter[kernelIndex] = sb.GetMatrix<float>(key);
                 }
             }
             var fbkey = $"Layers[{layerIndex}].Filters[{filterIndex}].Bias";
             if (sb.ContainsKey(fbkey)) {
-                filter.Bias = sb.GetMatrix<double>(fbkey)[0, 0];
+                filter.Bias = sb.GetMatrix<float>(fbkey)[0, 0];
             }
         }
 
         // New generic tensor method
         if (sb.ContainsKey($"Layers[{layerIndex}].Weights")) {
-            var weights = sb.GetTensor<double>($"Layers[{layerIndex}].Weights");
+            var weights = sb.GetTensor<float>($"Layers[{layerIndex}].Weights");
             weights.CopyTo(convo.Weights);
         }
         if (sb.ContainsKey($"Layers[{layerIndex}].Biases")) {
-            var biases = sb.GetTensor<double>($"Layers[{layerIndex}].Biases");
+            var biases = sb.GetTensor<float>($"Layers[{layerIndex}].Biases");
             biases.CopyTo(convo.Biases);
         }
         return;
@@ -111,26 +111,26 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
         for (var gammaIndex = 0; gammaIndex < gammas.Length; gammaIndex++) {
             var key = $"Layers[{layerIndex}].Gamma[{gammaIndex}]";
             if (sb.ContainsKey(key)) {
-                gammas[gammaIndex] = sb.GetMatrix<double>(key);
+                gammas[gammaIndex] = sb.GetMatrix<float>(key);
             }
         }
         var betas = norm.Betas;
         for (var betaIndex = 0; betaIndex < betas.Length; betaIndex++) {
             var key = $"Layers[{layerIndex}].Beta[{betaIndex}]";
             if (sb.ContainsKey(key)) {
-                betas[betaIndex] = sb.GetMatrix<double>(key);
+                betas[betaIndex] = sb.GetMatrix<float>(key);
             }
         }
 
         // New generic tensor method
         if (sb.ContainsKey($"Layers[{layerIndex}].Gammas")) {
-            var weights = sb.GetTensor<double>($"Layers[{layerIndex}].Gammas");
-            var gamma_features = new FeatureSet<double>(norm.Gammas);
+            var weights = sb.GetTensor<float>($"Layers[{layerIndex}].Gammas");
+            var gamma_features = new FeatureSet<float>(norm.Gammas);
             weights.CopyTo(gamma_features);
         }
         if (sb.ContainsKey($"Layers[{layerIndex}].Betas")) {
-            var biases = sb.GetTensor<double>($"Layers[{layerIndex}].Betas");
-            var beta_features = new FeatureSet<double>(norm.Betas);
+            var biases = sb.GetTensor<float>($"Layers[{layerIndex}].Betas");
+            var beta_features = new FeatureSet<float>(norm.Betas);
             biases.CopyTo(beta_features);
         }
         return;
@@ -139,11 +139,11 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
     public void Visit(BatchNorm norm, int layerIndex) {
         var mean_key = $"Layers[{layerIndex}].Means";
         if (sb.ContainsKey(mean_key)) {
-            norm.RunningMean = Vec<double>.Wrap(sb.GetMatrix<double>(mean_key).FlattenRows().ToArray());
+            norm.RunningMean = Vec<float>.Wrap(sb.GetMatrix<float>(mean_key).FlattenRows().ToArray());
         }
         var variance_key = $"Layers[{layerIndex}].Variance";
         if (sb.ContainsKey(variance_key)) {
-            norm.RunningVariance = Vec<double>.Wrap(sb.GetMatrix<double>(variance_key).FlattenRows().ToArray());
+            norm.RunningVariance = Vec<float>.Wrap(sb.GetMatrix<float>(variance_key).FlattenRows().ToArray());
         }
         
         /*var gammas = norm.Gammas;
@@ -166,11 +166,11 @@ public class LayerSafetensorReader : ILayerInputVisitor<int> {
     public void Visit(DenseLinearLayer conn, int layerIndex) {
         var wkey = $"Layers[{layerIndex}].Weights";
         if (sb.ContainsKey(wkey)) {
-            conn.Weights = sb.GetMatrix<double>(wkey);
+            conn.Weights = sb.GetMatrix<float>(wkey);
         }
         var bkey = $"Layers[{layerIndex}].Biases";
         if (sb.ContainsKey(bkey)) {
-            conn.Biases = Vec<double>.Wrap(sb.GetMatrix<double>(bkey).FlattenRows().ToArray());
+            conn.Biases = Vec<float>.Wrap(sb.GetMatrix<float>(bkey).FlattenRows().ToArray());
         }
         return;
     }

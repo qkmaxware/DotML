@@ -40,7 +40,7 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Layers</td><td>@validation_report.network.LayerCount</td>
+                        <td>Layers</td><td>@validation_report.network?.LayerCount</td>
                     </tr>
                     <tr>
                         <td>Untrainable Parameters</td><td>@validation_report.untrainable</td>
@@ -49,10 +49,10 @@
                         <td>Disk Size</td><td>@validation_report.size</td>
                     </tr>
                     <tr>
-                        <td>Input Shape</td><td>@validation_report.network.InputShape</td>
+                        <td>Input Shape</td><td>@validation_report.network?.InputShape</td>
                     </tr>
                     <tr>
-                        <td>Output Shape</td><td>@validation_report.network.OutputShape</td>
+                        <td>Output Shape</td><td>@validation_report.network?.OutputShape</td>
                     </tr>
                 </tbody>
             </table>
@@ -65,7 +65,7 @@
                         <th>Output Shape</th>
                     </thead>
                     <tbody>
-                        @for (var layerIndex = 0; layerIndex < validation_report.network.LayerCount; layerIndex++) {
+                        @for (var layerIndex = 0; layerIndex < (validation_report.network?.LayerCount ?? 0); layerIndex++) {
                             var layer = validation_report.network.GetLayer(layerIndex);
                             <tr>
                                 <td>@layer.GetType().Name</td>
@@ -147,7 +147,7 @@
         public DataSize size;
         public int trainable;
         public int untrainable;
-        public FeedforwardNetwork network;
+        public FeedforwardNetwork? network;
     }
     private void validate() {
         if (editor is null) {
@@ -163,7 +163,7 @@
         Task.Run(async () => {
             try {
                 var network = decoder.Deserialize(code);
-                var size_valid = network.ValidateSizes();
+                var size_valid = network.HasValidSizes();
                 var v = new ValidationReport {
                     Success = size_valid,
                     exception = size_valid ? null : new Exception("Invalid layer size detected, see layer breakdown for more information"),

@@ -93,7 +93,7 @@ public class BatchNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var Y_pred = layer.EvaluateSync(X_true);
         var Y_true = BatchedFeatureSet<double>.FromJagged(
             [
@@ -176,7 +176,7 @@ public class BatchNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         AssertExt.AreEqual(Y_true, Y_pred);
 
         // Backward pass
@@ -261,7 +261,7 @@ public class BatchNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dX_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -343,7 +343,7 @@ public class BatchNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var back = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
             input: X_true,
@@ -353,9 +353,9 @@ public class BatchNormTest {
 
         Assert.IsInstanceOfType<BatchNorm.Gradients>(back.Gradients);
         var gradients = (BatchNorm.Gradients)back.Gradients;
-        var dBeta_true = new Vec<double>(new double[] {-2.10892653465271 });
+        var dBeta_true = new Vec<float>(new float[] {-2.10892653465271f });
         AssertExt.AreEqual(dBeta_true, gradients.BetaGradients);
-        var dGamma_true = new Vec<double>(new double[] { 4.422542572021484 });
+        var dGamma_true = new Vec<float>(new float[] { 4.422542572021484f });
         AssertExt.AreEqual(dGamma_true, gradients.GammaGradients);
 
         var dX_pred = back.dX;
@@ -523,7 +523,7 @@ public class BatchNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var Y_pred = layer.EvaluateSync(X_true);
         var Y_true = BatchedFeatureSet<double>.FromJagged(
             [
@@ -680,7 +680,7 @@ public class BatchNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         AssertExt.AreEqual(Y_true, Y_pred);
 
         // Backward pass
@@ -839,7 +839,7 @@ public class BatchNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dX_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [

@@ -14,8 +14,8 @@ public class HyperbolicTangent : ActivationFunction {
     /// </summary>
     /// <param name="x">function input</param>
     /// <returns>function result</returns>
-    public override double Invoke(double x) {
-        var result = Math.Tanh(x);
+    public override float Invoke(float x) {
+        var result = MathF.Tanh(x);
         return result;
         /*if (double.IsPositiveInfinity(x))
             return 1;
@@ -31,7 +31,7 @@ public class HyperbolicTangent : ActivationFunction {
     /// </summary>
     /// <param name="x">neuron output</param>
     /// <returns>derivative result</returns>
-    public override double InvokeDerivative(double x) {
+    public override float InvokeDerivative(float x) {
         // Actual derivative... 1 - Invoke(x)^2
         // Derivative using Invoke(x) as input already
         var y = Invoke(x);

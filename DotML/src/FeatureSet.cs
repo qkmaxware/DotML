@@ -223,6 +223,25 @@ public class BatchedFeatureSet<T> :
     /// <returns>feature set array</returns>
     public FeatureSet<T>[] AsArray() => this.batches;
 
+    public BatchedFeatureSet<R> Transform<R>(Func<T,R> transformation) where R:INumber<R> {
+        var next = new BatchedFeatureSet<R>(this.Shape);
+
+        for (var b = 0; b < Batches; b++) {
+            for (var f = 0; f < Channels; f++) {
+                var from = this[b, f];
+                var to = next[b, f];
+
+                for (var r = 0; r < from.Rows; r++) {
+                    for (var c = 0; c < from.Columns; c++) {
+                        to[r,c] = transformation(from[r,c]);
+                    }
+                }
+            }
+        }
+
+        return next;
+    }
+
     public string ToJaggedArrayString() {
         StringBuilder sb = new StringBuilder();
         sb.Append('[');
@@ -494,6 +513,23 @@ public class FeatureSet<T> :
     /// </summary>
     /// <returns>matrix array</returns>
     public Matrix<T>[] AsArray() => this.channels;
+
+    public FeatureSet<R> Transform<R>(Func<T,R> transformation) where R:INumber<R> {
+        var next = new FeatureSet<R>(this.Shape);
+
+        for (var f = 0; f < Channels; f++) {
+            var from = this[f];
+            var to = next[f];
+
+            for (var r = 0; r < from.Rows; r++) {
+                for (var c = 0; c < from.Columns; c++) {
+                    to[r,c] = transformation(from[r,c]);
+                }
+            }
+        }
+
+        return next;
+    }
 
     public string ToJaggedArrayString() {
         StringBuilder sb = new StringBuilder();

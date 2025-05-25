@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
@@ -107,13 +108,13 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
     public override int TrainableParameterCount() => Filters.Select(filter => filter.Select(kernel => kernel.Rows * kernel.Columns).Sum()).Sum() + FilterCount;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private Matrix<double>[] Convolve(Matrix<double>[] inputs) {
+    private Matrix<float>[] Convolve(Matrix<float>[] inputs) {
         var filtersLength       = filters.Length;
-        var output_list         = new Matrix<double>[filtersLength];
+        var output_list         = new Matrix<float>[filtersLength];
 
         for (var filterIndex = 0; filterIndex < filtersLength; filterIndex++) {
             var filter = filters[filterIndex];
-            var output = Matrix<double>.ConvolveEach(
+            var output = Matrix<float>.ConvolveEach(
                 inputs, filter, 
                 strideX: StrideX, strideY: StrideY, 
                 paddingX: ColumnsPadding, paddingY: RowsPadding,
@@ -125,22 +126,22 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
         return output_list;
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
-        return new FeatureSet<double>(this.Convolve((Matrix<double>[])inputs));
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> inputs) {
+        return new FeatureSet<float>(this.Convolve((Matrix<float>[])inputs));
     }
 
     public class Gradients : LayerGradients {
         private ConvolutionFilter[] Filters;
-        public BatchedFeatureSet<double> FilterKernelGradients;
-        public Vec<double> BiasGradients;
+        public BatchedFeatureSet<float> FilterKernelGradients;
+        public Vec<float> BiasGradients;
 
-        public Gradients(ConvolutionFilter[] filters, BatchedFeatureSet<double> weights, Vec<double> bias) {
+        public Gradients(ConvolutionFilter[] filters, BatchedFeatureSet<float> weights, Vec<float> bias) {
             this.Filters = filters;
             this.FilterKernelGradients = weights;
             this.BiasGradients = bias;
         }
 
-        public override void Clip(double weight_threshold, double bias_threshold) {
+        public override void Clip(float weight_threshold, float bias_threshold) {
             base.ClipBatch(FilterKernelGradients, weight_threshold);
             base.ClipVector(BiasGradients, bias_threshold);
         }
@@ -214,7 +215,7 @@ Mine
     -4.323853240887876,  1.008588256967232,   1.2048606242936302
 ]
     */
-    private BatchedFeatureSet<double> BackpropagateWrtWeights(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
+    private BatchedFeatureSet<float> BackpropagateWrtWeights(BatchedFeatureSet<float> X, BatchedFeatureSet<float> dY, Shape4D filter_shape) {
         // Kernel/Weight Gradients
         // dW(filter, kernel, row, col) = dy(filter, i, j) * input(c, i+k-1, j+l-1)
         // ----------------------------------------------------------------------------
@@ -222,7 +223,7 @@ Mine
         var (_, _, output_height, output_width) = dY.Shape;
         var (out_channels, _, filter_height, filter_width) = filter_shape;
 
-        var dW = new BatchedFeatureSet<double>(filter_shape); // (out_channels, kernel_count, filter_height, filter_width)
+        var dW = new BatchedFeatureSet<float>(filter_shape); // (out_channels, kernel_count, filter_height, filter_width)
 
         for (var oY = 0; oY < output_height; oY++) {
             // Region on the input which was used to compute this value on the output
@@ -264,7 +265,7 @@ Mine
         return dW;
     }
 
-    private Vec<double> BackpropagateWrtBias(BatchedFeatureSet<double> dY) {
+    private Vec<float> BackpropagateWrtBias(BatchedFeatureSet<float> dY) {
         // Bias Gradients
         // dL/dB = dL/dY * dY/dB = dY * dY/dB
         // dY/dB = [1; ... ; 1] because b is constant wrt y
@@ -273,24 +274,59 @@ Mine
         // Compute dL/dB by summing over batches, rows, and columns
         var featureCount = dY.Channels; // Should be equal to FilterCount
         var batchCount = dY.Batches;
-        var dB = new double[featureCount];
-        for (var featureIndex = 0; featureIndex < featureCount; featureIndex++) {
-            // Compute sum 
-            var sum = 0.0;
-            for (var batchIndex = 0; batchIndex < batchCount; batchIndex++) {
-                var span = dY[batchIndex, featureIndex].AsSpan();
-                foreach (var item in span)
-                    sum += item;
-            }
+        var dB = new float[featureCount];
+        var vector_size = Vector<float>.Count;  // TODO check Vector<double>.IsHardwareAccelerated tp determine SIMD vs non SIMD path
 
-            // Apply biases
-            dB[featureIndex] = sum;
+        if (Vector.IsHardwareAccelerated)
+        {
+            for (var featureIndex = 0; featureIndex < featureCount; featureIndex++)
+            {
+                // Compute sum
+                var sum = 0.0f;
+                Vector<float> vsum = Vector<float>.Zero;
+                for (var batchIndex = 0; batchIndex < batchCount; batchIndex++)
+                {
+                    var span = dY[batchIndex, featureIndex].AsReadOnlySpan();
+
+                    int k = 0;
+                    int lengthMinusBuffer = span.Length - vector_size;
+                    for (; k <= lengthMinusBuffer; k += vector_size)
+                    {
+                        vsum += new Vector<float>(span.Slice(k, vector_size));
+                    }
+
+                    for (; k < span.Length; k++)
+                    {
+                        sum += span[k];
+                    }
+
+                }
+
+                // Apply biases
+                sum += Vector.Sum(vsum);
+                dB[featureIndex] = sum;
+            }
+        }
+        else
+        {
+            for (var featureIndex = 0; featureIndex < featureCount; featureIndex++) {
+                // Compute sum
+                var sum = 0.0f;
+                for (var batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+                    var span = dY[batchIndex, featureIndex].AsReadOnlySpan();
+                    for (var k = 0; k < span.Length; k++)
+                        sum += span[k];
+                }
+    
+                // Apply biases
+                dB[featureIndex] = sum;
+            }
         }
 
-        return Vec<double>.Wrap(dB);
+        return Vec<float>.Wrap(dB);
     }
 
-    private BatchedFeatureSet<double> BackpropagateWrtInput(BatchedFeatureSet<double> X, BatchedFeatureSet<double> dY, Shape4D filter_shape) {
+    private BatchedFeatureSet<float> BackpropagateWrtInput(BatchedFeatureSet<float> X, BatchedFeatureSet<float> dY, Shape4D filter_shape) {
         // Input Gradient
         // To compute the gradients w.r.t. the input (dinput), you perform a convolution of dY with the filter weights, flipping them. 
         // This is the same process used to calculate the forward pass convolution but with flipped weights
@@ -299,7 +335,7 @@ Mine
         var (_, out_channels, in_rows, in_columns) = dY.Shape;
         var (_, _, kernel_height, kernel_width) = filter_shape;
 
-        var dX = new BatchedFeatureSet<double>(X.Shape);
+        var dX = new BatchedFeatureSet<float>(X.Shape);
         
         // How it worked.
         // Each filter was an output channel
@@ -347,7 +383,7 @@ Mine
             }
         }
 
-        return new BatchedFeatureSet<double>(dX);
+        return new BatchedFeatureSet<float>(dX);
     }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);
@@ -365,7 +401,7 @@ Mine
     /// </summary>
     public BiasTensor Biases {get; init;}
 
-    public class WeightTensor : IMutableTensorLike<double> {
+    public class WeightTensor : IMutableTensorLike<float> {
         private ConvolutionFilter[] filters;
         private int kernel_count;
         private int kernel_columns;
@@ -396,17 +432,17 @@ Mine
             _ => throw new ArgumentOutOfRangeException(nameof(index))
         };
 
-        public double GetElementAt(params int[] indices) {
+        public float GetElementAt(params int[] indices) {
             return filters[indices[0]][indices[1]][indices[2], indices[3]];
         }
 
-        public void SetElementAt(double value, params int[] indices) {
+        public void SetElementAt(float value, params int[] indices) {
             var mtx = filters[indices[0]][indices[1]];
             mtx[indices[2], indices[3]] = value;
         }
     }
 
-    public class BiasTensor : IMutableTensorLike<double> {
+    public class BiasTensor : IMutableTensorLike<float> {
         private ConvolutionFilter[] filters;
 
         public BiasTensor(ConvolutionFilter[] filters) {
@@ -422,11 +458,11 @@ Mine
             _ => throw new ArgumentOutOfRangeException(nameof(index))
         };
 
-        public double GetElementAt(params int[] indices) {
+        public float GetElementAt(params int[] indices) {
             return filters[indices[0]].Bias;
         }
 
-        public void SetElementAt(double value, params int[] indices) {
+        public void SetElementAt(float value, params int[] indices) {
             filters[indices[0]].Bias = value;
         }
     }

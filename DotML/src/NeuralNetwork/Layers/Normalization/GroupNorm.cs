@@ -16,11 +16,11 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
     /// <summary>
     /// Normalization scaling factor
     /// </summary>
-    [JsonIgnore] public Matrix<double>[] Gammas {get; set;}
+    [JsonIgnore] public Matrix<float>[] Gammas {get; set;}
     /// <summary>
     /// Normalization shifting offset
     /// </summary>
-    [JsonIgnore] public Matrix<double>[] Betas {get; set;}
+    [JsonIgnore] public Matrix<float>[] Betas {get; set;}
 
     public int NumberOfGroups {get; private set;}
 
@@ -33,21 +33,21 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
             throw new ArgumentException($"Number of groups {num_groups} must divide the number of channels {input_size.Channels} evenly.");
         }
 
-        this.Gammas = new Matrix<double>[input_size.Channels];
+        this.Gammas = new Matrix<float>[input_size.Channels];
         for (var i = 0; i < input_size.Channels; i++)
-            Gammas[i] = new Matrix<double>(input_size.Rows, input_size.Columns, 1.0);
-        this.Betas = new Matrix<double>[input_size.Channels];
+            Gammas[i] = new Matrix<float>(input_size.Rows, input_size.Columns, 1.0f);
+        this.Betas = new Matrix<float>[input_size.Channels];
         for (var i = 0; i < input_size.Channels; i++)
-            Betas[i] = new Matrix<double>(input_size.Rows, input_size.Columns, 0.0);
+            Betas[i] = new Matrix<float>(input_size.Rows, input_size.Columns, 0.0f);
     }
 
-    private void ComputeMeansAndVariances(FeatureSet<double> features, int range_start, int range_end, out double means, out double variance) {
+    private void ComputeMeansAndVariances(FeatureSet<float> features, int range_start, int range_end, out float means, out float variance) {
         if (features.Channels % NumberOfGroups != 0) {
             throw new ArgumentException($"Number of groups {NumberOfGroups} must divide the number of channels {features.Channels} evenly.");
         }
 
-        double mean = 0.0;
-        double m2 = 0.0;
+        float mean = 0.0f;
+        float m2 = 0.0f;
         int count = 0;
         for (var channelIndex = range_start; channelIndex < range_end; channelIndex++) {
             var matrix = features[channelIndex];
@@ -56,7 +56,7 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
             for (int i = 0; i < rows; i++) {
                 for (int j = 0; j < cols; j++) {
                     count++;
-                    double value = matrix[i, j];
+                    float value = matrix[i, j];
                     var delta = value - mean;
                     mean += delta / count;
                     var delta2 = value - mean;
@@ -68,9 +68,9 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
         variance = m2 / count;
     }
 
-    public void ComputeMeansAndVariances(FeatureSet<double> features, out double[] mean_vec, out double[] variance_vec) {
-        mean_vec = new double[NumberOfGroups];
-        variance_vec = new double[NumberOfGroups];
+    public void ComputeMeansAndVariances(FeatureSet<float> features, out float[] mean_vec, out float[] variance_vec) {
+        mean_vec = new float[NumberOfGroups];
+        variance_vec = new float[NumberOfGroups];
 
         var features_per_group = features.Channels / NumberOfGroups;
         for (var group = 0; group < NumberOfGroups; group++) {
@@ -84,11 +84,11 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
     }
 
 
-    const double epsilon = 1e-8;
+    const float epsilon = 1e-8f;
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> x) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> x) {
         var len = x.Channels;
-        Matrix<double>[] outputs = new Matrix<double>[len];
+        Matrix<float>[] outputs = new Matrix<float>[len];
 
         // Compute the mean and variance across all inputs 
         var features_per_group = x.Channels / NumberOfGroups;
@@ -101,7 +101,7 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
             var mean = means[group];
             var variance = variances[group];
-            var sqrt = 1.0 / Math.Sqrt(variance + epsilon);      
+            var sqrt = 1.0f / MathF.Sqrt(variance + epsilon);      
         
             for (var channel = start_at; channel < end_at; channel++) {
                 // Normalize the channel using mean and variance
@@ -117,12 +117,12 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
             }
         }
 
-        return new FeatureSet<double>(outputs);
+        return new FeatureSet<float>(outputs);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static double SumAll(Matrix<double>[] values, int start_index, int end_index) {
-        double sum = 0.0;
+    private static float SumAll(Matrix<float>[] values, int start_index, int end_index) {
+        float sum = 0.0f;
         for (var i = start_index; i < end_index; i++) {
             var arr = values[i].AsSpan();
             for (var j = 0; j < arr.Length; j++) {
@@ -135,16 +135,16 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
         var (batches, channels, rows, columns) = args.OutputErrors.Shape;
         
-        Matrix<double>[] gradient_betas = new Matrix<double>[channels];
-        Matrix<double>[] gradient_gammas = new Matrix<double>[channels];
-        var input_gradients = new Matrix<double>[batches][];
+        Matrix<float>[] gradient_betas = new Matrix<float>[channels];
+        Matrix<float>[] gradient_gammas = new Matrix<float>[channels];
+        var input_gradients = new Matrix<float>[batches][];
         for (var batch = 0; batch < batches; batch++) {
-            input_gradients[batch] = new Matrix<double>[channels];
+            input_gradients[batch] = new Matrix<float>[channels];
         }
 
         // Compute the mean and variances for for the inputs across each batch
-        var mean_per_batch = new double[batches, NumberOfGroups];
-        var variance_per_batch = new double[batches, NumberOfGroups];
+        var mean_per_batch = new float[batches, NumberOfGroups];
+        var variance_per_batch = new float[batches, NumberOfGroups];
         for (var b = 0; b < batches; b++) {
             ComputeMeansAndVariances(args.InputBatch[b], out var means, out var variances);
             for (var grp = 0; grp < NumberOfGroups; grp++) {
@@ -162,7 +162,7 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
             // Gradient of L with respect to beta
             // dL/dB = Sum_b( dL/dY )
-            var gradient_beta = new Matrix<double>(rows, columns);
+            var gradient_beta = new Matrix<float>(rows, columns);
             for (var batchIndex = 0; batchIndex < batches; batchIndex++) {
                 gradient_beta.AddWithInplace((args.OutputErrors[batchIndex])[channel]);
             }
@@ -170,10 +170,10 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
             // Gradient of L with respect to gamma
             // dL/dG = Sum_b ( dL/dY * xHat )
-            var gradient_gamma = new Matrix<double>(rows, columns);
+            var gradient_gamma = new Matrix<float>(rows, columns);
             for (var batchIndex = 0; batchIndex < batches; batchIndex++) {
                 // Compute xHat from y
-                Matrix<double> xhat_k;
+                Matrix<float> xhat_k;
                 xhat_k = args.OutputBatch[batchIndex][channel] - beta;
                 xhat_k.ElementWiseInplace(gamma, (xhat, g) => xhat / (g + epsilon));
                 
@@ -194,7 +194,7 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
             // Gradient of L with respect to xHat
             // dL/dXHat = dL/dY * gamma
-            var loss_wrt_xhats = new Matrix<double>[channels];
+            var loss_wrt_xhats = new Matrix<float>[channels];
             for (var channel = 0; channel < channels; channel++) {
                 var gamma = Gammas[channel];
                 var loss_wrt_y_k = args.OutputErrors[batch][channel];
@@ -204,17 +204,17 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
 
             // Gradient of L with respect to x
             var m = features_per_group * rows * columns;
-            var _m = 1.0 / m;
-            var var_plus_epsilons = new double[NumberOfGroups];
-            var inv_var_plus_epsilons = new double[NumberOfGroups];
-            var sqrts = new double[NumberOfGroups];
-            var _sqrts = new double[NumberOfGroups];
-            var term2_scalars = new double[NumberOfGroups];
+            var _m = 1.0f / m;
+            var var_plus_epsilons = new float[NumberOfGroups];
+            var inv_var_plus_epsilons = new float[NumberOfGroups];
+            var sqrts = new float[NumberOfGroups];
+            var _sqrts = new float[NumberOfGroups];
+            var term2_scalars = new float[NumberOfGroups];
             for (var c = 0; c < NumberOfGroups; c++) {
                 var var_plus_epsilon = variance_per_batch[batch, c] + epsilon;
-                var inv_var_plus_epsilon = 1.0 / var_plus_epsilon;
-                var sqrt = Math.Sqrt(var_plus_epsilon);
-                var _sqrt = 1.0 / sqrt;
+                var inv_var_plus_epsilon = 1.0f / var_plus_epsilon;
+                var sqrt = MathF.Sqrt(var_plus_epsilon);
+                var _sqrt = 1.0f / sqrt;
                 var grp_start = c * features_per_group;
                 var grp_end = grp_start + features_per_group;
                 var sum_all_dl_dxhat = SumAll(loss_wrt_xhats, grp_start, grp_end);
@@ -227,7 +227,7 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
                 term2_scalars[c] = term2_scalar;
             }
 
-            var sum_all_dxHat_and_x = 0.0;
+            var sum_all_dxHat_and_x = 0.0f;
             {
                 var x_count = loss_wrt_xhats.Length;
                 for (var i = 0; i < x_count; i++) {
@@ -257,7 +257,7 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
         }
     
         return new BackpropagationReturns(
-            new BatchedFeatureSet<double>(input_gradients.Select(x => new FeatureSet<double>(x)).ToArray()),
+            new BatchedFeatureSet<float>(input_gradients.Select(x => new FeatureSet<float>(x)).ToArray()),
             new Gradients (
                 this.Gammas,
                 this.Betas,
@@ -303,19 +303,19 @@ public class GroupNorm : FeedforwardNetworkLayer, INormalizationLayer {
     }
 
     public class Gradients : LayerGradients {
-        private Matrix<double>[] Gammas;
-        private Matrix<double>[] Betas;
-        public Matrix<double>[] GammaGradients;
-        public Matrix<double>[] BetaGradients;
+        private Matrix<float>[] Gammas;
+        private Matrix<float>[] Betas;
+        public Matrix<float>[] GammaGradients;
+        public Matrix<float>[] BetaGradients;
 
-        public Gradients(Matrix<double>[] gamma, Matrix<double>[] beta, Matrix<double>[] gammagrad, Matrix<double>[] betagrad) {
+        public Gradients(Matrix<float>[] gamma, Matrix<float>[] beta, Matrix<float>[] gammagrad, Matrix<float>[] betagrad) {
             this.Gammas = gamma;
             this.Betas = beta;
             this.GammaGradients = gammagrad;
             this.BetaGradients = betagrad;
         }
 
-        public override void Clip(double weight_threshold, double bias_threshold) {
+        public override void Clip(float weight_threshold, float bias_threshold) {
             foreach (var matrix in GammaGradients)
                 ClipMatrix(matrix, weight_threshold);
             foreach (var matrix in BetaGradients)

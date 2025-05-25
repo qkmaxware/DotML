@@ -166,13 +166,13 @@ public abstract class LocalPoolingLayer : PoolingLayer {
     public LocalPoolingLayer(Shape3D input_size, int width, int height, int strideX, int strideY, int paddingX, int paddingY) : base(input_size, width, height, strideX, strideY, paddingX, paddingY) { }
 
 
-    protected abstract double Accumulate(double current, double delta, int count);
-    protected abstract double Aggregate(double current, int count);
+    protected abstract float Accumulate(float current, float delta, int count);
+    protected abstract float Aggregate(float current, int count);
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> inputs) {
         // Each channel generates exactly 1 output
         var channels = inputs.Channels;
-        var pooled = new Matrix<double>[channels];
+        var pooled = new Matrix<float>[channels];
 
         var filterWidth = this.FilterWidth;
         var filterHeight = this.FilterHeight;
@@ -191,7 +191,7 @@ public abstract class LocalPoolingLayer : PoolingLayer {
         for (var channel = 0; channel < channels; channel++) {
             var input = inputs[channel];
 
-            var result = new Matrix<double>(outputWidth, outputHeight);
+            var result = new Matrix<float>(outputWidth, outputHeight);
             pooled[channel] = result;
 
             for (var row = 0; row < outputHeight; row++) {
@@ -201,7 +201,7 @@ public abstract class LocalPoolingLayer : PoolingLayer {
                     var StartX = col * stridex;
                     var EndX = col * stridex + filterWidth;
 
-                    var accumulator = 0.0;
+                    var accumulator = 0.0f;
                     var count = 0;
                     for (var irow = StartY; irow < EndY; irow++) {
                         var real_irow = irow - PaddingY;
@@ -229,11 +229,11 @@ public abstract class LocalPoolingLayer : PoolingLayer {
             }
         }
 
-        return (FeatureSet<double>)pooled;
+        return (FeatureSet<float>)pooled;
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
-        FeatureSet<double>[] input_errors = new FeatureSet<double>[args.OutputBatch.Batches];
+        FeatureSet<float>[] input_errors = new FeatureSet<float>[args.OutputBatch.Batches];
 
         Parallel.For(0, args.OutputBatch.Batches, batchIndex => {
             // Extract inputs, outputs, and errors
@@ -242,7 +242,7 @@ public abstract class LocalPoolingLayer : PoolingLayer {
             var errors = args.OutputErrors[batchIndex];
 
             int featureCount = inputs.Channels;
-            var batchErrors = new Matrix<double>[featureCount];
+            var batchErrors = new Matrix<float>[featureCount];
 
             var filterWidth = FilterWidth;
             var filterHeight = FilterHeight;
@@ -255,7 +255,7 @@ public abstract class LocalPoolingLayer : PoolingLayer {
                 var error = errors[featureIndex];
 
                 // Initialize the error matrix for the input
-                var inputError = new Matrix<double>(input.Rows, input.Columns);
+                var inputError = new Matrix<float>(input.Rows, input.Columns);
 
                 // Loop over output
                 for (int row = 0; row < output.Rows; row++) {
@@ -286,18 +286,18 @@ public abstract class LocalPoolingLayer : PoolingLayer {
             });
 
             // Assign the errors for the input features into the batch
-            input_errors[batchIndex] = new FeatureSet<double>(batchErrors);
+            input_errors[batchIndex] = new FeatureSet<float>(batchErrors);
         });
         
 
         // Pass errors along for next layer
         return new BackpropagationReturns (
-            new BatchedFeatureSet<double>(input_errors),
+            new BatchedFeatureSet<float>(input_errors),
             null
         );
     }
 
-    protected abstract void Backpropagate(Matrix<double> inputError, Matrix<double> input, double error, int filterSize, int startX, int endX, int startY, int endY);
+    protected abstract void Backpropagate(Matrix<float> inputError, Matrix<float> input, float error, int filterSize, int startX, int endX, int startY, int endY);
 }
 
 /// <summary>
@@ -359,20 +359,20 @@ public class LocalMaxPoolingLayer : LocalPoolingLayer {
     /// <param name="paddingY">vertical input stride</param>
     public LocalMaxPoolingLayer(Shape3D input_size, int width, int height, int strideX, int strideY, int paddingX, int paddingY) : base(input_size, width, height, strideX, strideY, paddingX, paddingY) { }
 
-    protected override double Accumulate(double current, double delta, int count) {
+    protected override float Accumulate(float current, float delta, int count) {
         if (count == 1)
             return delta;                   // First accumulated value
         return Math.Max(current, delta);    // Subsequent accumulated values
     }
 
-    protected override double Aggregate(double current, int count){
+    protected override float Aggregate(float current, int count){
         return current;
     }
     
-   protected override void Backpropagate(Matrix<double> inputError, Matrix<double> input, double error, int filterSize, int startX, int endX, int startY, int endY) {
+   protected override void Backpropagate(Matrix<float> inputError, Matrix<float> input, float error, int filterSize, int startX, int endX, int startY, int endY) {
         var inputHeight = input.Rows;
         var inputWidth = input.Columns;
-        int maxRow = startY, maxCol = startX; double maxVal = double.MinValue; // Values for max pooling
+        int maxRow = startY, maxCol = startX; float maxVal = float.MinValue; // Values for max pooling
         for (int kr = startY; kr < endY; kr++) {
             if (kr < 0 || kr >= inputHeight)
                 continue;
@@ -380,7 +380,7 @@ public class LocalMaxPoolingLayer : LocalPoolingLayer {
             for (int kc = startX; kc < endX; kc++) {
                 if (kc < 0 || kc >= inputWidth)
                     continue;
-                var value = (kr < 0 || kr >= inputHeight || kc < 0 || kc >= inputWidth) ? 0.0 :  input[kr, kc];
+                var value = (kr < 0 || kr >= inputHeight || kc < 0 || kc >= inputWidth) ? 0.0f :  input[kr, kc];
 
                 // Compute; Assume max pooling (avg is different)
                 if (value > maxVal) {
@@ -456,18 +456,18 @@ public class LocalAvgPoolingLayer : LocalPoolingLayer {
     public LocalAvgPoolingLayer(Shape3D input_size, int width, int height, int strideX, int strideY, int paddingX, int paddingY) : base(input_size, width, height, strideX, strideY, paddingX, paddingY) { }
 
 
-    protected override double Accumulate(double current, double delta, int count) {
+    protected override float Accumulate(float current, float delta, int count) {
         return current + delta;
     }
 
-    protected override double Aggregate(double current, int count){
+    protected override float Aggregate(float current, int count){
         return current / Math.Max(1, count);
     }
 
-    protected override void Backpropagate(Matrix<double> inputError, Matrix<double> input, double error, int filterSize, int startX, int endX, int startY, int endY) {
+    protected override void Backpropagate(Matrix<float> inputError, Matrix<float> input, float error, int filterSize, int startX, int endX, int startY, int endY) {
         var inputHeight = input.Rows;
         var inputWidth = input.Columns;
-        double errorContribution = error / Math.Max(1, filterSize); // Distribute the error
+        float errorContribution = error / Math.Max(1, filterSize); // Distribute the error
         for (int kr = startY; kr < endY; kr++) {
             if (kr < 0 || kr >= inputHeight)
                 continue;

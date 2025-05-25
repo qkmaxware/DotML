@@ -4,27 +4,27 @@ namespace DotML.Network;
 /// Neuron activation function
 /// <see href="https://en.wikipedia.org/wiki/Activation_function"/>
 /// </summary>
-public abstract class ActivationFunction : DelegateObject<double, double>, IHtmlable {
+public abstract class ActivationFunction : DelegateObject<float, float>, IHtmlable {
     /// <summary>
     /// Invoke the activation function on all values in the given vector
     /// </summary>
     /// <param name="x">function input</param>
     /// <returns>function result</returns>
-    public virtual Matrix<double> Invoke(Matrix<double> xs) => xs.Transform(x => Invoke(x));
+    public virtual Matrix<float> Invoke(Matrix<float> xs) => xs.Transform(x => Invoke(x));
 
     /// <summary>
     /// Invoke the derivative of the activation function with the given output from the neuron
     /// </summary>
     /// <param name="y">neuron output</param>
     /// <returns>derivative result</returns>
-    public abstract double InvokeDerivative(double y);
+    public abstract float InvokeDerivative(float y);
     
     /// <summary>
     /// Invoke the derivative of the activation function on all values in the given vector
     /// </summary>
     /// <param name="Z">function input</param>
     /// <returns>function result</returns>
-    public virtual Matrix<double> InvokeDerivative(Matrix<double> xs) => xs.Transform(x => InvokeDerivative(x));
+    public virtual Matrix<float> InvokeDerivative(Matrix<float> xs) => xs.Transform(x => InvokeDerivative(x));
     
     /// <summary>
     /// Activation function as HTML MathML
@@ -70,22 +70,22 @@ public static class ActivationFunctions {
     /// <summary>
     /// f(x) = 0.00 * (e^x - 1) if x &lt; 0 else x
     /// </summary>
-    public static ActivationFunction ELU_00 {get; private set;} = new Network.ExponentialLU(0.00);
+    public static ActivationFunction ELU_00 {get; private set;} = new Network.ExponentialLU(0.00f);
 
     /// <summary>
     /// f(x) = 0.10 * (e^x - 1) if x &lt; 0 else x
     /// </summary>
-    public static ActivationFunction ELU_01 {get; private set;} = new Network.ExponentialLU(0.10);
+    public static ActivationFunction ELU_01 {get; private set;} = new Network.ExponentialLU(0.10f);
 
     /// <summary>
     /// f(x) = 0.20 * (e^x - 1) if x &lt; 0 else x
     /// </summary>
-    public static ActivationFunction ELU_02 {get; private set;} = new Network.ExponentialLU(0.20);
+    public static ActivationFunction ELU_02 {get; private set;} = new Network.ExponentialLU(0.20f);
 
     /// <summary>
     /// f(x) = 1.00 * (e^x - 1) if x &lt; 0 else x
     /// </summary>
-    public static ActivationFunction ELU_10 {get; private set;} = new Network.ExponentialLU(1.00);
+    public static ActivationFunction ELU_10 {get; private set;} = new Network.ExponentialLU(1.00f);
 
     /// <summary>
     /// f(x) = tanh(x)
@@ -100,27 +100,27 @@ public static class ActivationFunctions {
     /// <summary>
     /// PReLU(x) = 0.01 * x if x &lt; 0 else x
     /// </summary>
-    public static ActivationFunction PReLU_01 {get; private set;} = new Network.PReLU(0.01);
+    public static ActivationFunction PReLU_01 {get; private set;} = new Network.PReLU(0.01f);
 
     /// <summary>
     /// PReLU(x) = 0.05 * x if x &lt; 0 else x
     /// </summary>
-    public static ActivationFunction PReLU_05 {get; private set;} = new Network.PReLU(0.05);
+    public static ActivationFunction PReLU_05 {get; private set;} = new Network.PReLU(0.05f);
 
     /// <summary>
     /// PReLU(x) = 0.10 * x if x &lt; 0 else x
     /// </summary>
-    public static ActivationFunction PReLU_10 {get; private set;} = new Network.PReLU(0.10);
+    public static ActivationFunction PReLU_10 {get; private set;} = new Network.PReLU(0.10f);
 
     /// <summary>
     /// PReLU(x) = 0.30 * x if x &lt; 0 else x
     /// </summary>
-    public static ActivationFunction PReLU_30 {get; private set;} = new Network.PReLU(0.30);
+    public static ActivationFunction PReLU_30 {get; private set;} = new Network.PReLU(0.30f);
 
     /// <summary>
     /// PReLU(x) = 0.50 * x if x &lt; 0 else x
     /// </summary>
-    public static ActivationFunction PReLU_50 {get; private set;} = new Network.PReLU(0.50);
+    public static ActivationFunction PReLU_50 {get; private set;} = new Network.PReLU(0.50f);
 
     /// <summary>
     /// f(x) = max(0, x)

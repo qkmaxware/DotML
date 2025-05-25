@@ -17,14 +17,14 @@ public class LocalAvgPoolingLayerTest {
     [TestMethod]
     public void TestAvgMaxPooling() {
         var layer = new LocalAvgPoolingLayer(new Shape3D(1, 4, 4), 2, 2);
-        Matrix<double> input = new Matrix<double>(new double[,] {
+        Matrix<float> input = new Matrix<float>(new float[,] {
             {12, 20, 30, 00},
             {08, 12, 02, 00},
             {34, 70, 37, 04},
             {112, 100, 25, 12}
         });
 
-        var outputs = layer.EvaluateSync(new FeatureSet<double>(input));
+        var outputs = layer.EvaluateSync(new FeatureSet<float>(input));
         Assert.AreEqual(1, outputs.Channels);
         var output = outputs[0];
 
@@ -75,7 +75,7 @@ public class LocalAvgPoolingLayerTest {
             0.6633204221725464,
             -0.22848817706108093,
             0.6940374970436096
-        ]);
+        ]).ToFloatSet();
 
         var Y_truth = Matrix<double>.FromFlattened(3, 3, [
             0.2394171804189682,
@@ -87,8 +87,8 @@ public class LocalAvgPoolingLayerTest {
             0.4477621614933014,
             0.22594809532165527,
             0.20543172955513
-        ]);
-        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0,0];
+        ]).ToFloatSet();
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<float>(new FeatureSet<float>(X)))[0,0];
         Assert.AreEqual(Y_truth.Rows, Y_projected.Rows);
         Assert.AreEqual(Y_truth.Columns, Y_projected.Columns);
 
@@ -112,7 +112,7 @@ public class LocalAvgPoolingLayerTest {
             -1.1144579648971558,
             -1.0145455598831177,
             -0.3372708261013031
-        ]);
+        ]).ToFloatSet();
         var dX_truth = Matrix<double>.FromFlattened(5, 5, [
             -0.24212227761745453,
             -0.2515632212162018,
@@ -139,13 +139,13 @@ public class LocalAvgPoolingLayerTest {
             -0.274030476808548,
             -0.15020182728767395,
             -0.037474535405635834
-        ]);
+        ]).ToFloatSet();
 
         var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
-            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
-            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
+            input: new BatchedFeatureSet<float>(new FeatureSet<float>(X)),
+            output: new BatchedFeatureSet<float>(new FeatureSet<float>(Y_truth)),
+            error: new BatchedFeatureSet<float>(new FeatureSet<float>(dY))
         ));
         var dX_projected = backprop_returns.dX[0,0];
         Assert.IsNull(backprop_returns.Gradients);
@@ -208,7 +208,7 @@ public class LocalAvgPoolingLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var Y_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -251,7 +251,7 @@ public class LocalAvgPoolingLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dY_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -294,7 +294,7 @@ public class LocalAvgPoolingLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dX_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -337,7 +337,7 @@ public class LocalAvgPoolingLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
 
         var Y_pred = layer.EvaluateSync(X_true);
         AssertExt.AreEqual(Y_true, Y_pred);
@@ -382,15 +382,15 @@ public class LocalAvgPoolingLayerTest {
                     0.5719498991966248,
                     -0.9991300106048584,
                     -0.3620969355106354
-        ]);
+        ]).ToFloatSet();
 
         var Y_truth = Matrix<double>.FromFlattened(2, 2, [
                     0.1871238350868225,
                     0.21412721276283264,
                     0.5215012431144714,
                     0.18363916873931885
-        ]);
-        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0,0];
+        ]).ToFloatSet();
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<float>(new FeatureSet<float>(X)))[0,0];
         Assert.AreEqual(Y_truth.Rows, Y_projected.Rows);
         Assert.AreEqual(Y_truth.Columns, Y_projected.Columns);
 
@@ -409,7 +409,7 @@ public class LocalAvgPoolingLayerTest {
                     -0.8691568374633789,
                     -0.5454152226448059,
                     1.0452895164489746
-        ]);
+        ]).ToFloatSet();
         var dX_truth = Matrix<double>.FromFlattened(5, 5, [
                     0.025721754878759384,
                     0.025721754878759384,
@@ -436,13 +436,13 @@ public class LocalAvgPoolingLayerTest {
                     0.05554158613085747,
                     0.11614327877759933,
                     0.11614327877759933
-        ]);
+        ]).ToFloatSet();
 
         var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
-            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
-            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
+            input: new BatchedFeatureSet<float>(new FeatureSet<float>(X)),
+            output: new BatchedFeatureSet<float>(new FeatureSet<float>(Y_truth)),
+            error: new BatchedFeatureSet<float>(new FeatureSet<float>(dY))
         ));
         var dX_projected = backprop_returns.dX[0,0];
         Assert.IsNull(backprop_returns.Gradients);

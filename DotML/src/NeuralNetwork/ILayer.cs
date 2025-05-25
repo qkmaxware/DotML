@@ -54,5 +54,5 @@ public interface ILayerWithVectorOutput : ILayerWithNeurons {
     /// <summary>
     /// The results of the last evaluation, for debugging
     /// </summary>
-    public Vec<double> GetLastOutputs();
+    public Vec<float> GetLastOutputs();
 }

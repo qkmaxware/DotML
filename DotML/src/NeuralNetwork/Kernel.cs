@@ -12,8 +12,8 @@ public static class Kernels {
     /// </summary>
     /// <param name="size">Size of the kernel</param>
     /// <returns>matrix</returns>
-    public static Matrix<double> HeKernel(int size) {
-        var filter = new Matrix<double>(size, size);
+    public static Matrix<float> HeKernel(int size) {
+        var filter = new Matrix<float>(size, size);
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
                 filter[i, j] = he.RandomWeight(size, size, size);
@@ -27,8 +27,8 @@ public static class Kernels {
     /// <param name="rows">Rows in the kernel</param>
     /// <param name="columns">Columns in the kernel</param>
     /// <returns>matrix</returns>
-    public static Matrix<double> HeKernel(int rows, int columns) {
-        var filter = new Matrix<double>(rows, columns);
+    public static Matrix<float> HeKernel(int rows, int columns) {
+        var filter = new Matrix<float>(rows, columns);
         var size = filter.Size;
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < columns; j++) {
@@ -43,8 +43,8 @@ public static class Kernels {
     /// </summary>
     /// <param name="size">Size of the kernel</param>
     /// <returns>matrix</returns>
-    public static Matrix<double> XavierKernel(int size) {
-        var filter = new Matrix<double>(size, size);
+    public static Matrix<float> XavierKernel(int size) {
+        var filter = new Matrix<float>(size, size);
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
                 filter[i, j] = xavier.RandomWeight(size, size, size);
@@ -58,8 +58,8 @@ public static class Kernels {
     /// <param name="rows">Rows in the kernel</param>
     /// <param name="columns">Columns in the kernel</param>
     /// <returns>matrix</returns>
-    public static Matrix<double> XavierKernel(int rows, int columns) {
-        var filter = new Matrix<double>(rows, columns);
+    public static Matrix<float> XavierKernel(int rows, int columns) {
+        var filter = new Matrix<float>(rows, columns);
         var size = filter.Size;
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < columns; j++) {
@@ -75,9 +75,9 @@ public static class Kernels {
     /// </summary>
     /// <param name="size">Size of the kernel</param>
     /// <returns>matrix</returns>
-    public static Matrix<double> RandomKernel(int size) {
+    public static Matrix<float> RandomKernel(int size) {
         size = Math.Max(1, size);
-        var filter = new Matrix<double>(size, size);
+        var filter = new Matrix<float>(size, size);
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++)
             {
@@ -91,17 +91,17 @@ public static class Kernels {
     /// Identity kernel
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> IdentityKernel(int size) {
-        return Matrix<double>.Identity(size);
+    public static Matrix<float> IdentityKernel(int size) {
+        return Matrix<float>.Identity(size);
     }
 
     /// <summary>
     /// Averages the pixel values in the kernel area, resulting in a blur effect
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> BoxBlurKernel(int size) {
-        const double oneNinth = 1.0/9.0;
-        return new Matrix<double>(new double[,]{
+    public static Matrix<float> BoxBlurKernel(int size) {
+        const float oneNinth = 1.0f/9.0f;
+        return new Matrix<float>(new float[,]{
             { oneNinth, oneNinth, oneNinth },
             { oneNinth, oneNinth, oneNinth },
             { oneNinth, oneNinth, oneNinth },
@@ -112,11 +112,11 @@ public static class Kernels {
     /// A weighted average blur that reduces image noise and detail, based on a Gaussian function
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> GaussianBlurKernel(int size) {
-        const double oneSixteenth = 1.0/16.0;
-        const double twoSixteenth = 2.0/16.0;
-        const double fourSixteenth = 4.0/16.0;
-        return new Matrix<double>(new double[,]{
+    public static Matrix<float> GaussianBlurKernel(int size) {
+        const float oneSixteenth = 1.0f/16.0f;
+        const float twoSixteenth = 2.0f/16.0f;
+        const float fourSixteenth = 4.0f/16.0f;
+        return new Matrix<float>(new float[,]{
             { oneSixteenth, twoSixteenth, oneSixteenth },
             { twoSixteenth, fourSixteenth, twoSixteenth },
             { oneSixteenth, twoSixteenth, oneSixteenth },
@@ -127,8 +127,8 @@ public static class Kernels {
     /// Sobel kernel for edge detection, particularly for finding horizontal edges
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> SobelXKernel() {
-        return new Matrix<double>(new double[,]{
+    public static Matrix<float> SobelXKernel() {
+        return new Matrix<float>(new float[,]{
             { -1, 0, 1 },
             { -2, 0, 2 },
             { -1, 0, 1 }
@@ -139,8 +139,8 @@ public static class Kernels {
     /// Sobel kernel for edge detection, particularly for finding horizontal edges
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> SobelYKernel() {
-        return new Matrix<double>(new double[,]{
+    public static Matrix<float> SobelYKernel() {
+        return new Matrix<float>(new float[,]{
             { -1, -2, -1 },
             { 0, 0, 0 },
             { 1, 2, 1 }
@@ -151,8 +151,8 @@ public static class Kernels {
     /// Prewitt kernel for edge detection, similar to Sobel but with different weights
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> PrewittXKernel() {
-        return new Matrix<double>(new double[,]{
+    public static Matrix<float> PrewittXKernel() {
+        return new Matrix<float>(new float[,]{
             { -1, 0, 1 },
             { -1, 0, 1 },
             { -1, 0, 1 }
@@ -163,8 +163,8 @@ public static class Kernels {
     /// Prewitt kernel for edge detection, similar to Sobel but with different weights
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> PrewittYKernel() {
-        return new Matrix<double>(new double[,]{
+    public static Matrix<float> PrewittYKernel() {
+        return new Matrix<float>(new float[,]{
             { -1, -1, -1 },
             { 0, 0, 0 },
             { 1, 1, 1 }
@@ -175,8 +175,8 @@ public static class Kernels {
     /// Detects areas of rapid intensity change, commonly used for edge detection and sharpening
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> LaplacianKernel() {
-        return new Matrix<double>(new double[,]{
+    public static Matrix<float> LaplacianKernel() {
+        return new Matrix<float>(new float[,]{
             { 0, 1, 0 },
             { 1, -4, 1 },
             { 0, 1, 0 }
@@ -187,8 +187,8 @@ public static class Kernels {
     /// Enhances the edges and fine details of an image by emphasizing differences between neighboring pixels
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> SharpeningKernel() {
-        return new Matrix<double>(new double[,]{
+    public static Matrix<float> SharpeningKernel() {
+        return new Matrix<float>(new float[,]{
             { 0, -1, 0 },
             {-1, 5, -1 },
             { 0, -1, 0 }
@@ -199,8 +199,8 @@ public static class Kernels {
     /// Gives the image a 3D shadow effect, emphasizing edges and contours
     /// </summary>
     /// <returns>matrix</returns>
-    public static Matrix<double> EmbossKernel() {
-        return new Matrix<double>(new double[,]{
+    public static Matrix<float> EmbossKernel() {
+        return new Matrix<float>(new float[,]{
             { -2, -1, 0 },
             {-1, 1, 1 },
             { 0, 1, 2 }

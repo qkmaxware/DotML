@@ -6,7 +6,7 @@ namespace DotML.Network.Training;
 /// <param name="network">The network to evaluate</param>
 /// <param name="validation">The data to evaluate the network against</param>
 /// <returns>loss evaluation</returns>
-public delegate double NetworkEvaluationFunction(INeuralNetwork network, TrainingSet validation);
+public delegate double NetworkEvaluationFunction(INeuralNetwork network, TrainingSet<float> validation);
 
 /// <summary>
 /// Container with some common network evaluation functions
@@ -18,7 +18,7 @@ public static class NetworkEvaluationFunctions {
     /// <param name="network">The network to evaluate</param>
     /// <param name="validation">The data to evaluate the network against</param>
     /// <returns>maximum loss experienced by the network</returns>
-    public static double MaxMeanSquaredError(INeuralNetwork network, TrainingSet validation) {
+    public static double MaxMeanSquaredError(INeuralNetwork network, TrainingSet<float> validation) {
         var data = validation;
         var maxloss = 0.0;
 
@@ -37,7 +37,7 @@ public static class NetworkEvaluationFunctions {
     /// <param name="network">The network to evaluate</param>
     /// <param name="validation">The data to evaluate the network against</param>
     /// <returns>maximum loss experienced by the network</returns>
-    public static double MaxMeanSquaredError(INeuralNetwork network, IEnumerator<TrainingPair> validation) {
+    public static double MaxMeanSquaredError(INeuralNetwork network, IEnumerator<TrainingPair<float>> validation) {
         var maxloss = 0.0;
 
         var set = validation;
@@ -56,7 +56,7 @@ public static class NetworkEvaluationFunctions {
     /// <param name="network">The network to evaluate</param>
     /// <param name="validation">The data to evaluate the network against</param>
     /// <returns>average loss experienced by the network</returns>
-    public static double AvgMeanSquaredError(INeuralNetwork network, TrainingSet validation) {
+    public static double AvgMeanSquaredError(INeuralNetwork network, TrainingSet<float> validation) {
         var data = validation;
         var datasize = data.Size;
         var netloss = 0.0;
@@ -77,7 +77,7 @@ public static class NetworkEvaluationFunctions {
     /// <param name="network">The network to evaluate</param>
     /// <param name="validation">The data to evaluate the network against</param>
     /// <returns>average loss experienced by the network</returns>
-    public static double AvgMeanSquaredError(INeuralNetwork network, IEnumerator<TrainingPair> validation) {
+    public static double AvgMeanSquaredError(INeuralNetwork network, IEnumerator<TrainingPair<float>> validation) {
         var datasize = 0;
         var netloss = 0.0;
 

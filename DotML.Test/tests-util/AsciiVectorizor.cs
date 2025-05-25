@@ -3,7 +3,7 @@ namespace DotML.Test;
 /// <summary>
 /// Convert ASCII art to a vector where whitespace is considered as empty and any other character is considered non-empty
 /// </summary>
-public class AsciiImgVectorizor : IFeatureExtractor<string> {
+public class AsciiImgVectorizor : IFeatureExtractor<string, float> {
 
     public int? MaxWidth {get; set;}
 
@@ -13,16 +13,16 @@ public class AsciiImgVectorizor : IFeatureExtractor<string> {
         this.MaxWidth = width;
     }
 
-    public double EmptyValue = -1.0;
-    public double NonEmptyValue = 1.0;
+    public float EmptyValue = -1.0f;
+    public float NonEmptyValue = 1.0f;
 
-    public Vec<double> ToVector(string value) {
+    public Vec<float> ToVector(string value) {
         var rows = value.Split("\n");
         var row_size = rows.Length;
         var col_size = MaxWidth.HasValue ? MaxWidth.Value : rows.Select(row => row.Length).Max();
         var vector_size = row_size * col_size;
 
-        double[] vec = new double[vector_size];
+        float[] vec = new float[vector_size];
         var vector_index = 0;
         foreach (var row in rows) {
             for (var col = 0; col < col_size; col++) {
@@ -34,6 +34,6 @@ public class AsciiImgVectorizor : IFeatureExtractor<string> {
             }
         }
 
-        return Vec<double>.Wrap(vec);
+        return Vec<float>.Wrap(vec);
     }
 }

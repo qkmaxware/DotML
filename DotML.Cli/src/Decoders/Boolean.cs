@@ -47,7 +47,7 @@ public class BooleanVector : IDecoder {
         public void Dispose() { }
     }
 
-    public IDecodedResult Decode(BatchedFeatureSet<double> output) {
+    public IDecodedResult Decode(BatchedFeatureSet<float> output) {
         return new Result(
             output.Select(
                 b => b.SelectMany(f => f.FlattenRows()).Select(x => x >= 0.5f ? true : false).ToArray()

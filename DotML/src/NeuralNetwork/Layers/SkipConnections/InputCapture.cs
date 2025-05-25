@@ -9,7 +9,7 @@ namespace DotML.Network;
 [WorkInProgress]
 public class InputCapture : FeedforwardNetworkLayer {
 
-    public BatchedFeatureSet<double>? CapturedInput;
+    public BatchedFeatureSet<float>? CapturedInput;
 
     public InputCapture(Shape3D input_shape) {
         this.InputShape = input_shape;
@@ -29,8 +29,8 @@ public class InputCapture : FeedforwardNetworkLayer {
     /// </summary>
     /// <param name="channels">feature set</param>
     /// <returns>the cached feature set</returns>
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
-        CapturedInput = new BatchedFeatureSet<double>(channels);
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> channels) {
+        CapturedInput = new BatchedFeatureSet<float>(channels);
         return channels;
     }
 
@@ -39,7 +39,7 @@ public class InputCapture : FeedforwardNetworkLayer {
     /// </summary>
     /// <param name="features">feature set</param>
     /// <returns>the cached feature set</returns>
-    public override BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
+    public override BatchedFeatureSet<float> EvaluateSync(BatchedFeatureSet<float> features) {
         CapturedInput = features;
         return features;
     }

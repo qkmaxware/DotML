@@ -51,7 +51,7 @@ public class AdditionSkipConnectionTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         capture.EvaluateSync(residual); // Force the input capture to capture the residual
 
         var layer = new AdditionSkipConnection(capture.OutputShape, capture);
@@ -97,7 +97,7 @@ public class AdditionSkipConnectionTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var Y_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -140,7 +140,7 @@ public class AdditionSkipConnectionTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var Y_pred = layer.EvaluateSync(X_true);
         AssertExt.AreEqual(Y_true, Y_pred);
 
@@ -186,7 +186,7 @@ public class AdditionSkipConnectionTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dX_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -229,7 +229,7 @@ public class AdditionSkipConnectionTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
 
         var dX_pred = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,

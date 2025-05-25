@@ -15,18 +15,18 @@ public class CompareLayers {
     public int OUT_CLASSES;
 
     public struct Args {
-        public BatchedFeatureSet<double> output;
+        public BatchedFeatureSet<float> output;
         public IFeedforwardNetworkLayer layer;
 
         public static implicit operator Args(FeedforwardNetworkLayer layer) {
             return new Args {
                 layer = layer,
-                output = new BatchedFeatureSet<double>(new Shape4D(1, layer.OutputShape.Channels, layer.OutputShape.Rows, layer.OutputShape.Channels))
+                output = new BatchedFeatureSet<float>(new Shape4D(1, layer.OutputShape.Channels, layer.OutputShape.Rows, layer.OutputShape.Channels))
             };
         }
     }
 
-    private BatchedFeatureSet<double> input;
+    private BatchedFeatureSet<float> input;
 
     private Args act;
     private Args convo;
@@ -42,13 +42,13 @@ public class CompareLayers {
 
     [GlobalSetup]
     public void Setup() {
-        this.input = new BatchedFeatureSet<double>(new Shape4D(1, CHANNELS, DIM_LENGTH, DIM_LENGTH));
+        this.input = new BatchedFeatureSet<float>(new Shape4D(1, CHANNELS, DIM_LENGTH, DIM_LENGTH));
 
         this.act = new ActivationLayer(input[0].Shape, ActivationFunctions.ReLU);
         this.convo = new ConvolutionLayer(input[0].Shape, Padding.Same, filters: ConvolutionFilter.Make(CHANNELS, CHANNELS, 3));
         this.tconvo = new TransposeConvolutionLayer(input[0].Shape, Padding.Same, Expansion.Same, 1, 1, filters: ConvolutionFilter.Make(CHANNELS, CHANNELS, 3));
         this.dense = new DenseLinearLayer(input[0].Shape.Count, OUT_CLASSES);
-        this.dropout = new DropoutLayer(input[0].Shape, 0.25);
+        this.dropout = new DropoutLayer(input[0].Shape, 0.25f);
         this.flat = new FlatteningLayer(input[0].Shape);
         //this.shuffle;
         this.maxpool = new LocalMaxPoolingLayer(input[0].Shape, 3);

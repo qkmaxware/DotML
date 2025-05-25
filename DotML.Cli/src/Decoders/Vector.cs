@@ -5,9 +5,9 @@ namespace DotML.Cli.Decodings;
 /// </summary>
 public class Vector : IDecoder {
     public class Result : IDecodedResult {
-        private Vec<double>[] vectors;
+        private Vec<float>[] vectors;
 
-        public Result(Vec<double>[] vectors) {
+        public Result(Vec<float>[] vectors) {
             this.vectors = vectors;
         }
 
@@ -29,10 +29,10 @@ public class Vector : IDecoder {
         public void Dispose() { }
     }
 
-    public IDecodedResult Decode(BatchedFeatureSet<double> output) {
+    public IDecodedResult Decode(BatchedFeatureSet<float> output) {
         return new Result(
             output.Select(
-                b => Vec<double>.Wrap(
+                b => Vec<float>.Wrap(
                     b.SelectMany(
                         f => f.FlattenRows()
                     ).ToArray()

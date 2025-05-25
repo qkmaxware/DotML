@@ -227,9 +227,9 @@ public class Fit : BaseCommand {
 
         #region Data
         var randgen = new Random();
-        TrainingSet trainingPairs   = ReadData(training_file);                                                      // Data used in backpropagation
-        TrainingSet validationPairs = validation_file is not null ? ReadData(validation_file) : new TrainingSet(trainingPairs.SampleRandomly((int)Math.Max(1, 0.25 * trainingPairs.Size)).AsEnumerable());    // Data used in early-stop & validation
-        TrainingSet testingPairs    = testing_file is not null ? ReadData(testing_file) : new TrainingSet(trainingPairs.SampleRandomly((int)Math.Max(1, 0.25 * trainingPairs.Size)).AsEnumerable());             // Data used in verify model "generality"
+        TrainingSet<float> trainingPairs   = ReadData(training_file);                                                      // Data used in backpropagation
+        TrainingSet<float> validationPairs = validation_file is not null ? ReadData(validation_file) : new TrainingSet<float>(trainingPairs.SampleRandomly((int)Math.Max(1, 0.25 * trainingPairs.Size)).AsEnumerable());    // Data used in early-stop & validation
+        TrainingSet<float> testingPairs    = testing_file is not null ? ReadData(testing_file) : new TrainingSet<float>(trainingPairs.SampleRandomly((int)Math.Max(1, 0.25 * trainingPairs.Size)).AsEnumerable());             // Data used in verify model "generality"
         if (trainingPairs.Size != 0) {
             var first = trainingPairs[0];
             if (first.Input.Dimensionality != network.InputShape.Count) {
@@ -663,19 +663,19 @@ public class Fit : BaseCommand {
             return new HeInitialization();
         }
     }
-    public static void Test(FeedforwardNetwork network, TrainingSet data, IValidationReport report, int batch_size, double pass_threshold, LossFunction loss_fn, Action<int, int>? on_progress = null) {
+    public static void Test(FeedforwardNetwork network, TrainingSet<float> data, IValidationReport report, int batch_size, double pass_threshold, LossFunction loss_fn, Action<int, int>? on_progress = null) {
         var data_iterator = data.SampleSequentially(); 
         var max_error = double.MinValue;
         var all_less_threshold = true;
         report.Reset();
-        List<(FeatureSet<double> InMatrix, Vec<double> In, Vec<double> Out)> batch = new List<(FeatureSet<double> InMatrix, Vec<double> In, Vec<double> Out)>();
+        List<(FeatureSet<float> InMatrix, Vec<float> In, Vec<float> Out)> batch = new List<(FeatureSet<float> InMatrix, Vec<float> In, Vec<float> Out)>();
         var concurrency_level = batch_size; // or Environment.ProcessorCount
         while (data_iterator.MoveNext() && batch.Count < concurrency_level) {
             var pair = data_iterator.Current;
-            var input = new FeatureSet<double>(pair.Input.Shape(network.InputShape).ToArray());
+            var input = new FeatureSet<float>(pair.Input.Shape(network.InputShape).ToArray());
             batch.Add((input, pair.Input, pair.Output));
         }
-        var batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.InMatrix).ToArray());
+        var batch_input = new BatchedFeatureSet<float>(batch.Select(x => x.InMatrix).ToArray());
         var batches_to_do = (data.Size + concurrency_level - 1) / concurrency_level;
 
         var batch_index = 0;
@@ -691,7 +691,7 @@ public class Fit : BaseCommand {
             {
                 var input = batch[batchIndex].In;
                 var @true = batch[batchIndex].Out;
-                var predicted = Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
+                var predicted = Vec<float>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
 
                 var loss = loss_fn.Invoke(predicted, @true);
                 max_error = Math.Max(max_error, loss);
@@ -708,10 +708,10 @@ public class Fit : BaseCommand {
             while (data_iterator.MoveNext() && batch.Count < concurrency_level)
             {
                 var pair = data_iterator.Current;
-                var input = new FeatureSet<double>(pair.Input.Shape(network.InputShape).ToArray());
+                var input = new FeatureSet<float>(pair.Input.Shape(network.InputShape).ToArray());
                 batch.Add((input, pair.Input, pair.Output));
             }
-            batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.InMatrix).ToArray());
+            batch_input = new BatchedFeatureSet<float>(batch.Select(x => x.InMatrix).ToArray());
         }
     }
 
@@ -739,7 +739,7 @@ public class Fit : BaseCommand {
         new TrainingData.BinaryTrainingSet(),
         new TrainingData.BinaryClassifiedVectors()
     ];
-    public static TrainingSet ReadData(FileInfo file) {
+    public static TrainingSet<float> ReadData(FileInfo file) {
         foreach (var format in formats) {
             if (format.IsInFormat(file)) {
                 return format.Read(file);

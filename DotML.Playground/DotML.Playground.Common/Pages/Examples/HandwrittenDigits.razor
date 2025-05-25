@@ -49,16 +49,16 @@
 @code {
     private PaintApp? painter;
 
-    private static double vectorize(byte b) => b / 255.0;
-    private static Vec<double> vectorize(Pixel[] pixels) {
-        double[] values = new double[pixels.Length];
+    private static float vectorize(byte b) => b / 255.0f;
+    private static Vec<float> vectorize(Pixel[] pixels) {
+        float[] values = new float[pixels.Length];
         for (var i = 0; i < pixels.Length; i++) {
             values[i] = vectorize(pixels[i].R);
         }
-        return Vec<double>.Wrap(values);
+        return Vec<float>.Wrap(values);
     }
 
-    private async Task<Vec<double>?> GetInput() {
+    private async Task<Vec<float>?> GetInput() {
         if (painter is null)
             return null;
         var image = await painter.GetFlattenedPixels();

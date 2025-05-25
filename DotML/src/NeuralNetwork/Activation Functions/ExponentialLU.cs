@@ -5,18 +5,18 @@ namespace DotML.Network;
 /// <para>ELU(x) = a * (e^x - 1) if x &lt; 0 else x</para>
 /// </summary>
 public class ExponentialLU : ActivationFunction {
-    public double Alpha {get; init;}
+    public float Alpha {get; init;}
 
-    public ExponentialLU (double alpha) {
+    public ExponentialLU (float alpha) {
         this.Alpha = alpha;
     }
 
-    public override double Invoke(double x) {
-        return x < 0 ? Alpha * (Math.Exp(x) - 1) : x;
+    public override float Invoke(float x) {
+        return x < 0 ? Alpha * (MathF.Exp(x) - 1) : x;
     }
 
-    public override double InvokeDerivative(double x) {
-        return x < 0 ? Alpha*Math.Exp(x) : 1;
+    public override float InvokeDerivative(float x) {
+        return x < 0 ? Alpha*MathF.Exp(x) : 1;
     }
 
     public override void ToHtml(TextWriter writer) {

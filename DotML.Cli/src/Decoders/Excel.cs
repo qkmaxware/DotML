@@ -10,13 +10,13 @@ public class Xml : IFileOnlyDecoder, IDecoder {
 
     public bool FileRequired() => false; // We have console output but it isn't preferred
 
-    public IDecodedResult Decode(BatchedFeatureSet<double> output_values) {
+    public IDecodedResult Decode(BatchedFeatureSet<float> output_values) {
         return new Result(output_values);
     }
 
     public class Result : IDecodedResult {
-        private BatchedFeatureSet<double> values;
-        public Result(BatchedFeatureSet<double> values) {
+        private BatchedFeatureSet<float> values;
+        public Result(BatchedFeatureSet<float> values) {
             this.values = values;
         }
 

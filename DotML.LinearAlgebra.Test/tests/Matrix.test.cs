@@ -124,6 +124,93 @@ public class TestMatrix {
     }
 
     [TestMethod]
+    public void TestAdd() {
+        Matrix<double> A = new Matrix<double>(new double[,] {
+            { 1, 2 },
+            { 3, 4 }
+        });
+        Matrix<double> B = new Matrix<double>(new double[,] {
+            { 5, 6 },
+            { 7, 8 }
+        });
+
+        // Test add
+        var C = A.AddWith(B);
+        for (var i = 0; i < C.Size; i++) {
+            Assert.AreEqual(A[i] + B[i], C[i], 0.0001);
+        }
+
+        // Clear previous test by setting C to A
+        C.ElementWiseInplace(A, (c, a) => a);
+        for (var i = 0; i < C.Size; i++) {
+            Assert.AreEqual(A[i], C[i]);
+        }
+
+        C.AddWithInplace(B);
+        for (var i = 0; i < C.Size; i++) {
+            Assert.AreEqual(A[i] + B[i], C[i], 0.0001);
+        }
+    }
+
+    [TestMethod]
+    public void TestSubtract() {
+        Matrix<double> A = new Matrix<double>(new double[,] {
+            { 1, 2 },
+            { 3, 4 }
+        });
+        Matrix<double> B = new Matrix<double>(new double[,] {
+            { 5, 6 },
+            { 7, 8 }
+        });
+
+        // Test add
+        var C = A.SubtractWith(B);
+        for (var i = 0; i < C.Size; i++) {
+            Assert.AreEqual(A[i] - B[i], C[i], 0.0001);
+        }
+
+        // Clear previous test by setting C to A
+        C.ElementWiseInplace(A, (c, a) => a);
+        for (var i = 0; i < C.Size; i++) {
+            Assert.AreEqual(A[i], C[i]);
+        }
+
+        C.SubtractWithInplace(B);
+        for (var i = 0; i < C.Size; i++) {
+            Assert.AreEqual(A[i] - B[i], C[i], 0.0001);
+        }
+    }
+
+    [TestMethod]
+    public void TestHadamard() {
+        Matrix<double> A = new Matrix<double>(new double[,] {
+            { 1, 2 },
+            { 3, 4 }
+        });
+        Matrix<double> B = new Matrix<double>(new double[,] {
+            { 5, 6 },
+            { 7, 8 }
+        });
+
+        // Test add
+        var C = A.HadamardWith(B);
+        for (var i = 0; i < C.Size; i++) {
+            Assert.AreEqual(A[i] * B[i], C[i], 0.0001);
+        }
+
+        // Clear previous test by setting C to A
+        C.ElementWiseInplace(A, (c, a) => a);
+        for (var i = 0; i < C.Size; i++) {
+            Assert.AreEqual(A[i], C[i]);
+        }
+
+        C.HadamardWithInplace(B);
+        for (var i = 0; i < C.Size; i++) {
+            Assert.AreEqual(A[i] * B[i], C[i], 0.0001);
+        }
+    }
+
+    [TestMethod]
     public void TestElementWise() {
         Matrix<double> A = new Matrix<double>(new double[,] {
             { 1, 2 },

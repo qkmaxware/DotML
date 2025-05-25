@@ -279,7 +279,16 @@ public class FeedforwardNetwork:
         }
     }
 
-    public BatchedFeatureSet<double> PredictSync(BatchedFeatureSet<double> values, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<double>>? before_layer, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<double>>? after_layer) {
+    public bool HasValidSizes() {
+        try {
+            ValidateSizes();
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    public BatchedFeatureSet<float> PredictSync(BatchedFeatureSet<float> values, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<float>>? before_layer, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<float>>? after_layer) {
         var ishape = this.InputShape;
 
         if (values.Channels != ishape.Channels) {
@@ -290,7 +299,7 @@ public class FeedforwardNetwork:
         if (values.Rows != ishape.Rows)
             throw new ArgumentException($"Invalid channel height. Expected {ishape.Rows}, got {values.Rows}.");
     
-        BatchedFeatureSet<double> input = values;
+        BatchedFeatureSet<float> input = values;
         ishape = new Shape3D(input.Channels, input.Rows, input.Columns);
         var layer_index = 0;
         foreach (var layer in this.layers) {
@@ -305,18 +314,18 @@ public class FeedforwardNetwork:
         return input;
     }
 
-    public BatchedFeatureSet<double> PredictSync(BatchedFeatureSet<double> values) {
+    public BatchedFeatureSet<float> PredictSync(BatchedFeatureSet<float> values) {
         return PredictSync(values, null, null);
     }
 
-    public Vec<double> PredictSync(FeatureSet<double> values) {
-        var output = PredictSync(new BatchedFeatureSet<double>(values));
-        return Vec<double>.Wrap(output.FlattenElements().ToArray());
+    public Vec<float> PredictSync(FeatureSet<float> values) {
+        var output = PredictSync(new BatchedFeatureSet<float>(values));
+        return Vec<float>.Wrap(output.FlattenElements().ToArray());
     }
 
-    public Vec<double> PredictSync(Vec<double> input) {
+    public Vec<float> PredictSync(Vec<float> input) {
         var ishape = this.InputShape;
-        return PredictSync((FeatureSet<double>)(input.Shape(
+        return PredictSync((FeatureSet<float>)(input.Shape(
             new Shape2D(ishape.Rows, ishape.Columns), 
                 ishape.Channels
             ).ToArray())

@@ -4,25 +4,25 @@ public class RandomInitialization
     : IInitializer
 {
 
-    private double min;
-    private double max;
+    private float min;
+    private float max;
     private static Random rng = new Random();
 
-    public RandomInitialization(double min, double max) {
+    public RandomInitialization(float min, float max) {
         this.min = Math.Min(min, max);
         this.max = Math.Max(min, max);
     }
 
-    public double RandomWeight(int input_count, int output_count, int parameterCount) {
+    public float RandomWeight(int input_count, int output_count, int parameterCount) {
         var sample = rng.NextDouble();
         var number = (max * sample) + (min * (1d - sample));
-        return number;
+        return (float)number;
     }
 
-    public double RandomBias(int input_count, int output_count, int parameterCount) {
+    public float RandomBias(int input_count, int output_count, int parameterCount) {
         var sample = rng.NextDouble();
         var number = (max * sample) + (min * (1d - sample));
-        return number;
+        return (float)number;
     }
 
     public void InitializeBiases(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
@@ -34,7 +34,7 @@ public class RandomInitialization
                 for (var i = 0; i < weightc; i++) {
                     var sample = rng.NextDouble();
                     var number = (max * sample) + (min * (1d - sample));
-                    weights[i] = number;
+                    weights[i] = (float)number;
                 }
             });
         });
@@ -47,7 +47,7 @@ public class RandomInitialization
                 
                 var sample = rng.NextDouble();
                 var number = (max * sample) + (min * (1d - sample));
-                neuron.Bias = number;
+                neuron.Bias = (float)number;
             });
         });
     }

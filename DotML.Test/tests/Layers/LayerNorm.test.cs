@@ -9,8 +9,8 @@ public class LayerNormTest {
     public void TestSafetensors() {
         var layer = new LayerNorm(input_size: new Shape3D(1, 5, 5));
         var writer = new LayerSafetensorWriter(); 
-        var weight_fill = 6.0;
-        var bias_fill = 2.0;
+        var weight_fill = 6.0f;
+        var bias_fill = 2.0f;
         foreach (var gamma in layer.Gammas) {
             gamma.Fill(weight_fill);
             foreach (var item in gamma) {
@@ -87,7 +87,7 @@ public class LayerNormTest {
                 ]
             ]
         ))); 
-        AssertExt.AreEqual(GammaTruth, new BatchedFeatureSet<double>(new FeatureSet<double>(layer.Gammas)));
+        AssertExt.AreEqual(GammaTruth, new BatchedFeatureSet<float>(new FeatureSet<float>(layer.Gammas)));
         var BetaTruth = new BatchedFeatureSet<double>(new FeatureSet<double>(Matrix<double>.FromJagged(
             [
                 [
@@ -126,8 +126,8 @@ public class LayerNormTest {
                     0.0
                 ]
             ]
-        ))); 
-        AssertExt.AreEqual(BetaTruth, new BatchedFeatureSet<double>(new FeatureSet<double>(layer.Betas)));
+        ))).ToFloatSet(); 
+        AssertExt.AreEqual(BetaTruth, new BatchedFeatureSet<float>(new FeatureSet<float>(layer.Betas)));
 
         // Step 2: Feed-forward
         var X = new BatchedFeatureSet<double>(new FeatureSet<double>(Matrix<double>.FromJagged(
@@ -168,7 +168,7 @@ public class LayerNormTest {
                     -2.1640102863311768
                 ]
             ]
-        )));
+        ))).ToFloatSet();
         var YPredicted = layer.EvaluateSync(X);
         var YTruth = new BatchedFeatureSet<double>(new FeatureSet<double>(Matrix<double>.FromJagged(
             [
@@ -208,7 +208,7 @@ public class LayerNormTest {
                     -2.205338954925537
                 ]
             ]
-        )));
+        ))).ToFloatSet();
         AssertExt.AreEqual(YTruth, YPredicted);
 
         // Step 3: Backpropagation
@@ -250,7 +250,7 @@ public class LayerNormTest {
                     1.309578537940979
                 ]
             ]
-        )));
+        ))).ToFloatSet();
         var backprop = layer.Backpropagate(new BackpropagationArgs (
             layer: -1,
             input: X,
@@ -295,7 +295,7 @@ public class LayerNormTest {
                     1.2969906330108643
                 ]
             ]
-        )));
+        ))).ToFloatSet();
         AssertExt.AreEqual(dX, backprop.dX);
 
         // Step 4: Check gradients
@@ -340,8 +340,8 @@ public class LayerNormTest {
                     -2.8880646228790283
                 ]
             ]
-        )));
-        var GammaGradPredicted = new BatchedFeatureSet<double>(new FeatureSet<double>(gradients.GammaGradients));
+        ))).ToFloatSet();
+        var GammaGradPredicted = new BatchedFeatureSet<float>(new FeatureSet<float>(gradients.GammaGradients));
         AssertExt.AreEqual(GammaGradTruth, GammaGradPredicted);
 
         var BetaGradTruth = new BatchedFeatureSet<double>(new FeatureSet<double>(Matrix<double>.FromJagged(
@@ -382,8 +382,8 @@ public class LayerNormTest {
                     1.309578537940979
                 ]
             ]
-        )));
-        var BetaGradPredicted = new BatchedFeatureSet<double>(new FeatureSet<double>(gradients.BetaGradients));
+        ))).ToFloatSet();
+        var BetaGradPredicted = new BatchedFeatureSet<float>(new FeatureSet<float>(gradients.BetaGradients));
         AssertExt.AreEqual(BetaGradTruth, BetaGradPredicted);
     }
 
@@ -470,8 +470,8 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
-        AssertExt.AreEqual(GammaTruth, new BatchedFeatureSet<double>(new FeatureSet<double>(layer.Gammas)));
+        ).ToFloatSet();
+        AssertExt.AreEqual(GammaTruth, new BatchedFeatureSet<float>(new FeatureSet<float>(layer.Gammas)));
         var BetaTruth = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -551,8 +551,8 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
-        AssertExt.AreEqual(BetaTruth, new BatchedFeatureSet<double>(new FeatureSet<double>(layer.Betas)));
+        ).ToFloatSet();
+        AssertExt.AreEqual(BetaTruth, new BatchedFeatureSet<float>(new FeatureSet<float>(layer.Betas)));
 
         // Step 2: Feed-forward
         var X = BatchedFeatureSet<double>.FromJagged(
@@ -634,7 +634,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var YPredicted = layer.EvaluateSync(X);
         var YTruth = BatchedFeatureSet<double>.FromJagged(
             [
@@ -715,7 +715,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         AssertExt.AreEqual(YTruth, YPredicted);
 
         // Step 3: Backpropagation
@@ -798,7 +798,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var backprop = layer.Backpropagate(new BackpropagationArgs (
             layer: -1,
             input: X,
@@ -884,7 +884,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         AssertExt.AreEqual(dXTruth, backprop.dX);
 
         // Step 4: Check gradients
@@ -970,8 +970,8 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
-        var GammaGradPredicted = new BatchedFeatureSet<double>(new FeatureSet<double>(gradients.GammaGradients));
+        ).ToFloatSet();
+        var GammaGradPredicted = new BatchedFeatureSet<float>(new FeatureSet<float>(gradients.GammaGradients));
         AssertExt.AreEqual(GammaGradTruth, GammaGradPredicted);
 
         var BetaGradTruth = BatchedFeatureSet<double>.FromJagged(
@@ -1053,8 +1053,8 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
-        var BetaGradPredicted = new BatchedFeatureSet<double>(new FeatureSet<double>(gradients.BetaGradients));
+        ).ToFloatSet();
+        var BetaGradPredicted = new BatchedFeatureSet<float>(new FeatureSet<float>(gradients.BetaGradients));
         AssertExt.AreEqual(BetaGradTruth, BetaGradPredicted);
     }
 
@@ -1104,9 +1104,9 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         layer.Gammas[0] = GammaTruth[0, 0];
-        AssertExt.AreEqual(GammaTruth, new BatchedFeatureSet<double>(new FeatureSet<double>(layer.Gammas)));
+        AssertExt.AreEqual(GammaTruth, new BatchedFeatureSet<float>(new FeatureSet<float>(layer.Gammas)));
         var BetaTruth = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -1149,9 +1149,9 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );  
+        ).ToFloatSet();  
         layer.Betas[0] = BetaTruth[0, 0];
-        AssertExt.AreEqual(BetaTruth, new BatchedFeatureSet<double>(new FeatureSet<double>(layer.Betas)));
+        AssertExt.AreEqual(BetaTruth, new BatchedFeatureSet<float>(new FeatureSet<float>(layer.Betas)));
 
         // Step 2: Feed-forward
         var X = BatchedFeatureSet<double>.FromJagged(
@@ -1196,7 +1196,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var YPredicted = layer.EvaluateSync(X);
         var YTruth = BatchedFeatureSet<double>.FromJagged(
             [
@@ -1240,7 +1240,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         AssertExt.AreEqual(YTruth, YPredicted);
 
         // Step 3: Backpropagation
@@ -1286,7 +1286,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var backprop = layer.Backpropagate(new BackpropagationArgs (
             layer: -1,
             input: X,
@@ -1335,7 +1335,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         AssertExt.AreEqual(dX, backprop.dX);
 
         // Step 4: Check gradients
@@ -1384,8 +1384,8 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
-        var GammaGradPredicted = new BatchedFeatureSet<double>(new FeatureSet<double>(gradients.GammaGradients));
+        ).ToFloatSet();
+        var GammaGradPredicted = new BatchedFeatureSet<float>(new FeatureSet<float>(gradients.GammaGradients));
         AssertExt.AreEqual(GammaGradTruth, GammaGradPredicted);
 
         var BetaGradTruth = BatchedFeatureSet<double>.FromJagged(
@@ -1430,8 +1430,8 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        );
-        var BetaGradPredicted = new BatchedFeatureSet<double>(new FeatureSet<double>(gradients.BetaGradients));
+        ).ToFloatSet();
+        var BetaGradPredicted = new BatchedFeatureSet<float>(new FeatureSet<float>(gradients.BetaGradients));
         AssertExt.AreEqual(BetaGradTruth, BetaGradPredicted);
     }
 

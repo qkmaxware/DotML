@@ -61,7 +61,7 @@ public class BinaryClassifiedVectors {
     public double ZeroValue = 0.0;
     public double OneValue = 1.0;
 
-    public IEnumerable<TrainingPair> Read(FileInfo file) {
+    public IEnumerable<TrainingPair<double>> Read(FileInfo file) {
         return read_classified_binary_vectors(
             file:               file, 
             category_off:       ZeroValue, 
@@ -113,7 +113,7 @@ public class BinaryClassifiedVectors {
         return Vec<double>.Wrap(values);
     }
 
-    private IEnumerable<TrainingPair> read_classified_binary_vectors(FileInfo file, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
+    private IEnumerable<TrainingPair<double>> read_classified_binary_vectors(FileInfo file, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
         using var stream = file.OpenRead();
         using var reader = new BinaryReader(stream);
         
@@ -136,6 +136,6 @@ public class BinaryClassifiedVectors {
             items.Add((Vec<double>.Wrap(input_vec), category_index));
         }
         
-        return items.Select(item => new TrainingPair { Input=item.Item1, Output=vector_from_label_index(item.Item2, category_count, category_off, category_on) });
+        return items.Select(item => new TrainingPair<double> { Input=item.Item1, Output=vector_from_label_index(item.Item2, category_count, category_off, category_on) });
     }
 }

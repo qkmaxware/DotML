@@ -24,7 +24,7 @@ public interface ILearningRateOptimizer {
     /// <param name="timestep">update timestep</param>
     /// <param name="parameterIndex">index of the trainable parameter</param>
     /// <returns>adjusted gradient</returns>
-    public double GetParameterUpdate(int timestep, double baseLearningRate, double gradient, int parameterIndex);
+    public float GetParameterUpdate(int timestep, float baseLearningRate, float gradient, int parameterIndex);
 }
 
 /// <summary>
@@ -65,7 +65,7 @@ public static class Optimizers {
 public class ConstantRate : ILearningRateOptimizer {
     public void Initialize(int parameterCount) { /* No need to do anything */ }
 
-    public double GetParameterUpdate(int timestep, double baseLearningRate, double gradient, int parameterIndex) {
+    public float GetParameterUpdate(int timestep, float baseLearningRate, float gradient, int parameterIndex) {
         return baseLearningRate * gradient;
     }
 }
@@ -77,23 +77,23 @@ public class RMSPropOptimizer : ILearningRateOptimizer {
     /// <summary>
     /// Decay rate for the learning rate
     /// </summary>
-    public double DecayRate {get; init;}
+    public float DecayRate {get; init;}
 
-    const double epsilon = 1e-8;
+    const float epsilon = 1e-8f;
 
     /// <summary>
     /// Learning rate optimizer based on the RMSProp technique. Learning rate gets smaller as the gradient gets smaller.
     /// </summary>
     /// <param name="decayRate">Decay rate for the learning rate</param>
-    public RMSPropOptimizer(double decayRate = 0.9) {
-        this.DecayRate = Math.Abs(decayRate); // Can't be -
+    public RMSPropOptimizer(float decayRate = 0.9f) {
+        this.DecayRate = MathF.Abs(decayRate); // Can't be -
     }
 
-    private double[] moments = new double[0];
+    private float[] moments = new float[0];
 
     public void Initialize(int parameters) {
-        moments = new double[parameters];
-        Array.Fill(moments, 0d);
+        moments = new float[parameters];
+        Array.Fill(moments, 0f);
     }
 
     /*
@@ -104,12 +104,12 @@ public class RMSPropOptimizer : ILearningRateOptimizer {
         return learningRate / (Math.Sqrt(cache[index]) + epsilon);
     */
 
-    public double GetParameterUpdate(int timestep, double baseLearningRate, double gradient, int parameterIndex) {
+    public float GetParameterUpdate(int timestep, float baseLearningRate, float gradient, int parameterIndex) {
         var cached = DecayRate * moments[parameterIndex] + (1 - DecayRate) * gradient * gradient;
         moments[parameterIndex] = cached;
 
         var denom = Math.Max(cached, epsilon);
-        var adjusted_gradient = gradient / Math.Sqrt(denom);
+        var adjusted_gradient = gradient / MathF.Sqrt(denom);
         var parameter_update = baseLearningRate * adjusted_gradient;
 
         return parameter_update;
@@ -123,22 +123,22 @@ public class AdamOptimizer : ILearningRateOptimizer {
     /// <summary>
     /// First ADAM hyperparameter
     /// </summary>
-    public double Beta1 {get; init;}
+    public float Beta1 {get; init;}
 
     /// <summary>
     /// Second ADAM hyperparameter
     /// </summary>
-    public double Beta2 {get; init;}
+    public float Beta2 {get; init;}
 
-    const double epsilon = 1e-8;
+    const float epsilon = 1e-8f;
 
     struct Moment {
-        public double First;
-        public double Second;
+        public float First;
+        public float Second;
     }
     private Moment[] moments = new Moment[0];
 
-    public AdamOptimizer(double beta1 = 0.9, double beta2 = 0.999) {
+    public AdamOptimizer(float beta1 = 0.9f, float beta2 = 0.999f) {
         this.Beta1 = Math.Abs(beta1);
         this.Beta2 = Math.Abs(beta2);
     }
@@ -151,7 +151,7 @@ public class AdamOptimizer : ILearningRateOptimizer {
     // TODO double check the below logic. Make NULL safe (I mean shouldnt be an issue since initialize should set everything up... but could be if I forget to call it)
     // Dereference of a possibly null reference.
     #pragma warning disable CS8602
-    public double GetParameterUpdate(int timestep, double baseLearningRate, double gradient, int parameterIndex) {
+    public float GetParameterUpdate(int timestep, float baseLearningRate, float gradient, int parameterIndex) {
         var cached = moments[parameterIndex];
 
         // Update biased first moment estimate
@@ -164,14 +164,14 @@ public class AdamOptimizer : ILearningRateOptimizer {
         moments[parameterIndex] = cached;
 
         // Bias correction
-        double mHat = cached.First / (1 - Math.Pow(Beta1, timestep));
-        double vHat = cached.Second / (1 - Math.Pow(Beta2, timestep));
+        float mHat = cached.First / (1 - MathF.Pow(Beta1, timestep));
+        float vHat = cached.Second / (1 - MathF.Pow(Beta2, timestep));
 
         // Adjusted learning rate
         vHat = Math.Max(vHat, epsilon);
-        var adjusted_gradient = mHat / Math.Sqrt(vHat);
+        var adjusted_gradient = mHat / MathF.Sqrt(vHat);
         var parameter_update = baseLearningRate * adjusted_gradient;
-        if (double.IsNaN(parameter_update)) {
+        if (float.IsNaN(parameter_update)) {
             throw new ArithmeticException("NaN generated for parameter update.");
             //parameter_update = 0;
         }

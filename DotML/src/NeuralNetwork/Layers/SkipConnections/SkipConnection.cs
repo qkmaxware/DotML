@@ -22,11 +22,11 @@ public abstract class SkipConnection : FeedforwardNetworkLayer {
         this.OutputShape = output_shape;
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
-        return Combine(CaptureSource.CapturedInput, new BatchedFeatureSet<double>(channels))[0];
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> channels) {
+        return Combine(CaptureSource.CapturedInput, new BatchedFeatureSet<float>(channels))[0];
     }
 
-    public override BatchedFeatureSet<double> EvaluateSync(BatchedFeatureSet<double> features) {
+    public override BatchedFeatureSet<float> EvaluateSync(BatchedFeatureSet<float> features) {
         // TODO AUTO padding / cropping 
         var captured = CaptureSource.CapturedInput;
         if (captured is not null && AutoCropOrPad) {
@@ -39,9 +39,9 @@ public abstract class SkipConnection : FeedforwardNetworkLayer {
                 var tpad = vdiff / 2;                           // Attempt to centre the padding/cropping
                 var bpad = vdiff - tpad;
 
-                var bs = new FeatureSet<double>[captured.Batches];
+                var bs = new FeatureSet<float>[captured.Batches];
                 for (var b = 0; b < bs.Length; b++) {
-                    var fs = new Matrix<double>[captured.Channels];
+                    var fs = new Matrix<float>[captured.Channels];
                     for (var f = 0; f < fs.Length; f++) {
                         fs[f] = captured[b, f].Pad(
                                   top: tpad, 
@@ -49,9 +49,9 @@ public abstract class SkipConnection : FeedforwardNetworkLayer {
                                 bottom: bpad
                         );
                     }
-                    bs[b] = new FeatureSet<double>(fs);
+                    bs[b] = new FeatureSet<float>(fs);
                 }
-                captured = new BatchedFeatureSet<double>(bs);
+                captured = new BatchedFeatureSet<float>(bs);
             }
         }
         return Combine(captured, features);
@@ -63,5 +63,5 @@ public abstract class SkipConnection : FeedforwardNetworkLayer {
     /// <param name="skipConnection">capture source features</param>
     /// <param name="input">input features</param>
     /// <returns>combined features</returns>
-    public abstract BatchedFeatureSet<double> Combine(BatchedFeatureSet<double>? skipConnection, BatchedFeatureSet<double> input);
+    public abstract BatchedFeatureSet<float> Combine(BatchedFeatureSet<float>? skipConnection, BatchedFeatureSet<float> input);
 }

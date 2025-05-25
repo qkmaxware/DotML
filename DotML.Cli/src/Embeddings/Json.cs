@@ -9,18 +9,18 @@ namespace DotML.Cli.Embeddings;
 /// </summary>
 public class Json : IEmbedder {
 
-    public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, IEnumerable<FileInfo> files) {
+    public BatchedFeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, IEnumerable<FileInfo> files) {
         var batches = files.Select(file => CreateEmbedding(@for, file)).ToArray();
-        return new BatchedFeatureSet<double>(batches);
+        return new BatchedFeatureSet<float>(batches);
     }
     
-    public FeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, FileInfo file) {
-        var vec = Matrix<double>.Column(JsonSerializer.Deserialize<double[]>(file.OpenRead()) ?? new double[0]);
-        return new FeatureSet<double>(vec);
+    public FeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, FileInfo file) {
+        var vec = Matrix<float>.Column(JsonSerializer.Deserialize<float[]>(file.OpenRead()) ?? new float[0]);
+        return new FeatureSet<float>(vec);
     }
 
-    public BatchedFeatureSet<double> CreateEmbedding(FeedforwardNetwork @for, string raw) {
-        var vec = Matrix<double>.Column(JsonSerializer.Deserialize<double[]>(raw) ?? new double[0]);
-        return new BatchedFeatureSet<double>(new FeatureSet<double>(vec));
+    public BatchedFeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, string raw) {
+        var vec = Matrix<float>.Column(JsonSerializer.Deserialize<float[]>(raw) ?? new float[0]);
+        return new BatchedFeatureSet<float>(new FeatureSet<float>(vec));
     }
 }
