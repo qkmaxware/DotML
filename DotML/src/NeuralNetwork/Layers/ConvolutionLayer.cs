@@ -169,9 +169,20 @@ public class ConvolutionLayer : FeedforwardNetworkLayer {
     }
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
         var filter_shape = FilterShape;
-        var dW = BackpropagateWrtWeights(args.InputBatch, args.OutputErrors, filter_shape);
-        var dB = BackpropagateWrtBias   (args.OutputErrors);
-        var dX = BackpropagateWrtInput  (args.InputBatch, args.OutputErrors, filter_shape);
+
+        // Start longest tasks first
+        var x_task = Task.Run(() => BackpropagateWrtInput(args.InputBatch, args.OutputErrors, filter_shape));
+        var w_task = Task.Run(() => BackpropagateWrtWeights(args.InputBatch, args.OutputErrors, filter_shape));
+        var b_task = BackpropagateWrtBias(args.OutputErrors); // Start on current thread
+
+        // Finalize shortest task first
+        w_task.Wait();
+        x_task.Wait();
+        
+        // Fetch results
+        var dW = w_task.Result;
+        var dB = b_task;
+        var dX = x_task.Result;
 
         return new BackpropagationReturns(
             dX,
@@ -225,25 +236,29 @@ Mine
 
         var dW = new BatchedFeatureSet<float>(filter_shape); // (out_channels, kernel_count, filter_height, filter_width)
 
-        for (var oY = 0; oY < output_height; oY++) {
-            // Region on the input which was used to compute this value on the output
-            var y_start = oY * StrideY - RowsPadding;
-            var y_end = y_start + filter_height;
+        for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
+            var feats = dY[batchIndex];
+            var xBatch = X[batchIndex];
 
-            for (var oX = 0; oX < output_width; oX++) {
-                // Region on the input which was used to compute this value on the output
-                var x_start = oX * StrideX - ColumnsPadding;
-                var x_end = x_start + filter_width;
+            for (var filterIndex = 0; filterIndex < out_channels; filterIndex++) {
+                var feat = feats[filterIndex];
+                var dWfilter = dW[filterIndex];
 
-                for (var batchIndex = 0; batchIndex < batch_size; batchIndex++) {
-                    var feats = dY[batchIndex];
-                    for (var filterIndex = 0; filterIndex < out_channels; filterIndex++) {
-                        var feat = feats[filterIndex];
-                        var grad = feat[oY, oX];
+                for (var kernelIndex = 0; kernelIndex < in_channels; kernelIndex++) {
+                    var dk = dWfilter[kernelIndex];
+                    var x = xBatch[kernelIndex];
 
-                        for (var kernelIndex = 0; kernelIndex < in_channels; kernelIndex++) {
-                            var dk = dW[filterIndex, kernelIndex];
-                            var x = X[batchIndex, kernelIndex];
+                    for (var oY = 0; oY < output_height; oY++) {
+                        // Region on the input which was used to compute this value on the output
+                        var y_start = oY * StrideY - RowsPadding;
+                        var y_end = y_start + filter_height;
+
+                        for (var oX = 0; oX < output_width; oX++) {
+                            // Region on the input which was used to compute this value on the output
+                            var x_start = oX * StrideX - ColumnsPadding;
+                            var x_end = x_start + filter_width;
+
+                            var grad = feat[oY, oX];
 
                             for (int iY = y_start, ky = 0; iY < y_end; iY++, ky++) {
                                 if (iY < 0 || iY >= height)
@@ -275,8 +290,8 @@ Mine
         var featureCount = dY.Channels; // Should be equal to FilterCount
         var batchCount = dY.Batches;
         var dB = new float[featureCount];
-        var vector_size = Vector<float>.Count;  // TODO check Vector<double>.IsHardwareAccelerated tp determine SIMD vs non SIMD path
-
+        var vector_size = Vector<float>.Count; 
+        
         if (Vector.IsHardwareAccelerated)
         {
             for (var featureIndex = 0; featureIndex < featureCount; featureIndex++)

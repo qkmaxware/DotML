@@ -56,7 +56,8 @@
         }
 
         var method1 = new AbsmaxQuantization();
-        original.QuantizeAll(method1);
+        original.QuantizeAll<double, byte>(method1);
+        original.QuantizeAll<float, byte>(method1);
 
         // TODO Download the quantized file
         using var memory = new MemoryStream();

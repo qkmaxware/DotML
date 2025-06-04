@@ -9,7 +9,7 @@ public class CompareLayers {
 
     [Params(64)]
     public int CHANNELS;
-    [Params(32, 64, 128, 256)]
+    [Params(64)]
     public int DIM_LENGTH { get; set; }
     [Params(100)]
     public int OUT_CLASSES;

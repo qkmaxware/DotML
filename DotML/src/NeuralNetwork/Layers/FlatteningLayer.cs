@@ -85,7 +85,15 @@ public class FlatteningLayer : ReshapeLayer {
         if (channels.Channels == 1 && channels[0].IsColumnMatrix) {
             return channels;
         } else {
-            Matrix<float> output = new Matrix<float>(channels.Shape.Count, 1, channels.SelectMany(x => x.FlattenRows()));
+            // Flatten by copying to a new flattened matrix
+            Matrix<float> output = new Matrix<float>(channels.Shape.Count, 1);
+            var output_span = output.AsSpan();
+            foreach (var channel in channels) {
+                // Copy this channel in order to the next 'length' bytes
+                var slice = channel.AsReadOnlySpan();
+                slice.CopyTo(output_span);
+                output_span = output_span.Slice(slice.Length);
+            }
             return new FeatureSet<float>(output);
         }
     }

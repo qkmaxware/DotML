@@ -9,12 +9,11 @@ public class BenchmarkMatrixConvolve {
     [Params(3)]
     public int KERNEL_SIZE {get; set;}
 
-    [Params(8, 16, 32, 64, 128, 256, 512, 1024)]
+    [Params(32, 128, 512)]
     public int DIM_SIZE {get; set;}
 
     private Matrix<double> kernel;
     private Matrix<double> feature;
-    private Complex[] flat;
     private double[] kernel_flat;
     private double[] feature_flat;
 
@@ -24,22 +23,16 @@ public class BenchmarkMatrixConvolve {
         feature_flat = feature.ToArray();
         kernel = new Matrix<double>(KERNEL_SIZE, KERNEL_SIZE);
         kernel_flat = kernel.ToArray();
-        flat = new Complex[DIM_SIZE * DIM_SIZE];
     }
 
     [Benchmark]
-    public void NaiveConvolution() {
+    public void Naive() {
         feature.Convolve(kernel);
     }
 
     [Benchmark]
-    public void CooleyTukeyFFT() {
-        CooleyTukey.FFT(flat);
-    }
-
-    [Benchmark]
-    public void CooleyTukeyConvolution() {
-        CooleyTukey.ConvolveFFT(feature, kernel);
+    public void FFT() {
+        FftConvolve.Convolve2D(feature, kernel);
     }
 
 }

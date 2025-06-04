@@ -207,9 +207,9 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
             var j = 0;
             var batch = args.InputBatch[i];
             foreach (var feature in batch) {
-                var k = 0;
-                foreach (var value in feature.FlattenRows()) {
-                    xT[i,j++] = feature[k++];
+                var feature_span = feature.AsReadOnlySpan(); var len = feature_span.Length;
+                for (var k = 0; k < len; k++) {
+                    xT[i,j++] = feature[k];
                 }
             }
         }
@@ -218,11 +218,12 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Matrix<float> MakeDelta(BackpropagationArgs args) {
-        var delta = new Matrix<float>(NeuronCount, args.InputBatch.Batches);
+        var neurons = NeuronCount;
+        var delta = new Matrix<float>(neurons, args.InputBatch.Batches);
         for (var i = 0; i < args.InputBatch.Batches; i++) {
-            var batch_output_errors = args.OutputErrors[i][0]; // This is a column vector (only 1 column)
-            for (var j = 0; j < NeuronCount; j++) {
-                delta[j, i] = batch_output_errors[j, 0];
+            var batch_output_errors = args.OutputErrors[i, 0].AsReadOnlySpan(); // This is a column vector (only 1 column)
+            for (var j = 0; j < neurons; j++) {
+                delta[j, i] = batch_output_errors[j];
             }
         }
         return delta;

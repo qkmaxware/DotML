@@ -670,7 +670,7 @@ public class Fit : BaseCommand {
         report.Reset();
         List<(FeatureSet<float> InMatrix, Vec<float> In, Vec<float> Out)> batch = new List<(FeatureSet<float> InMatrix, Vec<float> In, Vec<float> Out)>();
         var concurrency_level = batch_size; // or Environment.ProcessorCount
-        while (data_iterator.MoveNext() && batch.Count < concurrency_level) {
+        while (batch.Count < concurrency_level && data_iterator.MoveNext()) {
             var pair = data_iterator.Current;
             var input = new FeatureSet<float>(pair.Input.Shape(network.InputShape).ToArray());
             batch.Add((input, pair.Input, pair.Output));
@@ -705,7 +705,7 @@ public class Fit : BaseCommand {
 
             // Compute next batch
             batch.Clear();
-            while (data_iterator.MoveNext() && batch.Count < concurrency_level)
+            while (batch.Count < concurrency_level && data_iterator.MoveNext())
             {
                 var pair = data_iterator.Current;
                 var input = new FeatureSet<float>(pair.Input.Shape(network.InputShape).ToArray());

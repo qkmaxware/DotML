@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
@@ -139,9 +140,20 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
         var filter_shape = FilterShape;
-        var dW = BackpropagateWrtWeights(args.InputBatch, args.OutputErrors, filter_shape);
-        var dB = BackpropagateWrtBias(args.OutputErrors);
-        var dX = BackpropagateWrtInput(args.InputBatch, args.OutputErrors, filter_shape);
+
+        // Start longest tasks first
+        var x_task = Task.Run(() => BackpropagateWrtInput(args.InputBatch, args.OutputErrors, filter_shape));
+        var w_task = Task.Run(() => BackpropagateWrtWeights(args.InputBatch, args.OutputErrors, filter_shape));
+        var b_task = BackpropagateWrtBias(args.OutputErrors); // Start on current thread
+
+        // Finalize shortest task first
+        w_task.Wait();
+        x_task.Wait();
+        
+        // Fetch results
+        var dW = w_task.Result;
+        var dB = b_task;
+        var dX = x_task.Result;
 
         return new BackpropagationReturns(
             error: dX,
@@ -167,34 +179,36 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
             var xbatch = X[batch_index];
             var ybatch = dY[batch_index];
 
-            for (var feature_index = 0; feature_index < in_channels; feature_index++) {
-                var xfeats = xbatch[feature_index];
+            for (var channel_index = 0; channel_index < out_channels; channel_index++) {
+                var chan_dw = dW[channel_index];
+                var ychan = ybatch[channel_index];
 
-                for (var r = 0; r < input_height; r++) {
-                    // Y-Region on the output that this input position contributed to
-                    var region_start_y = r * StrideX - InputRowsPadding;
-                    var region_end_y = region_start_y + filter_height;
+                for (var feature_index = 0; feature_index < in_channels; feature_index++) {
+                    var xfeats = xbatch[feature_index];
+                    var feats_chan = chan_dw[feature_index];
 
+                    for (var r = 0; r < input_height; r++) {
+                        // Y-Region on the output that this input position contributed to
+                        var region_start_y = r * StrideX - InputRowsPadding;
+                        var region_end_y = region_start_y + filter_height;
 
-                    for (var c = 0; c < input_width; c++) {
-                        // X-Region on the output that this input position contributed to
-                        var region_start_x = c * StrideX - InputColumnsPadding;
-                        var region_end_x = region_start_x + filter_width;
+                        for (var c = 0; c < input_width; c++) {
+                            // X-Region on the output that this input position contributed to
+                            var region_start_x = c * StrideX - InputColumnsPadding;
+                            var region_end_x = region_start_x + filter_width;
 
-                        var i = xfeats[r, c];
+                            var i = xfeats[r, c];
 
-                        for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
-                            if (out_y < 0 || out_y >= output_height)
-                                continue;
-
-                            for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
-                                if (out_x < 0 || out_x >= output_width)
+                            for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
+                                if (out_y < 0 || out_y >= output_height)
                                     continue;
 
-                                for (var channel_index = 0; channel_index < out_channels; channel_index++) {
-                                    dW[channel_index, feature_index, ky, kx] += i * ybatch[channel_index, out_y, out_x];
+                                for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
+                                    if (out_x < 0 || out_x >= output_width)
+                                        continue;
+
+                                    feats_chan[ky, kx] += i * ychan[out_y, out_x]; 
                                 }
-                                    
                             }
                         }
                     }
@@ -214,15 +228,44 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         // Compute dL/dB by summing over batches, rows, and columns
         var featureCount = dY.Channels; // Should be equal to FilterCount
         var dB = new float[featureCount];
-        for (var featureIndex = 0; featureIndex < featureCount; featureIndex++) {
-            // Compute sum 
-            var sum = 0.0f;
-            for (var batchIndex = 0; batchIndex < dY.Batches; batchIndex++) {
-                sum += dY[batchIndex, featureIndex].Sum();
-            }
+        var vector_size = Vector<float>.Count; 
 
-            // Apply biases
-            dB[featureIndex] = sum;
+        if (Vector.IsHardwareAccelerated) {
+            for (var featureIndex = 0; featureIndex < featureCount; featureIndex++) {
+                // Compute sum 
+                var sum = 0.0f;
+                var sum_vec = Vector<float>.Zero;
+                for (var batchIndex = 0; batchIndex < dY.Batches; batchIndex++) {
+                    var feat = dY[batchIndex, featureIndex].AsArray();
+                    var buff = feat.Length - vector_size;
+
+                    var j = 0;
+                    for (; j < buff; j += vector_size) {
+                        sum_vec += new Vector<float>(feat, j);
+                    }
+
+                    for (; j < feat.Length; j++) {
+                        sum += feat[j];
+                    }
+                }
+
+                // Apply biases
+                dB[featureIndex] = sum + Vector.Sum(sum_vec);
+            }
+        } else {
+            for (var featureIndex = 0; featureIndex < featureCount; featureIndex++) {
+                // Compute sum 
+                var sum = 0.0f;
+                for (var batchIndex = 0; batchIndex < dY.Batches; batchIndex++) {
+                    var feat = dY[batchIndex, featureIndex].AsReadOnlySpan();
+                    for (var j = 0; j < feat.Length; j++) {
+                        sum += feat[j];
+                    }
+                }
+
+                // Apply biases
+                dB[featureIndex] = sum;
+            }
         }
 
         return Vec<float>.Wrap(dB);
@@ -234,7 +277,6 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         //var padded_out_columns = out_columns + 2 * InputColumnsPadding;
 
         var (_, out_channels, in_rows, in_columns) = dY.Shape;
-        var (filter_count, kernel_count, kernel_height, kernel_width) = filter_shape;
 
         var dX = new BatchedFeatureSet<float>(X.Shape);
         
@@ -243,13 +285,16 @@ public class TransposeConvolutionLayer : FeedforwardNetworkLayer {
         // Each kernel applied to a single input
         // So to go backwards we need to take the output from each filter and distribute it with each kernel back to the associated input
         for (var batch = 0; batch < batch_size; batch++) {
+            var input_features = dX[batch];
+            var output_features = dY[batch];
+
             for (var output_index = 0; output_index < out_channels; output_index++) {
                 var filter = this.filters[output_index];
-                var output = dY[batch, output_index];
+                var output = output_features[output_index];
 
                 for (var kernel_index = 0; kernel_index < in_channels; kernel_index++) {
                     var kernel = filter[kernel_index];
-                    var result = dX[batch, kernel_index];
+                    var result = input_features[kernel_index];
 
                     // --------------------------------------
                     // COPIED FROM Matrix<double>.Convolve();

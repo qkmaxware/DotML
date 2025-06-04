@@ -172,7 +172,8 @@ public class Modify : BaseCommand {
 
         if (QuantizeWeights) {
             var method = new AbsmaxQuantization();
-            model.QuantizeWeights(method);
+            model.QuantizeWeights<float, byte>(method);
+            model.QuantizeWeights<double, byte>(method);
             
             Console.WriteLine($"Successfully quantized weights for {model.Guid} using {method.GetType().Name}");
         }

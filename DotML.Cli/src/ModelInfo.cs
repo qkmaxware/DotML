@@ -133,7 +133,7 @@ public class ModelInfo {
         return network;
     }
 
-    private IQuantization<double, byte>? decode_quantizer(string method_name) {
+    private IQuantization<float, byte>? decode_quantizer(string method_name) {
         // TODO decode quantization method
         return (method_name) switch {
             nameof(AbsmaxQuantization) =>

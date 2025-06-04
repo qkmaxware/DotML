@@ -87,24 +87,20 @@ where T:INumber<T> {
     /// <summary>
     /// Tests if this matrix's internal storage is in row-major order
     /// </summary>
-    public static bool IsRowMajor {
-        #if MATRIX_STORAGE_ROW_MAJOR
-        get => true;
-        #else
-        get => false;
-        #endif
-    }
+    #if MATRIX_STORAGE_ROW_MAJOR
+    public const bool IsRowMajor = true;
+    #else
+    public const bool IsRowMajor = false;
+    #endif
 
     /// <summary>
     /// Tests if this matrix's internal storage is in column-major order
     /// </summary>
-    public static bool IsColumnMajor {
-        #if MATRIX_STORAGE_COL_MAJOR
-        get => true;
-        #else
-        get => false;
-        #endif
-    }
+    #if MATRIX_STORAGE_COL_MAJOR
+    public const bool IsColumnMajor = true;
+    #else
+    public const bool IsColumnMajor = false;
+    #endif
 
     /// <summary>
     /// Get the value of a matrix element at the given row, column index.
@@ -776,6 +772,12 @@ where T:INumber<T> {
         var out_rows = (in_rows_real - 1) * outputStrideY + kernel.Rows - 2 * inputPaddingY + outputPaddingY;
 
         var result = new Matrix<T>(out_rows, out_cols, bias ?? T.Zero);
+
+        #if MATRIX_STORAGE_ROW_MAJOR
+        ref T inputRef          = ref MemoryMarshal.GetArrayDataReference(this.AsArray());
+        ref T filterRef         = ref MemoryMarshal.GetArrayDataReference(kernel.AsArray());
+        ref T resultRef = ref MemoryMarshal.GetArrayDataReference(result.AsArray());
+        #endif
         for (var r = 0; r < in_rows_real; r++) {
             var region_start_y = r * outputStrideY - inputPaddingY;
             var region_end_y = region_start_y + kernel_rows;
@@ -784,7 +786,11 @@ where T:INumber<T> {
                 var region_start_x = c * outputStrideX - inputPaddingX;
                 var region_end_x = region_start_x + kernel_cols;
 
-                var i = this[r, c];
+                #if MATRIX_STORAGE_ROW_MAJOR
+                var i = Unsafe.Add(ref inputRef, r * in_cols_real + c);
+                #else 
+                var i = input[r, c];
+                #endif
 
                 for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
                     if (out_y < 0 || out_y >= out_rows)
@@ -794,9 +800,21 @@ where T:INumber<T> {
                         if (out_x < 0 || out_x >= out_cols)
                             continue;
 
-                        var kernel_val = flip_kernel ? kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx]  : kernel[ky, kx];
-                        
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        var kernel_val = flip_kernel 
+                            ? Unsafe.Add(ref filterRef, (kernel_rows_m1 - ky) * kernel_cols + (kernel_cols_m1 - kx))  
+                            : Unsafe.Add(ref filterRef, ky * kernel_cols + kx);
+                        #else
+                        var kernel_val = flip_kernel 
+                            ? kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx]  
+                            : kernel[ky, kx];
+                        #endif
+
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        Unsafe.Add(ref resultRef, out_y * out_cols + out_x) += i * kernel_val;
+                        #else
                         result[out_y, out_x] += i * kernel_val;
+                        #endif
                     }
                 }
             }
@@ -835,29 +853,57 @@ where T:INumber<T> {
         var out_rows = (in_rows_real - 1) * outputStrideY + kernel_rows - 2 * inputPaddingY + outputPaddingY;
 
         var result = new Matrix<T>(out_rows, out_cols, bias ?? T.Zero);
-        foreach (var (input, kernel) in inputs.Zip(kernels)) {
-            for (var r = 0; r < in_rows_real; r++) {
-                var region_start_y = r * outputStrideY - inputPaddingY;
-                var region_end_y = region_start_y + kernel_rows;
+        ref T resultRef = ref MemoryMarshal.GetArrayDataReference(result.AsArray());
+        using (var inputEnumerator = inputs.GetEnumerator()) 
+        using (var kernelEnumerator = kernels.GetEnumerator()) {
+            // Iterate over inputs and kernels in pairs
+            while (inputEnumerator.MoveNext() && kernelEnumerator.MoveNext()) {
+                var input = inputEnumerator.Current;
+                var kernel = kernelEnumerator.Current;
 
+                #if MATRIX_STORAGE_ROW_MAJOR
+                ref T inputRef          = ref MemoryMarshal.GetArrayDataReference(input.AsArray());
+                ref T filterRef         = ref MemoryMarshal.GetArrayDataReference(kernel.AsArray());
+                #endif
 
-                for (var c = 0; c < in_cols_real; c++) {
-                    var region_start_x = c * outputStrideX - inputPaddingX;
-                    var region_end_x = region_start_x + kernel_cols;
+                for (var r = 0; r < in_rows_real; r++) {
+                    var region_start_y = r * outputStrideY - inputPaddingY;
+                    var region_end_y = region_start_y + kernel_rows;
 
-                    var i = input[r, c];
+                    for (var c = 0; c < in_cols_real; c++) {
+                        var region_start_x = c * outputStrideX - inputPaddingX;
+                        var region_end_x = region_start_x + kernel_cols;
+                        
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        var i = Unsafe.Add(ref inputRef, r * in_cols_real + c);
+                        #else 
+                        var i = input[r, c];
+                        #endif
 
-                    for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
-                        if (out_y < 0 || out_y >= out_rows)
-                            continue;
-
-                        for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
-                            if (out_x < 0 || out_x >= out_cols)
+                        for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
+                            if (out_y < 0 || out_y >= out_rows)
                                 continue;
 
-                            var kernel_val = flip_kernel ? kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx]  : kernel[ky, kx];
+                            for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
+                                if (out_x < 0 || out_x >= out_cols)
+                                    continue;
 
-                            result[out_y, out_x] += i * kernel_val;
+                                #if MATRIX_STORAGE_ROW_MAJOR
+                                var kernel_val = flip_kernel 
+                                    ? Unsafe.Add(ref filterRef, (kernel_rows_m1 - ky) * kernel_cols + (kernel_cols_m1 - kx))  
+                                    : Unsafe.Add(ref filterRef, ky * kernel_cols + kx);
+                                #else
+                                var kernel_val = flip_kernel 
+                                    ? kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx]  
+                                    : kernel[ky, kx];
+                                #endif
+
+                                #if MATRIX_STORAGE_ROW_MAJOR
+                                Unsafe.Add(ref resultRef, out_y * out_cols + out_x) += i * kernel_val;
+                                #else
+                                result[out_y, out_x] += i * kernel_val;
+                                #endif
+                            }
                         }
                     }
                 }
@@ -877,12 +923,16 @@ where T:INumber<T> {
     /// <param name="paddingY">vertical padding of this matrix</param>
     /// <returns>convolution of this matrix</returns>
     public Matrix<T> Convolve(Matrix<T> kernel, int strideX = 1, int strideY = 1, int paddingX = 0, int paddingY = 0, T? bias = default(T)) {
+        var filterSpan          = kernel.AsReadOnlySpan();
+        ref T filterRef         = ref MemoryMarshal.GetArrayDataReference(kernel.AsArray());
         var filterRows          = kernel.Rows;   
         var filterColumns       = kernel.Columns;  
         var paddingRows         = paddingY;
         var paddingColumns      = paddingX;  
 
         var input               = this;
+        var inputSpan           = this.AsReadOnlySpan();
+        ref T inputRef          = ref MemoryMarshal.GetArrayDataReference(this.AsArray());
         var inputRows           = input.Rows;
         var inputColumns        = input.Columns;
 
@@ -890,27 +940,51 @@ where T:INumber<T> {
         var outputRows          = (inputRows - filterRows + 2 * paddingRows) / strideY + 1; 
         var outputColumns       = (inputColumns - filterColumns + 2 * paddingColumns) / strideX + 1;  
 
-        var result              = new Matrix<T>(outputRows, outputColumns, bias ?? T.Zero);
+        var result              = new Matrix<T>(outputRows, outputColumns);
+        ref T resultRef         = ref MemoryMarshal.GetArrayDataReference(result.AsArray());
+        var resultSpan          = result.AsSpan();
+        var bias_v              = bias ?? T.Zero;
         for (var y = 0; y < outputRows; y++) {
             var startY = y * strideY - paddingRows;
+            #if MATRIX_STORAGE_ROW_MAJOR
+            var resultIndexOffset = y * outputColumns; // Row-major
+            #endif
 
             for (var x = 0; x < outputColumns; x++) {
                 var startX = x * strideX - paddingColumns;
+                #if MATRIX_STORAGE_ROW_MAJOR
+                var resultIndex = resultIndexOffset + x;
+                #endif
 
-                var total_sum = T.Zero;
+                var total_sum = bias_v;
                 for (int ky = 0; ky < filterRows; ky++) {
                     var inY = startY + ky;
                     if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
 
+                    #if MATRIX_STORAGE_ROW_MAJOR
+                    var inIndexOffset = inY * inputColumns;
+				    var kernelIndexOffset = ky * filterColumns;
+                    #endif
+
                     for (int kx = 0; kx < filterColumns; kx++) {
                         var inX = startX + kx;
                         if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
-                        
+
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        total_sum += Unsafe.Add(ref inputRef, inIndexOffset + inX) * Unsafe.Add(ref filterRef, kernelIndexOffset + kx);
+                        //total_sum += inputSpan[inIndexOffset + inX] * filterSpan[kernelIndexOffset + kx];
+                        #else
                         total_sum += input[inY, inX] * kernel[ky, kx];
+                        #endif
                     }
                 }
 
-                result[y, x] += total_sum;
+                #if MATRIX_STORAGE_ROW_MAJOR
+                Unsafe.Add(ref resultRef, resultIndex) = total_sum;
+                //resultSpan[resultIndex] = total_sum;
+                #else
+                result[y, x] = total_sum;
+                #endif
             }
         }
 
@@ -943,27 +1017,62 @@ where T:INumber<T> {
         var outputColumns       = (inputColumns - filterColumns + 2 * paddingColumns) / strideX + 1;  
 
         var result              = new Matrix<T>(outputRows, outputColumns, bias ?? T.Zero);
-        foreach (var (input, kernel) in inputs.Zip(kernels)) {
-            for (var y = 0; y < outputRows; y++) {
-                var startY = y * strideY - paddingRows;
+        ref T resultRef         = ref MemoryMarshal.GetArrayDataReference(result.AsArray());
+        var resultSpan          = result.AsSpan();
+        using (var inputEnumerator = inputs.GetEnumerator()) 
+        using (var kernelEnumerator = kernels.GetEnumerator()) {
+            // Iterate over inputs and kernels in pairs
+            while (inputEnumerator.MoveNext() && kernelEnumerator.MoveNext()) {
+                var input = inputEnumerator.Current;
+                var kernel = kernelEnumerator.Current;
 
-                for (var x = 0; x < outputColumns; x++) {
-                    var startX = x * strideX - paddingColumns;
+                var inputSpan = input.AsReadOnlySpan();
+                ref T inputRef          = ref MemoryMarshal.GetArrayDataReference(input.AsArray());
+                var filterSpan = kernel.AsReadOnlySpan();
+                ref T filterRef         = ref MemoryMarshal.GetArrayDataReference(kernel.AsArray());
 
-                    var total_sum = T.Zero;
-                    for (int ky = 0; ky < filterRows; ky++) {
-                        var inY = startY + ky;
-                        if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
+                for (var y = 0; y < outputRows; y++) {
+                    var startY = y * strideY - paddingRows;
+                    #if MATRIX_STORAGE_ROW_MAJOR
+                    var resultIndexOffset = y * outputColumns; // Row-major
+                    #endif
 
-                        for (int kx = 0; kx < filterColumns; kx++) {
-                            var inX = startX + kx;
-                            if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
-                            
-                            total_sum += input[inY, inX] * kernel[ky, kx];
+                    for (var x = 0; x < outputColumns; x++) {
+                        var startX = x * strideX - paddingColumns;
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        var resultIndex = resultIndexOffset + x;
+                        #endif
+
+                        var total_sum = T.Zero;
+                        for (int ky = 0; ky < filterRows; ky++) {
+                            var inY = startY + ky;
+                            if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
+
+                            #if MATRIX_STORAGE_ROW_MAJOR
+                            var inIndexOffset = inY * inputColumns;
+                            var kernelIndexOffset = ky * filterColumns;
+                            #endif
+
+                            for (int kx = 0; kx < filterColumns; kx++) {
+                                var inX = startX + kx;
+                                if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
+                                
+                                #if MATRIX_STORAGE_ROW_MAJOR
+                                total_sum += Unsafe.Add(ref inputRef, inIndexOffset + inX) * Unsafe.Add(ref filterRef, kernelIndexOffset + kx);
+                                //total_sum += inputSpan[inIndexOffset + inX] * filterSpan[kernelIndexOffset + kx];
+                                #else
+                                total_sum += input[inY, inX] * kernel[ky, kx];
+                                #endif
+                            }
                         }
-                    }
 
-                    result[y, x] += total_sum;
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        Unsafe.Add(ref resultRef, resultIndex) += total_sum;
+                        //resultSpan[resultIndex] += total_sum;
+                        #else
+                        result[y, x] = total_sum;
+                        #endif
+                    }
                 }
             }
         }
@@ -1579,13 +1688,6 @@ where T:INumber<T> {
         return values;
     }
     #else 
-    /// <summary>
-    /// Extract the values of the matrix as a 1D array
-    /// </summary>
-    /// <returns>Row major representation of the matrix as an array</returns>
-    public T[] AsRowMajorArray() {
-        return FlattenRows().ToArray();
-    }
     #endif
 
     #if MATRIX_STORAGE_COL_MAJOR
@@ -1597,14 +1699,13 @@ where T:INumber<T> {
         return values;
     }
     #else 
-    /// <summary>
-    /// Extract the values of the matrix as a 1D array
-    /// </summary>
-    /// <returns>Column major representation of the matrix as an array</returns>
-    public T[] AsColumnMajorArray() {
-        return FlattenColumns().ToArray();
-    }
     #endif
+
+    /// <summary>
+    /// Get the underlying array for this matrix. The value ordering will depend upon if the matrix is in row or column major ordering.
+    /// </summary>
+    /// <returns>underlying array over the matrix elements</returns>
+    public T[] AsArray() => values;
 
     /// <summary>
     /// Create a span over the entire 2D matrix

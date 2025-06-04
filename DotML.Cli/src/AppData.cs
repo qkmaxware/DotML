@@ -47,18 +47,20 @@ public class AppData {
         return new DirectoryInfo(path);
     }
 
+    private const string DateFormat = "yyyy-MM-dd--HH-mm-ss";
+
     public DirectoryInfo CreateTrainingDir() {
-        var now = DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss");
+        var now = DateTime.Now.ToString(DateFormat);
         return CreateReportDir("Training " + now);
     }
 
     public DirectoryInfo CreateTestingDir() {
-        var now = DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss");
+        var now = DateTime.Now.ToString(DateFormat);
         return CreateReportDir("Testing " + now);
     }
 
     public string GenerateReportPath(string report_type) {
-        return Path.Combine(report_dir, report_type + " " + DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss"));
+        return Path.Combine(report_dir, report_type + " " + DateTime.Now.ToString(DateFormat));
     }
 
     public IEnumerable<GenericReport> EnumerateReports() {

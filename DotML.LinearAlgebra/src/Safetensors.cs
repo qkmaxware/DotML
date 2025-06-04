@@ -394,7 +394,7 @@ public class Safetensors {
         }
 
         // Quantize the tensor
-        var (quantized, scale, zeroPoint) = quantizer.Quantize(data);
+        quantizer.Quantize(data, out var quantized, out var scale, out var zeroPoint);
 
         // Update the tensor data
         tensor.data = quantized;
@@ -445,7 +445,7 @@ public class Safetensors {
         }
         
         // Quantize the tensor
-        var dequantized = quantizer.Dequantize(data, scale, zeroPoint);
+        quantizer.Dequantize(out var dequantized, data, scale, zeroPoint);
 
         // Update the tensor data
         tensor.data = dequantized;
