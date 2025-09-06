@@ -1,13 +1,18 @@
 using System.Linq;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
+using System.Collections.ObjectModel;
 
 namespace DotML.Network.Training;
 
 public class TrainingSetBuilder {
+    private static char[] magic = ['v', 'e', 'c'];
+    internal static ReadOnlyCollection<char> BinaryTrainingSetMagicNumber => Array.AsReadOnly(magic);
+    
     /// <summary>
     /// Element storage class
     /// </summary>
-    public TrainingSet.VectorStorageType StorageType {get; private set;}
+    public TrainingVectorStorageType StorageType {get; private set;}
 
     /// <summary>
     /// Scaling factor for all vectors
@@ -19,21 +24,21 @@ public class TrainingSetBuilder {
     /// </summary>
     public Type ValueType => GetValueType(StorageType);
 
-    private static Type GetValueType(TrainingSet.VectorStorageType storageType) {
+    private static Type GetValueType(TrainingVectorStorageType storageType) {
         switch (storageType) {
-            case TrainingSet.VectorStorageType.U8:  return typeof(Byte);
-            case TrainingSet.VectorStorageType.U16: return typeof(UInt16);
-            case TrainingSet.VectorStorageType.U32: return typeof(UInt32);
-            case TrainingSet.VectorStorageType.U64: return typeof(UInt64);
+            case TrainingVectorStorageType.U8:  return typeof(Byte);
+            case TrainingVectorStorageType.U16: return typeof(UInt16);
+            case TrainingVectorStorageType.U32: return typeof(UInt32);
+            case TrainingVectorStorageType.U64: return typeof(UInt64);
 
-            case TrainingSet.VectorStorageType.I8:  return typeof(SByte);
-            case TrainingSet.VectorStorageType.I16: return typeof(Int16);
-            case TrainingSet.VectorStorageType.I32: return typeof(Int32);
-            case TrainingSet.VectorStorageType.I64: return typeof(Int64);
+            case TrainingVectorStorageType.I8:  return typeof(SByte);
+            case TrainingVectorStorageType.I16: return typeof(Int16);
+            case TrainingVectorStorageType.I32: return typeof(Int32);
+            case TrainingVectorStorageType.I64: return typeof(Int64);
 
-            case TrainingSet.VectorStorageType.F16: return typeof(Half);
-            case TrainingSet.VectorStorageType.F32: return typeof(Single);
-            case TrainingSet.VectorStorageType.F64: return typeof(Double);
+            case TrainingVectorStorageType.F16: return typeof(Half);
+            case TrainingVectorStorageType.F32: return typeof(Single);
+            case TrainingVectorStorageType.F64: return typeof(Double);
 
             default: throw new ArgumentException(nameof(StorageType));
         };
@@ -44,27 +49,27 @@ public class TrainingSetBuilder {
     /// </summary>
     public Type ArrayType => GetArrayType(StorageType);
 
-    private static Type GetArrayType(TrainingSet.VectorStorageType storageType) {
+    private static Type GetArrayType(TrainingVectorStorageType storageType) {
         switch (storageType) {
-            case TrainingSet.VectorStorageType.U8:  return typeof(Byte[]);
-            case TrainingSet.VectorStorageType.U16: return typeof(UInt16[]);
-            case TrainingSet.VectorStorageType.U32: return typeof(UInt32[]);
-            case TrainingSet.VectorStorageType.U64: return typeof(UInt64[]);
+            case TrainingVectorStorageType.U8:  return typeof(Byte[]);
+            case TrainingVectorStorageType.U16: return typeof(UInt16[]);
+            case TrainingVectorStorageType.U32: return typeof(UInt32[]);
+            case TrainingVectorStorageType.U64: return typeof(UInt64[]);
 
-            case TrainingSet.VectorStorageType.I8:  return typeof(SByte[]);
-            case TrainingSet.VectorStorageType.I16: return typeof(Int16[]);
-            case TrainingSet.VectorStorageType.I32: return typeof(Int32[]);
-            case TrainingSet.VectorStorageType.I64: return typeof(Int64[]);
+            case TrainingVectorStorageType.I8:  return typeof(SByte[]);
+            case TrainingVectorStorageType.I16: return typeof(Int16[]);
+            case TrainingVectorStorageType.I32: return typeof(Int32[]);
+            case TrainingVectorStorageType.I64: return typeof(Int64[]);
 
-            case TrainingSet.VectorStorageType.F16: return typeof(Half[]);
-            case TrainingSet.VectorStorageType.F32: return typeof(Single[]);
-            case TrainingSet.VectorStorageType.F64: return typeof(Double[]);
+            case TrainingVectorStorageType.F16: return typeof(Half[]);
+            case TrainingVectorStorageType.F32: return typeof(Single[]);
+            case TrainingVectorStorageType.F64: return typeof(Double[]);
 
             default: throw new ArgumentException(nameof(StorageType));
         };
     }
 
-    protected TrainingSetBuilder(TrainingSet.VectorStorageType storage) {
+    protected TrainingSetBuilder(TrainingVectorStorageType storage) {
         this.StorageType = storage;
         this.pairs = new List<KeyValuePair<Array, Array>>();
     }
@@ -211,15 +216,15 @@ public class TrainingSetBuilder {
     /// <exception cref="FormatException">If the binary reader's stream is not a binary training set</exception>
     /// <exception cref="InvalidCastException">If the storage type is incompatible with this builder implementation</exception>
     public static TrainingSetBuilder From(BinaryReader reader) {
-        // Copy of TrainingSet.AddFrom 
+        // Copy of AddFrom 
         // Read magic number
-        var magic = TrainingSet.BinaryTrainingSetMagicNumber;
+        var magic = BinaryTrainingSetMagicNumber;
         for (var i = 0; i < magic.Count; i++) {
             if (reader.ReadByte() != magic[i])
                 throw new FormatException("Stream is not formatted as a binary training set");
         }
 
-        var type = (TrainingSet.VectorStorageType)(reader.ReadByte());
+        var type = (TrainingVectorStorageType)(reader.ReadByte());
         var value_type = GetValueType(type);
         var scaling = reader.ReadDouble();
         var output_count = reader.ReadInt32();
@@ -232,21 +237,21 @@ public class TrainingSetBuilder {
             var data = MakeValueArray(value_type, vec_size);
             for (var j = 0; j < vec_size; j++) {
                 data.SetValue(type switch {
-                    TrainingSet.VectorStorageType.U8  => reader.ReadByte(),
-                    TrainingSet.VectorStorageType.U16 => reader.ReadUInt16(),
-                    TrainingSet.VectorStorageType.U32 => reader.ReadUInt32(),
-                    TrainingSet.VectorStorageType.U64 => reader.ReadUInt64(),
+                    TrainingVectorStorageType.U8  => reader.ReadByte(),
+                    TrainingVectorStorageType.U16 => reader.ReadUInt16(),
+                    TrainingVectorStorageType.U32 => reader.ReadUInt32(),
+                    TrainingVectorStorageType.U64 => reader.ReadUInt64(),
 
-                    TrainingSet.VectorStorageType.I8  => reader.ReadSByte(),
-                    TrainingSet.VectorStorageType.I16 => reader.ReadInt16(),
-                    TrainingSet.VectorStorageType.I32 => reader.ReadInt32(),
-                    TrainingSet.VectorStorageType.I64 => reader.ReadInt64(),
+                    TrainingVectorStorageType.I8  => reader.ReadSByte(),
+                    TrainingVectorStorageType.I16 => reader.ReadInt16(),
+                    TrainingVectorStorageType.I32 => reader.ReadInt32(),
+                    TrainingVectorStorageType.I64 => reader.ReadInt64(),
 
-                    TrainingSet.VectorStorageType.F16 => reader.ReadHalf(),
-                    TrainingSet.VectorStorageType.F32 => reader.ReadSingle(),
-                    TrainingSet.VectorStorageType.F64 => reader.ReadDouble(),
+                    TrainingVectorStorageType.F16 => reader.ReadHalf(),
+                    TrainingVectorStorageType.F32 => reader.ReadSingle(),
+                    TrainingVectorStorageType.F64 => reader.ReadDouble(),
 
-                    _ => throw new InvalidCastException(nameof(TrainingSet.VectorStorageType))
+                    _ => throw new InvalidCastException(nameof(TrainingVectorStorageType))
                 }, j);
             }
             outputs.Add(data);
@@ -263,21 +268,21 @@ public class TrainingSetBuilder {
             var data = MakeValueArray(value_type, vec_size);
             for (var j = 0; j < vec_size; j++) {
                 data.SetValue(type switch {
-                    TrainingSet.VectorStorageType.U8  => reader.ReadByte(),
-                    TrainingSet.VectorStorageType.U16 => reader.ReadUInt16(),
-                    TrainingSet.VectorStorageType.U32 => reader.ReadUInt32(),
-                    TrainingSet.VectorStorageType.U64 => reader.ReadUInt64(),
+                    TrainingVectorStorageType.U8  => reader.ReadByte(),
+                    TrainingVectorStorageType.U16 => reader.ReadUInt16(),
+                    TrainingVectorStorageType.U32 => reader.ReadUInt32(),
+                    TrainingVectorStorageType.U64 => reader.ReadUInt64(),
 
-                    TrainingSet.VectorStorageType.I8  => reader.ReadSByte(),
-                    TrainingSet.VectorStorageType.I16 => reader.ReadInt16(),
-                    TrainingSet.VectorStorageType.I32 => reader.ReadInt32(),
-                    TrainingSet.VectorStorageType.I64 => reader.ReadInt64(),
+                    TrainingVectorStorageType.I8  => reader.ReadSByte(),
+                    TrainingVectorStorageType.I16 => reader.ReadInt16(),
+                    TrainingVectorStorageType.I32 => reader.ReadInt32(),
+                    TrainingVectorStorageType.I64 => reader.ReadInt64(),
 
-                    TrainingSet.VectorStorageType.F16 => reader.ReadHalf(),
-                    TrainingSet.VectorStorageType.F32 => reader.ReadSingle(),
-                    TrainingSet.VectorStorageType.F64 => reader.ReadDouble(),
+                    TrainingVectorStorageType.F16 => reader.ReadHalf(),
+                    TrainingVectorStorageType.F32 => reader.ReadSingle(),
+                    TrainingVectorStorageType.F64 => reader.ReadDouble(),
 
-                    _ => throw new InvalidCastException(nameof(TrainingSet.VectorStorageType))
+                    _ => throw new InvalidCastException(nameof(TrainingVectorStorageType))
                 }, j);
             }
 
@@ -295,7 +300,7 @@ public class TrainingSetBuilder {
     /// <param name="writer">writer to dump vectors to</param>
     public void WriteTo(BinaryWriter writer) {
         // Write magic number
-        var magic = TrainingSet.BinaryTrainingSetMagicNumber;
+        var magic = BinaryTrainingSetMagicNumber;
         for (var i = 0; i < magic.Count; i++) {
             writer.Write((byte)magic[i]);
         }
@@ -362,7 +367,7 @@ public class TrainingSetBuilder {
         }
     }
 
-    private static IEnumerable<double> ToIEnumerable(Array array) {
+    protected static IEnumerable<double> ToIEnumerable(Array array) {
         foreach (var item in array) {
             yield return (double)Convert.ChangeType(item, typeof(Double));
         }
@@ -372,11 +377,11 @@ public class TrainingSetBuilder {
     /// Convert the builder's data to a concrete training set
     /// </summary>
     /// <returns>Training set</returns>
-    public TrainingSet ToTrainingSet() {
-        TrainingSet set = new TrainingSet(this.Count);
+    public TrainingSet<double> ToDoubleTrainingSet() {
+        TrainingSet<double> set = new TrainingSet<double>(this.Count);
 
         foreach (var pair in TrainingPairs) {
-            TrainingPair training = new TrainingPair {
+            TrainingPair<double> training = new TrainingPair<double> {
                 Input  = Vec<double>.Wrap(ToIEnumerable(pair.Key).Select(v => v * ScalingFactor).ToArray()),
                 Output = Vec<double>.Wrap(ToIEnumerable(pair.Value).Select(v => v * ScalingFactor).ToArray()),
             };
@@ -400,21 +405,21 @@ public class TrainingSetBuilder {
     /// <typeparam name="T">strong value typing</typeparam>
     /// <returns>TrainingSetBuilder for values of type T</returns>
     /// <exception cref="InvalidCastException">thrown if the cast is invalid, like of the wrong type</exception>
-    public TrainingSetBuilder<T> Cast<T>() where T:IConvertible {
+    public TrainingSetBuilder<T> Cast<T>() where T:INumber<T>,IConvertible {
         var storage_type = typeof(T) switch {
-            Type u8_type when u8_type == typeof(byte) => TrainingSet.VectorStorageType.U8,   
-            Type u16_type when u16_type == typeof(ushort) => TrainingSet.VectorStorageType.U16,  
-            Type u32_type when u32_type == typeof(uint) => TrainingSet.VectorStorageType.U32,  
-            Type u64_type when u64_type == typeof(ulong) => TrainingSet.VectorStorageType.U64,
+            Type u8_type when u8_type == typeof(byte) => TrainingVectorStorageType.U8,   
+            Type u16_type when u16_type == typeof(ushort) => TrainingVectorStorageType.U16,  
+            Type u32_type when u32_type == typeof(uint) => TrainingVectorStorageType.U32,  
+            Type u64_type when u64_type == typeof(ulong) => TrainingVectorStorageType.U64,
 
-            Type i8_type when i8_type == typeof(sbyte) => TrainingSet.VectorStorageType.I8,   
-            Type i8_type when i8_type == typeof(short) => TrainingSet.VectorStorageType.I16,  
-            Type i8_type when i8_type == typeof(int) => TrainingSet.VectorStorageType.I32,  
-            Type i8_type when i8_type == typeof(long) => TrainingSet.VectorStorageType.I64,
+            Type i8_type when i8_type == typeof(sbyte) => TrainingVectorStorageType.I8,   
+            Type i8_type when i8_type == typeof(short) => TrainingVectorStorageType.I16,  
+            Type i8_type when i8_type == typeof(int) => TrainingVectorStorageType.I32,  
+            Type i8_type when i8_type == typeof(long) => TrainingVectorStorageType.I64,
 
-            Type f16_type when f16_type == typeof(Half) => TrainingSet.VectorStorageType.F16,  
-            Type f32_type when f32_type == typeof(Single) => TrainingSet.VectorStorageType.F32,  
-            Type f64_type when f64_type == typeof(Double) => TrainingSet.VectorStorageType.F64,
+            Type f16_type when f16_type == typeof(Half) => TrainingVectorStorageType.F16,  
+            Type f32_type when f32_type == typeof(Single) => TrainingVectorStorageType.F32,  
+            Type f64_type when f64_type == typeof(Double) => TrainingVectorStorageType.F64,
 
             _ => throw new InvalidCastException(nameof(T))
         };
@@ -427,22 +432,22 @@ public class TrainingSetBuilder {
 
 }
 
-public class TrainingSetBuilder<T> : TrainingSetBuilder where T:IConvertible {
+public class TrainingSetBuilder<T> : TrainingSetBuilder where T:INumber<T>, IConvertible {
 
     public TrainingSetBuilder() : base(typeof(T) switch {
-            Type u8_type when u8_type == typeof(byte) => TrainingSet.VectorStorageType.U8,   
-            Type u16_type when u16_type == typeof(ushort) => TrainingSet.VectorStorageType.U16,  
-            Type u32_type when u32_type == typeof(uint) => TrainingSet.VectorStorageType.U32,  
-            Type u64_type when u64_type == typeof(ulong) => TrainingSet.VectorStorageType.U64,
+            Type u8_type when u8_type == typeof(byte) => TrainingVectorStorageType.U8,   
+            Type u16_type when u16_type == typeof(ushort) => TrainingVectorStorageType.U16,  
+            Type u32_type when u32_type == typeof(uint) => TrainingVectorStorageType.U32,  
+            Type u64_type when u64_type == typeof(ulong) => TrainingVectorStorageType.U64,
 
-            Type i8_type when i8_type == typeof(sbyte) => TrainingSet.VectorStorageType.I8,   
-            Type i8_type when i8_type == typeof(short) => TrainingSet.VectorStorageType.I16,  
-            Type i8_type when i8_type == typeof(int) => TrainingSet.VectorStorageType.I32,  
-            Type i8_type when i8_type == typeof(long) => TrainingSet.VectorStorageType.I64,
+            Type i8_type when i8_type == typeof(sbyte) => TrainingVectorStorageType.I8,   
+            Type i8_type when i8_type == typeof(short) => TrainingVectorStorageType.I16,  
+            Type i8_type when i8_type == typeof(int) => TrainingVectorStorageType.I32,  
+            Type i8_type when i8_type == typeof(long) => TrainingVectorStorageType.I64,
 
-            Type f16_type when f16_type == typeof(Half) => TrainingSet.VectorStorageType.F16,  
-            Type f32_type when f32_type == typeof(Single) => TrainingSet.VectorStorageType.F32,  
-            Type f64_type when f64_type == typeof(Double) => TrainingSet.VectorStorageType.F64,
+            Type f16_type when f16_type == typeof(Half) => TrainingVectorStorageType.F16,  
+            Type f32_type when f32_type == typeof(Single) => TrainingVectorStorageType.F32,  
+            Type f64_type when f64_type == typeof(Double) => TrainingVectorStorageType.F64,
 
             _ => throw new ArgumentException(nameof(T))
         }) { }
@@ -451,19 +456,19 @@ public class TrainingSetBuilder<T> : TrainingSetBuilder where T:IConvertible {
 
     internal TrainingSetBuilder(TrainingSetBuilder builder, bool deep) : base(builder, deep) {
         var determined_type = typeof(T) switch {
-            Type u8_type when u8_type == typeof(byte) => TrainingSet.VectorStorageType.U8,   
-            Type u16_type when u16_type == typeof(ushort) => TrainingSet.VectorStorageType.U16,  
-            Type u32_type when u32_type == typeof(uint) => TrainingSet.VectorStorageType.U32,  
-            Type u64_type when u64_type == typeof(ulong) => TrainingSet.VectorStorageType.U64,
+            Type u8_type when u8_type == typeof(byte) => TrainingVectorStorageType.U8,   
+            Type u16_type when u16_type == typeof(ushort) => TrainingVectorStorageType.U16,  
+            Type u32_type when u32_type == typeof(uint) => TrainingVectorStorageType.U32,  
+            Type u64_type when u64_type == typeof(ulong) => TrainingVectorStorageType.U64,
 
-            Type i8_type when i8_type == typeof(sbyte) => TrainingSet.VectorStorageType.I8,   
-            Type i8_type when i8_type == typeof(short) => TrainingSet.VectorStorageType.I16,  
-            Type i8_type when i8_type == typeof(int) => TrainingSet.VectorStorageType.I32,  
-            Type i8_type when i8_type == typeof(long) => TrainingSet.VectorStorageType.I64,
+            Type i8_type when i8_type == typeof(sbyte) => TrainingVectorStorageType.I8,   
+            Type i8_type when i8_type == typeof(short) => TrainingVectorStorageType.I16,  
+            Type i8_type when i8_type == typeof(int) => TrainingVectorStorageType.I32,  
+            Type i8_type when i8_type == typeof(long) => TrainingVectorStorageType.I64,
 
-            Type f16_type when f16_type == typeof(Half) => TrainingSet.VectorStorageType.F16,  
-            Type f32_type when f32_type == typeof(Single) => TrainingSet.VectorStorageType.F32,  
-            Type f64_type when f64_type == typeof(Double) => TrainingSet.VectorStorageType.F64,
+            Type f16_type when f16_type == typeof(Half) => TrainingVectorStorageType.F16,  
+            Type f32_type when f32_type == typeof(Single) => TrainingVectorStorageType.F32,  
+            Type f64_type when f64_type == typeof(Double) => TrainingVectorStorageType.F64,
 
             _ => throw new ArgumentException(nameof(T))
         };
@@ -565,4 +570,21 @@ public class TrainingSetBuilder<T> : TrainingSetBuilder where T:IConvertible {
         base.Insert(index, input, output);
     }
 
+    /// <summary>
+    /// Convert the builder's data to a concrete training set
+    /// </summary>
+    /// <returns>Training set</returns>
+    public TrainingSet<T> ToTypedTrainingSet() {
+        TrainingSet<T> set = new TrainingSet<T>(this.Count);
+
+        foreach (var pair in TrainingPairs) {
+            TrainingPair<T> training = new TrainingPair<T> {
+                Input  = Vec<T>.Wrap(ToIEnumerable(pair.Key).Select(v => (T)Convert.ChangeType(v * ScalingFactor, typeof(T))).ToArray()),
+                Output = Vec<T>.Wrap(ToIEnumerable(pair.Value).Select(v => (T)Convert.ChangeType(v * ScalingFactor, typeof(T))).ToArray()),
+            };
+            set.Add(training);
+        }
+
+        return set;
+    }
 }

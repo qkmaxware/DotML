@@ -1,0 +1,1 @@
+Raw image files go here for processing into a dataset

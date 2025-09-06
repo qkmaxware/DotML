@@ -13,7 +13,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
     public int CurrentEpoch {get; private set;}
     private int CurrentUpdateTimestep;
     public int MaxEpochs {get; init;}
-    public double LearningRate {get; init;}
+    public float LearningRate {get; init;}
     public int BatchSize {get; init;}
 
     public IValidationReport? ValidationReport {get; set;}
@@ -22,8 +22,8 @@ public partial class BatchTrainerEnumerator<TNetwork>
     public TNetwork Current {get; private set;}
     object IEnumerator.Current => Current;
 
-    private IEnumerator<TrainingPair> training;
-    private IEnumerator<TrainingPair> validation;
+    private IEnumerator<TrainingPair<float>> training;
+    private IEnumerator<TrainingPair<float>> validation;
 
     public bool EnableEarlyStop {get; private set;}
     public double EarlyStopThreshold {get; private set;}
@@ -37,15 +37,15 @@ public partial class BatchTrainerEnumerator<TNetwork>
     public ILearningRateOptimizer LearningRateOptimizer {get; init;}
 
     public bool UseGradientClipping {get; init;}
-    public double GradientClippingThresholdWeight {get; init;}
-    public double GradientClippingThresholdBias {get; init;}
+    public float GradientClippingThresholdWeight {get; init;}
+    public float GradientClippingThresholdBias {get; init;}
     
     #region Initialization
 
     public BatchTrainerEnumerator(
         TNetwork network,
-        IEnumerator<TrainingPair> training,
-        IEnumerator<TrainingPair> validation,
+        IEnumerator<TrainingPair<float>> training,
+        IEnumerator<TrainingPair<float>> validation,
         int batchSize,
 
         bool earlyStop,
@@ -70,10 +70,10 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this.training = training;
         this.validation = validation;
         this.BatchSize = Math.Max(1, batchSize);
-        this.batch = new List<TrainingPair>(this.BatchSize);
+        this.batch = new List<TrainingPair<float>>(this.BatchSize);
 
-        this.inputs = new BatchedFeatureSet<double>[Current.LayerCount];
-        this.outputs = new BatchedFeatureSet<double>[Current.LayerCount];
+        this.inputs = new BatchedFeatureSet<float>[Current.LayerCount];
+        this.outputs = new BatchedFeatureSet<float>[Current.LayerCount];
         this.layer_gradients = new LayerGradients?[Current.LayerCount];
 
         this.MaxEpochs = Math.Max(0, epochs);
@@ -88,13 +88,13 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this.EarlyStopPatience = Math.Max(1, earlyStopPatience);
         this._patience_count = this.EarlyStopPatience;
 
-        this.LearningRate = Math.Abs(learningRate);
+        this.LearningRate = MathF.Abs((float)learningRate);
         this.Regularization = regularization;
         this.LearningRateOptimizer = optimizer;
 
         this.UseGradientClipping = useClipping;
-        this.GradientClippingThresholdWeight = clipThresholdWeight;
-        this.GradientClippingThresholdBias = clipThresholdBias;
+        this.GradientClippingThresholdWeight = (float)clipThresholdWeight;
+        this.GradientClippingThresholdBias = (float)clipThresholdBias;
 
         Reset();
     }
@@ -123,8 +123,8 @@ public partial class BatchTrainerEnumerator<TNetwork>
         this._patience_count = this.EarlyStopPatience;
 
         this.batch.Clear(); this.batch.EnsureCapacity(this.BatchSize);
-        this.inputs = new BatchedFeatureSet<double>[Current.LayerCount];
-        this.outputs = new BatchedFeatureSet<double>[Current.LayerCount];
+        this.inputs = new BatchedFeatureSet<float>[Current.LayerCount];
+        this.outputs = new BatchedFeatureSet<float>[Current.LayerCount];
         this.layer_gradients = new LayerGradients?[Current.LayerCount];
     }
 
@@ -161,14 +161,14 @@ public partial class BatchTrainerEnumerator<TNetwork>
             var all_less_threshold = true;
 
             var concurrency_level = this.BatchSize; // or Environment.ProcessorCount
-            List<(FeatureSet<double> In, Vec<double> Out)> batch = new List<(FeatureSet<double>, Vec<double>)>(concurrency_level);
+            List<(FeatureSet<float> In, Vec<float> Out)> batch = new List<(FeatureSet<float>, Vec<float>)>(concurrency_level);
             while (batch.Count < concurrency_level && validation.MoveNext()) {
                 var pair = validation.Current;
-                var input = new FeatureSet<double>(pair.Input.Shape(Current.InputShape).ToArray());
+                var input = new FeatureSet<float>(pair.Input.Shape(Current.InputShape).ToArray());
                 var output = pair.Output;
                 batch.Add((input, output));
             }
-            var batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.In).ToArray());
+            var batch_input = new BatchedFeatureSet<float>(batch.Select(x => x.In).ToArray());
 
             while (batch.Count > 0) {
                 // Perform Feed-Forward
@@ -176,9 +176,9 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
                 // Measure loss across batch
                 for (var batchIndex = 0; batchIndex < batch.Count; batchIndex++) {
-                    var input = Vec<double>.Wrap(batch_input[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
+                    var input = Vec<float>.Wrap(batch_input[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
                     var @true = batch[batchIndex].Out;
-                    var predicted =  Vec<double>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
+                    var predicted =  Vec<float>.Wrap(batch_predicted[batchIndex].SelectMany(mtx => mtx.FlattenRows()).ToArray());
                     
                     var loss = LossFunction.Invoke(predicted, @true);
                     sum_error += loss;
@@ -194,11 +194,11 @@ public partial class BatchTrainerEnumerator<TNetwork>
                 batch.Clear();
                 while (batch.Count < concurrency_level && validation.MoveNext()) {
                     var pair = validation.Current;
-                    var input = new FeatureSet<double>(pair.Input.Shape(Current.InputShape).ToArray());
+                    var input = new FeatureSet<float>(pair.Input.Shape(Current.InputShape).ToArray());
                     var output = pair.Output;
                     batch.Add((input, output));
                 }
-                batch_input = new BatchedFeatureSet<double>(batch.Select(x => x.In).ToArray());
+                batch_input = new BatchedFeatureSet<float>(batch.Select(x => x.In).ToArray());
             }
 
             if (double.IsNaN(sum_error)) {
@@ -227,10 +227,10 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
     #region Training Step
 
-    private List<TrainingPair> batch;
+    private List<TrainingPair<float>> batch;
     private int num_batches;
-    private BatchedFeatureSet<double>[] inputs;
-    private BatchedFeatureSet<double>[] outputs;
+    private BatchedFeatureSet<float>[] inputs;
+    private BatchedFeatureSet<float>[] outputs;
     LayerGradients?[] layer_gradients;
 
     private void TrainingStep() {
@@ -254,15 +254,15 @@ public partial class BatchTrainerEnumerator<TNetwork>
                 Current.GetLayer(layerIndex).BeginTraining();
             }
 
-            var batch_features = new BatchedFeatureSet<double>(
-                batch.Select(batchPair => new FeatureSet<double>(
+            var batch_features = new BatchedFeatureSet<float>(
+                batch.Select(batchPair => new FeatureSet<float>(
                     batchPair.Input.Shape(Current.InputShape).ToArray()
                 )).ToArray()
             );
 
             // Forward pass (simulated, duplicate of FeedforwardNetwork.PredictSync with some additional tracking)
             using (var metric = Profiler?.Begin(FeedforwardPerformanceKey)) {
-                BatchedFeatureSet<double> layer_input = batch_features;
+                BatchedFeatureSet<float> layer_input = batch_features;
                 for (var layerIndex = 0; layerIndex < Current.LayerCount; layerIndex++) {
                     // Store input to this layer
                     this.inputs[layerIndex] = layer_input;
@@ -283,25 +283,25 @@ public partial class BatchTrainerEnumerator<TNetwork>
             // Backwards pass
             using (var metric = Profiler?.Begin(BackpropagationPerformanceKey)) {
                 // Setup initial backpropagation arguments
-                FeatureSet<double>[] output_errors = new FeatureSet<double>[batch_size];
+                FeatureSet<float>[] output_errors = new FeatureSet<float>[batch_size];
                 for (var b = 0; b < batch_size; b++) {
                     var currentPair = batch[b];
                     var expected_vec = currentPair.Output;                                                          // The outputs as recorded in the training pair
                     var predicted = outputs[^1][b];                                                                 // The outputs of the last layer for batch 'b'
                     
-                    var predicted_vec = Vec<double>.Wrap(predicted.SelectMany(mtx => mtx.FlattenRows()).ToArray()); // Convert the predicted outputs to a vector
+                    var predicted_vec = Vec<float>.Wrap(predicted.SelectMany(mtx => mtx.FlattenRows()).ToArray()); // Convert the predicted outputs to a vector
                     var error_vec = this.LossFunction.Gradient(@predicted: predicted_vec, @true: expected_vec);     // Compute the gradient values for the loss function
                     var errors = error_vec.Shape(predicted.Shape).ToArray();                                        // Make the error vector match the output shape for backpropagation    
                     
                     //var @true = expected.Shape(predicted.Shape);                                // Make the expected vector match the output shape
                     //var errors = predicted.Zip(@true).Select(x => x.First-x.Second).ToArray();  // predicted - expected
-                    output_errors[b] = new FeatureSet<double>(errors);
+                    output_errors[b] = new FeatureSet<float>(errors);
                 }
                 var backprop_args = new BackpropagationArgs(
                     Current.LayerCount - 1, 
-                    new BatchedFeatureSet<double>(),                // Gets replaced later
-                    new BatchedFeatureSet<double>(),                // Gets replaced later
-                    new BatchedFeatureSet<double>(output_errors)    // OutputErrors at output layer = predicted - expected as computed above
+                    new BatchedFeatureSet<float>(),                // Gets replaced later
+                    new BatchedFeatureSet<float>(),                // Gets replaced later
+                    new BatchedFeatureSet<float>(output_errors)    // OutputErrors at output layer = predicted - expected as computed above
                 );
 
                 // Do backwards pass through the layers
@@ -364,30 +364,30 @@ public partial class BatchTrainerEnumerator<TNetwork>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected double ClipValue(double d, double threshold) {
-        if (double.IsNaN(d))
-            d = 1e-8;
+    protected float ClipValue(float d, float threshold) {
+        if (float.IsNaN(d))
+            d = 1e-8f;
         return Math.Abs(d) > threshold ? Math.Sign(d) * threshold : d;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected void ClipVector(Vec<double> vec, double threshold) {
+    protected void ClipVector(Vec<float> vec, float threshold) {
         vec.Apply((value) => ClipValue(value, threshold));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected void ClipMatrix(Matrix<double> mat, double threshold) {
+    protected void ClipMatrix(Matrix<float> mat, float threshold) {
         mat.Apply((value) => ClipValue(value, threshold));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected void ClipFeatures(FeatureSet<double> features, double threshold) {
+    protected void ClipFeatures(FeatureSet<float> features, float threshold) {
         foreach (var matrix in features)
             ClipMatrix(matrix, threshold);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected void ClipBatch(BatchedFeatureSet<double> batch, double threshold) {
+    protected void ClipBatch(BatchedFeatureSet<float> batch, float threshold) {
         foreach (var features in batch)
             ClipFeatures(features, threshold);
     }
@@ -401,7 +401,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
     }
     private HashSet<int> used_params = new HashSet<int>();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private double gradient_update(int updateTimestep, double learningRate, double prevWeight, double gradient, int parameterIndex) {
+    private float gradient_update(int updateTimestep, float learningRate, float prevWeight, float gradient, int parameterIndex) {
         // Verify the parameter has not been used this iteration already
         if (IsTrackingUsedParameters) {
             lock(used_params) {
@@ -413,7 +413,7 @@ public partial class BatchTrainerEnumerator<TNetwork>
 
         var regularized_grad = gradient + Regularization.Invoke(prevWeight);
         var optimized_grad = LearningRateOptimizer.GetParameterUpdate(updateTimestep, learningRate, regularized_grad, parameterIndex);
-        return optimized_grad;
+        return (float)optimized_grad;
     }
 
     #endregion

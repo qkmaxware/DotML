@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace DotML.Network.Training;
 
 /// <summary>
@@ -51,25 +53,25 @@ public class ParameterizedNetworkGenerator<TNetwork> : INetworkGenerator<TNetwor
 }
 
 
-public delegate ITrainer<TNetwork> ParameterizedTrainerFactory<TNetwork>(ParameterSet @params) where TNetwork:INeuralNetwork;
+public delegate ITrainer<TNetwork, TVector> ParameterizedTrainerFactory<TNetwork, TVector>(ParameterSet @params) where TNetwork:INeuralNetwork where TVector:INumber<TVector>;
 
 /// <summary>
 /// Class to generate a sequence of networks from a parameter matrix and train them using a generated trainer
 /// </summary>
-public class TrainedParameterizedNetworkGenerator<TNetwork> : ITrainedNetworkGenerator<TNetwork> where TNetwork:INeuralNetwork {
+public class TrainedParameterizedNetworkGenerator<TNetwork, TVector> : ITrainedNetworkGenerator<TNetwork> where TNetwork:INeuralNetwork where TVector:INumber<TVector> {
     public ParameterMatrix ParameterMatrix {get; init;}
     private ParameterizedNetworkFactory<TNetwork> factory;
-    private ParameterizedTrainerFactory<TNetwork> trainerFactory;
+    private ParameterizedTrainerFactory<TNetwork, TVector> trainerFactory;
 
-    public TrainingSet TrainingData {get; init;}
-    public TrainingSet ValidationData {get; init;}
+    public TrainingSet<TVector> TrainingData {get; init;}
+    public TrainingSet<TVector> ValidationData {get; init;}
 
     public TrainedParameterizedNetworkGenerator(
         ParameterMatrix @params, 
-        TrainingSet training,
-        TrainingSet validation,
+        TrainingSet<TVector> training,
+        TrainingSet<TVector> validation,
         ParameterizedNetworkFactory<TNetwork> netfactory, 
-        ParameterizedTrainerFactory<TNetwork> trainerfactory
+        ParameterizedTrainerFactory<TNetwork, TVector> trainerfactory
     ) {
         this.ParameterMatrix = @params;
         this.factory = netfactory;
@@ -93,7 +95,7 @@ public class TrainedParameterizedNetworkGenerator<TNetwork> : ITrainedNetworkGen
     /// Generate a sequence of networks and trainers
     /// </summary>
     /// <returns>list of network/trainer pairs</returns>
-    public IEnumerable<(TNetwork, ITrainer<TNetwork>)> GenerateWithTrainers() {
+    public IEnumerable<(TNetwork, ITrainer<TNetwork, TVector>)> GenerateWithTrainers() {
         return this.ParameterMatrix.Select(p => (factory(p), trainerFactory(p)));
     }
 

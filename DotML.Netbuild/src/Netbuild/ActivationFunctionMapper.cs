@@ -6,7 +6,7 @@ public class ActivationFunctionMapper {
     private static object[] NoArgs = new object[0];
     private static Type[] Alpha = [typeof(double)];
 
-    public ActivationFunction Decode(string name, double alpha) {
+    public ActivationFunction Decode(string name, float alpha) {
         // General strategy
         foreach (var function in ActivationFunctions.EnumerateAll()) {
             var func_type = function.GetType();

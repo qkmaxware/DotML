@@ -16,8 +16,8 @@ public class ClassifiedCsv : ITrainingDataFormat {
         return line.Contains("class", StringComparison.CurrentCultureIgnoreCase) || line.Contains("label", StringComparison.CurrentCultureIgnoreCase);
     }
 
-    public TrainingSet Read(FileInfo file) {
-        List<(Vec<double>, int)> items = new List<(Vec<double>, int)>();
+    public TrainingSet<float> Read(FileInfo file) {
+        List<(Vec<float>, int)> items = new List<(Vec<float>, int)>();
         var max_count = 1;
         using var reader = new StreamReader(file.OpenRead());
         bool first_row = true;
@@ -29,7 +29,7 @@ public class ClassifiedCsv : ITrainingDataFormat {
             }
 
             var data = line.Split(',').Select(x => {
-                double.TryParse(x, out double res);
+                float.TryParse(x, out float res);
                 return res;
             }).ToArray();
 
@@ -40,14 +40,14 @@ public class ClassifiedCsv : ITrainingDataFormat {
             first_row = false;
         }
 
-        return new TrainingSet(items.Select(item=> new TrainingPair { Input=item.Item1, Output=vector_from_label_index(item.Item2, max_count, 0, 1) }));
+        return new TrainingSet<float>(items.Select(item=> new TrainingPair<float> { Input=item.Item1, Output=vector_from_label_index(item.Item2, max_count, 0, 1) }));
     }
 
-    private static Vec<double> vector_from_label_index(int index, int classes, double off = -1, double on = 1) {
-        double[] values = new double[classes];
+    private static Vec<float> vector_from_label_index(int index, int classes, float off = -1, float on = 1) {
+        float[] values = new float[classes];
         Array.Fill(values, off);
         if (index >= 0 && index < classes)
             values[index] = on;
-        return Vec<double>.Wrap(values);
+        return Vec<float>.Wrap(values);
     }
 }

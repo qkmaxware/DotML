@@ -49,6 +49,10 @@ public struct Shape4D : IShape {
     /// Total number of tensor elements contained in the shape
     /// </summary>
     public readonly int Count => Channels * Rows * Columns;
+    /// <summary>
+    /// Extract the channels, rows, and columns ignoring the batch size
+    /// </summary>
+    public Shape3D Shape3D => new Shape3D(Channels, Rows, Columns);
 
     public readonly int Dimensions => 4;
 
@@ -122,6 +126,10 @@ public struct Shape3D : IShape {
     /// Total number of tensor elements contained in the shape
     /// </summary>
     public readonly int Count => Channels * Rows * Columns;
+    /// <summary>
+    /// Extract the rows, and columns ignoring the channel count
+    /// </summary>
+    public Shape2D Shape2D => new Shape2D(Rows, Columns);
 
     public readonly int Dimensions => 3;
 

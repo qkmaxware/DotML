@@ -3,6 +3,8 @@ using CommandLine;
 using DotML.Network.Training;
 using DotML;
 
+namespace Images2ImagesDataset;
+
 public class Program {
 
     public class Options {
@@ -70,34 +72,38 @@ public class Program {
     public static void Main() {
         var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
         Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(options => {
-            Directory.CreateDirectory(Path.Combine("data", "images", "from"));
-            Directory.CreateDirectory(Path.Combine("data", "images", "to"));
-            Directory.CreateDirectory(Path.Combine("data", "datasets"));
-
-            var from = new DirectoryInfo(Path.Combine("data", "images", "from"));
-            var to = new DirectoryInfo(Path.Combine("data", "images", "to"));
-
-            TrainingSet data = new TrainingSet();
-            foreach (var file in from.EnumerateFiles()) {
-                var pair = Path.Combine("data", "images", "to", file.Name);
-                if (!File.Exists(pair))
-                    continue;
-
-                using Bitmap original = new Bitmap(file.FullName);
-                using Bitmap modified = new Bitmap(pair);
-                
-                var original_bytes = MakeVector(original, options.Channels);
-                var scaled_original_bytes = original_bytes.Select(x => x / 255.0).ToArray();
-
-                var modified_bytes = MakeVector(modified, options.Channels);
-                var scaled_modified_bytes = modified_bytes.Select(x => x / 255.0).ToArray();
-
-                data.Add(new TrainingPair { Input = Vec<double>.Wrap(scaled_original_bytes), Output = Vec<double>.Wrap(scaled_modified_bytes) });
-            }
-
-            using var writer = new BinaryWriter(File.OpenWrite(Path.Combine("data", "datasets", "training.bin")));
-            data.WriteTo(writer);
+            Exec(options);
         });
+    }
+
+    public static void Exec(Options options) {
+        Directory.CreateDirectory(Path.Combine("data", "images", "from"));
+        Directory.CreateDirectory(Path.Combine("data", "images", "to"));
+        Directory.CreateDirectory(Path.Combine("data", "datasets"));
+
+        var from = new DirectoryInfo(Path.Combine("data", "images", "from"));
+        var to = new DirectoryInfo(Path.Combine("data", "images", "to"));
+
+        TrainingSet<double> data = new TrainingSet<double>();
+        foreach (var file in from.EnumerateFiles()) {
+            var pair = Path.Combine("data", "images", "to", file.Name);
+            if (!File.Exists(pair))
+                continue;
+
+            using Bitmap original = new Bitmap(file.FullName);
+            using Bitmap modified = new Bitmap(pair);
+            
+            var original_bytes = MakeVector(original, options.Channels);
+            var scaled_original_bytes = original_bytes.Select(x => x / 255.0).ToArray();
+
+            var modified_bytes = MakeVector(modified, options.Channels);
+            var scaled_modified_bytes = modified_bytes.Select(x => x / 255.0).ToArray();
+
+            data.Add(new TrainingPair<double> { Input = Vec<double>.Wrap(scaled_original_bytes), Output = Vec<double>.Wrap(scaled_modified_bytes) });
+        }
+
+        using var writer = new BinaryWriter(File.OpenWrite(Path.Combine("data", "datasets", "training.bin")));
+        data.WriteTo(writer);
     }
 
 }

@@ -7,4 +7,11 @@ public class BuildEnvironment {
     public FeedforwardNetwork? Network {get; set;}
     public NetbuildSerializer? Serializer {get; set;}
     public Dictionary<string, Func<string>>? ScopedNetworks {get; set;}
+
+    public IFeedforwardNetworkLayer? GetLayer(string alias) {
+        if (!LayerAliases.TryGetValue(alias, out int index)) {
+            return null;
+        }
+        return Network is not null && index >= 0 && index < Network.LayerCount ? Network.GetLayer(index) : null;
+    }
 }

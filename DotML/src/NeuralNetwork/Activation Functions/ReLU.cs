@@ -14,16 +14,16 @@ public class ReLU : ActivationFunction {
     /// </summary>
     /// <param name="x">function input</param>
     /// <returns>function result</returns>
-    public override double Invoke(double x) {
-        return Math.Max(0,  x);
+    public override float Invoke(float x) {
+        return MathF.Max(0,  x);
     }
     /// <summary>
     /// Invoke the derivative of the activation function with the given output from the neuron
     /// </summary>
     /// <param name="y">neuron  output</param>
     /// <returns>derivative result</returns>
-    public override double InvokeDerivative(double x) {
-        return x <= 0 ? 0 : 1;
+    public override float InvokeDerivative(float x) {
+        return x <= 0 ? 0f : 1f;
     }
 
     public override void ToHtml(TextWriter writer) {

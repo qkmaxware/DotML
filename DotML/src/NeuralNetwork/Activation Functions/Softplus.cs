@@ -14,16 +14,16 @@ public class Softplus : ActivationFunction {
     /// </summary>
     /// <param name="x">function input</param>
     /// <returns>function result</returns>
-    public override double Invoke(double x) {
-        return Math.Log(1 + Math.Exp(x));
+    public override float Invoke(float x) {
+        return MathF.Log(1 + MathF.Exp(x));
     }
     /// <summary>
     /// Invoke the derivative of the activation function with the given output from the neuron
     /// </summary>
     /// <param name="y">neuron  output</param>
     /// <returns>derivative result</returns>
-    public override double InvokeDerivative(double x) {
-        return 1.0 / (1.0 + Math.Exp(-x));
+    public override float InvokeDerivative(float x) {
+        return 1.0f / (1.0f + MathF.Exp(-x));
     }
 
     public override void ToHtml(TextWriter writer) {

@@ -1,0 +1,33 @@
+@using DotML.Network.Training
+
+@if ((Vector?.Dimensionality ?? 0) != Width * Height * 3) {
+Exception invalid_dim_error = new Exception($"Vector length {Vector?.Dimensionality ?? 0} doesn't match given image size {3}x{Width}x{Height}, resulting image may be incorrect.");
+<Error Message=invalid_dim_error></Error>
+}
+<div class="image" style="grid-template-columns: repeat(@(Width), 1fr); grid-template-rows: repeat(@(Height), 1fr); aspect-ratio: @(Width)/@(Height);">
+    @{
+        var pixels = Vector;
+        var frame_size = Width * Height;
+        if (pixels.HasValue) {
+            for (var row = 0; row < Height; row++) {
+                for (var col = 0; col < Width; col++) {
+                    var red_index = row * Width + col + 0 * frame_size;
+                    var green_index = row * Width + col + 1 * frame_size;
+                    var blue_index = row * Width + col + 2 * frame_size;
+                    var r = red_index < pixels.Value.Dimensionality ? pixels.Value[red_index] : 0;
+                    var g = green_index < pixels.Value.Dimensionality ? pixels.Value[green_index] : 0;
+                    var b = blue_index < pixels.Value.Dimensionality ? pixels.Value[blue_index] : 0;
+
+                    <div class="pixel" style="background-color: rgb(@((byte)(r * ValueScale)), @((byte)(g * ValueScale)), @((byte)(b * ValueScale)));"></div>
+                }
+            }
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public int Width {get; set;}
+    [Parameter] public int Height {get; set;}
+    [Parameter] public Vec<double>? Vector {get; set;}
+    [Parameter] public int ValueScale {get; set;} = 1;
+}

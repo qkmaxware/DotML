@@ -1,0 +1,47 @@
+@using DotML.Network
+
+<Modal @ref=Modal Title="Layer Breakdown">
+    @if (Network is IDiagrammable diagrammable) {
+    <section class="lighter w3-round-xlarge w3-card w3-padding w3-margin-bottom" style="text-align: center; overflow-x: auto;">
+        <div class="magnify">
+            @((MarkupString)diagrammable.ToSvg())
+        </div>
+    </section>
+    }
+    <table class="w3-table">
+        <thead>
+            <tr>
+                <th>Index</th>
+                <th>Type</th>
+                <th>Input</th>
+                <th>Output</th>
+                <th>Trainable Parameters</th>
+                <th>Un-Trainable Parameters</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Network is not null) {
+            @for (var layer_index = 0; layer_index < (Network.LayerCount); layer_index++) {
+                var layer = Network.GetLayer(layer_index);
+                <tr>
+                    <td>@layer_index</td>
+                    <td>@layer.GetType().Name</td>
+                    <td>@layer.InputShape</td>
+                    <td>@layer.OutputShape</td>
+                    <td>@layer.TrainableParameterCount()</td>
+                    <td>@layer.UnTrainableParameterCount()</td>
+                    <td>@layer.Visit(describer)</td>
+                </tr>
+            }
+            }
+        </tbody>
+    </table>
+</Modal>
+
+@code {
+    public Modal? Modal {get; set;}
+    [Parameter] public FeedforwardNetwork? Network {get; set;}
+
+    private static LayerDescriber describer = new LayerDescriber();
+}    

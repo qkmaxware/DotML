@@ -18,6 +18,8 @@ public interface ILayerVisitor {
     public void Visit(SoftmaxLayer layer);
 
     public void Visit(InputCapture capture);
+    public void Visit(AdditionSkipConnection skip);
+    public void Visit(ConcatenationSkipConnection skip);
 }
 
 /// <summary>
@@ -36,7 +38,10 @@ public interface ILayerOutputVisitor<TOut> {
     public TOut Visit(DenseLinearLayer layer);
     public TOut Visit(ActivationLayer layer);
     public TOut Visit(SoftmaxLayer layer);
+
     public TOut Visit(InputCapture capture);
+    public TOut Visit(AdditionSkipConnection skip);
+    public TOut Visit(ConcatenationSkipConnection skip);
 }
 
 /// <summary>
@@ -55,7 +60,10 @@ public interface ILayerInputVisitor<TIn> {
     public void Visit(DenseLinearLayer layer, TIn args);
     public void Visit(ActivationLayer layer, TIn args);
     public void Visit(SoftmaxLayer layer, TIn args);
+
     public void Visit(InputCapture capture, TIn args);
+    public void Visit(AdditionSkipConnection skip, TIn args);
+    public void Visit(ConcatenationSkipConnection skip, TIn args);
 }
 
 /// <summary>
@@ -74,5 +82,8 @@ public interface ILayerInputOutputVisitor<TIn, TOut> {
     public TOut Visit(DenseLinearLayer layer, TIn args);
     public TOut Visit(ActivationLayer layer, TIn args);
     public TOut Visit(SoftmaxLayer layer, TIn args);
+
     public TOut Visit(InputCapture capture, TIn args);
+    public TOut Visit(AdditionSkipConnection skip, TIn args);
+    public TOut Visit(ConcatenationSkipConnection skip, TIn args);
 }

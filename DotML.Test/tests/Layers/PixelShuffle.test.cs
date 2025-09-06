@@ -161,7 +161,7 @@ public class PixelShuffleTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
 
         // Forward
         var Y_true = BatchedFeatureSet<double>.FromJagged(
@@ -291,7 +291,7 @@ public class PixelShuffleTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var Y_pred = layer.EvaluateSync(X_true);
         AssertExt.AreEqual(Y_true, Y_pred);
 
@@ -423,7 +423,7 @@ public class PixelShuffleTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dX_pred = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
             input: X_true,

@@ -13,17 +13,17 @@ public class BenchmarkActivationLayer {
     [Params(32, 64, 128, 256, 512, 1024)]
     public int DIM_LENGTH {get; set;}
 
-    private BatchedFeatureSet<double> input;
-    private BatchedFeatureSet<double> output;
+    private BatchedFeatureSet<float> input;
+    private BatchedFeatureSet<float> output;
 
     [GlobalSetup]
     public void Setup() {
         var layer = new ActivationLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), ActivationFunctions.ReLU);
-        var input = new FeatureSet<double>(layer.InputShape);
-        var output = new FeatureSet<double>(layer.OutputShape);
+        var input = new FeatureSet<float>(layer.InputShape);
+        var output = new FeatureSet<float>(layer.OutputShape);
 
-        this.input = new BatchedFeatureSet<double>(input);
-        this.output = new BatchedFeatureSet<double>(output);
+        this.input = new BatchedFeatureSet<float>(input);
+        this.output = new BatchedFeatureSet<float>(output);
     }
 
     [Benchmark]

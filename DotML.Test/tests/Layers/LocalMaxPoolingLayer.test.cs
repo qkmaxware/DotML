@@ -17,14 +17,14 @@ public class LocalMaxPoolingLayerTest {
     [TestMethod]
     public void TestLocalMaxPooling() {
         var layer = new LocalMaxPoolingLayer(new Shape3D(1, 4, 4), 2, 2);
-        Matrix<double> input = new Matrix<double>(new double[,] {
+        Matrix<float> input = new Matrix<float>(new float[,] {
             {12, 20, 30, 00},
             {08, 12, 02, 00},
             {34, 70, 37, 04},
             {112, 100, 25, 12}
         });
 
-        var outputs = layer.EvaluateSync(new FeatureSet<double>(input));
+        var outputs = layer.EvaluateSync(new FeatureSet<float>(input));
         Assert.AreEqual(1, outputs.Channels);
         var output = outputs[0];
 
@@ -71,7 +71,7 @@ public class LocalMaxPoolingLayerTest {
             -0.6389657855033875,
             0.6240558624267578,
             1.5673837661743164
-        ]);
+        ]).ToFloatSet();
 
         var Y_truth = Matrix<double>.FromFlattened(3, 3, [
             1.160701870918274,
@@ -83,8 +83,8 @@ public class LocalMaxPoolingLayerTest {
             1.9196826219558716,
             1.9196826219558716,
             1.5673837661743164
-        ]);
-        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0,0];
+        ]).ToFloatSet();
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<float>(new FeatureSet<float>(X)))[0,0];
         Assert.AreEqual(Y_truth.Rows, Y_projected.Rows);
         Assert.AreEqual(Y_truth.Columns, Y_projected.Columns);
 
@@ -108,7 +108,7 @@ public class LocalMaxPoolingLayerTest {
             2.3749876022338867,
             -0.5080739259719849,
             1.6750047206878662
-        ]);
+        ]).ToFloatSet();
         var dX_truth = Matrix<double>.FromFlattened(5, 5, [
             0.0,
             0.0,
@@ -139,9 +139,9 @@ public class LocalMaxPoolingLayerTest {
 
         var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
-            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
-            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
+            input: new BatchedFeatureSet<float>(new FeatureSet<float>(X)),
+            output: new BatchedFeatureSet<float>(new FeatureSet<float>(Y_truth)),
+            error: new BatchedFeatureSet<float>(new FeatureSet<float>(dY))
         ));
         var dX_projected = backprop_returns.dX[0,0];
         Assert.IsNull(backprop_returns.Gradients);
@@ -204,7 +204,7 @@ public class LocalMaxPoolingLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var Y_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -247,7 +247,7 @@ public class LocalMaxPoolingLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dY_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -290,7 +290,7 @@ public class LocalMaxPoolingLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
         var dX_true = BatchedFeatureSet<double>.FromJagged(
             [
                 [
@@ -333,7 +333,7 @@ public class LocalMaxPoolingLayerTest {
                     ]
                 ]
             ]
-        );
+        ).ToFloatSet();
 
         var Y_pred = layer.EvaluateSync(X_true);
         AssertExt.AreEqual(Y_true, Y_pred);
@@ -378,15 +378,15 @@ public class LocalMaxPoolingLayerTest {
                     0.5189661979675293,
                     1.3695857524871826,
                     0.9875826239585876
-        ]);
+        ]).ToFloatSet();
 
         var Y_truth = Matrix<double>.FromFlattened(2, 2, [
                     1.2178658246994019,
                     1.2178658246994019,
                     0.5189661979675293,
                     1.3695857524871826
-        ]);
-        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0,0];
+        ]).ToFloatSet();
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<float>(new FeatureSet<float>(X)))[0,0];
         Assert.AreEqual(Y_truth.Rows, Y_projected.Rows);
         Assert.AreEqual(Y_truth.Columns, Y_projected.Columns);
 
@@ -405,7 +405,7 @@ public class LocalMaxPoolingLayerTest {
                     -0.1136438176035881,
                     -0.4186047911643982,
                     -1.3989176750183105
-        ]);
+        ]).ToFloatSet();
         var dX_truth = Matrix<double>.FromFlattened(5, 5, [
                     0.0,
                     0.0,
@@ -436,9 +436,9 @@ public class LocalMaxPoolingLayerTest {
 
         var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
-            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
-            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
+            input: new BatchedFeatureSet<float>(new FeatureSet<float>(X)),
+            output: new BatchedFeatureSet<float>(new FeatureSet<float>(Y_truth)),
+            error: new BatchedFeatureSet<float>(new FeatureSet<float>(dY))
         ));
         var dX_projected = backprop_returns.dX[0,0];
         Assert.IsNull(backprop_returns.Gradients);

@@ -33,9 +33,9 @@ public class ParameterMatrixTest {
         
         const int InputSize = 72;
         const int OutputSize = 26;
-        TrainingSet training = new TrainingSet();
-        TrainingSet validation = new TrainingSet();
-        var generator = new TrainedParameterizedNetworkGenerator<ClassicalFeedforwardNetwork>(
+        TrainingSet<float> training = new TrainingSet<float>();
+        TrainingSet<float> validation = new TrainingSet<float>();
+        var generator = new TrainedParameterizedNetworkGenerator<FeedforwardNetwork, float>(
             new ParameterMatrix (
                 ("hidden_size",     Enumerable.Range(OutputSize, InputSize).Cast<object>().ToArray()),
                 ("epoch",           [500, 1000]),
@@ -44,14 +44,13 @@ public class ParameterMatrixTest {
             ),
             training,
             validation,
-            (param) => new ClassicalFeedforwardNetwork(InputSize, param.Get<int>("hidden_size"), OutputSize),
-            (param) => new EnumerableBackpropagationTrainer<ClassicalFeedforwardNetwork> {
+            (param) => MultilayerPerceptron.Make(ActivationFunctions.Sigmoid, InputSize, param.Get<int>("hidden_size"), OutputSize),
+            (param) => new EnumerableBatchTrainer<FeedforwardNetwork> {
                 // Hard-coded parameters
                 EarlyStop = true,
                 // Parameters fetched from the matrix
                 Epochs = param.Get<int>("epoch"),
                 LearningRate = param.Get<int>("learning_rate"),
-                MomentumFactor = param.Get<double>("momentum"),
             }
         );
 

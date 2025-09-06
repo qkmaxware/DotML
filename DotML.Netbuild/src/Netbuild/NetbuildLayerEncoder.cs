@@ -37,7 +37,7 @@ public class NetbuildLayerEncoder : ILayerVisitor {
     }
 
     public void Visit(TransposeConvolutionLayer layer) {
-        sb.WriteLine($"ADD {nameof(TransposeConvolutionLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} padding-x={layer.InputColumnsPadding} padding-y={layer.InputRowsPadding} expand-x={layer.OutputColumnsPadding} expand-y={layer.OutputRowsPadding} filters={layer.FilterCount} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
+        sb.WriteLine($"ADD {nameof(TransposeConvolutionLayer)} stride-x={layer.StrideX} stride-y={layer.StrideY} in-padding-x={layer.InputColumnsPadding} in-padding-y={layer.InputRowsPadding} out-padding-x={layer.OutputColumnsPadding} out-padding-y={layer.OutputRowsPadding} filters={layer.FilterCount} kernel={layer.Filters.Select(x => Math.Max(x.Width, x.Height)).Max()}");
     }
 
     public void Visit(PixelShuffle layer) {
@@ -87,11 +87,22 @@ public class NetbuildLayerEncoder : ILayerVisitor {
     }
 
     public void Visit(SoftmaxLayer layer) {
-        sb.WriteLine($"ADD softmax");
+        sb.WriteLine($"ADD {nameof(SoftmaxLayer)}");
     }
 
     public void Visit(InputCapture capture) {
-        throw new NotImplementedException();
+        sb.WriteLine($"ADD {nameof(InputCapture)} AS output_{capture.UID()}");
+        //sb.WriteLine($"COPY AS out_{capture.UID()}");
+    }
+
+    public void Visit(AdditionSkipConnection skip) {
+        sb.WriteLine($"ADD {nameof(AdditionSkipConnection)} residual=output_{skip.CaptureSource.UID()}");
+        //sb.WriteLine($"RESIDUAL ADDITION {skip.CaptureSource.UID()}");
+    }
+
+    public void Visit(ConcatenationSkipConnection skip) {
+        sb.WriteLine($"ADD {nameof(ConcatenationSkipConnection)} residual=output_{skip.CaptureSource.UID()} side={skip.ConcatenationSide}");
+        //sb.WriteLine($"RESIDUAL ADDITION {skip.CaptureSource.UID()}");
     }
 
 }

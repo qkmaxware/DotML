@@ -1,0 +1,74 @@
+@page "/examples/upscale"
+@using DotML.Network
+@using DotML.Playground.Common.Shared.Interactable
+
+@code {
+    const int IMG_WIDTH = 32;
+    const int IMG_HEIGHT = 32;
+    const int IMG_CHANNELS = 3;
+    const int UPSCALE_FACTOR = 4;
+}
+
+<PageTitle>Upscaling</PageTitle>
+<ModelRuntime Href="models/espcn-upscale.model.zip" Context="model">
+    <div class="w3-row">
+        <div class="w3-half">
+            <PaintApp @ref=painter ImgWidth=IMG_WIDTH ImgHeight=IMG_HEIGHT></PaintApp>
+        </div>
+        <div class="w3-half">
+            <ModelRunner Network=@model InputProvider=@GetInput Context="data">
+                <p class="w3-center">
+                    Upscaling from: @model.InputShape &rightarrow; @model.OutputShape
+                </p>
+                <BmpImage Height=@(IMG_HEIGHT * UPSCALE_FACTOR) Width=@(IMG_WIDTH * UPSCALE_FACTOR) Vector=@data.Output></BmpImage>
+            </ModelRunner>
+        </div>
+    </div>
+</ModelRuntime>
+
+@code {
+    private PaintApp? painter;
+    
+    private string toDataUrlBmp(Vec<float> data) {
+        var format = new BitmapFormat();
+        var image = new MemoryImage(IMG_WIDTH * UPSCALE_FACTOR, IMG_HEIGHT * UPSCALE_FACTOR);
+        var frame_size = image.Width * image.Height;
+        for (var row = 0; row < image.Height; row++) {
+            for (var col = 0; col < image.Width; col++) {
+                var i = (row * image.Width + col);
+
+                image.Pixels[row, col] = new Pixel(
+                    (byte)Math.Clamp(data[i + frame_size * 0] * 255, 0, 255), // R
+                    (byte)Math.Clamp(data[i + frame_size * 1] * 255, 0, 255), // G
+                    (byte)Math.Clamp(data[i + frame_size * 2] * 255, 0, 255)  // B
+                );
+            }
+        }
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+        format.SaveTo(writer, image);
+        var str = Convert.ToBase64String(stream.ToArray());
+        return $"data:image/bmp;base64," + str;
+    }
+
+    private static float vectorize(byte b) => b / 255.0f;
+    private static Vec<float> vectorize(Pixel[] pixels) {
+        float[] values = new float[pixels.Length * 3];
+        if (pixels.Length != IMG_WIDTH * IMG_HEIGHT) {
+            throw new ArgumentException($"Expected {IMG_WIDTH * IMG_HEIGHT} pixels, got {pixels.Length}.");
+        }
+        for (var i = 0; i < pixels.Length; i++) {
+            values[i + pixels.Length*0] = vectorize(pixels[i].R);
+            values[i + pixels.Length*1] = vectorize(pixels[i].G);
+            values[i + pixels.Length*2] = vectorize(pixels[i].B);
+        }
+        return Vec<float>.Wrap(values);
+    }
+    private async Task<Vec<float>?> GetInput() {
+        if (painter is null)
+            return null;
+        var image = await painter.GetFlattenedPixels();
+        var input = vectorize(image);
+        return input;
+    }
+}

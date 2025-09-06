@@ -7,18 +7,18 @@ namespace DotML.Network;
 public class PReLU : ActivationFunction {
     //          Preferred      , Uncommon
     // Commonly 0.01, 0.05, 0.1, 0.3, 0.5
-    public double Alpha {get; init;}
+    public float Alpha {get; init;}
 
-    public PReLU(double alpha) {
+    public PReLU(float alpha) {
         this.Alpha = alpha;
     }
 
-    public override double Invoke(double x) {
+    public override float Invoke(float x) {
         return x < 0 ? Alpha * x : x;
     }
 
-    public override double InvokeDerivative(double x) {
-        return x < 0 ? Alpha : 1;
+    public override float InvokeDerivative(float x) {
+        return x < 0 ? Alpha : 1f;
     }
 
     public override string ToString() {

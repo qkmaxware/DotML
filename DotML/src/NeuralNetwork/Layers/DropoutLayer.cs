@@ -11,15 +11,15 @@ namespace DotML.Network;
 /// </summary>
 [Untested()]
 public class DropoutLayer : FeedforwardNetworkLayer {
-    public double DropoutRate {get; init;}
-    public double KeepRate => 1 - DropoutRate;
+    public float DropoutRate {get; init;}
+    public float KeepRate => 1 - DropoutRate;
 
-    public DropoutLayer(Shape3D input_size) : this(input_size, 0.1) {}
+    public DropoutLayer(Shape3D input_size) : this(input_size, 0.1f) {}
     
-    public DropoutLayer(Shape3D input_size, double dropoutRate) {
+    public DropoutLayer(Shape3D input_size, float dropoutRate) {
         this.InputShape = input_size;
         this.OutputShape = input_size;
-        this.DropoutRate = Math.Clamp(dropoutRate, 0.0, 1.0);
+        this.DropoutRate = Math.Clamp(dropoutRate, 0.0f, 1.0f);
     }
 
     public override void Initialize(IInitializer initializer) { }
@@ -38,13 +38,13 @@ public class DropoutLayer : FeedforwardNetworkLayer {
 
     private Random rng = new Random();
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) { 
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> inputs) { 
         if (this.IsInference)
             return inputs; // No dropout at runtime
         
         // Dropout at training time
         var channelCount = inputs.Channels;
-        var outputs = new Matrix<double>[channelCount];
+        var outputs = new Matrix<float>[channelCount];
         var mask = this.mask;
 
         if (channelCount < 1 || mask is null)
@@ -55,11 +55,11 @@ public class DropoutLayer : FeedforwardNetworkLayer {
             outputs[channel] = input.HadamardWith(mask[channel]); // Elementwise multiplication with the mask
         }
 
-        return new FeatureSet<double>(outputs);
+        return new FeatureSet<float>(outputs);
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
-        FeatureSet<double>? mask = this.mask;
+        FeatureSet<float>? mask = this.mask;
         if (mask is null) {
             return new BackpropagationReturns(
                 args.OutputErrors, // Just pass the errors to the next layer if no mask was assigned
@@ -67,41 +67,41 @@ public class DropoutLayer : FeedforwardNetworkLayer {
             );
         }
 
-        FeatureSet<double>[] input_errors = new FeatureSet<double>[args.OutputErrors.Batches];
+        FeatureSet<float>[] input_errors = new FeatureSet<float>[args.OutputErrors.Batches];
         for (var batchIndex = 0; batchIndex < args.OutputBatch.Batches; batchIndex++) {
             var batch = args.OutputErrors[batchIndex];
 
-            var matrices = new Matrix<double>[batch.Channels];
+            var matrices = new Matrix<float>[batch.Channels];
             for (var channelIndex = 0; channelIndex < batch.Channels; channelIndex++) {
                 matrices[channelIndex] = batch[channelIndex].HadamardWith(mask[channelIndex]);
             }
-            input_errors[batchIndex] = new FeatureSet<double>(matrices);
+            input_errors[batchIndex] = new FeatureSet<float>(matrices);
         }
 
         return new BackpropagationReturns(
-            new BatchedFeatureSet<double>(input_errors),
+            new BatchedFeatureSet<float>(input_errors),
             null
         );
     }
 
     public override void SubtractGradients(LayerGradients? gradients) { }
 
-    private FeatureSet<double>? mask;
+    private FeatureSet<float>? mask;
 
     public void ClearMask() {
         this.mask = null;
     }
 
     public void RegenerateMask() {
-        var features = new Matrix<double>[this.InputShape.Channels];
+        var features = new Matrix<float>[this.InputShape.Channels];
         for (var i = 0; i < this.InputShape.Channels; i++) {
-            features[i] = Matrix<double>.Generate(
+            features[i] = Matrix<float>.Generate(
                 this.InputShape.Rows, 
                 this.InputShape.Columns, 
-                () => rng.NextDouble() < DropoutRate ? 0.0 : 1.0
+                () => rng.NextDouble() < DropoutRate ? 0.0f : 1.0f
             );
         }
-        this.mask = new FeatureSet<double>(features);
+        this.mask = new FeatureSet<float>(features);
     }
 
     public override void Visit(ILayerVisitor visitor) => visitor.Visit(this);

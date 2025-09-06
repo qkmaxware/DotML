@@ -7,19 +7,19 @@ namespace DotML;
 /// </summary>
 public struct ProbabilityDistribution
 {
-    private double[] values;
+    private float[] values;
     private string[]? labels;
 
     public int Categories => values.Length;
 
-    public ProbabilityDistribution(Vec<double> vec) {
+    public ProbabilityDistribution(Vec<float> vec) {
         if (!vec.IsLikelyAProbabilityDistribution())
             vec = vec.SoftmaxNormalized();
 
-        this.values = (double[])vec;
+        this.values = (float[])vec;
     }
 
-    public ProbabilityDistribution(Vec<double> vec, string[]? labels) : this(vec) {
+    public ProbabilityDistribution(Vec<float> vec, string[]? labels) : this(vec) {
         this.labels = labels;
     }
 

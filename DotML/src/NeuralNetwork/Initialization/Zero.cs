@@ -4,17 +4,17 @@ namespace DotML.Network.Initialization;
 /// An initializer which initializes everything to a constant value
 /// </summary>
 public class ConstantInitialization: IInitializer {
-    private double constant;
+    private float constant;
 
-    public ConstantInitialization(double constant) {
+    public ConstantInitialization(float constant) {
         this.constant = constant;
     }
 
-    public double RandomBias(int input_count, int output_count, int parameterCount) {
+    public float RandomBias(int input_count, int output_count, int parameterCount) {
         return constant;
     }
 
-    public double RandomWeight(int input_count, int output_count, int parameterCount) {
+    public float RandomWeight(int input_count, int output_count, int parameterCount) {
         return constant;
     }
 }

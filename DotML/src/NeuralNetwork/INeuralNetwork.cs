@@ -33,7 +33,7 @@ public interface INeuralNetwork {
     /// </summary>
     /// <param name="input">vectorized input</param>
     /// <returns>vectorized network output</returns>
-    public Vec<double> PredictSync(Vec<double> input);
+    public Vec<float> PredictSync(Vec<float> input);
 }
 
 /// <summary>

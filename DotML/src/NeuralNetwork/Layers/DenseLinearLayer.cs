@@ -16,18 +16,18 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
     public int NeuronCount=> neuronc;
     
     [JsonIgnore]
-    public Matrix<double> Weights {
+    public Matrix<float> Weights {
         get; set;
     }
 
     [JsonIgnore]
-    public Vec<double> Biases {
-        get => Vec<double>.Wrap(bias_values);
+    public Vec<float> Biases {
+        get => Vec<float>.Wrap(bias_values);
         set {
-            bias_values = (double[])value;
+            bias_values = (float[])value;
         }
     }
-    private double[] bias_values;
+    private float[] bias_values;
  
     /// <summary>
     /// Neuron interface to access individual neuron properties from matrix and vector data
@@ -42,7 +42,7 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         /// <summary>
         /// Neuron bias
         /// </summary>
-        public double Bias {
+        public float Bias {
             get => parent.bias_values[index];
             set => parent.bias_values[index] = value;
         }
@@ -51,7 +51,7 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         /// Neuron synapse weights
         /// </summary>
         // TODO broken. Weights are rows per neuron, not columns
-        public Span<double> Weights {
+        public Span<float> Weights {
             get => parent.Weights.ExtractRowSpan(index);
             set {
                 var span = parent.Weights.ExtractRowSpan(index);
@@ -73,9 +73,9 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         this.inputs = input_size;
         this.outputs = neurons;
         this.neuronc = neurons;
-        this.Weights = new Matrix<double>(neurons, input_size); // #rows = output count = neurons; #columns = input count
-        this.Biases = new Vec<double>(neurons);
-        this.bias_values = (double[])Biases;
+        this.Weights = new Matrix<float>(neurons, input_size); // #rows = output count = neurons; #columns = input count
+        this.Biases = new Vec<float>(neurons);
+        this.bias_values = (float[])Biases;
 
         this.InputShape = new Shape3D(1, input_size, 1);
         this.OutputShape = new Shape3D(1, neurons, 1);
@@ -117,7 +117,7 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
     public override TOut Visit<TIn, TOut>(ILayerInputOutputVisitor<TIn, TOut> visitor, TIn args) => visitor.Visit(this, args);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void AddMatVecInplace(Matrix<double> target, Matrix<double> a, Vec<double> b) {
+    private static void AddMatVecInplace(Matrix<float> target, Matrix<float> a, Vec<float> b) {
         var result = target;
         var rows = a.Rows;
         if (rows != target.Rows) {
@@ -130,7 +130,7 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
 
     // On Average, this is slightly faster than the old method but does the same thing (if I didn't copy-paste it wrong) will have to test this haha
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static Matrix<double> MultiplyMatrixVectorAndAddVector(Matrix<double> a, Matrix<double> b, Vec<double> c) {
+    private static Matrix<float> MultiplyMatrixVectorAndAddVector(Matrix<float> a, Matrix<float> b, Vec<float> c) {
         // Remember that B is a vector
         //if (a.Columns != b.Rows || b.Columns != 1 || a.Rows != c.Dimensionality)
             //throw new ArithmeticException($"Incompatible dimensions for matrix multiplication {a.Rows}x{a.Columns} · {b.Rows}x{b.Columns} + {c.Dimensionality}x1");
@@ -139,9 +139,9 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         int cols = b.Columns; // aka 1
         int innerDim = a.Columns;
 
-        var result = new Matrix<double>(rows, cols);
+        var result = new Matrix<float>(rows, cols);
         for (var i = 0; i < rows; i++) {
-            double sum = 0.0;     
+            float sum = 0.0f;     
             for (int j = 0; j < innerDim; j++) {
                 sum += a[i, j] * b[j, 0];
             }
@@ -154,7 +154,7 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         return shape.Count == inputs;
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> inputs) {
         // input is a 2D matrix processed from prior layers like a pooling layer
         var x = FlatteningLayer.Flatten(inputs)[0];
         //var x = inputs.Channels == 1 && inputs[0].IsColumnMatrix ? inputs[0] : Matrix<double>.Column(inputs.SelectMany(x => x.FlattenRows()).ToArray());
@@ -162,26 +162,26 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         //var mul  = Weights * x; 
         //AddMatVecInplace(mul, mul, bias_values);
         //return new FeatureSet<double>(mul); 
-        return new FeatureSet<double>(MultiplyMatrixVectorAndAddVector(Weights, x, bias_values));
+        return new FeatureSet<float>(MultiplyMatrixVectorAndAddVector(Weights, x, bias_values));
         //var biased = mul + Matrix<double>.Column(bias_values); 
         //var activated = this.ActivationFunction.Invoke(biased);
         //return [ activated ];
     }
 
     public class Gradients : LayerGradients {
-        private Matrix<double> Weights;
-        private Vec<double> Bias;
-        public Matrix<double> WeightGradients;
-        public Vec<double> BiasGradients;
+        private Matrix<float> Weights;
+        private Vec<float> Bias;
+        public Matrix<float> WeightGradients;
+        public Vec<float> BiasGradients;
 
-        public Gradients(Matrix<double> weight, Vec<double> bias, Matrix<double> weight_grads, Vec<double> bias_grads) {
+        public Gradients(Matrix<float> weight, Vec<float> bias, Matrix<float> weight_grads, Vec<float> bias_grads) {
             this.Weights = weight;
             this.Bias = bias;
             this.WeightGradients = weight_grads;
             this.BiasGradients = bias_grads;
         }
 
-        public override void Clip(double weight_threshold, double bias_threshold) {
+        public override void Clip(float weight_threshold, float bias_threshold) {
             ClipMatrix(WeightGradients, weight_threshold);
             ClipVector(BiasGradients, bias_threshold);
         }
@@ -201,15 +201,15 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private Matrix<double> MakeXTransposedOld(BackpropagationArgs args) {
-        var xT = new Matrix<double>(args.InputBatch.Batches, InputShape.Count);
+    private Matrix<float> MakeXTransposed(BackpropagationArgs args) {
+        var xT = new Matrix<float>(args.InputBatch.Batches, InputShape.Count);
         for (var i = 0; i < args.InputBatch.Batches; i++) {
             var j = 0;
             var batch = args.InputBatch[i];
             foreach (var feature in batch) {
-                var k = 0;
-                foreach (var value in feature.FlattenRows()) {
-                    xT[i,j++] = feature[k++];
+                var feature_span = feature.AsReadOnlySpan(); var len = feature_span.Length;
+                for (var k = 0; k < len; k++) {
+                    xT[i,j++] = feature[k];
                 }
             }
         }
@@ -217,79 +217,33 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private Matrix<double> MakeDelta(BackpropagationArgs args) {
-        var delta = new Matrix<double>(NeuronCount, args.InputBatch.Batches);
+    private Matrix<float> MakeDelta(BackpropagationArgs args) {
+        var neurons = NeuronCount;
+        var delta = new Matrix<float>(neurons, args.InputBatch.Batches);
         for (var i = 0; i < args.InputBatch.Batches; i++) {
-            var batch_output_errors = args.OutputErrors[i][0]; // This is a column vector (only 1 column)
-            for (var j = 0; j < NeuronCount; j++) {
-                delta[j, i] = batch_output_errors[j, 0];
+            var batch_output_errors = args.OutputErrors[i, 0].AsReadOnlySpan(); // This is a column vector (only 1 column)
+            for (var j = 0; j < neurons; j++) {
+                delta[j, i] = batch_output_errors[j];
             }
         }
         return delta;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private Matrix<double> MakeXTransposedNew(BackpropagationArgs args) {
-        var batches = args.InputBatch.Batches;
-        var xT = new Matrix<double>(batches, InputShape.Count);
-        for (var i = 0; i < batches; i++) {
-            var j = 0;
-            var batch = args.InputBatch[i];
-            var xT_row = xT.ExtractRowSpan(i);
-            foreach (var feature in batch) {
-                var feature_span = feature.AsSpan(); // Assumes Matrix is in row-major order (which it is atm)
-                feature_span.CopyTo(xT_row.Slice(j));
-                j += feature_span.Length;
-            }
-        }
-        return xT;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private BatchedFeatureSet<double> UnflattenInputGradientsOld(BatchedFeatureSet<double> input, Matrix<double> input_gradients) {
-        var shaped_input_gradients = new FeatureSet<double>[input.Batches];
-        for (var batch = 0; batch < shaped_input_gradients.Length; batch++) {
-            var shapes = input[batch].Select(x => x.Shape).ToArray();
-            var features = new Matrix<double>[shapes.Length]; 
-            var index = 0;
-
-            for (var shapeIndex = 0; shapeIndex < shapes.Length; shapeIndex++) {
-                var shape = shapes[shapeIndex];
-                var rows = shape.Rows;
-                var cols = shape.Columns;
-                var mtx = new Matrix<double>(shape.Rows, shape.Columns);
-                for (int row = 0; row < rows; row++) {
-                    for (int col = 0; col < cols; col++) {
-                        if (index < mtx.Size)
-                            mtx[row, col] = input_gradients[index++, batch];
-                        else 
-                            mtx[row, col] = 0.0;
-                    }
-                }
-                var result = mtx;
-                features[shapeIndex] = result;
-            }
-            shaped_input_gradients[batch] = new FeatureSet<double>(features);
-        }
-
-        return new BatchedFeatureSet<double>(shaped_input_gradients); 
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private BatchedFeatureSet<double> UnflattenInputGradients(BatchedFeatureSet<double> input_batch, Matrix<double> input_gradients) {
+    private BatchedFeatureSet<float> UnflattenInputGradients(BatchedFeatureSet<float> input_batch, Matrix<float> input_gradients) {
         var batches = input_gradients.Columns;
         var channels = input_batch.Channels;
         var shape = new Shape2D(input_batch.Rows, input_batch.Columns);
         var rows = shape.Rows;
         var cols = shape.Columns;
 
-        var shaped_input_gradients = new FeatureSet<double>[batches];
+        var shaped_input_gradients = new FeatureSet<float>[batches];
         for (var batch = 0; batch < batches; batch++) {
-            var features = new Matrix<double>[channels]; 
+            var features = new Matrix<float>[channels]; 
             var index = 0;
 
             for (var channel = 0; channel < channels; channel++) {
-                var mtx = new Matrix<double>(rows, cols);
+                var mtx = new Matrix<float>(rows, cols);
                 for (int row = 0; row < rows; row++) {
                     for (int col = 0; col < cols; col++) {
                         mtx[row, col] = input_gradients[index++, batch]; // Bad spatial locality for input_gradients, moving down the column
@@ -297,15 +251,15 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
                 }
                 features[channel] = mtx;
             }
-            shaped_input_gradients[batch] = new FeatureSet<double>(features);
+            shaped_input_gradients[batch] = new FeatureSet<float>(features);
         }
-        return new BatchedFeatureSet<double>(shaped_input_gradients);
+        return new BatchedFeatureSet<float>(shaped_input_gradients);
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
         // Form Transposed(X) input matrix for all flattened input batch vectors
         // Each X is a column vector so Transposed(X) is composed of flattened row vectors
-        var xT = MakeXTransposedOld(args);
+        var xT = MakeXTransposed(args);
 
         // Form delta matrix for all batch output errors
         // delta is columns of errors vectors
@@ -323,7 +277,7 @@ public class DenseLinearLayer : FeedforwardNetworkLayer, ILayerWithNeurons {
         // Need this to be of size: Neurons
         // Delta.Rows
         // Neurons x Batches => Neurons = Delta.Rows
-        var bias_gradients = delta.AggregateOverColumns((agg, next) => agg + next, initial: 0.0); // Each column is a batch 
+        var bias_gradients = delta.AggregateOverColumns((agg, next) => agg + next, initial: 0.0f); // Each column is a batch 
 
         // Need this to be of size: Batches x Input Features | Input Features x Batches (transposed)
         // WeightsT * Delta

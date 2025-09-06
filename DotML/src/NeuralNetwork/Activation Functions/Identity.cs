@@ -14,7 +14,7 @@ public class Identity : ActivationFunction {
     /// </summary>
     /// <param name="x">function input</param>
     /// <returns>function result</returns>
-    public override double Invoke(double x) {
+    public override float Invoke(float x) {
         return x;
     }
     /// <summary>
@@ -22,7 +22,7 @@ public class Identity : ActivationFunction {
     /// </summary>
     /// <param name="x">neuron  output</param>
     /// <returns>derivative result</returns>
-    public override double InvokeDerivative(double x) {
+    public override float InvokeDerivative(float x) {
         return 1;
     }
 

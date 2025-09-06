@@ -1,6 +1,8 @@
 ﻿using System.Drawing;
 using CommandLine;
 
+namespace BinaryMerge;
+
 public class Program {
 
     public class Options {
@@ -14,19 +16,23 @@ public class Program {
     public static void Main() {
         var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
         Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(options => {
-            if (string.IsNullOrEmpty(options.OutName))
-                return;
-            var files = options.Files;
-            if (files is null || !files.Any())
-                return;
-
-            using var out_stream = File.Open(options.OutName, FileMode.Create);
-
-            foreach (var filename in files) {
-                using var in_stream = File.OpenRead(filename);
-                in_stream.CopyTo(out_stream);
-            }
+            Exec(options);
         });
+    }
+
+    public static void Exec(Options options) {
+        if (string.IsNullOrEmpty(options.OutName))
+            return;
+        var files = options.Files;
+        if (files is null || !files.Any())
+            return;
+
+        using var out_stream = File.Open(options.OutName, FileMode.Create);
+
+        foreach (var filename in files) {
+            using var in_stream = File.OpenRead(filename);
+            in_stream.CopyTo(out_stream);
+        }
     }
 
 }

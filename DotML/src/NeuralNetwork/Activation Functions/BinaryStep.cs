@@ -14,15 +14,15 @@ public class BinaryStep : ActivationFunction {
     /// </summary>
     /// <param name="x">function input</param>
     /// <returns>function result</returns>
-    public override double Invoke(double x) {
-        return x < 0 ? 0.0 : 1.0;
+    public override float Invoke(float x) {
+        return x < 0 ? 0.0f : 1.0f;
     }
     /// <summary>
     /// Invoke the derivative of the activation function with the given output from the neuron
     /// </summary>
     /// <param name="y">neuron  output</param>
     /// <returns>derivative result</returns>
-    public override double InvokeDerivative(double x) {
+    public override float InvokeDerivative(float x) {
         return 0;
     }
 

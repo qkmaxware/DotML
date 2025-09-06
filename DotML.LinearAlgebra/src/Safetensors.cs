@@ -18,7 +18,9 @@ public class Safetensors {
             this.data = data;
         }
 
-        public int Dimensions => shape.Dimensions;
+        public int Len() => ((Array)data).Length;
+
+        public int Rank => shape.Dimensions;
 
         public int GetDimension(int index) => shape.GetDimension(index);
 
@@ -47,8 +49,13 @@ public class Safetensors {
                 return shape[index];
             return 1;
         }
+
+        public override string ToString() {
+            return string.Join('x', shape);
+        }
     }
     private Dictionary<string, UnknownObjectTensor> tensors = new Dictionary<string, UnknownObjectTensor>();
+    private Dictionary<string, Dictionary<string, string>> tensor_metadata = new Dictionary<string, Dictionary<string, string>>();
 
     /// <summary>
     /// All keys in this safetensors set
@@ -82,6 +89,25 @@ public class Safetensors {
     }
 
     /// <summary>
+    /// Gets the metadata associated with the given tensor
+    /// </summary>
+    /// <param name="key">Tensor metadata</param>
+    /// <returns>metadata collection</returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the tensor with the given key doesn't exist</exception>
+    public Dictionary<string, string> MetadataOf(string key) {
+        if (tensor_metadata.TryGetValue(key, out var metadata)) {
+            return metadata;
+        }
+        if (!ContainsKey(key)) {
+            throw new KeyNotFoundException($"Tensor {key} not found, have you added it?");
+        }
+
+        var dict = new Dictionary<string, string>();
+        tensor_metadata.Add(key, dict);
+        return dict;
+    }
+
+    /// <summary>
     /// Check if this safetensors set contains a tensor with the given name
     /// </summary>
     /// <param name="key">key name</param>
@@ -107,17 +133,47 @@ public class Safetensors {
         var tensor = tensors[fromKey];
         tensors.Remove(fromKey);
         tensors.Add(toKey, tensor);
+        if (tensor_metadata.TryGetValue(fromKey, out var metadata)) {
+            tensor_metadata.Remove(fromKey);
+            tensor_metadata.Add(toKey, metadata);
+        }
+        
         return true;
     }
 
     /// <summary>
-    /// Get the tensor associated with the given key
+    /// Get the tensor associated with the given key (tensor must be rank 1)
+    /// </summary>
+    /// <typeparam name="TOut">output type</typeparam>
+    /// <param name="key">tensor key</param>
+    /// <returns>vector</returns>
+    /// <exception cref="KeyNotFoundException">thrown when the given key doesn't exist in the safetensors set</exception>
+    public Vec<TOut> GetVector<TOut>(string key) where TOut:INumber<TOut> { // TODO rename this to GetMatrix or GetTensorAsMatrix
+        if (!tensors.TryGetValue(key, out var tensor)) {
+            throw new KeyNotFoundException(key);
+        }
+        var shape = tensor.shape;
+        if (shape.Dimensions != 1)
+            throw new ArgumentException($"Cannot load a tensor of dimensionality {shape.Dimensions} into a vector");
+
+        if (tensor.data is TOut[] elements) {
+            // No additional memory allocation, just use the array as is. 
+            return new Vec<TOut>(elements);
+        } else {
+            var new_matrix = new Vec<TOut>(tensor.Len());
+            LoadTensorInto<Vec<TOut>, TOut>(key, new_matrix);
+            return new_matrix;
+        }
+    }
+
+    /// <summary>
+    /// Get the tensor associated with the given key (tensor must be rank 2)
     /// </summary>
     /// <typeparam name="TOut">output type</typeparam>
     /// <param name="key">tensor key</param>
     /// <returns>matrix</returns>
     /// <exception cref="KeyNotFoundException">thrown when the given key doesn't exist in the safetensors set</exception>
-    public Matrix<TOut> GetTensor<TOut>(string key) where TOut:INumber<TOut> { // TODO rename this to GetMatrix or GetTensorAsMatrix
+    public Matrix<TOut> GetMatrix<TOut>(string key) where TOut:INumber<TOut> { // TODO rename this to GetMatrix or GetTensorAsMatrix
         if (!tensors.TryGetValue(key, out var tensor)) {
             throw new KeyNotFoundException(key);
         }
@@ -142,14 +198,20 @@ public class Safetensors {
     /// <param name="key">tensor key</param>
     /// <returns>matrix</returns>
     /// <exception cref="KeyNotFoundException">thrown when the given key doesn't exist in the safetensors set</exception>
-    public GenericTensor<TElement> GetTensorData<TElement>(string key) {
+    public GenericTensor<TElement> GetTensor<TElement>(string key) {
         if (!tensors.TryGetValue(key, out var tensor)) {
             throw new KeyNotFoundException(key);
         }
         var shape = tensor.shape;
-        var obj = new GenericTensor<TElement>(shape.Lengths);
-        LoadTensorInto<GenericTensor<TElement>, TElement>(key, obj);
-        return obj;
+        if (tensor.data is TElement[] elements) {
+            // No additional memory allocation, just use the array as is. 
+            return new GenericTensor<TElement>(shape.Lengths, elements);
+        } else {
+            // Allocate a new array transform the data and copy it
+            var obj = new GenericTensor<TElement>(shape.Lengths);
+            LoadTensorInto<GenericTensor<TElement>, TElement>(key, obj);
+            return obj;
+        }
     }
 
     // Desired usage Matrix<double> matrix = GetTensorAs<Matrix<double>, double>(key);
@@ -202,7 +264,7 @@ public class Safetensors {
         if (!tensors.TryGetValue(key, out var tensor)) {
             throw new KeyNotFoundException(key);
         }
-        var shape = Enumerable.Range(0, result.Dimensions).Select(x => result.GetDimension(x)).ToArray();
+        var shape = Enumerable.Range(0, result.Rank).Select(x => result.GetDimension(x)).ToArray();
         if (!tensor.shape.Lengths.SequenceEqual(shape)) {
             throw new IndexOutOfRangeException($"Resulting shape {string.Join('x', shape)} doesn't match shape of tensor {key} {string.Join('x', tensor.shape.Lengths)}.");
         }
@@ -224,7 +286,7 @@ public class Safetensors {
     /// <param name="matrix">tensor</param>
     public void Add<T>(string name, ITensorLike<T> tensor) {
         // Create a shape that matches the generic tensor
-        var shape = new int[tensor.Dimensions];
+        var shape = new int[tensor.Rank];
         for (var i = 0; i < shape.Length; i++)
             shape[i] = tensor.GetDimension(i);
         var count = shape.Aggregate(1, (lhs, rhs) => lhs * rhs);
@@ -254,6 +316,7 @@ public class Safetensors {
     public void Add(string name, Matrix<Half> matrix) { 
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
     }
+    
     /// <summary>
     /// Add a 16bit matrix to the safetensor
     /// </summary>
@@ -262,6 +325,7 @@ public class Safetensors {
     public void Add(string name, Vec<Half> vector) { 
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
     }
+
     /// <summary>
     /// Add a 32bit matrix to the safetensor
     /// </summary>
@@ -270,6 +334,7 @@ public class Safetensors {
     public void Add(string name, Matrix<float> matrix) { 
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray()  ));
     }
+
     /// <summary>
     /// Add a 32bit matrix to the safetensor
     /// </summary>
@@ -278,6 +343,7 @@ public class Safetensors {
     public void Add(string name, Vec<float> vector) {
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
     }
+
     /// <summary>
     /// Add a 64bit matrix to the safetensor
     /// </summary>
@@ -286,6 +352,7 @@ public class Safetensors {
     public void Add(string name, Matrix<double> matrix) {
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
     }
+
     /// <summary>
     /// Add a 64bit matrix to the safetensor
     /// </summary>
@@ -293,6 +360,98 @@ public class Safetensors {
     /// <param name="matrix">tensor</param>
     public void Add(string name, Vec<double> vector) { 
         this.tensors.Add(name, new UnknownObjectTensor (shape: new GenericShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
+    }
+
+    public static readonly string QuantizationMethodKey = "quantization.method";
+    public static readonly string QuantizationScaleKey = "quantization.scale";
+    public static readonly string QuantizationZeroPointKey = "quantization.zero-point";
+
+    /// <summary>
+    /// Quantize all compatible tensors in the safetensors set using the given quantizer.
+    /// Only tensors of the type TIn will be quantized to the type TOut and the others will be skipped.
+    /// </summary>
+    /// <typeparam name="TIn">Tensor input type</typeparam>
+    /// <typeparam name="TOut">Quantized tensor output type</typeparam>
+    /// <param name="quantizer">Quantization method</param>
+    public void QuantizeAll<TIn, TOut>(IQuantization<TIn, TOut> quantizer) {
+        foreach (var key in this.Keys()) {
+            Quantize(key, quantizer);
+        }
+    }
+
+    /// <summary>
+    /// Quantize the given tensors in the safetensors set using the given quantizer.
+    /// Only tensors of the type TIn will be quantized to the type TOut if the tensor is not of type TIn this method does nothing.
+    /// </summary>
+    /// <typeparam name="TIn">Tensor input type</typeparam>
+    /// <typeparam name="TOut">Quantized tensor output type</typeparam>
+    /// <param name="quantizer">Quantization method</param>
+    public void Quantize<TIn, TOut>(string key, IQuantization<TIn, TOut> quantizer) {
+        var tensor = this.tensors[key];
+        if (tensor.data is not TIn[] data) {
+            // This quantizer only works for tensors of the type TIn
+            return;
+        }
+
+        // Quantize the tensor
+        quantizer.Quantize(data, out var quantized, out var scale, out var zeroPoint);
+
+        // Update the tensor data
+        tensor.data = quantized;
+        var metadata = this.MetadataOf(key);
+        metadata[QuantizationMethodKey] = quantizer.GetType().Name;
+        metadata[QuantizationScaleKey] = scale.ToString();
+        metadata[QuantizationZeroPointKey] = zeroPoint.ToString();
+    }
+
+    /// <summary>
+    /// Dequantize all compatible tensors in the safetensors set using the given quantizer.
+    /// Only tensors of the type TOut will be dequantized back into their original type of TIn and the others will be skipped.
+    /// Additionally, the tensor metadata must contain the quantization scale and zero-point or it will be skipped.
+    /// </summary>
+    /// <typeparam name="TIn">Tensor dequantized type</typeparam>
+    /// <typeparam name="TOut">Quantized tensor output type</typeparam>
+    /// <param name="quantizer">Quantization method</param>
+    public void DequantizeAll<TIn, TOut>(IQuantization<TIn, TOut> quantizer) {
+        foreach (var key in this.Keys()) {
+            Dequantize(key, quantizer);
+        }
+    }
+
+    /// <summary>
+    /// Dequantize the given tensor in the safetensors set using the given quantizer.
+    /// Only tensors of the type TOut will be dequantized back into their original type of TIn. If the tensor is not of type TOut this method does nothing.
+    /// Additionally, the tensor metadata must contain the quantization scale and zero-point or this method will do nothing.
+    /// </summary>
+    /// <typeparam name="TIn">Tensor dequantized type</typeparam>
+    /// <typeparam name="TOut">Quantized tensor output type</typeparam>
+    /// <param name="quantizer">Quantization method</param>
+    public void Dequantize<TIn, TOut>(string key, IQuantization<TIn, TOut> quantizer) {
+        var tensor = this.tensors[key];
+        if (tensor.data is not TOut[] data) {
+            // This quantizer only works for tensors of the type TIn
+            return;
+        }
+        var metadata = this.MetadataOf(key);
+        if (!metadata.TryGetValue(QuantizationScaleKey, out string? scaleString) || !metadata.TryGetValue(QuantizationZeroPointKey, out string? zeroPointString)) {
+            // This tensor is missing quantization metadata
+            return;
+        }
+        if (!double.TryParse(scaleString, out var scale)) {
+            scale = 1.0; // Default scale
+        }
+        if (!double.TryParse(zeroPointString, out var zeroPoint)) {
+            zeroPoint = 0.0; // Default zero-point
+        }
+        
+        // Quantize the tensor
+        quantizer.Dequantize(out var dequantized, data, scale, zeroPoint);
+
+        // Update the tensor data
+        tensor.data = dequantized;
+        metadata.Remove(QuantizationMethodKey);
+        metadata.Remove(QuantizationScaleKey);  
+        metadata.Remove(QuantizationZeroPointKey);
     }
 
     /// <summary>
@@ -391,6 +550,9 @@ public class Safetensors {
                     key, 
                     new UnknownObjectTensor(shape, data)
                 );
+                if (tensorInfo.__metadata__ is not null && tensorInfo.__metadata__.Count > 0) {
+                    sb.tensor_metadata.Add(key, tensorInfo.__metadata__);
+                }
             }
         }
 
@@ -494,20 +656,19 @@ public class Safetensors {
         }
     }
 
-    private static void create_header_for(Dictionary<string, TensorInfo> header, ref ulong buffer_offset, Dictionary<string, UnknownObjectTensor> tensors) {
+    private static void create_header_for(Dictionary<string, TensorInfo> header, ref ulong buffer_offset, Dictionary<string, UnknownObjectTensor> tensors, Dictionary<string, Dictionary<string, string>> metas) {
         foreach (var matrix in tensors) {
             var shape = matrix.Value.shape;
             var type = matrix.Value.data?.GetType()?.GetElementType() ?? typeof(object);
             var matrix_byte_size = (ulong)(Marshal.SizeOf(type) * shape.Size);
+            var metadata = metas.ContainsKey(matrix.Key) ? metas[matrix.Key] : new Dictionary<string, string>();
             header.Add(
                 matrix.Key,
                 new TensorInfo { 
                     dtype           = type_to_string(type),
                     shape           = shape.Lengths,
                     data_offsets    = new ulong[]{ buffer_offset, buffer_offset + matrix_byte_size },
-                    __metadata__    = new Dictionary<string, string>{
-                        // TODO 
-                    }
+                    __metadata__    = metadata
                 }
             );
             buffer_offset = buffer_offset + matrix_byte_size;
@@ -522,7 +683,7 @@ public class Safetensors {
         // Header
         var header = new Dictionary<string, TensorInfo>();
         var buffer_offset = 0ul;
-        create_header_for(header, ref buffer_offset, tensors);
+        create_header_for(header, ref buffer_offset, tensors, tensor_metadata);
         var json = JsonSerializer.Serialize(header);
         var header_bytes = System.Text.Encoding.UTF8.GetBytes(json);
         writer.Write(header_bytes.LongLength);

@@ -11,7 +11,7 @@ public interface IInitializer {
     /// <param name="output_count">Number of output neurons</param>
     /// <param name="parameterCount">Total number of parameters in the layer</param>
     /// <returns>Random weight</returns>
-    public double RandomWeight(int input_count, int output_count, int parameterCount);
+    public float RandomWeight(int input_count, int output_count, int parameterCount);
 
     /// <summary>
     /// Generate a random bias for a given neuron
@@ -20,7 +20,7 @@ public interface IInitializer {
     /// <param name="output_count">Number of output neurons</param>
     /// <param name="parameterCount">Total number of parameters in the layer</param>
     /// <returns>Random bias</returns>
-    public double RandomBias(int input_count, int output_count, int parameterCount);
+    public float RandomBias(int input_count, int output_count, int parameterCount);
 }
 
 /// <summary>
@@ -52,7 +52,7 @@ public static class Initializers {
     /// <summary>
     /// Initialize everything to a random value between -1 and 1
     /// </summary>
-    public static IInitializer Random {get; private set;} = new RandomInitialization(-1.0, 1.0);
+    public static IInitializer Random {get; private set;} = new RandomInitialization(-1.0f, 1.0f);
 
     /// <summary>
     /// Initialize everything using Xavier or Glorot with a normal distribution

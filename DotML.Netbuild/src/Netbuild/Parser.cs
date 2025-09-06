@@ -2,7 +2,7 @@ using System.Data;
 
 namespace DotML.Network.IO.Netbuild;
 
-internal class Parser {
+public class Parser {
 
     private ActivationFunctionMapper activations;
     private LayerMapper layers;
@@ -180,7 +180,7 @@ internal class Parser {
             throw new SyntaxErrorException($"Missing IDENTIFIER keyword at position {getPosition(lookahead, tokens)}"); // Missing "FROM" keyword
         }
         var layer_type = (Token<string>)tokens[lookahead++];
-        Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory = (ishape, args) => layers.Decode(layer_type.Position, layer_type.Value, ishape, args);
+        Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory = (ishape, args) => layers.Decode(layer_type.Position, layer_type.Value, ishape, args);
 
         // Get the layer arguments
         var args = new List<(Token<string>, Literal)>();
@@ -231,7 +231,7 @@ internal class Parser {
             throw new SyntaxErrorException($"Missing IDENTIFIER keyword at position {getPosition(lookahead, tokens)}"); // Missing "FROM" keyword
         }
         var layer_type = (Token<string>)tokens[lookahead++];
-        Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory = (ishape, args) => layers.Decode(layer_type.Position, layer_type.Value, ishape, args);
+        Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory = (ishape, args) => layers.Decode(layer_type.Position, layer_type.Value, ishape, args);
 
         // Get the layer arguments
         var args = new List<(Token<string>, Literal)>();
@@ -252,7 +252,7 @@ internal class Parser {
             throw new SyntaxErrorException($"Missing IDENTIFIER keyword at position {getPosition(lookahead, tokens)}"); // Missing "FROM" keyword
         }
         var layer_type = (Token<string>)tokens[lookahead++];
-        Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory = (ishape, args) => layers.Decode(layer_type.Position, layer_type.Value, ishape, args);
+        Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory = (ishape, args) => layers.Decode(layer_type.Position, layer_type.Value, ishape, args);
 
         // Get the layer arguments
         var args = new List<(Token<string>, Literal)>();

@@ -11,7 +11,7 @@ namespace DotML.Network.Training;
 /// </summary>
 /// <typeparam name="TNetwork">type of network to train (convolutional network)</typeparam>
 public class EnumerableBatchTrainer<TNetwork>
-    : IEnumerableTrainer<TNetwork>
+    : IEnumerableTrainer<TNetwork, float>
 where TNetwork : FeedforwardNetwork
 {
     /// <summary>
@@ -105,7 +105,7 @@ where TNetwork : FeedforwardNetwork
     /// </summary>
     public int BatchSize {get; set;} = 1;
 
-    public IEpochEnumerator<TNetwork> EnumerateTraining(TNetwork network, IEnumerator<TrainingPair> dataset, IEnumerator<TrainingPair> validation) {
+    public IEpochEnumerator<TNetwork> EnumerateTraining(TNetwork network, IEnumerator<TrainingPair<float>> dataset, IEnumerator<TrainingPair<float>> validation) {
         return new BatchTrainerEnumerator<TNetwork>(
             network,
             dataset,
@@ -132,7 +132,7 @@ where TNetwork : FeedforwardNetwork
         );
     }
 
-    public void Train(TNetwork network, IEnumerator<TrainingPair> dataset, IEnumerator<TrainingPair> validation) {
+    public void Train(TNetwork network, IEnumerator<TrainingPair<float>> dataset, IEnumerator<TrainingPair<float>> validation) {
         EnumerateTraining(network, dataset, validation).MoveToEnd();
     }
 }

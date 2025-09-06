@@ -6,7 +6,7 @@ namespace DotML.Cli.Decodings;
 /// <summary>
 /// Decode an output into an image file
 /// </summary>
-public class Image : IDecoder {
+public class Image : IDecoder, IFileOnlyDecoder {
 
     public class Result : IDecodedResult {
         
@@ -25,7 +25,7 @@ public class Image : IDecoder {
             }
         }
 
-        public void FileOutput(FileInfo file) {
+        public IEnumerable<FileInfo> FileOutput(FileInfo file) {
             if (file.Extension != ".png") {
                 file = new FileInfo(file.FullName + ".png");
             }
@@ -35,6 +35,7 @@ public class Image : IDecoder {
                 using (var stream = File.Open(file.FullName, FileMode.Create)) {
                     bitmap.Encode(stream, SKEncodedImageFormat.Png, 100);
                 }
+                yield return file;
             } else {
                 var path = file.FullName;
                 for (var i = 0; i < bitmaps.Length; i++) {
@@ -43,6 +44,7 @@ public class Image : IDecoder {
                     using (var stream = File.Open(save_to, FileMode.Create)) {
                         bitmap.Encode(stream, SKEncodedImageFormat.Png, 100);
                     }
+                    yield return new FileInfo(save_to);
                 }
             }
         }
@@ -53,7 +55,7 @@ public class Image : IDecoder {
         }
     }
 
-    public IDecodedResult Decode(BatchedFeatureSet<double> output) {
+    public IDecodedResult Decode(BatchedFeatureSet<float> output) {
         var images = new SKBitmap[output.Batches];
         var channels = Math.Max(output.Channels, 3);
         for (var batch = 0; batch < images.Length; batch++) {

@@ -3,10 +3,10 @@ namespace DotML.Network.IO.Netbuild;
 public class InsertBeforeStatement : Statement {
     private LayerReference reference;
     string layer_name;
-    Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory;
+    Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory;
     public Dictionary<string, Literal> arguments = new Dictionary<string, Literal>();
 
-    public InsertBeforeStatement(LayerReference reference, string layer_name, Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory, List<(Token<string>, Literal)> args) {
+    public InsertBeforeStatement(LayerReference reference, string layer_name, Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory, List<(Token<string>, Literal)> args) {
         this.reference = reference;
         this.layer_name = layer_name;
         this.factory = factory;
@@ -20,7 +20,20 @@ public class InsertBeforeStatement : Statement {
         if (network is null)
             return;
         
-        // TODO 
+        // Find the layer to insert after
+        var layer_index = this.reference.IndexOf(env.LayerAliases);
+        var layer = network.GetLayer(layer_index);
+        if (layer is null)
+            throw new ArgumentException($"Unknown layer '{layer_name}'");
+
+        // Create the layer 
+        var output_shape = layer.InputShape;
+        IFeedforwardNetworkLayer created = factory(output_shape, new ArgumentMap(env, arguments));
+        var index = layer_index;
+
+        network.InsertLayerBefore(created, (index, l) => layer_index == index);
+
+        // Add the alias TODO
     }
 
     public override string ToString() {
@@ -31,10 +44,10 @@ public class InsertBeforeStatement : Statement {
 internal class InsertAfterStatement : Statement {
     private LayerReference reference;
     string layer_name;
-    Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory;
+    Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory;
     public Dictionary<string, Literal> arguments = new Dictionary<string, Literal>();
 
-    public InsertAfterStatement(LayerReference reference, string layer_name, Func<Shape3D, Dictionary<string, Literal>, IFeedforwardNetworkLayer> factory, List<(Token<string>, Literal)> args) {
+    public InsertAfterStatement(LayerReference reference, string layer_name, Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory, List<(Token<string>, Literal)> args) {
         this.reference = reference;
         this.layer_name = layer_name;
         this.factory = factory;
@@ -48,7 +61,20 @@ internal class InsertAfterStatement : Statement {
         if (network is null)
             return;
         
-        // TODO 
+        // Find the layer to insert after
+        var layer_index = this.reference.IndexOf(env.LayerAliases);
+        var layer = network.GetLayer(layer_index);
+        if (layer is null)
+            throw new ArgumentException($"Unknown layer '{layer_name}'");
+
+        // Create the layer 
+        var output_shape = layer.OutputShape;
+        IFeedforwardNetworkLayer created = factory(output_shape, new ArgumentMap(env, arguments));
+        var index = layer_index + 1;
+
+        network.InsertLayerAfter(created, (index, l) => layer_index == index);
+
+        // Add the alias TODO
     }
 
     public override string ToString() {

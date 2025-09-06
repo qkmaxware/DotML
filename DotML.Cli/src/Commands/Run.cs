@@ -42,7 +42,7 @@ public class Run : BaseCommand {
     [Option("labels", HelpText = "Labels for classifications/categories", Required = false)]
     public IEnumerable<string>? Labels {get; set;}
 
-    [Option("log", HelpText = "List of items to save to the logs as the network is run (tensors, images, etc.)", Required = false)]
+    [Option("log", HelpText = "List of items to save to the logs as the network is run (tensors, images, stats, etc.)", Required = false)]
     public IEnumerable<string>? OutputLoggers {get; set;}
 
     public override void Action(AppData appData) {
@@ -96,7 +96,7 @@ public class Run : BaseCommand {
         Console.WriteLine("done");
 
         Console.Write($"Vectorizing '{(string.IsNullOrEmpty(InputFile) ? "stdin" : InputFile)}'...");
-        BatchedFeatureSet<double> input_vector;
+        BatchedFeatureSet<float> input_vector;
         if (string.IsNullOrEmpty(InputFile)) {
             using var reader = new StreamReader(Console.OpenStandardInput(), Console.InputEncoding);
             var input = reader.ReadToEnd();
@@ -128,11 +128,26 @@ public class Run : BaseCommand {
 
         Console.Write("Decoding...");
         using (var result = decoder.Decode(output_vector)) {
+            Console.WriteLine("done");
+            DrawDivider();
+
+            if (string.IsNullOrEmpty(OutputFile) && decoder is IFileOnlyDecoder fonly) {
+                // No file is provided, but the decoder is a file only decoder
+                if (fonly.FileRequired()) {
+                    Console.WriteLine($"Decoder '{fonly.GetType().Name}' REQUIRES a file to be specified for it's output. Please provide an output file path using the -o or --output options and try again.");
+                    return; // Don't even do console output and just hard quit right now
+                } else {
+                    Console.WriteLine($"Decoder '{fonly.GetType().Name}' works best when a file is specified for it's output. Results may be displayed on the console but may be insufficient. You may run the network again using the -o or --output options to obtain output files.");
+                }
+            }
+
+            result.ConsoleOutput();
+
             if (!string.IsNullOrEmpty(OutputFile)) {
-                result.FileOutput(new FileInfo(OutputFile));
-                Console.WriteLine($"done created '{OutputFile}'");
-            } else {
-                Console.WriteLine("done");
+                Console.WriteLine();
+                foreach (var file in result.FileOutput(new FileInfo(OutputFile))) {
+                    Console.WriteLine($"Created file '{file.Name}'");
+                }
             }
 
             if (is_logging) {
@@ -140,9 +155,6 @@ public class Run : BaseCommand {
                 Console.WriteLine($"Reports saved to '{log_dir[0].Name}'.");
                 Console.WriteLine($"Use \"{typeof(Run).Assembly.GetName().Name} reports open '{log_dir[0].Name}'\" to review runtime logs.");
             }
-
-            DrawDivider();
-            result.ConsoleOutput();
         }
     }
 }

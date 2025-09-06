@@ -10,16 +10,16 @@ public interface IValidationReport {
     public double MinLoss {get;}
     public double AverageLoss {get;}
     public void Reset();
-    public void Append(Vec<double> input, Vec<double> expected, Vec<double> predicted, bool testPassed, double loss);
+    public void Append(Vec<float> input, Vec<float> expected, Vec<float> predicted, bool testPassed, double loss);
 }
 
 public struct TestBreakdown {
     public int Index {get; set;}
     public double Loss {get; set;}
     public bool Passed {get; set;}
-    public Vec<double> Input {get; set;}
-    public Vec<double> Expected {get; set;}
-    public Vec<double> Predicted {get; set;}
+    public Vec<float> Input {get; set;}
+    public Vec<float> Expected {get; set;}
+    public Vec<float> Predicted {get; set;}
 }
 
 public interface IValidationReportWithTestBreakdown : IValidationReport {
@@ -83,7 +83,7 @@ public class DefaultValidationReport : IValidationReport {
         this.FalseNegatives = 0;
     }
 
-    public virtual void Append(Vec<double> input, Vec<double> expected, Vec<double> predicted, bool testPassed, double loss) {
+    public virtual void Append(Vec<float> input, Vec<float> expected, Vec<float> predicted, bool testPassed, double loss) {
         this.sum_loss += loss;
         if (test_all_count == 0 || loss > max_loss)
             max_loss = loss;
@@ -142,7 +142,7 @@ public class DefaultValidationReportWithBreakdown : DefaultValidationReport, IVa
         breakdowns.Clear();
     }
 
-    public override void Append(Vec<double> input, Vec<double> expected, Vec<double> predicted, bool testPassed, double loss) {
+    public override void Append(Vec<float> input, Vec<float> expected, Vec<float> predicted, bool testPassed, double loss) {
         base.Append(input, expected, predicted, testPassed, loss);
 
         breakdowns.Add(new TestBreakdown {

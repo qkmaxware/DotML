@@ -8,7 +8,7 @@ namespace DotML.Cli.Embeddings;
 /// Treat the input as an image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
 public class Image : ImageEmbedding {
-    public override FeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
+    public override FeatureSet<float> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
         var samples     = network.InputShape.Channels;
@@ -16,7 +16,7 @@ public class Image : ImageEmbedding {
         const int R = 0;
         const int G = 1;
         const int B = 2;
-        var features = new FeatureSet<double>(new Shape3D(samples, rows, cols));
+        var features = new FeatureSet<float>(new Shape3D(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {
@@ -24,11 +24,11 @@ public class Image : ImageEmbedding {
                 var colour = bitmap.GetPixel(col, row);
 
                 if (samples >= 1)
-                    features[R, row, col] = (colour.Red / 255.0);
+                    features[R, row, col] = (colour.Red / 255.0f);
                 if (samples >= 2)
-                    features[G, row, col] = (colour.Green / 255.0);
+                    features[G, row, col] = (colour.Green / 255.0f);
                 if (samples >= 3)
-                    features[B, row, col] = (colour.Blue / 255.0);
+                    features[B, row, col] = (colour.Blue / 255.0f);
             }
         }
 
@@ -40,7 +40,7 @@ public class Image : ImageEmbedding {
 /// Treat the input as an RGB image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
 public class RgbImage : ImageEmbedding {
-    public override FeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
+    public override FeatureSet<float> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
         var samples     = 3;
@@ -48,16 +48,16 @@ public class RgbImage : ImageEmbedding {
         const int R = 0;
         const int G = 1;
         const int B = 2;
-        var features = new FeatureSet<double>(new Shape3D(samples, rows, cols));
+        var features = new FeatureSet<float>(new Shape3D(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {
                 var index_in_sample = row * cols + col;
                 var colour = bitmap.GetPixel(col, row);
 
-                features[R, row, col] = (colour.Red / 255.0);
-                features[G, row, col] = (colour.Green / 255.0);
-                features[B, row, col] = (colour.Blue / 255.0);
+                features[R, row, col] = (colour.Red / 255.0f);
+                features[G, row, col] = (colour.Green / 255.0f);
+                features[B, row, col] = (colour.Blue / 255.0f);
             }
         }
 
@@ -70,21 +70,21 @@ public class RgbImage : ImageEmbedding {
 /// Treat the input as a Mono image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
 public class MonoImage : ImageEmbedding {
-    public override FeatureSet<double> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
+    public override FeatureSet<float> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
         var samples     = 1;
 
         const int GREY = 0;
-        var features = new FeatureSet<double>(new Shape3D(samples, rows, cols));
+        var features = new FeatureSet<float>(new Shape3D(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {
                 var index_in_sample = row * cols + col;
                 var colour = bitmap.GetPixel(col, row);
 
-                var grey = (0.299 * colour.Red) + (0.587 * colour.Green) + (0.114 * colour.Blue);
-                features[GREY, row, col] = Math.Clamp(grey, 0, 255) / 255.0;
+                var grey = (0.299f * colour.Red) + (0.587f * colour.Green) + (0.114f * colour.Blue);
+                features[GREY, row, col] = Math.Clamp(grey, 0, 255) / 255.0f;
             }
         }
 

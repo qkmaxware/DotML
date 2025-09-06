@@ -39,7 +39,7 @@ public class DenseLinearLayerTest {
 
     [TestMethod]
     public void TestSafetensors() {
-        var initializer = new DotML.Network.Initialization.ConstantInitialization(1.0);
+        var initializer = new DotML.Network.Initialization.ConstantInitialization(1.0f);
         var layer = new DenseLinearLayer(input_size: 5, neurons: 3);
         layer.Initialize(initializer);
         var writer = new LayerSafetensorWriter(); 
@@ -66,7 +66,7 @@ public class DenseLinearLayerTest {
             1.3225351572036743,
             -0.7096538543701172,
             0.4306403398513794
-        ]);
+        ]).ToFloatSet();
         var W = Matrix<double>.FromFlattened(3, 5, [
             -0.05311301350593567,
             0.1283712387084961,
@@ -83,13 +83,13 @@ public class DenseLinearLayerTest {
             -0.043171048164367676,
             0.10961490869522095,
             -0.44419926404953003
-        ]);
+        ]).ToFloatSet();
         Assert.AreEqual(layer.Weights.Shape, W.Shape);
         layer.Weights = W;
-        var B = Vec<double>.Wrap([
-            0.37308549880981445,
-            -0.10959410667419434,
-            -0.15381550788879395
+        var B = Vec<float>.Wrap([
+            0.37308549880981445f,
+            -0.10959410667419434f,
+            -0.15381550788879395f
         ]);
         Assert.AreEqual(layer.Biases.Dimensionality, B.Dimensionality);
         layer.Biases = B;
@@ -98,8 +98,8 @@ public class DenseLinearLayerTest {
             0.19656458497047424,
             0.5137627124786377,
             -0.08138172328472137
-        ]);
-        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<double>(new FeatureSet<double>(X)))[0,0];
+        ]).ToFloatSet();
+        var Y_projected = layer.EvaluateSync(new BatchedFeatureSet<float>(new FeatureSet<float>(X)))[0,0];
         Assert.AreEqual(Y_truth.Rows, Y_projected.Rows);
         Assert.AreEqual(Y_truth.Columns, Y_projected.Columns);
 
@@ -117,14 +117,14 @@ public class DenseLinearLayerTest {
             -0.863419771194458,
             0.3522203266620636,
             0.17849189043045044
-        ]);
+        ]).ToFloatSet();
         var dX_truth = Matrix<double>.FromFlattened(5, 1, [
             0.19364899396896362,
             -0.08708388358354568,
             0.35203075408935547,
             0.4299348294734955,
             -0.2278749793767929
-        ]);
+        ]).ToFloatSet();
         var dW_truth = Matrix<double>.FromFlattened(3, 5, [
             -1.6949857473373413,
             -0.5709967613220215,
@@ -141,18 +141,18 @@ public class DenseLinearLayerTest {
             0.23606179654598236,
             -0.12666745483875275,
             0.07686580717563629
-        ]);
-        var dB_truth = Vec<double>.Wrap([
-            -0.863419771194458,
-            0.3522203266620636,
-            0.17849189043045044
+        ]).ToFloatSet();
+        var dB_truth = Vec<float>.Wrap([
+            -0.863419771194458f,
+            0.3522203266620636f,
+            0.17849189043045044f
         ]);
 
         var backprop_returns = layer.Backpropagate(new BackpropagationArgs(
             layer: -1, 
-            input: new BatchedFeatureSet<double>(new FeatureSet<double>(X)),
-            output: new BatchedFeatureSet<double>(new FeatureSet<double>(Y_truth)),
-            error: new BatchedFeatureSet<double>(new FeatureSet<double>(dY))
+            input: new BatchedFeatureSet<float>(new FeatureSet<float>(X)),
+            output: new BatchedFeatureSet<float>(new FeatureSet<float>(Y_truth)),
+            error: new BatchedFeatureSet<float>(new FeatureSet<float>(dY))
         ));
         Assert.IsInstanceOfType<DenseLinearLayer.Gradients>(backprop_returns.Gradients);
         var gradients = (DenseLinearLayer.Gradients)backprop_returns.Gradients; 

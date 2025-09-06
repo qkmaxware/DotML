@@ -263,17 +263,32 @@ public class FeedforwardNetwork:
 
     public void ValidateSizes() {
         var input_size = this.InputShape;
+        if (input_size.Channels < 0 || input_size.Rows < 0 || input_size.Columns < 0) {
+            throw new ArgumentException("Input shape is invalid");
+        }
         int layer_index = 0;
         foreach (var layer in this.layers) { 
             if (!layer.DoesShapeMatchInputShape(input_size)) {
                 throw new ArgumentException($"Layer {layer_index} expects an input shape of {layer.InputShape} but is receiving an input of shape {input_size} from the previous layer.");
             }
             input_size = layer.OutputShape;
+            if (input_size.Channels < 0 || input_size.Rows < 0 || input_size.Columns < 0) {
+                throw new ArgumentException($"Output shape for layer {layer_index} is invalid");
+            }
             layer_index++;
         }
     }
 
-    public BatchedFeatureSet<double> PredictSync(BatchedFeatureSet<double> values, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<double>>? before_layer, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<double>>? after_layer) {
+    public bool HasValidSizes() {
+        try {
+            ValidateSizes();
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    public BatchedFeatureSet<float> PredictSync(BatchedFeatureSet<float> values, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<float>>? before_layer, Action<IFeedforwardNetworkLayer, BatchedFeatureSet<float>>? after_layer) {
         var ishape = this.InputShape;
 
         if (values.Channels != ishape.Channels) {
@@ -284,7 +299,7 @@ public class FeedforwardNetwork:
         if (values.Rows != ishape.Rows)
             throw new ArgumentException($"Invalid channel height. Expected {ishape.Rows}, got {values.Rows}.");
     
-        BatchedFeatureSet<double> input = values;
+        BatchedFeatureSet<float> input = values;
         ishape = new Shape3D(input.Channels, input.Rows, input.Columns);
         var layer_index = 0;
         foreach (var layer in this.layers) {
@@ -299,18 +314,18 @@ public class FeedforwardNetwork:
         return input;
     }
 
-    public BatchedFeatureSet<double> PredictSync(BatchedFeatureSet<double> values) {
+    public BatchedFeatureSet<float> PredictSync(BatchedFeatureSet<float> values) {
         return PredictSync(values, null, null);
     }
 
-    public Vec<double> PredictSync(FeatureSet<double> values) {
-        var output = PredictSync(new BatchedFeatureSet<double>(values));
-        return Vec<double>.Wrap(output[0][0].FlattenRows().ToArray());
+    public Vec<float> PredictSync(FeatureSet<float> values) {
+        var output = PredictSync(new BatchedFeatureSet<float>(values));
+        return Vec<float>.Wrap(output.FlattenElements().ToArray());
     }
 
-    public Vec<double> PredictSync(Vec<double> input) {
+    public Vec<float> PredictSync(Vec<float> input) {
         var ishape = this.InputShape;
-        return PredictSync((FeatureSet<double>)(input.Shape(
+        return PredictSync((FeatureSet<float>)(input.Shape(
             new Shape2D(ishape.Rows, ishape.Columns), 
                 ishape.Channels
             ).ToArray())
@@ -358,170 +373,8 @@ public class FeedforwardNetwork:
     }
 
     public void ToSvg(TextWriter s) {
-        // Draw input layer
-
-        var max_outputs_matrices = this.InputShape.Channels;
-        var kernel_buffer = 0;
-        var last_output_matrices = 0;
-        var kernel_offset = 6;
-        foreach (var layer in this.layers) {
-            switch (layer) {
-                case ConvolutionLayer convo:
-                    var convo_outputs = convo.FilterCount;
-                    max_outputs_matrices = Math.Max(max_outputs_matrices, convo_outputs);
-                    last_output_matrices = convo_outputs;
-                    kernel_buffer = Math.Max(kernel_buffer, convo.Filters.Select(x => x.Count).Max() * kernel_offset);
-                    break;
-                case PoolingLayer pool:
-                    break;
-                case DenseLinearLayer connect:
-                    max_outputs_matrices = Math.Max(max_outputs_matrices, connect.OutputShape.Count);
-                    last_output_matrices = 1;
-                    break;
-            }
-        }
-
-
-        var matrix_size = 80;
-        var neuron_radius = 25;
-        var layer_width = 125;
-        var header_size = 32 + kernel_buffer;
-        var footer_size = 32;
-        var layer_height = header_size + max_outputs_matrices * matrix_size + footer_size;
-        var layer_buffer = 32;
-
-        var img_height = layer_height;
-        var img_width = (layer_buffer + layer_width) * (this.LayerCount + 1);
-
-        var units = "px";
-        s.WriteLine($"<svg width='{img_width}{units}' height='{img_height}{units}' xmlns='http://www.w3.org/2000/svg'>");
-        s.WriteLine("<defs>");
-            s.WriteLine("<pattern id='grid' width='12' height='12' patternUnits='userSpaceOnUse'>");
-                s.WriteLine("<rect x='0' y='0' width='12' height='12' fill='white'></rect>");
-                s.WriteLine("<path d='M 12 0 L 0 0 0 12' fill='white' stroke='gray' stroke-width='1'/>");
-            s.WriteLine("</pattern>");
-        s.WriteLine("</defs>");
-
-        // Draw "input" layer
-        s.WriteLine($"<text x='{layer_width/2}' y='{16}' text-anchor='middle'>Input</text>");
-        var input_count = this.InputShape.Channels;
-        var matrix_offset = (layer_width - matrix_size) / 2;
-        for (var i = 0; i < input_count; i++) {
-            s.WriteLine($"<rect x='{matrix_offset}' y='{i * matrix_size + header_size}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
-        }
-        var start_layer_midpoint_y = header_size + (input_count * matrix_size) / 2;
-
-        // Draw all the rest of the layers
-        last_output_matrices = input_count;
-        var last_layer_midpoint_y = start_layer_midpoint_y;
-        bool last_layer_was_fully_connected = false;
-        for (var layerIndex = 0; layerIndex < this.LayerCount; layerIndex++) {
-            s.WriteLine($"<g id='layer{layerIndex}'>");
-            // Compute dimensions
-            var layer = this.GetLayer(layerIndex);
-            var layer_start_x   = (layer_buffer + layer_width) * (layerIndex + 1);
-            var layer_start_buffer_x = layer_start_x - layer_buffer;
-            var layer_end_x     = (layer_buffer + layer_width) * (layerIndex + 2);
-            var layer_start_y   = 0;
-            var layer_end_y     = layer_height;
-            var layer_midpoint_y = header_size + (layer_height) / 2;
-        
-            // Draw layer specifics
-            switch (layer) {
-                case ConvolutionLayer convo:
-                    for (var filterIdx = convo.FilterCount; filterIdx > 0; filterIdx--) {
-                        var filterIndex = filterIdx - 1;
-                        var filter = convo.Filters[filterIndex];
-                        for (var kernel = filter.Count; kernel > 0; kernel--) {
-                            var kernelIndex = kernel - 1;
-                            s.WriteLine($"<rect x='{matrix_offset + layer_start_x + kernelIndex*kernel_offset}' y='{header_size + filterIndex * matrix_size - kernelIndex*kernel_offset}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
-                        }
-                    }
-                    layer_midpoint_y = header_size + (convo.FilterCount * matrix_size) / 2;
-                    break;
-                case PoolingLayer pool:
-                    for (var i = 0; i < last_output_matrices; i++) {
-                        s.WriteLine($"<rect x='{matrix_offset + layer_start_x}' y='{header_size + i * matrix_size}' width='{matrix_size}' height='{matrix_size}' fill='url(#grid)' stroke='black'></rect>");
-                    }
-                    layer_midpoint_y = last_layer_midpoint_y;
-                    break;
-                case ActivationLayer active:
-                    {
-                        s.WriteLine("<g id='synapses'>");
-                        if (last_layer_was_fully_connected) {
-                            for (var i = 0; i < active.InputShape.Count; i++) {
-                                var neuron_offset = (matrix_size - 2*neuron_radius) / 2;
-                                var center_x = matrix_offset + layer_start_x + matrix_size / 2;
-                                var center_y = header_size + i * matrix_size + matrix_size / 2;
-                                var in_center_x = (layer_buffer + layer_width) * layerIndex + matrix_offset + matrix_size - neuron_offset; // from the prev_layer
-                                var in_center_y = header_size + i * matrix_size + matrix_size / 2;
-                                s.WriteLine($"<line x1='{in_center_x}' y1='{in_center_y}' x2='{center_x - neuron_radius}' y2='{center_y}' stroke='gray'/>");
-                            }
-                        }
-                        s.WriteLine("</g>");
-                        for (var i = 0; i < active.InputShape.Count; i++) {
-                            var center_x = matrix_offset + layer_start_x + matrix_size / 2;
-                            var center_y = header_size + i * matrix_size + matrix_size / 2;
-                            s.WriteLine($"<circle cx='{center_x}' cy='{center_y}' r='{neuron_radius}' fill='black' stroke='black'/>");
-                            s.WriteLine($"<text x='{center_x}' y='{center_y}' text-anchor='middle' fill='white'>F(x)</text>");
-                        }
-                        layer_midpoint_y = last_layer_midpoint_y;
-                    }
-                    break;
-                case DenseLinearLayer connect:
-                    for (var i = 0; i < connect.OutputShape.Count; i++) {
-                        var neuron_offset = (matrix_size - 2*neuron_radius) / 2;
-                        var center_x = matrix_offset + layer_start_x + matrix_size / 2;
-                        var center_y = header_size + i * matrix_size + matrix_size / 2;
-                        s.WriteLine("<g id='synapses'>");
-                        if (last_layer_was_fully_connected) {
-                            for (var j = 0; j < connect.InputShape.Count; j++) {
-                                var in_center_x = (layer_buffer + layer_width) * layerIndex + matrix_offset + matrix_size - neuron_offset; // from the prev_layer
-                                var in_center_y = header_size + j * matrix_size + matrix_size / 2;
-                                s.WriteLine($"<line x1='{in_center_x}' y1='{in_center_y}' x2='{center_x - neuron_radius}' y2='{center_y}' stroke='gray'/>");
-                            }
-                        }
-                        s.WriteLine("</g>");
-                        s.WriteLine($"<circle cx='{center_x}' cy='{center_y}' r='{neuron_radius}'/>");
-                    }
-                    layer_midpoint_y = header_size + (connect.OutputShape.Count * matrix_size) / 2;
-                    break;
-                case SoftmaxLayer softmax:
-                    s.WriteLine($"<text x='{layer_width/2}' y='{layer_midpoint_y}' text-anchor='middle'>softmax(x)</text>");
-                    break;
-            }
-
-            // Draw dotted arrow
-            if (!last_layer_was_fully_connected) {
-                s.WriteLine($"<line x1='{layer_start_buffer_x}' y1='{last_layer_midpoint_y}' x2='{layer_start_x}' y2='{layer_midpoint_y}' stroke-dasharray='4' stroke='gray'/>");
-            }
-            // Draw title
-            s.WriteLine($"<text x='{layer_start_x + layer_width/2}' y='{layer_start_y + 16}' text-anchor='middle'>{layer.GetType().Name}</text>");
-
-
-            switch (layer) {
-                case ConvolutionLayer convo:
-                    last_output_matrices = convo.FilterCount;
-                    last_layer_was_fully_connected = false;
-                    break;
-                case PoolingLayer pool:
-                    layer_midpoint_y = last_layer_midpoint_y;
-                    last_layer_was_fully_connected = false;
-                    break;
-                case DenseLinearLayer connect:
-                    last_output_matrices = 1;
-                    last_layer_was_fully_connected = true;
-                    break;
-                case SoftmaxLayer:
-                    last_output_matrices = 1;
-                    last_layer_was_fully_connected = false;
-                    break;
-            }
-            last_layer_midpoint_y = layer_midpoint_y;
-            s.WriteLine("</g>");
-        }
-
-        s.Write("</svg>");
+        var writer = new SvgWriter();
+        writer.WriteTo(this, s);
     }
 
     /// <summary>

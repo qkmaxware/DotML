@@ -21,20 +21,20 @@ public class ReshapeLayer : FeedforwardNetworkLayer {
         this.OutputShape = output_shape;
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> channels) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> channels) {
         if (channels.Shape != OutputShape)
             return channels.Reshape(OutputShape);
         return channels;
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {
-        FeatureSet<double>[] batched_input_errors = new FeatureSet<double>[args.OutputBatch.Batches];
+        FeatureSet<float>[] batched_input_errors = new FeatureSet<float>[args.OutputBatch.Batches];
 
         Parallel.For(0, args.OutputBatch.Batches, batchIndex => {
             var error = args.OutputErrors[batchIndex];
             var input = args.InputBatch[batchIndex];
 
-            FeatureSet<double> input_errors;
+            FeatureSet<float> input_errors;
             if (input.Shape == error.Shape) {
                 input_errors = error;                             // Same shape, no need to reshape
             } else {
@@ -45,7 +45,7 @@ public class ReshapeLayer : FeedforwardNetworkLayer {
         });
 
         return new BackpropagationReturns(
-            new BatchedFeatureSet<double>(batched_input_errors),
+            new BatchedFeatureSet<float>(batched_input_errors),
             null
         );
     }
@@ -81,16 +81,24 @@ public class FlatteningLayer : ReshapeLayer {
     public FlatteningLayer(Shape3D input_size) : base(input_size, new Shape3D(1, input_size.Count, 1)) { }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static FeatureSet<double> Flatten(FeatureSet<double> channels) {
+    public static FeatureSet<float> Flatten(FeatureSet<float> channels) {
         if (channels.Channels == 1 && channels[0].IsColumnMatrix) {
             return channels;
         } else {
-            Matrix<double> output = new Matrix<double>(channels.Shape.Count, 1, channels.SelectMany(x => x.FlattenRows()));
-            return new FeatureSet<double>(output);
+            // Flatten by copying to a new flattened matrix
+            Matrix<float> output = new Matrix<float>(channels.Shape.Count, 1);
+            var output_span = output.AsSpan();
+            foreach (var channel in channels) {
+                // Copy this channel in order to the next 'length' bytes
+                var slice = channel.AsReadOnlySpan();
+                slice.CopyTo(output_span);
+                output_span = output_span.Slice(slice.Length);
+            }
+            return new FeatureSet<float>(output);
         }
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> inputs) {
         // Input is a 2D matrix processed from prior layers like a pooling layer
         // If the input is already flattened, use that; otherwise, flatten the input.
         return Flatten(inputs);

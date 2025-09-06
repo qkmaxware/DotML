@@ -19,26 +19,26 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
         this.OutputShape = new Shape3D(1, size, 1);
     }
 
-    public override FeatureSet<double> EvaluateSync(FeatureSet<double> inputs) {
+    public override FeatureSet<float> EvaluateSync(FeatureSet<float> inputs) {
         if (this.IsTraining) {
             // Flatten and return the inputs as is if we are in training mode. AKA SKIP SOFTMAX WHILE TRAINING
-            var vs = new Matrix<double>(Size, 1);
+            var vs = new Matrix<float>(Size, 1);
             var index = 0;
             foreach (var input in inputs) {
                 foreach (var item in input) {
                     vs[index++, 0] = item;
                 }
             }
-            return  new FeatureSet<double>(vs);
+            return  new FeatureSet<float>(vs);
         }
 
         // Treat all inputs values as a single vector, compute the softmax of this vector
-        var sum = 0.0d;
-        var values = new Matrix<double>(Size, 1);
+        var sum = 0.0f;
+        var values = new Matrix<float>(Size, 1);
         var i = 0;
         foreach (var input in inputs) {
             foreach (var item in input) {
-                var exp_i = Math.Exp(item);
+                var exp_i = MathF.Exp(item);
                 values[i++, 0] = exp_i;
                 sum += exp_i;
             }
@@ -47,7 +47,7 @@ public class SoftmaxLayer : FeedforwardNetworkLayer {
             values[j, 0] = values[j, 0] / sum;
         }
 
-        return new FeatureSet<double>(values);
+        return new FeatureSet<float>(values);
     }
 
     public override BackpropagationReturns Backpropagate(BackpropagationArgs args) {

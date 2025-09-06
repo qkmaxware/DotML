@@ -5,7 +5,7 @@ namespace DotML.Cli.Logging;
 
 public class Excel2003 {
     public static string Extension => ".xml";
-    public static void Write(TextWriter xml, FeatureSet<double> matrices) {
+    public static void Write(TextWriter xml, FeatureSet<float> matrices) {
         // Excel XML Header
         xml.WriteLine(@"<?xml version=""1.0""?>");
         xml.WriteLine(@"<?mso-application progid=""Excel.Sheet""?>");
@@ -58,7 +58,7 @@ public class TensorsOutputLogger : BaseOutputLogger {
 
     public TensorsOutputLogger(DirectoryInfo logDir) : base(logDir) { }
 
-    private void EmitTensors(string layerName, BatchedFeatureSet<double> args) {
+    private void EmitTensors(string layerName, BatchedFeatureSet<float> args) {
         for (var batch = 0; batch < args.Batches; batch++) {
             var features = args[batch];
             var dir_path = Path.Combine(LogDirectory.FullName, $"Batch-{batch}");
@@ -74,67 +74,77 @@ public class TensorsOutputLogger : BaseOutputLogger {
         }
     }
 
-    public override void Visit(ConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(ConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(ConvolutionLayer)}", args.Output);
         return;
     }
 
-    public override void Visit(DepthwiseConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(DepthwiseConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(DepthwiseConvolutionLayer)}", args.Output);
         return;
     }
 
-    public override void Visit(TransposeConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(TransposeConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(TransposeConvolutionLayer)}", args.Output);
         return;
     }
 
-    public override void Visit(PixelShuffle layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(PixelShuffle layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(PixelShuffle)}", args.Output);
         return;
     }
 
-    public override void Visit(PoolingLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(PoolingLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(PoolingLayer)}", args.Output);
         return;
     }
 
-    public override void Visit(FlatteningLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(FlatteningLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(FlatteningLayer)}", args.Output);
         return;
     }
 
-    public override void Visit(DropoutLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(DropoutLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(DropoutLayer)}", args.Output);
         return;
     }
 
-    public override void Visit(LayerNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(LayerNorm layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(LayerNorm)}", args.Output);
         return;
     }
 
-    public override void Visit(BatchNorm layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(BatchNorm layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(BatchNorm)}", args.Output);
         return;
     }
 
-    public override void Visit(DenseLinearLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(DenseLinearLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(DenseLinearLayer)}", args.Output);
         return;
     }
 
-    public override void Visit(ActivationLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(ActivationLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(ActivationLayer)}", args.Output);
         return;
     }
 
-    public override void Visit(SoftmaxLayer layer, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(SoftmaxLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
         EmitTensors($"Layer-{args.LayerIndex} {nameof(SoftmaxLayer)}", args.Output);
         return;
     }
 
-    public override void Visit(InputCapture capture, (int LayerIndex, BatchedFeatureSet<double> Output) args) {
+    public override void Visit(InputCapture capture, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
+        return;
+    }
+
+    public override void Visit(AdditionSkipConnection capture, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
+        EmitTensors($"Layer-{args.LayerIndex} {nameof(AdditionSkipConnection)}", args.Output);
+        return;
+    }
+
+    public override void Visit(ConcatenationSkipConnection capture, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
+        EmitTensors($"Layer-{args.LayerIndex} {nameof(ConcatenationSkipConnection)}", args.Output);
         return;
     }
 }

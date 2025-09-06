@@ -1,8 +1,17 @@
 using System.Data;
 using System.Reflection;
-using ArgumentMap = System.Collections.Generic.Dictionary<string, DotML.Network.IO.Netbuild.Literal>;
 
 namespace DotML.Network.IO.Netbuild;
+
+public class ArgumentMap : System.Collections.Generic.Dictionary<string, DotML.Network.IO.Netbuild.Literal> {
+    public BuildEnvironment Env {get; private set;}
+    public ArgumentMap(BuildEnvironment environment) {
+        this.Env = environment;
+    }
+    public ArgumentMap(BuildEnvironment environment, System.Collections.Generic.Dictionary<string, DotML.Network.IO.Netbuild.Literal> args) : base(args) {
+        this.Env = environment;
+    }
+}
 
 public static class ArgumentMapExtensions {
     public static Literal FirstOf(this ArgumentMap mapping, Literal @default, params string[] names) {
@@ -139,12 +148,12 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
 
     public IFeedforwardNetworkLayer Visit(TransposeConvolutionLayer layer, LayerConstructionArgs args) {
         (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
-        int? x_pad      = arguments.ContainsKey("padding-x") ? arguments["padding-x"].AsInt() : null;
-        int? y_pad      = arguments.ContainsKey("padding-y") ? arguments["padding-y"].AsInt() : null;
-        int? x_expand   = arguments.ContainsKey("expand-x") ? arguments["expand-x"].AsInt() : null;
-        int? y_expand   = arguments.ContainsKey("expand-y") ? arguments["expand-y"].AsInt() : null;
-        Padding pad     = Enum.Parse<Padding>(arguments.FirstOf(Same, "padding").AsString(), true);
-        Expansion expand= Enum.Parse<Expansion>(arguments.FirstOf(Same, "expand").AsString(), true);
+        int? x_pad      = arguments.ContainsKey("in-padding-x") ? arguments["in-padding-x"].AsInt() : null;
+        int? y_pad      = arguments.ContainsKey("in-padding-y") ? arguments["in-padding-y"].AsInt() : null;
+        int? x_expand   = arguments.ContainsKey("out-padding-x") ? arguments["out-padding-x"].AsInt() : null;
+        int? y_expand   = arguments.ContainsKey("out-padding-y") ? arguments["out-padding-y"].AsInt() : null;
+        Padding pad     = Enum.Parse<Padding>(arguments.FirstOf(Same, "in-padding").AsString(), true);
+        Expansion expand= Enum.Parse<Expansion>(arguments.FirstOf(Same, "out-padding").AsString(), true);
         var x_stride    = arguments.FirstOf(One, "stride-x", "stride").AsInt();
         var y_stride    = arguments.FirstOf(One, "stride-y", "stride").AsInt();
         var filters     = arguments["filters"].AsInt(); // Not really filters, but outputs
@@ -241,7 +250,7 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
 
     public IFeedforwardNetworkLayer Visit(DropoutLayer? layer, LayerConstructionArgs args) {
         (Shape3D ishape, ArgumentMap argument) = (args.InputShape, args.Arguments);
-        var dropout = argument["percent"].AsDouble();
+        var dropout = argument["percent"].AsFloat();
 
         return new DropoutLayer(ishape, dropout);
     }
@@ -270,7 +279,7 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
         (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
         var activation = activations.Decode(
             arguments["fn"].AsString().ToLower(),
-            arguments.ContainsKey("alpha") ? arguments["alpha"].AsDouble() : 0.0
+            arguments.ContainsKey("alpha") ? arguments["alpha"].AsFloat() : 0.0f
         );
 
         return new ActivationLayer(ishape, activation);
@@ -282,6 +291,27 @@ public class LayerMapper : ILayerInputOutputVisitor<LayerMapper.LayerConstructio
     }
 
     public IFeedforwardNetworkLayer Visit(InputCapture? capture, LayerConstructionArgs args) {
-        throw new NotImplementedException();
+        (Shape3D ishape, _) = (args.InputShape, args.Arguments);
+        return new InputCapture(ishape);
+    }
+
+    public IFeedforwardNetworkLayer Visit(AdditionSkipConnection? skip, LayerConstructionArgs args) {
+        (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
+        var layer_name = arguments["residual"].AsString();
+        InputCapture? capture = (InputCapture?)arguments.Env.GetLayer(layer_name);
+        if (capture is null)
+            throw new ArgumentException($"Layer '{layer_name}' either doesn't exist or is not an input capturing layer.");
+        return new AdditionSkipConnection(ishape, capture);
+    }
+
+    public IFeedforwardNetworkLayer Visit(ConcatenationSkipConnection? skip, LayerConstructionArgs args) {
+        (Shape3D ishape, ArgumentMap arguments) = (args.InputShape, args.Arguments);
+        var layer_name = arguments["residual"].AsString();
+        var side = Enum.Parse<ConcatenationSkipConnection.Side>(arguments["side"].AsString(), true);
+
+        InputCapture? capture = (InputCapture?)arguments.Env.GetLayer(layer_name);
+        if (capture is null)
+            throw new ArgumentException($"Layer '{layer_name}' either doesn't exist or is not an input capturing layer.");
+        return new ConcatenationSkipConnection(ishape, capture, side);
     }
 }

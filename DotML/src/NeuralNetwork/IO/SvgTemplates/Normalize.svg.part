@@ -1,0 +1,36 @@
+<circle
+    style="fill:#ffffff;stroke:#000000;stroke-width:1.065;stroke-linecap:round;stroke-linejoin:round"
+    id="path833-4"
+    cx="46.287514"
+    cy="64"
+    r="10.016369" />
+<path
+    style="fill:none;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow)"
+    d="M 3.5907739,63.688988 H 32.883927"
+    id="path863" />
+<text
+    xml:space="preserve"
+    style="font-size:10.5833px;line-height:1.25;font-family:'Bookman Old Style';text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;stroke-width:0.264583"
+    x="45.93557"
+    y="51.404762"
+    id="text1155"><tspan
+        id="tspan1153"
+        x="45.93557"
+        y="51.404762"
+        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;stroke-width:0.264583">{0}</tspan></text>
+<g
+    transform="translate(0,-0.5650325)"
+    id="g894">
+    <path
+        style="fill:none;stroke:#000000;stroke-width:0.62;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+        d="M 38.553571,61.043153 H 53.672618"
+        id="path858" />
+    <path
+        id="path858-6"
+        d="M 38.744922,68.086912 H 53.863969"
+        style="fill:none;stroke:#000000;stroke-width:0.62;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
+    <path
+        style="fill:none;stroke:#000000;stroke-width:0.665;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+        d="m 38.802842,65.271578 c 0.239294,-1.570096 0.308132,-4.222026 1.627415,-4.152382 2.050738,-0.03689 0.558428,3.890936 2.488989,4.244658 1.017181,-0.09222 0.958438,-1.977705 2.17466,-1.951091 1.103425,0.02415 1.179898,4.643892 2.37253,4.62707 1.179272,0.119994 0.512859,-4.074347 2.297526,-3.921694 1.016071,0.329935 0.962201,1.761755 2.058202,1.753229 1.309364,0.01093 1.195257,-3.045962 1.723147,-4.613759"
+        id="path889"/>
+</g>

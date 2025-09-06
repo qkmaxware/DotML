@@ -2,4 +2,5 @@ bin/
 obj/
 TestResults/
 DotML.Examples/
-DotML.Playground/
+DotML.Example.Old/
+DotML.Sandbox.Old/

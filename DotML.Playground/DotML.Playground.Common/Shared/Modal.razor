@@ -1,0 +1,33 @@
+<div class="w3-modal @visibility_string">
+    <div class="w3-modal-content w3-round-xlarge light">
+        <div class="w3-container">
+            <header>
+                <h2 class="w3-center">@Title</h2>
+                <span @onclick=@(() => is_visible = !is_visible) class="w3-button w3-display-topright w3-round-xlarge">&times;</span> 
+            </header>
+            <hr>
+            <section>@ChildContent</section>
+            <hr>
+            <footer>
+                <button class="w3-button" style="width: 100%" @onclick=@(() => is_visible = false)>Close</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    private bool is_visible = false;
+    private string visibility_string => is_visible ? "w3-show" : "w3-hide";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    public void Show() {
+        is_visible = true;
+        StateHasChanged();
+    }
+
+    public void Hide() {
+        is_visible = false;
+        StateHasChanged();
+    }
+}

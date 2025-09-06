@@ -6,9 +6,9 @@ namespace DotML.Test;
 [TestClass]
 public class TrainingDataTest {
 
-    private static TrainingSet Make(int count) {
-        var generator = Enumerable.Range(0, count).Select(x => new TrainingPair { Input = new Vec<double>(), Output = new Vec<double>() });
-        return new TrainingSet(generator);
+    private static TrainingSet<double> Make(int count) {
+        var generator = Enumerable.Range(0, count).Select(x => new TrainingPair<double> { Input = new Vec<double>(), Output = new Vec<double>() });
+        return new TrainingSet<double>(generator);
     }
 
     [TestMethod]
@@ -59,7 +59,7 @@ public class TrainingDataTest {
         Assert.AreEqual(100, data.Size);
         Assert.AreEqual(10, items.Count);
         var batch_index = 0;
-        foreach (TrainingPairSequencer.TrainingPairBatch batch in items) {
+        foreach (TrainingPairSequencer<double>.TrainingPairBatch batch in items) {
             Assert.AreEqual(batch_index, batch.Key);
             Assert.AreEqual(10, batch.Size, $"Wrong batch size on batch {batch_index}.");
             Assert.AreEqual(10, batch.Count());
@@ -76,7 +76,7 @@ public class TrainingDataTest {
         Assert.AreEqual(105, data.Size);
         Assert.AreEqual(11, items.Count);
         var batch_index = 0;
-        foreach (TrainingPairSequencer.TrainingPairBatch batch in items) {
+        foreach (TrainingPairSequencer<double>.TrainingPairBatch batch in items) {
             if (batch_index != 10) {
                 Assert.AreEqual(batch_index, batch.Key);
                 Assert.AreEqual(10, batch.Size);

@@ -1,0 +1,97 @@
+@using System.Text
+@using DotML.Network.IO.Netbuild
+
+<div tabindex="-1" @ref="editor" class="editor-container">
+    <textarea class="code-editor" @bind=code_str @bind:event=oninput autocorrect="off" autocapitalize="off" spellcheck="false">
+
+    </textarea>
+    <pre class="code-editor">
+        @foreach (var token in tokenize(code_str)) {
+            <span class="@token.Type">@(token.Content)</span>
+        }
+    </pre>
+</div>
+
+@code {
+    // @onkeydown=onkeydown @onkeydown:preventDefault=true
+    private string? code_str;
+    private ElementReference? editor;
+
+    private struct Token {
+        public string Type;
+        public string Content;
+        public Token(string type, string content) {
+            this.Type = type;
+            this.Content = content;
+        }
+    }
+
+    private IEnumerable<Token> tokenize(string? text) {
+        if (text is null)
+            yield break;
+
+        // Same as in Tokenizer.GetTokens
+        var start_index = 0;
+        var lexemes = Tokenizer.Lexemes();
+        while (start_index < text.Length) {
+            bool was_matched = false;
+
+            foreach (var lexeme in lexemes) {
+                var token = lexeme.GetNext(start_index, text);
+                if (token is null)
+                    continue;
+                
+                was_matched = true;
+                yield return new Token(getCssClass(token.Type), text.Substring(start_index, token.Length));
+                start_index += token.Length;
+            }
+        
+            if (!was_matched) {
+                yield return new Token("un-tokenized", text.Substring(start_index));
+                break;
+            }
+        }
+    }
+
+    private string getCssClass(Lexeme lexeme) {
+        return lexeme switch {
+            Keyword => "keyword",
+            Comment => "comment",
+            Number => "number",
+            Identifier => "identifier",
+            Operator => "operator",
+            _ => string.Empty
+        };
+    }
+
+    public void SetText(string text) {
+        code_str = text;
+        StateHasChanged();
+    }
+
+    public string GetText() {
+        return code_str ?? string.Empty;
+    }
+
+    /*private void onkeydown(KeyboardEventArgs args) {
+        switch (args.Key) {
+            // TODO ignore meta-keys
+            case "Space":
+                builder.Append(" "); 
+                break;
+            case "Enter":
+                builder.Append(System.Environment.NewLine);
+                break;
+            case "Delete":
+            case "Backspace":
+                if (builder.Length > 0)
+                    builder.Length--;
+                break;
+            case string x when x.Length == 1:    
+                builder.Append(args.Key);
+                break;
+            default: 
+                break;
+        }   
+    }*/
+}

@@ -14,17 +14,17 @@ public class BenchmarkDenseLinearLayer {
     [Params(32, 64, 128, 256, 512, 1024)]
     public int DIM_LENGTH {get; set;}
 
-    private BatchedFeatureSet<double> input;
-    private BatchedFeatureSet<double> output;
+    private BatchedFeatureSet<float> input;
+    private BatchedFeatureSet<float> output;
     private DenseLinearLayer layer;
 
     [GlobalSetup]
     public void Setup() {
-        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(DIM_LENGTH, DIM_LENGTH)).ToArray();
-        this.input = new BatchedFeatureSet<double>(new FeatureSet<double>(input));
+        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<float>(DIM_LENGTH, DIM_LENGTH)).ToArray();
+        this.input = new BatchedFeatureSet<float>(new FeatureSet<float>(input));
 
-        var output = Matrix<double>.Column(new Vec<double>(OUT_CLASSES));
-        this.output = new BatchedFeatureSet<double>(new FeatureSet<double>(output));
+        var output = Matrix<float>.Column(new Vec<float>(OUT_CLASSES));
+        this.output = new BatchedFeatureSet<float>(new FeatureSet<float>(output));
 
         var layer = new DenseLinearLayer(input_size: new Shape3D(3, DIM_LENGTH, DIM_LENGTH).Count, OUT_CLASSES);
         this.layer = layer;

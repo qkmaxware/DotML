@@ -43,7 +43,7 @@ where T:INumber<T> {
     /// <summary>
     /// Number of tensor dimensions
     /// </summary>
-    public readonly int Dimensions => 2;
+    public readonly int Rank => 2;
 
     /// <summary>
     /// Matrix shape (rows & columns)
@@ -87,24 +87,20 @@ where T:INumber<T> {
     /// <summary>
     /// Tests if this matrix's internal storage is in row-major order
     /// </summary>
-    public static bool IsRowMajor {
-        #if MATRIX_STORAGE_ROW_MAJOR
-        get => true;
-        #else
-        get => false;
-        #endif
-    }
+    #if MATRIX_STORAGE_ROW_MAJOR
+    public const bool IsRowMajor = true;
+    #else
+    public const bool IsRowMajor = false;
+    #endif
 
     /// <summary>
     /// Tests if this matrix's internal storage is in column-major order
     /// </summary>
-    public static bool IsColumnMajor {
-        #if MATRIX_STORAGE_COL_MAJOR
-        get => true;
-        #else
-        get => false;
-        #endif
-    }
+    #if MATRIX_STORAGE_COL_MAJOR
+    public const bool IsColumnMajor = true;
+    #else
+    public const bool IsColumnMajor = false;
+    #endif
 
     /// <summary>
     /// Get the value of a matrix element at the given row, column index.
@@ -474,26 +470,30 @@ where T:INumber<T> {
     #endregion
     #region Methods
     /// <summary>
-    /// Pad a matrix with 0's to a given size
+    /// Pad a matrix with with the given padding value to a given size, crop if negative padding margins are given
     /// </summary>
-    /// <param name="top">top padding</param>
-    /// <param name="right">right padding</param>
-    /// <param name="bottom">bottom padding</param>
-    /// <param name="left">left padding</param>
-    /// <returns>padded matrix</returns>
-    public Matrix<T> Pad(int top = 0, int right = 0, int bottom = 0, int left = 0) {
-        top         = Math.Max(0, top);
-        right       = Math.Max(0, right);
-        bottom      = Math.Max(0, bottom);
-        left        = Math.Max(0, left);
-
-        var rows    = top + bottom + this.Rows;
-        var columns = left + right + this.Columns;
-        var matrix  = new Matrix<T>(rows, columns);
+    /// <param name="top">top padding rows</param>
+    /// <param name="right">right padding columns</param>
+    /// <param name="bottom">bottom padding rows</param>
+    /// <param name="left">left padding columns</param>
+    /// <param name="value">value to pad with (default: 0)</param>
+    /// <returns>padded/cropped matrix</returns>
+    public Matrix<T> Pad(int top = 0, int right = 0, int bottom = 0, int left = 0, T? value = default(T)) {
+        var rows    = Math.Max(0, top + bottom + this.Rows);
+        var columns = Math.Max(0, left + right + this.Columns);
+        var matrix  = new Matrix<T>(rows, columns, value ?? T.Zero);
 
         for (var r = 0; r < this.Rows; r++) {
+            var result_r = r + top;
+            if (result_r < 0 || result_r >= rows)
+                continue;
+
             for (var c = 0; c < this.Columns; c++) {
-                matrix[r + left, c + top] = this[r, c];
+                var result_c = c + left;
+                if (result_c < 0 || result_c >= columns)
+                    continue;
+
+                matrix[result_r, result_c] = this[r, c];
             }
         }
 
@@ -603,9 +603,9 @@ where T:INumber<T> {
     /// <summary>
     /// Perform an element-wise operation between this matrix and another matrix. Results are stored in this matrix.
     /// </summary>
-    /// <typeparam name="R">result element type</typeparam>
     /// <param name="other">other matrix</param>
     /// <param name="operation">element-wise operation</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public void ElementWiseInplace(Matrix<T> other, Func<T, T, T> operation) {
         if (this.Rows != other.Rows || this.Columns != other.Columns)
             throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {other.Shape}.");
@@ -618,6 +618,27 @@ where T:INumber<T> {
     }
 
     /// <summary>
+    /// Perform an element-wise operation between this matrix and 2 other matrices. Results are stored in this matrix.
+    /// </summary>
+    /// <param name="other1">first other matrix</param>
+    /// <param name="other2">second other matrix</param>
+    /// <param name="operation">element-wise operation</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+    public void ElementWiseInplace(Matrix<T> other1, Matrix<T> other2, Func<T, T, T, T> operation) {
+        if (this.Rows != other1.Rows || this.Columns != other1.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {other1.Shape}.");
+        if (this.Rows != other2.Rows || this.Columns != other2.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {other2.Shape}.");
+
+        var lhs_values = values.AsSpan(); 
+        var rhs1_values = other1.values.AsSpan();
+        var rhs2_values = other2.values.AsSpan();
+        var len = lhs_values.Length;
+        for (var i = 0; i < len; i++)
+            lhs_values[i] = operation(lhs_values[i], rhs1_values[i], rhs2_values[i]);
+    }
+
+    /// <summary>
     /// Perform an element-wise operation between this matrix and another matrix. Results are stored in the result matrix.
     /// </summary>
     /// <param name="result">matrix storing the results</param>
@@ -625,6 +646,7 @@ where T:INumber<T> {
     /// <param name="rhs">second matrix</param>
     /// <param name="operation">element-wise operation</param>
     /// <exception cref="ArithmeticException">thrown when the matrix shapes are incompatible</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public static void ElementWiseInplace(Matrix<T> result, Matrix<T> lhs, Matrix<T> rhs, Func<T, T, T> operation) {
         if (result.Rows != lhs.Rows || result.Columns != lhs.Columns || result.Rows != rhs.Rows || result.Columns != rhs.Columns)
             throw new ArithmeticException($"Invalid dimensions for element-wise operation between {lhs.Shape} and {rhs.Shape}.");
@@ -746,27 +768,29 @@ where T:INumber<T> {
         // Transpose Convolution Output Size = (Input Size - 1) * Strides + Filter Size - 2 * Padding + Output Padding
         var in_rows_real = this.Rows;
         var in_cols_real = this.Columns;
-        var in_rows = in_rows_real + inputPaddingY * 2;
-        var in_cols = in_cols_real + inputPaddingX * 2;
-        var out_cols = (in_cols - 1) * outputStrideX + kernel.Columns - 2 * outputPaddingX; 
-        var out_rows = (in_rows - 1) * outputStrideY + kernel.Rows - 2 * outputPaddingY;
+        var out_cols = (in_cols_real - 1) * outputStrideX + kernel.Columns - 2 * inputPaddingX + outputPaddingX; 
+        var out_rows = (in_rows_real - 1) * outputStrideY + kernel.Rows - 2 * inputPaddingY + outputPaddingY;
 
         var result = new Matrix<T>(out_rows, out_cols, bias ?? T.Zero);
-        for (var r = 0; r < in_rows; r++) {
-            var region_start_y = r * outputStrideY - outputPaddingY;
+
+        #if MATRIX_STORAGE_ROW_MAJOR
+        ref T inputRef          = ref MemoryMarshal.GetArrayDataReference(this.AsArray());
+        ref T filterRef         = ref MemoryMarshal.GetArrayDataReference(kernel.AsArray());
+        ref T resultRef = ref MemoryMarshal.GetArrayDataReference(result.AsArray());
+        #endif
+        for (var r = 0; r < in_rows_real; r++) {
+            var region_start_y = r * outputStrideY - inputPaddingY;
             var region_end_y = region_start_y + kernel_rows;
 
-            var real_r = r - inputPaddingY;
-
-            for (var c = 0; c < in_cols; c++) {
-                var region_start_x = c * outputStrideX - outputPaddingX;
+            for (var c = 0; c < in_cols_real; c++) {
+                var region_start_x = c * outputStrideX - inputPaddingX;
                 var region_end_x = region_start_x + kernel_cols;
 
-                var real_c = c - inputPaddingX;
-
-                var i = (real_r < 0 || real_c < 0 || real_r >= in_rows_real || real_c >= in_cols_real) 
-                    ? T.Zero
-                    : this[real_r, real_c];
+                #if MATRIX_STORAGE_ROW_MAJOR
+                var i = Unsafe.Add(ref inputRef, r * in_cols_real + c);
+                #else 
+                var i = input[r, c];
+                #endif
 
                 for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
                     if (out_y < 0 || out_y >= out_rows)
@@ -776,11 +800,21 @@ where T:INumber<T> {
                         if (out_x < 0 || out_x >= out_cols)
                             continue;
 
-                        if (flip_kernel) {
-                            result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
-                        } else {
-                            result[out_y, out_x] += i * kernel[ky, kx];
-                        }
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        var kernel_val = flip_kernel 
+                            ? Unsafe.Add(ref filterRef, (kernel_rows_m1 - ky) * kernel_cols + (kernel_cols_m1 - kx))  
+                            : Unsafe.Add(ref filterRef, ky * kernel_cols + kx);
+                        #else
+                        var kernel_val = flip_kernel 
+                            ? kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx]  
+                            : kernel[ky, kx];
+                        #endif
+
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        Unsafe.Add(ref resultRef, out_y * out_cols + out_x) += i * kernel_val;
+                        #else
+                        result[out_y, out_x] += i * kernel_val;
+                        #endif
                     }
                 }
             }
@@ -805,8 +839,6 @@ where T:INumber<T> {
         var first = inputs.First();
         var in_rows_real = first.Rows;
         var in_cols_real = first.Columns;
-        var in_rows = in_rows_real + inputPaddingY * 2;
-        var in_cols = in_cols_real + inputPaddingX * 2;
 
         var first_k = kernels.First();
         var kernel_rows = first_k.Rows;
@@ -817,39 +849,60 @@ where T:INumber<T> {
         // TODO account for stride in output size calculation
         // https://www.digitalocean.com/community/tutorials/transpose-convolution
         // Transpose Convolution Output Size = (Input Size - 1) * Strides + Filter Size - 2 * Padding + Output Padding
-        var out_cols = (in_cols - 1) * outputStrideX + first_k.Columns - 2 * outputPaddingX; 
-        var out_rows = (in_rows - 1) * outputStrideY + first_k.Rows - 2 * outputPaddingY;
+        var out_cols = (in_cols_real - 1) * outputStrideX + kernel_cols - 2 * inputPaddingX + outputPaddingX; 
+        var out_rows = (in_rows_real - 1) * outputStrideY + kernel_rows - 2 * inputPaddingY + outputPaddingY;
 
         var result = new Matrix<T>(out_rows, out_cols, bias ?? T.Zero);
-        foreach (var (input, kernel) in inputs.Zip(kernels)) {
-            for (var r = 0; r < in_rows; r++) {
-                var region_start_y = r * outputStrideY - outputPaddingY;
-                var region_end_y = region_start_y + kernel_rows;
+        ref T resultRef = ref MemoryMarshal.GetArrayDataReference(result.AsArray());
+        using (var inputEnumerator = inputs.GetEnumerator()) 
+        using (var kernelEnumerator = kernels.GetEnumerator()) {
+            // Iterate over inputs and kernels in pairs
+            while (inputEnumerator.MoveNext() && kernelEnumerator.MoveNext()) {
+                var input = inputEnumerator.Current;
+                var kernel = kernelEnumerator.Current;
 
-                var real_r = r - inputPaddingY;
+                #if MATRIX_STORAGE_ROW_MAJOR
+                ref T inputRef          = ref MemoryMarshal.GetArrayDataReference(input.AsArray());
+                ref T filterRef         = ref MemoryMarshal.GetArrayDataReference(kernel.AsArray());
+                #endif
 
-                for (var c = 0; c < in_cols; c++) {
-                    var region_start_x = c * outputStrideX - outputPaddingX;
-                    var region_end_x = region_start_x + kernel_cols;
+                for (var r = 0; r < in_rows_real; r++) {
+                    var region_start_y = r * outputStrideY - inputPaddingY;
+                    var region_end_y = region_start_y + kernel_rows;
 
-                    var real_c = c - inputPaddingX;
+                    for (var c = 0; c < in_cols_real; c++) {
+                        var region_start_x = c * outputStrideX - inputPaddingX;
+                        var region_end_x = region_start_x + kernel_cols;
+                        
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        var i = Unsafe.Add(ref inputRef, r * in_cols_real + c);
+                        #else 
+                        var i = input[r, c];
+                        #endif
 
-                    var i = (real_r < 0 || real_c < 0 || real_r >= in_rows_real || real_c >= in_cols_real) 
-                        ? T.Zero
-                        : input[real_r, real_c];
-
-                    for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
-                        if (out_y < 0 || out_y >= out_rows)
-                            continue;
-
-                        for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
-                            if (out_x < 0 || out_x >= out_cols)
+                        for (int out_y = region_start_y, ky = 0; out_y < region_end_y; out_y++, ky++) {
+                            if (out_y < 0 || out_y >= out_rows)
                                 continue;
 
-                            if (flip_kernel) {
-                                result[out_y, out_x] += i * kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx];
-                            } else {
-                                result[out_y, out_x] += i * kernel[ky, kx];
+                            for (int out_x = region_start_x, kx = 0; out_x < region_end_x; out_x++, kx++) {
+                                if (out_x < 0 || out_x >= out_cols)
+                                    continue;
+
+                                #if MATRIX_STORAGE_ROW_MAJOR
+                                var kernel_val = flip_kernel 
+                                    ? Unsafe.Add(ref filterRef, (kernel_rows_m1 - ky) * kernel_cols + (kernel_cols_m1 - kx))  
+                                    : Unsafe.Add(ref filterRef, ky * kernel_cols + kx);
+                                #else
+                                var kernel_val = flip_kernel 
+                                    ? kernel[kernel_rows_m1 - ky, kernel_cols_m1 - kx]  
+                                    : kernel[ky, kx];
+                                #endif
+
+                                #if MATRIX_STORAGE_ROW_MAJOR
+                                Unsafe.Add(ref resultRef, out_y * out_cols + out_x) += i * kernel_val;
+                                #else
+                                result[out_y, out_x] += i * kernel_val;
+                                #endif
                             }
                         }
                     }
@@ -870,12 +923,16 @@ where T:INumber<T> {
     /// <param name="paddingY">vertical padding of this matrix</param>
     /// <returns>convolution of this matrix</returns>
     public Matrix<T> Convolve(Matrix<T> kernel, int strideX = 1, int strideY = 1, int paddingX = 0, int paddingY = 0, T? bias = default(T)) {
+        var filterSpan          = kernel.AsReadOnlySpan();
+        ref T filterRef         = ref MemoryMarshal.GetArrayDataReference(kernel.AsArray());
         var filterRows          = kernel.Rows;   
         var filterColumns       = kernel.Columns;  
         var paddingRows         = paddingY;
         var paddingColumns      = paddingX;  
 
         var input               = this;
+        var inputSpan           = this.AsReadOnlySpan();
+        ref T inputRef          = ref MemoryMarshal.GetArrayDataReference(this.AsArray());
         var inputRows           = input.Rows;
         var inputColumns        = input.Columns;
 
@@ -883,27 +940,51 @@ where T:INumber<T> {
         var outputRows          = (inputRows - filterRows + 2 * paddingRows) / strideY + 1; 
         var outputColumns       = (inputColumns - filterColumns + 2 * paddingColumns) / strideX + 1;  
 
-        var result              = new Matrix<T>(outputRows, outputColumns, bias ?? T.Zero);
+        var result              = new Matrix<T>(outputRows, outputColumns);
+        ref T resultRef         = ref MemoryMarshal.GetArrayDataReference(result.AsArray());
+        var resultSpan          = result.AsSpan();
+        var bias_v              = bias ?? T.Zero;
         for (var y = 0; y < outputRows; y++) {
             var startY = y * strideY - paddingRows;
+            #if MATRIX_STORAGE_ROW_MAJOR
+            var resultIndexOffset = y * outputColumns; // Row-major
+            #endif
 
             for (var x = 0; x < outputColumns; x++) {
                 var startX = x * strideX - paddingColumns;
+                #if MATRIX_STORAGE_ROW_MAJOR
+                var resultIndex = resultIndexOffset + x;
+                #endif
 
-                var total_sum = T.Zero;
+                var total_sum = bias_v;
                 for (int ky = 0; ky < filterRows; ky++) {
                     var inY = startY + ky;
                     if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
 
+                    #if MATRIX_STORAGE_ROW_MAJOR
+                    var inIndexOffset = inY * inputColumns;
+				    var kernelIndexOffset = ky * filterColumns;
+                    #endif
+
                     for (int kx = 0; kx < filterColumns; kx++) {
                         var inX = startX + kx;
                         if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
-                        
+
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        total_sum += Unsafe.Add(ref inputRef, inIndexOffset + inX) * Unsafe.Add(ref filterRef, kernelIndexOffset + kx);
+                        //total_sum += inputSpan[inIndexOffset + inX] * filterSpan[kernelIndexOffset + kx];
+                        #else
                         total_sum += input[inY, inX] * kernel[ky, kx];
+                        #endif
                     }
                 }
 
-                result[y, x] += total_sum;
+                #if MATRIX_STORAGE_ROW_MAJOR
+                Unsafe.Add(ref resultRef, resultIndex) = total_sum;
+                //resultSpan[resultIndex] = total_sum;
+                #else
+                result[y, x] = total_sum;
+                #endif
             }
         }
 
@@ -936,27 +1017,62 @@ where T:INumber<T> {
         var outputColumns       = (inputColumns - filterColumns + 2 * paddingColumns) / strideX + 1;  
 
         var result              = new Matrix<T>(outputRows, outputColumns, bias ?? T.Zero);
-        foreach (var (input, kernel) in inputs.Zip(kernels)) {
-            for (var y = 0; y < outputRows; y++) {
-                var startY = y * strideY - paddingRows;
+        ref T resultRef         = ref MemoryMarshal.GetArrayDataReference(result.AsArray());
+        var resultSpan          = result.AsSpan();
+        using (var inputEnumerator = inputs.GetEnumerator()) 
+        using (var kernelEnumerator = kernels.GetEnumerator()) {
+            // Iterate over inputs and kernels in pairs
+            while (inputEnumerator.MoveNext() && kernelEnumerator.MoveNext()) {
+                var input = inputEnumerator.Current;
+                var kernel = kernelEnumerator.Current;
 
-                for (var x = 0; x < outputColumns; x++) {
-                    var startX = x * strideX - paddingColumns;
+                var inputSpan = input.AsReadOnlySpan();
+                ref T inputRef          = ref MemoryMarshal.GetArrayDataReference(input.AsArray());
+                var filterSpan = kernel.AsReadOnlySpan();
+                ref T filterRef         = ref MemoryMarshal.GetArrayDataReference(kernel.AsArray());
 
-                    var total_sum = T.Zero;
-                    for (int ky = 0; ky < filterRows; ky++) {
-                        var inY = startY + ky;
-                        if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
+                for (var y = 0; y < outputRows; y++) {
+                    var startY = y * strideY - paddingRows;
+                    #if MATRIX_STORAGE_ROW_MAJOR
+                    var resultIndexOffset = y * outputColumns; // Row-major
+                    #endif
 
-                        for (int kx = 0; kx < filterColumns; kx++) {
-                            var inX = startX + kx;
-                            if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
-                            
-                            total_sum += input[inY, inX] * kernel[ky, kx];
+                    for (var x = 0; x < outputColumns; x++) {
+                        var startX = x * strideX - paddingColumns;
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        var resultIndex = resultIndexOffset + x;
+                        #endif
+
+                        var total_sum = T.Zero;
+                        for (int ky = 0; ky < filterRows; ky++) {
+                            var inY = startY + ky;
+                            if (inY < 0 || inY >= inputRows) continue; // Skip out-of-bounds rows
+
+                            #if MATRIX_STORAGE_ROW_MAJOR
+                            var inIndexOffset = inY * inputColumns;
+                            var kernelIndexOffset = ky * filterColumns;
+                            #endif
+
+                            for (int kx = 0; kx < filterColumns; kx++) {
+                                var inX = startX + kx;
+                                if (inX < 0 || inX >= inputColumns) continue; // Skip out-of-bounds columns
+                                
+                                #if MATRIX_STORAGE_ROW_MAJOR
+                                total_sum += Unsafe.Add(ref inputRef, inIndexOffset + inX) * Unsafe.Add(ref filterRef, kernelIndexOffset + kx);
+                                //total_sum += inputSpan[inIndexOffset + inX] * filterSpan[kernelIndexOffset + kx];
+                                #else
+                                total_sum += input[inY, inX] * kernel[ky, kx];
+                                #endif
+                            }
                         }
-                    }
 
-                    result[y, x] += total_sum;
+                        #if MATRIX_STORAGE_ROW_MAJOR
+                        Unsafe.Add(ref resultRef, resultIndex) += total_sum;
+                        //resultSpan[resultIndex] += total_sum;
+                        #else
+                        result[y, x] = total_sum;
+                        #endif
+                    }
                 }
             }
         }
@@ -1133,6 +1249,33 @@ where T:INumber<T> {
     #endregion
     #region Operators
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+    private static void HadamardHelper(Matrix<T> result, Matrix<T> lhs, Matrix<T> rhs) {
+        if (!Vector<T>.IsSupported || !Vector.IsHardwareAccelerated) {
+            ElementWiseInplace(result, lhs, rhs, (l, r) => l * r);
+            return;
+        }
+        
+        var vec_size = Vector<T>.Count;
+        var len = result.Size;
+
+        var result_span = result.values;
+        var v0s = lhs.values;
+        var v1s = rhs.values;
+
+        var i = 0; var buffer = len - vec_size;
+        for (; i < buffer; i += vec_size) {
+            Vector<T> x = new Vector<T>(v0s, i);
+            Vector<T> y = new Vector<T>(v1s, i);
+            (x * y).CopyTo(result_span, i);
+        }
+        for (; i < len; i++) {
+            result[i] = lhs[i] * rhs[i];
+        }
+        
+        return;
+    }
+
     /// <summary>
     /// Perform element-wise (hadamard) multiplication between this matrix and another
     /// </summary>
@@ -1140,7 +1283,12 @@ where T:INumber<T> {
     /// <returns>element-wise multiplication</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public Matrix<T> HadamardWith(Matrix<T> rhs) {
-        return this.ElementWise(rhs, (l, r) => l * r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        var result = new Matrix<T>(rhs.Rows, rhs.Columns);
+        HadamardHelper(result, this, rhs);
+        return result;
     }
 
     /// <summary>
@@ -1149,7 +1297,58 @@ where T:INumber<T> {
     /// <param name="rhs">second matrix</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public void HadamardWithInplace(Matrix<T> rhs) {
-        this.ElementWiseInplace(rhs, (l, r) => l * r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        HadamardHelper(this, this, rhs);
+        return;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+    private static void AddHelper(Matrix<T> result, Matrix<T> lhs, Matrix<T> rhs) {
+        if (!Vector<T>.IsSupported || !Vector.IsHardwareAccelerated) {
+            ElementWiseInplace(result, lhs, rhs, (l, r) => l + r);
+            return;
+        }
+        
+        var vec_size = Vector<T>.Count;
+        var len = result.Size;
+        //var num_vectors = len / vec_size;
+        //var ceiling = num_vectors * vec_size;
+
+        var result_span = result.values;
+        var v0s = lhs.values;
+        var v1s = rhs.values;
+
+        /*
+        var result_span = result.AsSpan();
+        var v0s = v0f.AsSpan();
+        var v1s = v1f.AsSpan();
+        ReadOnlySpan<Vector<T>> lhs_vec = MemoryMarshal.Cast<T, Vector<T>>(v0s);
+        ReadOnlySpan<Vector<T>> rhs_vec = MemoryMarshal.Cast<T, Vector<T>>(v1s);
+        Span<Vector<T>> store = MemoryMarshal.Cast<T, Vector<T>>(result_span);
+
+        for (int i = 0; i < num_vectors; i++)
+        {
+            store[i] = lhs_vec[i] + rhs_vec[i];
+        }
+        for (var i = ceiling; i < len; i++)
+        {
+            result[i] = v0s[i] + v1s[i];
+        }
+        */
+
+        var i = 0; var buffer = len - vec_size;
+        for (; i < buffer; i += vec_size) {
+            Vector<T> x = new Vector<T>(v0s, i);
+            Vector<T> y = new Vector<T>(v1s, i);
+            (x + y).CopyTo(result_span, i);
+        }
+        for (; i < len; i++) {
+            result[i] = lhs[i] + rhs[i];
+        }
+        
+        return;
     }
 
     /// <summary>
@@ -1159,7 +1358,12 @@ where T:INumber<T> {
     /// <returns>result of the matrix addition</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public Matrix<T> AddWith(Matrix<T> rhs) {
-        return this.ElementWise(rhs, (l, r) => l + r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        var result = new Matrix<T>(rhs.Rows, rhs.Columns);
+        AddHelper(result, this, rhs);
+        return result;
     }
 
     /// <summary>
@@ -1168,7 +1372,11 @@ where T:INumber<T> {
     /// <param name="rhs">rhs matrix</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public void AddWithInplace(Matrix<T> rhs) {
-        this.ElementWiseInplace(rhs, (l, r) => l + r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        AddHelper(this, this, rhs);
+        return;
     }
 
     /// <summary>
@@ -1179,6 +1387,33 @@ where T:INumber<T> {
     /// <returns>result of the matrix addition</returns>
     public static Matrix<T> operator + (Matrix<T> lhs, Matrix<T> rhs) => lhs.AddWith(rhs);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]  
+    private static void SubtractHelper(Matrix<T> result, Matrix<T> lhs, Matrix<T> rhs) {
+        if (!Vector<T>.IsSupported || !Vector.IsHardwareAccelerated) {
+            ElementWiseInplace(result, lhs, rhs, (l, r) => l - r);
+            return;
+        }
+        
+        var vec_size = Vector<T>.Count;
+        var len = result.Size;
+
+        var result_span = result.values;
+        var v0s = lhs.values;
+        var v1s = rhs.values;
+
+        var i = 0; var buffer = len - vec_size;
+        for (; i < buffer; i += vec_size) {
+            Vector<T> x = new Vector<T>(v0s, i);
+            Vector<T> y = new Vector<T>(v1s, i);
+            (x - y).CopyTo(result_span, i);
+        }
+        for (; i < len; i++) {
+            result[i] = lhs[i] - rhs[i];
+        }
+        
+        return;
+    }
+
     /// <summary>
     /// Subtract this matrix and another matrix together
     /// </summary>
@@ -1186,7 +1421,12 @@ where T:INumber<T> {
     /// <returns>result of the matrix subtraction</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public Matrix<T> SubtractWith(Matrix<T> rhs) {
-        return this.ElementWise(rhs, (l, r) => l - r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        var result = new Matrix<T>(rhs.Rows, rhs.Columns);
+        SubtractHelper(result, this, rhs);
+        return result;
     }
 
     /// <summary>
@@ -1195,7 +1435,11 @@ where T:INumber<T> {
     /// <param name="rhs">rhs matrix</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]  
     public void SubtractWithInplace(Matrix<T> rhs) {
-        this.ElementWiseInplace(rhs, (l, r) => l - r);
+        if (this.Rows != rhs.Rows || this.Columns != rhs.Columns)
+            throw new ArithmeticException($"Invalid dimensions for element-wise operation between {this.Shape} and {rhs.Shape}.");
+        
+        SubtractHelper(this, this, rhs);
+        return;
     }
 
     /// <summary>
@@ -1444,13 +1688,6 @@ where T:INumber<T> {
         return values;
     }
     #else 
-    /// <summary>
-    /// Extract the values of the matrix as a 1D array
-    /// </summary>
-    /// <returns>Row major representation of the matrix as an array</returns>
-    public T[] AsRowMajorArray() {
-        return FlattenRows().ToArray();
-    }
     #endif
 
     #if MATRIX_STORAGE_COL_MAJOR
@@ -1462,14 +1699,13 @@ where T:INumber<T> {
         return values;
     }
     #else 
-    /// <summary>
-    /// Extract the values of the matrix as a 1D array
-    /// </summary>
-    /// <returns>Column major representation of the matrix as an array</returns>
-    public T[] AsColumnMajorArray() {
-        return FlattenColumns().ToArray();
-    }
     #endif
+
+    /// <summary>
+    /// Get the underlying array for this matrix. The value ordering will depend upon if the matrix is in row or column major ordering.
+    /// </summary>
+    /// <returns>underlying array over the matrix elements</returns>
+    public T[] AsArray() => values;
 
     /// <summary>
     /// Create a span over the entire 2D matrix

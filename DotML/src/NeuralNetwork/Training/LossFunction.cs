@@ -4,7 +4,7 @@ namespace DotML.Network.Training;
 /// A loss function between computed output vectors (predicted) and their expected values (true)
 /// <see href="https://en.wikipedia.org/wiki/Loss_function"/>
 /// </summary>
-public abstract class LossFunction : DelegateObject<Vec<double>, Vec<double>, double> {
+public abstract class LossFunction : DelegateObject<Vec<float>, Vec<float>, float> {
     /// <summary>
     /// Loss function name
     /// </summary>
@@ -16,7 +16,7 @@ public abstract class LossFunction : DelegateObject<Vec<double>, Vec<double>, do
     /// <param name="predicted">The predicted vector as output from forward-propagation</param>
     /// <param name="true">The true vector expected as output</param>
     /// <returns>Gradient for use in backpropagation</returns>
-    public abstract Vec<double> Gradient(Vec<double> predicted, Vec<double> @true);
+    public abstract Vec<float> Gradient(Vec<float> predicted, Vec<float> @true);
 }
 
 /// <summary>
@@ -60,8 +60,8 @@ public static class LossFunctions {
 /// Mean squared error (MSE) loss function
 /// </summary>
 public class MeanSquaredError : LossFunction {
-    public override double Invoke(Vec<double> predicted, Vec<double> @true) {
-        double mse = 0.0;
+    public override float Invoke(Vec<float> predicted, Vec<float> @true) {
+        float mse = 0.0f;
         var N = Math.Min(predicted.Dimensionality, @true.Dimensionality);
 
         for (var i = 0; i < N; i++) {
@@ -72,7 +72,7 @@ public class MeanSquaredError : LossFunction {
         return mse/N;
     }
     
-    public override Vec<double> Gradient(Vec<double> predicted, Vec<double> @true) {
+    public override Vec<float> Gradient(Vec<float> predicted, Vec<float> @true) {
         return /*scalar * */ predicted - @true;
     }
 }
@@ -81,8 +81,8 @@ public class MeanSquaredError : LossFunction {
 /// Mean squared error (RMSE) loss function
 /// </summary>
 public class RootMeanSquaredError : LossFunction {
-    public override double Invoke(Vec<double> predicted, Vec<double> @true) {
-        double mse = 0.0;
+    public override float Invoke(Vec<float> predicted, Vec<float> @true) {
+        float mse = 0.0f;
         var N = Math.Min(predicted.Dimensionality, @true.Dimensionality);
 
         for (var i = 0; i < N; i++) {
@@ -90,10 +90,10 @@ public class RootMeanSquaredError : LossFunction {
             mse += to_square * to_square;
         }
 
-        return Math.Sqrt(mse/N);
+        return MathF.Sqrt(mse/N);
     }
     
-    public override Vec<double> Gradient(Vec<double> predicted, Vec<double> @true) {
+    public override Vec<float> Gradient(Vec<float> predicted, Vec<float> @true) {
         return /*scalar * */ predicted - @true;
     }
 }
@@ -102,19 +102,19 @@ public class RootMeanSquaredError : LossFunction {
 /// Mean absolute error (MAE) loss function
 /// </summary>
 public class MeanAbsoluteError : LossFunction {
-    public override double Invoke(Vec<double> predicted, Vec<double> @true) {
-        double mae = 0.0;
+    public override float Invoke(Vec<float> predicted, Vec<float> @true) {
+        float mae = 0.0f;
         var N = Math.Min(predicted.Dimensionality, @true.Dimensionality);
 
         for (var i = 0; i < N; i++) {
-            mae += Math.Abs(predicted[i] - @true[i]);
+            mae += MathF.Abs(predicted[i] - @true[i]);
         }
 
         return mae/N;
     }
     
-    public override Vec<double> Gradient(Vec<double> predicted, Vec<double> @true) {
-        return (predicted - @true).Transform(x => /*scalar * */ (double)Math.Sign(x));
+    public override Vec<float> Gradient(Vec<float> predicted, Vec<float> @true) {
+        return (predicted - @true).Transform(x => /*scalar * */ (float)Math.Sign(x));
     }
 }
 
@@ -123,7 +123,7 @@ public class MeanAbsoluteError : LossFunction {
 /// </summary>
 public class CategoricalCrossEntropy : LossFunction {
 
-    private const double epsilon = 1e-15;
+    private const float epsilon = 1e-15f;
 
     /// <summary>
     /// Compute the loss of between a predicted and true vector
@@ -131,7 +131,7 @@ public class CategoricalCrossEntropy : LossFunction {
     /// <param name="predicted">The predicted vector as output from forward-propagation</param>
     /// <param name="true">The true vector expected as output</param>
     /// <returns>The computed loss between the predicted and true vectors</returns>
-    public override double Invoke(Vec<double> predicted, Vec<double> @true) {
+    public override float Invoke(Vec<float> predicted, Vec<float> @true) {
         if (predicted.Dimensionality != @true.Dimensionality) {
             throw new ArgumentException("Predicted and true vectors must have the same length.");
         }
@@ -140,13 +140,13 @@ public class CategoricalCrossEntropy : LossFunction {
         var predictedNormalized = predicted.IsLikelyAProbabilityDistribution() ? predicted : predicted.SoftmaxNormalized();
 
         // -SUM(exp_i * log(actual_i))
-        var sum = 0.0;
+        var sum = 0.0f;
         var M = predictedNormalized.Dimensionality; // Each dimension is a class
         for (var i = 0; i < M; i++) { 
             // @true is a class label, predicted is the predicted probability
-            sum += @true[i] * Math.Log(Math.Max(predictedNormalized[i], epsilon));
+            sum += @true[i] * MathF.Log(Math.Max(predictedNormalized[i], epsilon));
         }
-        return -(1.0/M)*sum;
+        return -(1.0f/M)*sum;
     }
     
     /// <summary>
@@ -155,7 +155,7 @@ public class CategoricalCrossEntropy : LossFunction {
     /// <param name="predicted">The predicted vector as output from forward-propagation</param>
     /// <param name="true">The true vector expected as output</param>
     /// <returns>Gradient for use in backpropagation</returns>
-    public override Vec<double> Gradient(Vec<double> predicted, Vec<double> @true) {
+    public override Vec<float> Gradient(Vec<float> predicted, Vec<float> @true) {
         if (predicted.Dimensionality != @true.Dimensionality) {
             throw new ArgumentException("Predicted and true vectors must have the same length.");
         }

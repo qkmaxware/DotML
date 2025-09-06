@@ -19,7 +19,7 @@ public class TestSafetensors {
         Assert.AreEqual(1, sb.Keys().Count());
         Assert.AreEqual(true, sb.ContainsKey(key));
 
-        var tensor = sb.GetTensor<double>(key);
+        var tensor = sb.GetMatrix<double>(key);
         Assert.AreEqual(matrix.Rows, tensor.Rows);
         Assert.AreEqual(matrix.Columns, tensor.Columns);
         for (var i = 0; i < matrix.Size; i++) {
@@ -50,14 +50,14 @@ public class TestSafetensors {
         Assert.AreEqual(true, sb.ContainsKey(key));
         Assert.AreEqual(true, sb.ContainsKey(key2));
 
-        var tensor = sb.GetTensor<double>(key);
+        var tensor = sb.GetMatrix<double>(key);
         Assert.AreEqual(matrix.Rows, tensor.Rows);
         Assert.AreEqual(matrix.Columns, tensor.Columns);
         for (var i = 0; i < matrix.Size; i++) {
             Assert.AreEqual(matrix[i], tensor[i], 0.001, "Loaded matrix differs from the source");
         }
 
-        tensor = sb.GetTensor<double>(key2);
+        tensor = sb.GetMatrix<double>(key2);
         Assert.AreEqual(matrix2.Rows, tensor.Rows);
         Assert.AreEqual(matrix2.Columns, tensor.Columns);
         for (var i = 0; i < matrix2.Size; i++) {
@@ -86,10 +86,14 @@ public class TestSafetensors {
             var saved_tensor = saved.GetTensor<double>(key);
             var loaded_tensor = loaded.GetTensor<double>(key);
 
-            Assert.AreEqual(saved_tensor.Rows, loaded_tensor.Rows);
-            Assert.AreEqual(saved_tensor.Columns, loaded_tensor.Columns);
-            for (var i = 0; i < loaded_tensor.Size; i++) {
-                Assert.AreEqual(saved_tensor[i], loaded_tensor[i], 0.001, $"Loaded matrix differs from the source for key '{key}' at position {i}");
+            Assert.AreEqual(saved_tensor.Rank, loaded_tensor.Rank);
+            for (var r = 0; r < saved_tensor.Rank; r++) {
+                Assert.AreEqual(saved_tensor.GetDimension(r), loaded_tensor.GetDimension(r));
+            }
+            var i = 0;
+            foreach (var (saved_x, loaded_x) in saved_tensor.EnumerateElements().Zip(loaded_tensor.EnumerateElements())) {
+                Assert.AreEqual(saved_x, loaded_x, 0.001, $"Loaded matrix differs from the source for key '{key}' at position {i}");
+                i++;
             }
         }
     }

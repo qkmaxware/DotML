@@ -14,13 +14,14 @@ namespace DotML;
 public struct Vec<T>: 
     IEnumerable<T>,
     IEquatable<Vec<T>>,
-    ITensorLike<T>
+    ITensorLike<T>,
+    IMutableTensorLike<T>
 where T:INumber<T>
 {
     private static T[] NONE = Array.Empty<T>();
     private T[] values; // Literally just a pointer to an array... so size of struct is just int or nint.
 
-    public readonly int Dimensions => 1;
+    public readonly int Rank => 1;
     public int GetDimension(int index) => index switch {
         0 => Dimensionality,
         _ => 1
@@ -29,6 +30,11 @@ where T:INumber<T>
         if (indices.Length != 1)
             throw new IndexOutOfRangeException();
         return this[indices[0]];
+    }
+    public void SetElementAt(T value, params int[] indices) {
+        if (indices.Length != 1)
+            throw new IndexOutOfRangeException();
+        this[indices[0]] = value;
     }
 
     /// <summary>

@@ -5,9 +5,9 @@ namespace DotML.Network;
 /// <summary>
 /// A single filter for a use in a ConvolutionLayer
 /// </summary>
-public class ConvolutionFilter : IEnumerable<Matrix<double>> {
+public class ConvolutionFilter : IEnumerable<Matrix<float>> {
 
-    private Matrix<double>[] kernels;
+    private Matrix<float>[] kernels;
 
     /// <summary>
     /// Shape of the filter
@@ -22,7 +22,7 @@ public class ConvolutionFilter : IEnumerable<Matrix<double>> {
     /// <summary>
     /// Filter bias value
     /// </summary>
-    public double Bias {get; set;}
+    public float Bias {get; set;}
 
     /// <summary>
     /// Get or set a kernel value, dimensions must match filter size
@@ -30,7 +30,7 @@ public class ConvolutionFilter : IEnumerable<Matrix<double>> {
     /// <param name="index">kernel index</param>
     /// <returns>kernel matrix</returns>
     /// <exception cref="ArgumentException">Thrown when kernel dimensions are mismatched</exception>
-    public Matrix<double> this[int index] {
+    public Matrix<float> this[int index] {
         get => kernels[index];
         set {
             if (value.Rows != this.Height || value.Columns != this.Width)
@@ -58,7 +58,7 @@ public class ConvolutionFilter : IEnumerable<Matrix<double>> {
     /// Create a filter from the given kernels
     /// </summary>
     /// <param name="kernels">kernels</param>
-    public ConvolutionFilter(params Matrix<double>[] kernels) {
+    public ConvolutionFilter(params Matrix<float>[] kernels) {
         this.Width = kernels.Select(x => x.Columns).Max();
         this.Height = kernels.Select(x => x.Rows).Max();
 
@@ -68,7 +68,7 @@ public class ConvolutionFilter : IEnumerable<Matrix<double>> {
     /// Create a filter from the given kernels
     /// </summary>
     /// <param name="kernels">kernels</param>
-    public ConvolutionFilter(double bias, params Matrix<double>[] kernels) : this(kernels) {
+    public ConvolutionFilter(float bias, params Matrix<float>[] kernels) : this(kernels) {
         this.Bias = bias;
     }
 
@@ -85,7 +85,7 @@ public class ConvolutionFilter : IEnumerable<Matrix<double>> {
 
         var objs = new ConvolutionFilter[filters]; 
         for (var i = 0; i < objs.Length; i++) {
-            var kernels = new Matrix<double>[kernels_per_filter];
+            var kernels = new Matrix<float>[kernels_per_filter];
             for (var j = 0; j < kernels_per_filter; j++) {
                 kernels[j] = Kernels.HeKernel(kernel_size);
             }
@@ -109,7 +109,7 @@ public class ConvolutionFilter : IEnumerable<Matrix<double>> {
 
         var objs = new ConvolutionFilter[filters]; 
         for (var i = 0; i < objs.Length; i++) {
-            var kernels = new Matrix<double>[kernels_per_filter];
+            var kernels = new Matrix<float>[kernels_per_filter];
             for (var j = 0; j < kernels_per_filter; j++) {
                 kernels[j] = Kernels.HeKernel(kernel_rows, kernel_columns);
             }
@@ -119,8 +119,8 @@ public class ConvolutionFilter : IEnumerable<Matrix<double>> {
         return objs;
     }
 
-    public IEnumerator<Matrix<double>> GetEnumerator() {
-        return ((IEnumerable<Matrix<double>>)kernels).GetEnumerator();
+    public IEnumerator<Matrix<float>> GetEnumerator() {
+        return ((IEnumerable<Matrix<float>>)kernels).GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator() {

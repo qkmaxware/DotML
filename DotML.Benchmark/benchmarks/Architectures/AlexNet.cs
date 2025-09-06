@@ -25,8 +25,8 @@ public class BenchmarkAlexNet {
 
     [Benchmark]
     public void Forward() {
-        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<double>(DimensionLength, DimensionLength)).ToArray();
+        var input = Enumerable.Range(0, IMG_CHANNELS).Select(x => new Matrix<float>(DimensionLength, DimensionLength)).ToArray();
 
-        network.PredictSync(new FeatureSet<double>(input));
+        network.PredictSync(new FeatureSet<float>(input));
     }
 }

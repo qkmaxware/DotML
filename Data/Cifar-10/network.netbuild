@@ -1,0 +1,24 @@
+FROM scratch INPUT 3 32 32
+
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=24 kernel=3
+ADD LayerNorm
+ADD ActivationLayer fn=ReLU
+ADD InputCapture AS output_10249759
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=24 kernel=3
+ADD LayerNorm
+ADD ActivationLayer fn=ReLU
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=24 kernel=3
+ADD LayerNorm
+ADD AdditionSkipConnection residual=output_10249759
+ADD ActivationLayer fn=ReLU
+ADD InputCapture AS output_22318356
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=24 kernel=3
+ADD LayerNorm
+ADD ActivationLayer fn=ReLU
+ADD ConvolutionLayer stride-x=1 stride-y=1 padding-x=1 padding-y=1 filters=24 kernel=3
+ADD LayerNorm
+ADD AdditionSkipConnection residual=output_22318356
+ADD ActivationLayer fn=ReLU
+ADD LocalAvgPoolingLayer stride-x=3 stride-y=3 padding-x=0 padding-y=0 kernel=3
+ADD DenseLinearLayer neurons=10
+ADD SoftmaxLayer

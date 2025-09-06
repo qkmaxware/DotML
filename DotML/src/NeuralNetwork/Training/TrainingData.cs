@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Dynamic;
+using System.Numerics;
 using System.Text.RegularExpressions;
 using DotML.Network.Training;
 
@@ -9,27 +10,27 @@ namespace DotML.Network.Training;
 /// <summary>
 /// A pair of inputs to matching outputs used in training of a neural network.
 /// </summary>
-public record class TrainingPair {
+public record class TrainingPair<T> where T:INumber<T> {
     /// <summary>
     /// Input vector to pass into the network
     /// </summary>
-    public Vec<double> Input {get; set;}
+    public Vec<T> Input {get; set;}
     /// <summary>
     /// Output/classification produced by the input passing through the network
     /// </summary>
-    public Vec<double> Output {get; set;}
+    public Vec<T> Output {get; set;}
 }
 
 /// <summary>
 /// An enumerator that provides a way to access training data in a specific order
 /// </summary>
-public abstract class TrainingPairSequencer : IEnumerator<TrainingPair> {
-    protected TrainingSet Datum {get; private set;}
+public abstract class TrainingPairSequencer<T> : IEnumerator<TrainingPair<T>> where T:INumber<T> {
+    protected TrainingSet<T> Datum {get; private set;}
     public virtual int Size => Datum.Size;
 
-    public TrainingPairSequencer(TrainingSet datum) => Datum = datum;
+    public TrainingPairSequencer(TrainingSet<T> datum) => Datum = datum;
 
-    public abstract TrainingPair Current {get;}
+    public abstract TrainingPair<T> Current {get;}
     object IEnumerator.Current => this.Current;
     public void Dispose() {}
     public abstract bool MoveNext();
@@ -39,7 +40,7 @@ public abstract class TrainingPairSequencer : IEnumerator<TrainingPair> {
     /// Treat this enumerator as it's own enumerable object for use in for loops
     /// </summary>
     /// <returns>enumerable of training pairs</returns>
-    public IEnumerable<TrainingPair> AsEnumerable() {
+    public IEnumerable<TrainingPair<T>> AsEnumerable() {
         Reset();
         while (MoveNext())
             yield return Current;
@@ -49,9 +50,9 @@ public abstract class TrainingPairSequencer : IEnumerator<TrainingPair> {
     /// Treat this enumerator as it's own enumerable object where elements are sampled in a batch
     /// </summary>
     /// <returns>enumerable of batches/groups of training pairs</returns>
-    public IEnumerable<IGrouping<int, TrainingPair>> AsBatchedEnumerable(int batch_size) {
+    public IEnumerable<IGrouping<int, TrainingPair<T>>> AsBatchedEnumerable(int batch_size) {
         batch_size = Math.Max(1, batch_size);
-        var batch = new List<TrainingPair>(batch_size);
+        var batch = new List<TrainingPair<T>>(batch_size);
 
         // Create initial batch
         Reset();
@@ -65,7 +66,7 @@ public abstract class TrainingPairSequencer : IEnumerator<TrainingPair> {
             batch_index++;
 
             // Create subsequent batch
-            batch = new List<TrainingPair>(batch_size);
+            batch = new List<TrainingPair<T>>(batch_size);
             while (batch.Count < batch_size && MoveNext()) {
                 batch.Add(this.Current);
             }
@@ -75,7 +76,7 @@ public abstract class TrainingPairSequencer : IEnumerator<TrainingPair> {
     /// <summary>
     /// Represents a group of training pairs of a given batch size
     /// </summary>
-    public class TrainingPairBatch : IGrouping<int, TrainingPair> {
+    public class TrainingPairBatch : IGrouping<int, TrainingPair<T>> {
         /// <summary>
         /// Batch number / Group key (0-indexed)
         /// </summary>
@@ -85,14 +86,14 @@ public abstract class TrainingPairSequencer : IEnumerator<TrainingPair> {
         /// Batch size (number of elements)
         /// </summary>
         public int Size => items.Count();
-        private IEnumerable<TrainingPair> items;
+        private IEnumerable<TrainingPair<T>> items;
 
-        public TrainingPairBatch(int batch_index, IEnumerable<TrainingPair> items) {
+        public TrainingPairBatch(int batch_index, IEnumerable<TrainingPair<T>> items) {
             this.Key = batch_index;
             this.items = items;
         }
 
-        public IEnumerator<TrainingPair> GetEnumerator() => items.GetEnumerator();
+        public IEnumerator<TrainingPair<T>> GetEnumerator() => items.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => items.GetEnumerator();
     }
 }
@@ -100,11 +101,11 @@ public abstract class TrainingPairSequencer : IEnumerator<TrainingPair> {
 /// <summary>
 /// An enumerator that accesses training data in the order in which is was defined
 /// </summary>
-public class InOrderSequencer : TrainingPairSequencer {
+public class InOrderSequencer<T> : TrainingPairSequencer<T> where T:INumber<T> {
     int current = -1;
-    public InOrderSequencer(TrainingSet set) : base(set) { }
+    public InOrderSequencer(TrainingSet<T> set) : base(set) { }
 
-    public override TrainingPair Current => Datum[current];
+    public override TrainingPair<T> Current => Datum[current];
 
     public override bool MoveNext() {
         if ((current + 1) < Datum.Size) {
@@ -120,18 +121,18 @@ public class InOrderSequencer : TrainingPairSequencer {
     }
 }
 
-public class RandomSequencer : TrainingPairSequencer {
+public class RandomSequencer<T> : TrainingPairSequencer<T> where T:INumber<T> {
 
     private int max_taken;
     private int current = -1;
 
-    public RandomSequencer(TrainingSet set, int amount) : base(set) {
+    public RandomSequencer(TrainingSet<T> set, int amount) : base(set) {
         this.max_taken = Math.Max(1, amount);
         this.current = -1;
     }
 
-    private TrainingPair? selected = null;
-    public override TrainingPair Current => selected is not null ? selected : throw new IndexOutOfRangeException();
+    private TrainingPair<T>? selected = null;
+    public override TrainingPair<T> Current => selected is not null ? selected : throw new IndexOutOfRangeException();
 
     private Random rng = new Random();
 
@@ -155,12 +156,12 @@ public class RandomSequencer : TrainingPairSequencer {
 /// <summary>
 /// An enumerator that accesses the training data in a randomized order
 /// </summary>
-public class ShuffledSequencer : TrainingPairSequencer {
+public class ShuffledSequencer<T> : TrainingPairSequencer<T> where T:INumber<T> {
     private static readonly Random rng = new Random();
-    private List<TrainingPair> shuffled;
+    private List<TrainingPair<T>> shuffled;
     private int current = -1;
 
-    public ShuffledSequencer(TrainingSet set) : base(set) {
+    public ShuffledSequencer(TrainingSet<T> set) : base(set) {
         shuffled = [..set];
         shuffle();
         current = -1;
@@ -181,7 +182,7 @@ public class ShuffledSequencer : TrainingPairSequencer {
         }
     }
 
-    public override TrainingPair Current => shuffled[current];
+    public override TrainingPair<T> Current => shuffled[current];
 
     public override bool MoveNext() {
         if ((current + 1) < shuffled.Count) {
@@ -201,35 +202,35 @@ public class ShuffledSequencer : TrainingPairSequencer {
 /// <summary>
 /// Description of a set containing network training data
 /// </summary>
-public interface ITrainingDataSet {
-    public TrainingPairSequencer SampleSequentially();
-    public TrainingPairSequencer SampleRandomly();
+public interface ITrainingDataSet<T> where T:INumber<T> {
+    public TrainingPairSequencer<T> SampleSequentially();
+    public TrainingPairSequencer<T> SampleRandomly();
 }
 
 /// <summary>
 /// A set of training data for training a neural network
 /// </summary>
-public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
-    private List<TrainingPair> data {get; init;}
+public class TrainingSet<T> : IEnumerable<TrainingPair<T>>, ITrainingDataSet<T> where T:INumber<T> {
+    private List<TrainingPair<T>> data {get; init;}
 
     public TrainingSet() {
-        this.data = new List<TrainingPair>();
+        this.data = new List<TrainingPair<T>>();
     }
 
     public TrainingSet(int initial_capacity) {
-        this.data = new List<TrainingPair>(initial_capacity);
+        this.data = new List<TrainingPair<T>>(initial_capacity);
     }
 
-    public TrainingSet(TrainingPair first, params TrainingPair[] next) {
+    public TrainingSet(TrainingPair<T> first, params TrainingPair<T>[] next) {
         this.data = [first, ..next];
     }
-    public TrainingSet(params IEnumerable<TrainingPair>[] datas) {
-        this.data = new List<TrainingPair>();
+    public TrainingSet(params IEnumerable<TrainingPair<T>>[] datas) {
+        this.data = new List<TrainingPair<T>>();
         foreach (var d in datas)
             this.data.AddRange(d);
     }
 
-    public TrainingSet(IEnumerable<TrainingPair> data) {
+    public TrainingSet(IEnumerable<TrainingPair<T>> data) {
         this.data = [..data];
     }
 
@@ -237,20 +238,20 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// Add a pair to the training set
     /// </summary>
     /// <param name="pair">training pair</param>
-    public void Add(TrainingPair pair) => data.Add(pair);
+    public void Add(TrainingPair<T> pair) => data.Add(pair);
 
     /// <summary>
     /// Add an input/output pair to the training set
     /// </summary>
     /// <param name="input">training pair input</param>
     /// <param name="output">training pair output</param>
-    public void Add(Vec<double> input, Vec<double> output) => data.Add(new TrainingPair{ Input = input, Output = output});
+    public void Add(Vec<T> input, Vec<T> output) => data.Add(new TrainingPair<T>{ Input = input, Output = output});
     
     /// <summary>
     /// Add a range of training pairs to the training set
     /// </summary>
     /// <param name="items">training pairs</param>
-    public void AddRange(IEnumerable<TrainingPair> items) => data.AddRange(items);
+    public void AddRange(IEnumerable<TrainingPair<T>> items) => data.AddRange(items);
 
     /// <summary>
     /// Get a particular training pair from the set
@@ -258,7 +259,7 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// <param name="index">index of the pair</param>
     /// <returns>training pair</returns>
     /// <exception cref="IndexOutOfRangeException">Thrown when the index is out of range</exception>
-    public TrainingPair this[int index] {
+    public TrainingPair<T> this[int index] {
         get {
             if (index < 0 || index >= data.Count) {
                 throw new IndexOutOfRangeException($"Index {index} is out of range of the dataset");
@@ -276,22 +277,22 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// Sample the training data in sequential order
     /// </summary>
     /// <returns>sequence</returns>
-    public TrainingPairSequencer SampleSequentially() => new InOrderSequencer(this);
+    public TrainingPairSequencer<T> SampleSequentially() => new InOrderSequencer<T>(this);
 
     /// <summary>
     /// Sample the training data in a random order
     /// </summary>
     /// <returns>sequence</returns>
-    public TrainingPairSequencer SampleRandomly() => new ShuffledSequencer(this);
+    public TrainingPairSequencer<T> SampleRandomly() => new ShuffledSequencer<T>(this);
 
     /// <summary>
     /// Sample the training data in a random order a certain number of times
     /// </summary>
     /// <param name="count">number of samples to take</param>
     /// <returns>sequence</returns>
-    public TrainingPairSequencer SampleRandomly(int count) => new RandomSequencer(this, count);
+    public TrainingPairSequencer<T> SampleRandomly(int count) => new RandomSequencer<T>(this, count);
 
-    public IEnumerator<TrainingPair> GetEnumerator() => this.data.GetEnumerator();
+    public IEnumerator<TrainingPair<T>> GetEnumerator() => this.data.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => this.data.GetEnumerator();
 
     /// <summary>
@@ -299,13 +300,13 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// </summary>
     /// <param name="groupCount">number of groups</param>
     /// <returns>group of training sets</returns>
-    public IEnumerable<TrainingSet> SplitEvenly(int groupCount) {
+    public IEnumerable<TrainingSet<T>> SplitEvenly(int groupCount) {
         int totalCount = this.Size;
         int groupSize = (int)(Math.Ceiling((double)totalCount / (double)groupCount));
 
         int startIndex = 0;
         for (int i = 0; i < groupCount; i++) {
-            yield return new TrainingSet(this.Skip(startIndex).Take(groupSize));
+            yield return new TrainingSet<T>(this.Skip(startIndex).Take(groupSize));
             startIndex += groupSize;
         }
     }
@@ -315,10 +316,10 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// </summary>
     /// <param name="conditions">group conditions</param>
     /// <returns>group of training sets</returns>
-    public IEnumerable<TrainingSet> SplitWhen(params Predicate<(TrainingSet Set, TrainingPair Value)>[] conditions) {
-        TrainingSet[] sets = new TrainingSet[conditions.Length];
+    public IEnumerable<TrainingSet<T>> SplitWhen(params Predicate<(TrainingSet<T> Set, TrainingPair<T> Value)>[] conditions) {
+        TrainingSet<T>[] sets = new TrainingSet<T>[conditions.Length];
         for(var i = 0; i < sets.Length; i++)
-            sets[i] = new TrainingSet();
+            sets[i] = new TrainingSet<T>();
 
         foreach (var pair in this.data) {
             for (var i = 0; i < conditions.Length; i++) {
@@ -347,15 +348,15 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// </summary>
     /// <param name="flex">list of flex probabilities</param>
     /// <returns>group of training sets</returns>
-    public IEnumerable<TrainingSet> SplitProbabilistically(params int[] flex) {
+    public IEnumerable<TrainingSet<T>> SplitProbabilistically(params int[] flex) {
         for (var i = 0; i < flex.Length; i++) {
             if (flex[i] < 0)
                 throw new ArgumentException("Flex values must be greater than or equal to 0");
         }
 
-        TrainingSet[] sets = new TrainingSet[flex.Length];
+        TrainingSet<T>[] sets = new TrainingSet<T>[flex.Length];
         for(var i = 0; i < sets.Length; i++)
-            sets[i] = new TrainingSet();
+            sets[i] = new TrainingSet<T>();
 
         var sum = flex.Sum();
 
@@ -378,10 +379,6 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
             yield return set;
     }
 
-
-    private static char[] magic = ['v', 'e', 'c'];
-    internal static ReadOnlyCollection<char> BinaryTrainingSetMagicNumber => Array.AsReadOnly(magic);
-
     /// <summary>
     /// Check if the given file is a binary encoded training set
     /// </summary>
@@ -390,8 +387,8 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     public static bool IsBinaryTrainingSet(FileInfo file) {
         using var reader = new BinaryReader(file.OpenRead());
         // Read magic (and validate)
-        for (var i = 0; i < magic.Length; i++) {
-            if (reader.ReadByte() != magic[i])
+        foreach (var magic in TrainingSetBuilder.BinaryTrainingSetMagicNumber) {
+            if (reader.ReadByte() != magic)
                 return false;
         }
 
@@ -401,7 +398,7 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
         var output_count = reader.ReadInt32();
         var input_count = reader.ReadInt32();
 
-        if (!Enum.IsDefined(typeof(VectorStorageType), type))
+        if (!Enum.IsDefined(typeof(TrainingVectorStorageType), type))
             return false;
         if (double.IsNaN(scaling) || double.IsInfinity(scaling))
             return false;
@@ -413,80 +410,74 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
         return true;
     }
 
-    // Not super useful in this class, but necessary if other utility programs create training data dumps
-    // eg Images2Dataset using U8 for pixel values
-    public enum VectorStorageType : byte {
-        U8 = 0b0001_0000,   U16 = 0b0001_0001,  U32 = 0b0001_0010,  U64 = 0b0001_0011,
-        I8 = 0b0010_0000,   I16 = 0b0010_0001,  I32 = 0b0010_0010,  I64 = 0b0010_0011,
-                            F16 = 0b0100_0001,  F32 = 0b0100_0010,  F64 = 0b0100_0011
-    }
-
     /// <summary>
     /// Add all vectors stored in binary format to this training data
     /// </summary>
     /// <param name="reader">reader containing binary data</param>
     /// <exception cref="ArgumentException">thrown when vector data-type is unknown</exception>
     public void AddFrom(BinaryReader reader) {
-        for (var i = 0; i < magic.Length; i++) {
-            if (reader.ReadByte() != magic[i])
+        foreach (var magic in TrainingSetBuilder.BinaryTrainingSetMagicNumber) {
+            if (reader.ReadByte() != magic)
                 throw new FormatException("Stream is not formatted as a binary training set");
         }
-        var type = (VectorStorageType)(reader.ReadByte());
+        var type = (TrainingVectorStorageType)(reader.ReadByte());
         var scaling = reader.ReadDouble();
         var output_count = reader.ReadInt32();
         var input_count = reader.ReadInt32();
 
         // Outputs
-        var outputs = new List<Vec<double>>(output_count);
+        var outputs = new List<Vec<T>>(output_count);
         for (var i = 0; i < output_count; i++) {
             var vec_size = reader.ReadInt32();
-            var data = new double[vec_size];
+            var data = new T[vec_size];
             for (var j = 0; j < vec_size; j++) {
-                data[j] = type switch {
-                    VectorStorageType.U8  => (double)reader.ReadByte(),
-                    VectorStorageType.U16 => (double)reader.ReadUInt16(),
-                    VectorStorageType.U32 => (double)reader.ReadUInt32(),
-                    VectorStorageType.U64 => (double)reader.ReadUInt64(),
+                var raw = type switch {
+                    TrainingVectorStorageType.U8  => (double)reader.ReadByte(),
+                    TrainingVectorStorageType.U16 => (double)reader.ReadUInt16(),
+                    TrainingVectorStorageType.U32 => (double)reader.ReadUInt32(),
+                    TrainingVectorStorageType.U64 => (double)reader.ReadUInt64(),
 
-                    VectorStorageType.I8  => (double)reader.ReadSByte(),
-                    VectorStorageType.I16 => (double)reader.ReadInt16(),
-                    VectorStorageType.I32 => (double)reader.ReadInt32(),
-                    VectorStorageType.I64 => (double)reader.ReadInt64(),
+                    TrainingVectorStorageType.I8  => (double)reader.ReadSByte(),
+                    TrainingVectorStorageType.I16 => (double)reader.ReadInt16(),
+                    TrainingVectorStorageType.I32 => (double)reader.ReadInt32(),
+                    TrainingVectorStorageType.I64 => (double)reader.ReadInt64(),
 
-                    VectorStorageType.F16 => (double)reader.ReadHalf(),
-                    VectorStorageType.F32 => (double)reader.ReadSingle(),
-                    VectorStorageType.F64 => (double)reader.ReadDouble(),
+                    TrainingVectorStorageType.F16 => (double)reader.ReadHalf(),
+                    TrainingVectorStorageType.F32 => (double)reader.ReadSingle(),
+                    TrainingVectorStorageType.F64 => (double)reader.ReadDouble(),
 
-                    _ => throw new ArgumentException(nameof(VectorStorageType))
+                    _ => throw new ArgumentException(nameof(TrainingVectorStorageType))
                 } * scaling;
+                data[j] = (T)Convert.ChangeType(raw, typeof(T));
             }
-            outputs.Add( Vec<double>.Wrap(data) );
+            outputs.Add( Vec<T>.Wrap(data) );
         }
 
         for (var i = 0; i < input_count; i++) {
             var output_index = reader.ReadInt32();
             var vec_size = reader.ReadInt32();
-            var data = new double[vec_size];
+            var data = new T[vec_size];
             for (var j = 0; j < vec_size; j++) {
-                data[j] = type switch {
-                    VectorStorageType.U8  => (double)reader.ReadByte(),
-                    VectorStorageType.U16 => (double)reader.ReadUInt16(),
-                    VectorStorageType.U32 => (double)reader.ReadUInt32(),
-                    VectorStorageType.U64 => (double)reader.ReadUInt64(),
+                var raw = type switch {
+                    TrainingVectorStorageType.U8  => (double)reader.ReadByte(),
+                    TrainingVectorStorageType.U16 => (double)reader.ReadUInt16(),
+                    TrainingVectorStorageType.U32 => (double)reader.ReadUInt32(),
+                    TrainingVectorStorageType.U64 => (double)reader.ReadUInt64(),
 
-                    VectorStorageType.I8  => (double)reader.ReadSByte(),
-                    VectorStorageType.I16 => (double)reader.ReadInt16(),
-                    VectorStorageType.I32 => (double)reader.ReadInt32(),
-                    VectorStorageType.I64 => (double)reader.ReadInt64(),
+                    TrainingVectorStorageType.I8  => (double)reader.ReadSByte(),
+                    TrainingVectorStorageType.I16 => (double)reader.ReadInt16(),
+                    TrainingVectorStorageType.I32 => (double)reader.ReadInt32(),
+                    TrainingVectorStorageType.I64 => (double)reader.ReadInt64(),
 
-                    VectorStorageType.F16 => (double)reader.ReadHalf(),
-                    VectorStorageType.F32 => (double)reader.ReadSingle(),
-                    VectorStorageType.F64 => (double)reader.ReadDouble(),
+                    TrainingVectorStorageType.F16 => (double)reader.ReadHalf(),
+                    TrainingVectorStorageType.F32 => (double)reader.ReadSingle(),
+                    TrainingVectorStorageType.F64 => (double)reader.ReadDouble(),
 
-                    _ => throw new ArgumentException(nameof(VectorStorageType))
+                    _ => throw new ArgumentException(nameof(TrainingVectorStorageType))
                 } * scaling;
+                data[j] = (T)Convert.ChangeType(raw, typeof(T));
             }
-            var input = Vec<double>.Wrap(data);
+            var input = Vec<T>.Wrap(data);
             var output = outputs[output_index];
             this.Add(input, output);
         }
@@ -498,8 +489,8 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
     /// <param name="writer">writer to dump vectors to</param>
     public void WriteTo(BinaryWriter writer) {
         // Write magic number
-        for (var i = 0; i < magic.Length; i++) {
-            writer.Write((byte)magic[i]);
+        foreach (var magic in TrainingSetBuilder.BinaryTrainingSetMagicNumber) {
+            writer.Write((byte)magic);
         }
 
         // Compute number of unique outputs
@@ -509,7 +500,7 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
         const double scaling = 1.0; // Assume that scaling was already applied
 
         // DATA_TYPE SCALING OUT_CLASSES, INPUT_CLASSES
-        writer.Write((byte)VectorStorageType.F64);  // Always write F64
+        writer.Write((byte)TrainingVectorStorageType.F64);  // Always write F64
         writer.Write(scaling);                      // Set scaling factor
         writer.Write(outputs.Length);               // Set output count
         writer.Write(this.Size);                    // Set input count
@@ -518,7 +509,7 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
         foreach (var output in outputs) {
             writer.Write(output.Dimensionality);
             foreach (var element in output) {
-                writer.Write(element);
+                writer.Write((double)Convert.ChangeType(element, typeof(double)));
             }
         }
 
@@ -528,8 +519,16 @@ public class TrainingSet : IEnumerable<TrainingPair>, ITrainingDataSet {
             writer.Write(output_index);
             writer.Write(pair.Input.Dimensionality);
             foreach (var element in pair.Input) {
-                writer.Write(element);
+                writer.Write((double)Convert.ChangeType(element, typeof(double)));
             }
         }
     }
+}
+
+// Not super useful in this class, but necessary if other utility programs create training data dumps
+// eg Images2Dataset using U8 for pixel values
+public enum TrainingVectorStorageType : byte {
+    U8 = 0b0001_0000,   U16 = 0b0001_0001,  U32 = 0b0001_0010,  U64 = 0b0001_0011,
+    I8 = 0b0010_0000,   I16 = 0b0010_0001,  I32 = 0b0010_0010,  I64 = 0b0010_0011,
+                        F16 = 0b0100_0001,  F32 = 0b0100_0010,  F64 = 0b0100_0011
 }

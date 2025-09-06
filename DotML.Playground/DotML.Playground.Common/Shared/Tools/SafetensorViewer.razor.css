@@ -1,0 +1,32 @@
+table {
+    width: 100%;
+}
+
+.w3-ul li {
+    padding: 0;
+}
+
+.line {
+    white-space: nowrap;
+    overflow-x: auto;
+}
+
+.line-item {
+    display: inline-block;
+    padding: 0 5px;
+    width: 128px;
+    overflow: hidden;
+}
+
+h2 {
+    margin-top: 0;
+}
+
+.upload {
+    padding: 12px;
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    border: 2px dashed white;
+    border-radius: 25px;
+}

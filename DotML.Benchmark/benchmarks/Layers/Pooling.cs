@@ -17,21 +17,21 @@ public class BenchmarkPoolingLayer {
 
     private FeedforwardNetworkLayer max;
     private FeedforwardNetworkLayer avg;
-    private BatchedFeatureSet<double> input;
-    private BatchedFeatureSet<double> output;
+    private BatchedFeatureSet<float> input;
+    private BatchedFeatureSet<float> output;
 
     [GlobalSetup]
     public void Setup() {
         var max = new LocalMaxPoolingLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), KERNEL);
         var avg = new LocalAvgPoolingLayer(new Shape3D(IMG_CHANNELS, DIM_LENGTH, DIM_LENGTH), KERNEL);
 
-        var input = new FeatureSet<double>(max.InputShape);
-        var output = new FeatureSet<double>(max.OutputShape);
+        var input = new FeatureSet<float>(max.InputShape);
+        var output = new FeatureSet<float>(max.OutputShape);
 
         this.max = max;
         this.avg = avg;
-        this.input = new BatchedFeatureSet<double>(input);
-        this.output = new BatchedFeatureSet<double>(output);
+        this.input = new BatchedFeatureSet<float>(input);
+        this.output = new BatchedFeatureSet<float>(output);
     }
 
     [Benchmark]

@@ -41,10 +41,18 @@ public class Test : BaseCommand {
             : LossFunctions.MeanSquaredError
         ;
         var watch = Stopwatch.StartNew();
-        Fit.Test(network, data, report, Math.Max(1, Environment.ProcessorCount), 0.1, loss);
+        var (console_left, console_top) = Console.GetCursorPosition();
+        var progress_len = 0;
+        Fit.Test(network, data, report, Math.Max(1, Environment.ProcessorCount), 0.1, loss, on_progress: (current, max) => {
+            Console.SetCursorPosition(console_left, console_top);
+            var str = $"{current + 1}/{max}";
+            progress_len = Math.Max(progress_len, str.Length);
+            Console.Write(str);
+        });
         watch.Stop();
         var elapsed = watch.Elapsed;
-        Console.WriteLine("done");
+        Console.SetCursorPosition(console_left, console_top);
+        Console.WriteLine("done".PadRight(progress_len, ' '));
 
         // Draw console report
         DrawDivider();

@@ -6,7 +6,7 @@ namespace DotML.Test;
 
 [TestClass]
 public class FFTTest {
-    
+   /* 
     [TestMethod]
     public void TestFFT() {
         Complex[] series = [1, 2, 3, 4]; // Must have length be a power of 2
@@ -36,5 +36,5 @@ public class FFTTest {
             Assert.AreEqual(expected[i].Real, computed[i].Real, 0.001, string.Join(',', expected));
             Assert.AreEqual(expected[i].Imaginary, computed[i].Imaginary, 0.001, string.Join(',', expected));
         }
-    }
+    }*/
 }

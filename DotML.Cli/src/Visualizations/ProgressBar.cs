@@ -22,14 +22,16 @@ public class ProgressBar {
     private char empty = ' ';
     private char mark = '/';
 
-    private double mark_location = 5;
+    private List<double> mark_location = new List<double>();
 
     public void Mark(int amount, int total) {
         Mark((double)amount / (double)total);
     }
 
     public void Mark(double percent) {
-        this.mark_location = Math.Max(0, percent);
+        if (percent < 0 || percent >= 1)
+            return;
+        this.mark_location.Add(percent);
     }
 
     public void Update(int amount, int total) {
@@ -43,12 +45,15 @@ public class ProgressBar {
         for (var i = 0; i < bar_width; i++) {
             var i_percent = i / (double)(bar_width - 1);
             var next_i_percent = (i + 1) / (double)(bar_width - 1);
-            if (mark_location >= i_percent && mark_location < next_i_percent) {
+            bool is_mark = this.mark_location.Where(mark => mark >= i_percent && mark < next_i_percent).Any();
+            if (is_mark) {
                 Console.Write(mark);
-            } else {
+            }
+            else {
                 if (percent >= i_percent) {
                     Console.Write(filled);
-                } else {
+                }
+                else {
                     Console.Write(empty);
                 }
             }

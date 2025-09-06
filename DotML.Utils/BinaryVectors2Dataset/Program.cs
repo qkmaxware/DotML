@@ -3,6 +3,8 @@ using CommandLine;
 using DotML;
 using DotML.Network.Training;
 
+namespace BinaryVectors2Dataset;
+
 public class Program {
 
     public class Options {
@@ -16,34 +18,38 @@ public class Program {
     public static void Main() {
         var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
         Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(options => {
-            if (string.IsNullOrEmpty(options.OutName))
-                return;
-            var files = options.Files;
-            if (files is null || !files.Any())
-                return;
-            options.OutName = options.OutName.EndsWith(".bin") ? options.OutName : options.OutName + ".bin";
-
-            var parser = new BinaryClassifiedVectors();
-            // TrainingSet set = new TrainingSet();
-            var builder = new TrainingSetBuilder<byte>();
-            builder.ScalingFactor = 1.0 / 255.0;
-            foreach (var file in files) {
-                Console.Write($"Processing '{file}'...");
-                var info = new FileInfo(file);
-                if (!info.Exists)
-                    continue;
-                builder.AddRange(parser.ReadBytes(info, fixed_vector_size: 1024 * 3));
-                //set.AddRange(parser.Read(info));
-                Console.WriteLine("done");
-            }
-
-            using var out_stream = File.Open(options.OutName, FileMode.Create);
-            using var writer = new BinaryWriter(out_stream);
-            // set.WriteTo(writer);
-            builder.WriteTo(writer);
-            Console.WriteLine("Training set contains: " + builder.Count + " entries");
-            Console.WriteLine("File saved as " + options.OutName);
+            Exec(options);
         });
+    }
+
+    public static void Exec(Options options) {
+        if (string.IsNullOrEmpty(options.OutName))
+            return;
+        var files = options.Files;
+        if (files is null || !files.Any())
+            return;
+        options.OutName = options.OutName.EndsWith(".bin") ? options.OutName : options.OutName + ".bin";
+
+        var parser = new BinaryClassifiedVectors();
+        // TrainingSet set = new TrainingSet();
+        var builder = new TrainingSetBuilder<byte>();
+        builder.ScalingFactor = 1.0 / 255.0;
+        foreach (var file in files) {
+            Console.Write($"Processing '{file}'...");
+            var info = new FileInfo(file);
+            if (!info.Exists)
+                continue;
+            builder.AddRange(parser.ReadBytes(info, fixed_vector_size: 1024 * 3));
+            //set.AddRange(parser.Read(info));
+            Console.WriteLine("done");
+        }
+
+        using var out_stream = File.Open(options.OutName, FileMode.Create);
+        using var writer = new BinaryWriter(out_stream);
+        // set.WriteTo(writer);
+        builder.WriteTo(writer);
+        Console.WriteLine("Training set contains: " + builder.Count + " entries");
+        Console.WriteLine("File saved as " + options.OutName);
     }
 
 }
@@ -55,7 +61,7 @@ public class BinaryClassifiedVectors {
     public double ZeroValue = 0.0;
     public double OneValue = 1.0;
 
-    public IEnumerable<TrainingPair> Read(FileInfo file) {
+    public IEnumerable<TrainingPair<double>> Read(FileInfo file) {
         return read_classified_binary_vectors(
             file:               file, 
             category_off:       ZeroValue, 
@@ -107,7 +113,7 @@ public class BinaryClassifiedVectors {
         return Vec<double>.Wrap(values);
     }
 
-    private IEnumerable<TrainingPair> read_classified_binary_vectors(FileInfo file, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
+    private IEnumerable<TrainingPair<double>> read_classified_binary_vectors(FileInfo file, double category_off, double category_on, Func<BinaryReader, double> element_parser, int? fixed_vector_size = null) {
         using var stream = file.OpenRead();
         using var reader = new BinaryReader(stream);
         
@@ -130,6 +136,6 @@ public class BinaryClassifiedVectors {
             items.Add((Vec<double>.Wrap(input_vec), category_index));
         }
         
-        return items.Select(item => new TrainingPair { Input=item.Item1, Output=vector_from_label_index(item.Item2, category_count, category_off, category_on) });
+        return items.Select(item => new TrainingPair<double> { Input=item.Item1, Output=vector_from_label_index(item.Item2, category_count, category_off, category_on) });
     }
 }

@@ -4,7 +4,7 @@ using DotML.Network.Training;
 
 namespace DotML.Test;
 
-public delegate Vec<double> DataLabeller(string filename, string contents);
+public delegate Vec<float> DataLabeller(string filename, string contents);
 
 public static class ResourceLoader {
 
@@ -20,15 +20,15 @@ public static class ResourceLoader {
         return Reader.ReadToEnd();
     }
 
-    public static TrainingSet LoadTrainingVectors(IFeatureExtractor<string> vectorizor, DataLabeller labeller, IEnumerable<string> resources) {
-        TrainingSet set = new TrainingSet(
+    public static TrainingSet<float> LoadTrainingVectors(IFeatureExtractor<string, float> vectorizor, DataLabeller labeller, IEnumerable<string> resources) {
+        TrainingSet<float> set = new TrainingSet<float>(
             resources.Select(
                 res => {
                     var contents = LoadContents(res);
                     var label = labeller(Path.GetFileNameWithoutExtension(res), contents);
                     var data  = vectorizor.ToVector(contents);
                     
-                    return new TrainingPair{Input = data, Output = label};
+                    return new TrainingPair<float>{Input = data, Output = label};
                 }
             )
         );

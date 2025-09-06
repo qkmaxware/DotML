@@ -1,0 +1,139 @@
+@using DotML
+@using DotML.Network.Training
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject IJSRuntime js
+
+<table>
+    <tr>
+        <td>
+            <h2 class="w3-center">Set 1</h2>
+            <div class="upload">
+                @if (first is not null) {
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>Pairs</td> <td>@first.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Input Size</td> <td>@first.InputLength</td>
+                        </tr>
+                        <tr>
+                            <td>Ouput Size</td> <td>@first.OutputLength</td>
+                        </tr>
+                    </tbody>
+                </table>
+                }
+                <InputFile OnChange=LoadFile1></InputFile>
+            </div>
+        </td>
+        <td class="w3-jumbo" style="text-align: center;">
+            +
+        </td>
+        <td>   
+            <h2 class="w3-center">Set 2</h2>
+            <div class="upload">
+                @if (second is not null) {
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>Pairs</td> <td>@second.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Input Size</td> <td>@second.InputLength</td>
+                        </tr>
+                        <tr>
+                            <td>Ouput Size</td> <td>@second.OutputLength</td>
+                        </tr>
+                    </tbody>
+                </table>
+                }
+                <InputFile OnChange=LoadFile2></InputFile>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>
+            @if (CanMerge()) { 
+                <button class="w3-button highlight" style="width: 100%" @onclick=Merge>Merge</button>
+            }
+        </td>
+        <td></td>
+    </tr>
+</table>
+
+@code {
+    private TrainingSetBuilder? first;
+    private TrainingSetBuilder? second;
+
+    private async Task<TrainingSetBuilder?> LoadFile(InputFileChangeEventArgs e) {
+        try {
+            var file = e.GetMultipleFiles(1)[0];
+            using var stream = file.OpenReadStream(100_000_000);
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            memory.Position = 0;
+            using var reader = new BinaryReader(memory);
+            var set = TrainingSetBuilder.From(reader);
+            return set;
+        }
+        catch (Exception ex) {
+            Console.WriteLine(ex);
+            return null;
+        }
+    }
+
+    private async void LoadFile1(InputFileChangeEventArgs e) {
+        first = await LoadFile(e);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void LoadFile2(InputFileChangeEventArgs e) {
+        second = await LoadFile(e);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private bool CanMerge() {
+        if (first is null)
+            return false;
+        if (second is null)
+            return false;
+        return true;
+    }
+
+    private async void Merge() {
+        if (first is null)
+            return;
+        if (second is null)
+            return;
+          
+        if (first.StorageType == second.StorageType && first.ScalingFactor == second.ScalingFactor) {
+            // Slightly more efficient merge because storage type and scaling factors are the same
+            var next = first.Clone();
+            next.EnsureCapacity(first.Count + second.Count);
+            foreach (var item in second.TrainingPairs) {
+                next.Add(item.Key, item.Value);
+            }
+
+            using var memory = new MemoryStream();
+            using var writer = new BinaryWriter(memory);
+            next.WriteTo(writer);
+            memory.Position = 0;
+
+            await js.InvokeVoidAsync("BlazorComponents.Files.download", "merged.training.bin", memory.ToArray());
+        } else {
+            // Different storage types or scaling factors, need to convert
+            var next = first.ToDoubleTrainingSet();
+            next.AddRange(second.ToDoubleTrainingSet());
+
+            using var memory = new MemoryStream();
+            using var writer = new BinaryWriter(memory);
+            next.WriteTo(writer);
+            memory.Position = 0;
+            //using var streamRef = new DotNetStreamReference(stream: memory);
+
+            await js.InvokeVoidAsync("BlazorComponents.Files.download", "merged.training.bin", memory.ToArray());
+        }
+    }
+}
