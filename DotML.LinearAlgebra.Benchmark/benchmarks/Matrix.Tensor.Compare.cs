@@ -22,21 +22,21 @@ public class BenchmarkMatrixVsTensor {
     private Matrix<float>[] matrix;
     private Matrix<float> matrix_kernel = new Matrix<float>(5, 5); // 5x5 kernel
     private Tensor<float> tensor;
-    private Tensor<float> tensor_kernel = Tensor<float>.Defaults(new TensorShape(5, 5));
+    private Tensor<float> tensor_kernel = Tensor<float>.Ones(new TensorShape(5, 5));
 
     [GlobalSetup]
     public void Setup() {
         matrix = new Matrix<float>[Channels];
         for(var i = 0; i < Channels; i++)
             matrix[i] = new Matrix<float>(DimLength, DimLength);
-        tensor = Tensor<float>.Defaults(new TensorShape(Channels, DimLength, DimLength));
+        tensor = Tensor<float>.Ones(new TensorShape(Channels, DimLength, DimLength));
     }
     [GlobalCleanup]
     public void Cleanup() {
 
     }
     #endregion
-
+    /*
     [Benchmark]
     public void MatrixAdd() {
         var result = new Matrix<float>[Channels];
@@ -83,13 +83,14 @@ public class BenchmarkMatrixVsTensor {
 
     [Benchmark]
     public void TensorTranspose() {
-        // Swap only the last 2 for this case to match MatrixTranspose
-        var perm = Enumerable.Range(0, tensor.Rank).ToArray();
-        var temp = perm[^1];
-        perm[^1] = perm[^2];
-        perm[^2] = temp;
+        // Swap all dims (for rank 2 this is the same as MatrixTranspose)
+        var result = tensor.Transpose();
+    }
 
-        var result = tensor.Permute(perm);
+    [Benchmark]
+    public void TensorTransposeMat() {
+        // Swap only the last 2 for this case to match MatrixTranspose
+        var result = tensor.MatrixTranspose();
     }
 
     [Benchmark]
@@ -102,7 +103,7 @@ public class BenchmarkMatrixVsTensor {
     [Benchmark]
     public void TensorConvolve() {
         var result = tensor.Convolve2D(tensor_kernel);
-    }
+    }*/
 
     [Benchmark]
     public void MatrixTransposeConvolve() {
