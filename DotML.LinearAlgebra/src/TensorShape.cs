@@ -148,8 +148,8 @@ public readonly struct TensorShape
         this.strides = ComputeStrides(dims);
     }
 
-    // For internal methods only
-    private TensorShape(int[] dims, int[] strides)
+    // For internal methods only, not for general use
+    internal TensorShape(int[] dims, int[] strides)
     {
         this.dims = dims;
         this.strides = strides;

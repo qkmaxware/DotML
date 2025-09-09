@@ -427,6 +427,31 @@ where TNum : INumber<TNum>
     }
 
     /// <summary>
+    /// Multi-dimensional index access to tensor elements
+    /// </summary>
+    /// <param name="indices">Multi-dimensional index</param>
+    /// <returns>tensor element</returns>
+    public TNum this[params ReadOnlySpan<Index> indices]
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            Span<int> ints = stackalloc int[indices.Length];
+            for (var i = 0; i < indices.Length; i++)
+                ints[i] = indices[i].GetOffset(Shape.Length(i));
+            return this.elements[Shape.FlattenIndices(ints)];
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set
+        {
+            Span<int> ints = stackalloc int[indices.Length];
+            for (var i = 0; i < indices.Length; i++)
+                ints[i] = indices[i].GetOffset(Shape.Length(i));
+            this.elements[Shape.FlattenIndices(ints)] = value;
+        }
+    }
+
+    /// <summary>
     /// Operator for .Slice
     /// </summary>
     /// <param name="ranges">ranges to slice over</param>
@@ -1952,7 +1977,7 @@ where TNum : INumber<TNum>
         // Pre-computations (avoid computing inside the loops)
         const int StackKernelThreshold = 16;
         Span<int> kx_dilations = kernelWidth < StackKernelThreshold ? stackalloc int[kernelWidth] : new int[kernelWidth];
-        Span<int> ky_dilations = kernelWidth < StackKernelThreshold ? stackalloc int[kernelHeight] : new int[kernelHeight];
+        Span<int> ky_dilations = kernelHeight < StackKernelThreshold ? stackalloc int[kernelHeight] : new int[kernelHeight];
         for (var kx = 0; kx < kernelWidth; kx++) kx_dilations[kx] = kx * dilationX;
         for (var ky = 0; ky < kernelHeight; ky++) ky_dilations[ky] = ky * dilationY;
         ref int kx_dilationsRef = ref MemoryMarshal.GetReference(kx_dilations);
@@ -2031,12 +2056,193 @@ where TNum : INumber<TNum>
 
         return outputTensor;
     }
+    
+    public Tensor<TNum> TransposeConvolve2D_OutputDriven(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0, TNum? bias = default)
+    {
+        // Normalize all tensors to 4D (expand or reduce as required)
+        var input = this.ReshapeShared(this.Shape.NormalizeRank(4));            // [batch, channels, rows, columns]
+        kernels = kernels.ReshapeShared(kernels.Shape.NormalizeRank(4));        // [inChannelsGrouped, outChannelsPerGroup, kernelHeight, kernelWidth]
+
+        var batch = input.Shape.Length(0);
+        var inChannels = input.Shape.Length(1);
+        var inHeight = input.Shape.Length(2);
+        var inWidth = input.Shape.Length(3);
+        var inData = input.elements;
+
+        var inChannelsPerGroup = inChannels / groups;
+        var outChannelsPerGroup = kernels.Shape.Length(1);
+        var outChannels = outChannelsPerGroup * groups;
+
+        if (inChannels % groups != 0)
+            throw new ArgumentException("Input channels must be divisible by the number of groups.");
+        if (kernels.Shape.Length(0) != inChannelsPerGroup)
+            throw new ArgumentException("Kernel input channels do not match expected channels per group.");
+        if (kernels.Shape.Length(1) * groups != outChannels)
+            throw new ArgumentException("Kernel output channels do not match expected channels per group.");
+
+        var kernelHeight = kernels.Shape.Length(2);
+        var kernelWidth = kernels.Shape.Length(3);
+        var kernelData = kernels.elements;
+
+        // Compute output size (based on standard transposed conv formula)
+        var outHeight = (inHeight - 1) * strideY - inPadTop - inPadBottom + dilationY * (kernelHeight - 1) + 1 + outPadTop + outPadBottom;
+        var outWidth = (inWidth - 1) * strideX - inPadLeft - inPadRight + dilationX * (kernelWidth - 1) + 1 + outPadLeft + outPadRight;
+
+        var outputShape = new TensorShape(batch, outChannels, outHeight, outWidth);
+        var outputTensor = Tensor<TNum>.ConstantValued(outputShape, bias ?? TNum.Zero);
+        var outputData = outputTensor.elements;
+
+        var inStrides_0 = input.Shape.Stride(0);
+        var inStrides_1 = input.Shape.Stride(1);
+        var inStrides_2 = input.Shape.Stride(2);
+        var inStrides_3 = input.Shape.Stride(3);
+
+        var kerStrides_0 = kernels.Shape.Stride(0);
+        var kerStrides_1 = kernels.Shape.Stride(1);
+        var kerStrides_2 = kernels.Shape.Stride(2);
+        var kerStrides_3 = kernels.Shape.Stride(3);
+        
+        var outStrides_0 = outputShape.Stride(0);
+        var outStrides_1 = outputShape.Stride(1);
+        var outStrides_2 = outputShape.Stride(2);
+        var outStrides_3 = outputShape.Stride(3);
+
+        // Pre-computations (avoid computing inside the loops)
+        /*const int StackKernelThreshold = 16;
+        Span<int> kx_dilations = kernelWidth < StackKernelThreshold ? stackalloc int[kernelWidth] : new int[kernelWidth];
+        Span<int> ky_dilations = kernelHeight < StackKernelThreshold ? stackalloc int[kernelHeight] : new int[kernelHeight];
+        for (var kx = 0; kx < kernelWidth; kx++) kx_dilations[kx] = kx * dilationX;
+        for (var ky = 0; ky < kernelHeight; ky++) ky_dilations[ky] = ky * dilationY;*/
+        
+        // Setup spans and references
+        //Span<TNum> inputSpan = inData;
+        //Span<TNum> kernelSpan = kernelData;
+        //Span<TNum> outputSpan = outputData;
+
+        //ref TNum inputRef = ref MemoryMarshal.GetReference(inputSpan);
+        //ref TNum kernelRef = ref MemoryMarshal.GetReference(kernelSpan);
+        //ref TNum outputRef = ref MemoryMarshal.GetReference(outputSpan);
+
+        //ref int kx_dilationsRef = ref MemoryMarshal.GetReference(kx_dilations);
+        //ref int ky_dilationsRef = ref MemoryMarshal.GetReference(ky_dilations);
+
+        TNum zero = TNum.Zero;
+        TNum initial = bias ?? zero;
+
+        // Here be giants vvvv
+        for (int b = 0; b < batch; b++)
+        {
+            var b_inStrides_0 = b * inStrides_0;
+            var b_outStrides_0 = b * outStrides_0;
+
+            for (int g = 0; g < groups; g++)
+            {
+                int inOffset = g * inChannelsPerGroup;
+                int outOffset = g * outChannelsPerGroup;
+
+                //Parallel.For(0, outChannelsPerGroup, oc => {      
+                for (int oc = 0; oc < outChannelsPerGroup; oc++)
+                {
+                    int fullOutChannel = outOffset + oc;
+                    var out_offset_part0 = b_outStrides_0 + fullOutChannel * outStrides_1;
+                    var oc_kerStrides_1 = oc * kerStrides_1;
+
+                    Parallel.For(0, outHeight, oy => {
+                    //for (int oy = 0; oy < outHeight; oy++)
+                    {
+                        int outYBase = oy - outPadTop + inPadTop;
+                        int oy_outStrides_2 = oy * outStrides_2;
+                        var out_offset_part1 = out_offset_part0 + oy_outStrides_2;
+
+                        for (int ox = 0; ox < outWidth; ox++)
+                        {
+                            int outXBase = ox - outPadLeft + inPadLeft;
+                            int ox_outStrides_3 = ox * outStrides_3;
+                            var out_idx = out_offset_part1 + ox_outStrides_3;
+
+                            TNum sum = initial;
+
+                            for (int ic = 0; ic < inChannelsPerGroup; ic++)
+                            {
+                                int fullInChannel = inOffset + ic;
+                                var ic_kerStrides_0 = ic * kerStrides_0;
+                                var ker_offset_part0 = ic_kerStrides_0 + oc_kerStrides_1;
+
+                                for (int ky = 0; ky < kernelHeight; ky++)
+                                {
+                                    if (!TryComputeInputCoord(oy, strideY, inPadTop, ky * dilationY, out int iy) || iy < 0 || iy >= inHeight)
+                                        continue;
+
+                                    var kerIndexBase = ky * kerStrides_2;
+                                    var in_offset_part1 = b_inStrides_0 + fullInChannel * inStrides_1 + iy * inStrides_2;
+
+                                    for (int kx = 0; kx < kernelWidth; kx++)
+                                    {
+                                        if (!TryComputeInputCoord(ox, strideX, inPadLeft, kx * dilationX, out int ix) || ix < 0 || ix >= inWidth)
+                                            continue;
+
+                                        int in_idx = in_offset_part1 + ix * inStrides_3;
+                                        TNum val = inData[in_idx]; // inData[in_idx];
+                                        // Hmm this could be slower than just adding 0, idk
+                                        if (val == zero) continue; // Skip 0's (can result in real wins when ReLU is used)
+
+                                        int kerIdx = kerIndexBase + kx * kerStrides_3;
+                                        TNum src = kernelData[kerIdx];
+                                        sum += val * src;
+                                    }
+                                }
+                            }
+
+                            outputData[out_idx] = sum;
+                        }
+                    } });
+                } //});
+            }
+        }
+
+        return outputTensor;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool TryComputeInputCoord(int outputCoord, int stride, int pad, int kernelDilatedCoord, out int inputCoord)
+    {
+        int numerator = outputCoord + pad - kernelDilatedCoord;
+        if (numerator < 0)
+        {
+            inputCoord = -1;
+            return false;
+        }
+
+        int remainder;
+        int quotient = Math.DivRem(numerator, stride, out remainder);
+        if (remainder != 0)
+        {
+            inputCoord = -1;
+            return false;
+        }
+        inputCoord = quotient;
+        return true;
+    }
+
+    // Left for clarity for the methods ^^
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int transConv_compute_input_y(int outputY, int strideY, int padTop, int padBottom, int dilationY, int kernelY)
+    {
+        return (outputY + padTop - dilationY * kernelY) / strideY;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int transConv_compute_input_x(int outputX, int strideX, int padLeft, int padRight, int dilationX, int kernelX)
+    {
+        return (outputX + padLeft - dilationX * kernelX) / strideX;
+    }
 
     /// <summary>
     /// Fill the tensor with all values being the same
     /// </summary>
     /// <param name="value">Value to fill across the tensor</param>
-    public void FillConstant(TNum value) {
+    public void FillConstant(TNum value)
+    {
         var values = this.elements.AsSpan();
         values.Fill(value);
     }
@@ -2083,6 +2289,22 @@ where TNum : INumber<TNum>
         if (axis < 0 || axis >= rank)
             throw new ArgumentOutOfRangeException(nameof(axis), "Axis is out of range");
         return axis;
+    }
+
+    /// <summary>
+    /// Normalize a potentially negative axis index to only positive indices in tensor rank (inlined to reduce call overhead)
+    /// </summary>
+    /// <param name="axis">axis to normalize</param>
+    /// <returns>positive axis index</returns>
+    /// <exception cref="ArgumentOutOfRangeException">thrown if axis index is out of bounds</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int NormalizeAxis(Index axis)
+    {
+        var rank = Shape.Rank;
+        var axisi = axis.GetOffset(rank);
+        if (axisi < 0 || axisi >= rank)
+            throw new ArgumentOutOfRangeException(nameof(axis), "Axis is out of range");
+        return axisi;
     }
 
     /// <summary>
@@ -2278,7 +2500,7 @@ where TNum : INumber<TNum>
     /// <returns>Tensor with reduced shape</returns>
     /// <exception cref="ArgumentNullException">thrown if the reducer is null</exception>
     /// <exception cref="ArgumentOutOfRangeException">thrown if the axis is invalid</exception>
-    public Tensor<TAccumulate> Reduce<TAccumulate>(int axis, TAccumulate seed, Func<TAccumulate, TNum, TAccumulate> reducer, bool keepdim = true)
+    public Tensor<TAccumulate> Reduce<TAccumulate>(Index axis, TAccumulate seed, Func<TAccumulate, TNum, TAccumulate> reducer, bool keepdim = true)
     where TAccumulate : INumber<TAccumulate>
     {
         if (reducer is null)
@@ -2355,7 +2577,7 @@ where TNum : INumber<TNum>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Tensor<TAccumulate> ReduceRows<TAccumulate>(TAccumulate seed, Func<TAccumulate, TNum, TAccumulate> reducer, bool keepdim = true)
     where TAccumulate : INumber<TAccumulate>
-    => Reduce(axis: -2, seed, reducer, keepdim);
+    => Reduce(axis: ^2, seed, reducer, keepdim);
     /// <summary>
     /// Perform reduction on the columns dimension (last)
     /// </summary>
@@ -2367,7 +2589,7 @@ where TNum : INumber<TNum>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Tensor<TAccumulate> ReduceColumns<TAccumulate>(TAccumulate seed, Func<TAccumulate, TNum, TAccumulate> reducer, bool keepdim = true)
     where TAccumulate : INumber<TAccumulate>
-    => Reduce(axis: -1, seed, reducer, keepdim);
+    => Reduce(axis: ^1, seed, reducer, keepdim);
     /// <summary>
     /// Sum reduction along the given axis
     /// </summary>
@@ -2375,26 +2597,71 @@ where TNum : INumber<TNum>
     /// <param name="keepdim">flag to indicate if the reduced dimension is to be kept (at size 1) or removed. Default true</param>
     /// <returns>reduced tensor</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Tensor<TNum> Sum(int axis, bool keepdim = true) => Reduce(axis, TNum.Zero, static (a, b) => a + b, keepdim);
+    public Tensor<TNum> Sum(Index axis, bool keepdim = true) => Reduce(axis, TNum.Zero, static (a, b) => a + b, keepdim);
+
+    /// <summary>
+    /// Global sum of all elements in the tensor
+    /// </summary>
+    /// <returns>sum</returns>
+    public TNum Sum() {
+        TNum total = TNum.Zero;
+        foreach (var val in this.elements)
+            total += val;
+
+        return total;
+    }
+
     /// <summary>
     /// Mean reduction along the given axis
     /// </summary>
     /// <param name="axis">axis to sum over</param>
     /// <param name="keepdim">flag to indicate if the reduced dimension is to be kept (at size 1) or removed. Default true</param>
     /// <returns>reduced tensor</returns>
-    public Tensor<TNum> Mean(int axis, bool keepdim = true)
+    public Tensor<TNum> Mean(Index axis, bool keepdim = true)
     {
         var positive_axis = NormalizeAxis(axis);
 
         var sum = Sum(positive_axis, keepdim); // If positive_axis was out of bounds I'd get an exception here before we can move on
-        var divisor = TNum.CreateChecked(Shape.Length(positive_axis));
+        var divisor = TNum.One / TNum.CreateChecked(Shape.Length(positive_axis));
 
-        var elements = sum.elements;
-        for (int i = 0; i < elements.Length; i++)
-        {
-            elements[i] /= divisor;
-        }
+        sum.ScaleByInplace(divisor); // Leverage the vectorized scaling operation
         return sum;
+    }
+
+    /// <summary>
+    /// Global mean of all elements in the tensor
+    /// </summary>
+    /// <returns>mean</returns>
+    public TNum Mean()
+    {
+        TNum total = TNum.Zero;
+        foreach (var val in this.elements)
+            total += val;
+
+        TNum mean = total / TNum.CreateChecked(this.elements.Length);
+        return mean;
+    }
+
+    /// <summary>
+    /// Product of all alements alng the given axis
+    /// </summary>
+    /// <param name="axis">axis to compute product over</param>
+    /// <param name="keepdim">flag to indicate if the reduced dimension is to be kept (at size 1) or removed. Default true</param>
+    /// <returns>reduced tensor</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Tensor<TNum> Product(Index axis, bool keepdim = true) => this.Reduce(axis, TNum.One, static (acc, val) => acc * val, keepdim);
+
+    /// <summary>
+    /// Global product of all elements in the tensor
+    /// </summary>
+    /// <returns>product</returns>
+    public TNum Product()
+    {
+        TNum total = TNum.One;
+        foreach (var val in this.elements)
+            total *= val;
+
+        return total;
     }
 
     /// <summary>
@@ -2403,7 +2670,7 @@ where TNum : INumber<TNum>
     /// <param name="axes">Axes to mirror (negative indexing supported)</param>
     /// <returns>Tensor with the provided axes mirrored</returns>
     /// <exception cref="ArgumentException">thrown if the axes are incorrect</exception>
-    public Tensor<TNum> Mirror(params ReadOnlySpan<int> axes)
+    public Tensor<TNum> Mirror(params ReadOnlySpan<Index> axes)
     {
         var rank = Shape.Rank;
 
@@ -2442,7 +2709,14 @@ where TNum : INumber<TNum>
     /// </summary>
     /// <returns>Tensor with the provided axes mirrored</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Tensor<TNum> Mirror() => Mirror(Enumerable.Range(0, Shape.Rank).ToArray());
+    public Tensor<TNum> Mirror()
+    {
+        var shape = this.Shape;
+        Span<Index> axes = stackalloc Index[shape.Rank];
+        for (int i = 0; i < shape.Rank; i++)
+            axes[i] = i;
+        return Mirror(axes);
+    }
     /// <summary>
     /// Transpose a tensor (reverse its dimensions)
     /// </summary>
@@ -2454,10 +2728,75 @@ where TNum : INumber<TNum>
             return MatrixTranspose();
 
         var shape = this.Shape;
-        Span<int> perm = stackalloc int[shape.Rank];
+        Span<Index> perm = stackalloc Index[shape.Rank];
         for (int i = 0; i < shape.Rank; i++)
             perm[i] = shape.Rank - 1 - i;
         return Permute(perm);
+    }
+
+    /// <summary>
+    /// <para>
+    /// Transpose 2 dimensions of the tensor.
+    /// </para>
+    /// <para>
+    /// Example:
+    /// <code>
+    /// var matrixTranspose = tensor.Transpose(^2, ^1);
+    /// </code>
+    /// </para>
+    /// </summary>
+    /// <param name="dim0">first dimension</param>
+    /// <param name="dim1">second dimension</param>
+    /// <returns>Tensor with the 2 dimensions transposed</returns>
+    /// <exception cref="InvalidOperationException">thrown if a transposition cannot be performed</exception>
+    public Tensor<TNum> Transpose(Index dim0, Index dim1)
+    {
+        var rank = this.Shape.Rank;
+        if (rank < 2)
+            throw new InvalidOperationException("Cannot transpose a tensor with rank less than 2");
+
+        int a = NormalizeAxis(dim0);
+        int b = NormalizeAxis(dim1);
+        if (a == b)
+            return this;
+
+        var oldShape = this.Shape;
+        ReadOnlySpan<int> strides = oldShape.AsStrideSpan(); // row-major
+        ReadOnlySpan<int> dimsSizes = oldShape.AsDimensionSpan();
+        var dims = dimsSizes.ToArray();
+        var strs = strides.ToArray();
+        (dims[a], dims[b]) = (dims[b], dims[a]);    // Swap dim sizes
+        (strs[a], strs[b]) = (strs[b], strs[a]);    // Swap strides
+        var newShape = new TensorShape(dims, strs); // Copy strides too
+
+        // Precompute strides
+        int srcStrideA = strides[a], destStrideA = strs[a]; 
+        int srcStrideB = strides[b], destStrideB = strs[b];
+        int dimSizeA = dimsSizes[a];
+        int dimSizeB = dimsSizes[b];
+
+        // Compute the batch size: elements per matrix
+        int matrixSize = dimSizeA * dimSizeB;
+        int matrixCount = this.elements.Length / matrixSize;
+
+        var result = new TNum[this.elements.Length];
+
+        for (int m = 0; m < matrixCount; m++)
+        {
+            int baseOffset = m * matrixSize;
+
+            for (int i = 0; i < dimSizeA; i++)
+            {
+                for (int j = 0; j < dimSizeB; j++)
+                {
+                    int srcIndex = baseOffset + i * srcStrideA + j * srcStrideB;
+                    int dstIndex = baseOffset + j * destStrideA + i * destStrideB;
+                    result[dstIndex] = this.elements[srcIndex];
+                }
+            }
+        }
+
+        return new Tensor<TNum>(newShape, result);
     }
 
     /// <summary>
@@ -2486,10 +2825,11 @@ where TNum : INumber<TNum>
             var srcOffset = m * length;
             var dstOffset = m * length;
 
-            for (var r = 0; r < rows; r++) {
+            for (var r = 0; r < rows; r++)
+            {
                 var soff = srcOffset + r * cols;
                 var roff = dstOffset + r;
-                
+
                 for (var c = 0; c < cols; c++)
                 {
                     // Transpose: [r, c] -> [c, r]
@@ -2507,7 +2847,7 @@ where TNum : INumber<TNum>
     /// <param name="permutation">list of axis indices in the original tensor to use for the permuted tensor (negative indexing supported)</param>
     /// <returns>permuted tensor</returns>
     /// <exception cref="ArgumentException">thrown if the permutation list has missing or invalid elements</exception>
-    public Tensor<TNum> Permute(params ReadOnlySpan<int> permutation)
+    public Tensor<TNum> Permute(params ReadOnlySpan<Index> permutation)
     {
         // Safety checks
         var rank = this.Shape.Rank;
@@ -2549,6 +2889,62 @@ where TNum : INumber<TNum>
 
         // Return the permuted matrix
         return result;
+    }
+
+    /// <summary>
+    /// Compute the variance along the given axis
+    /// </summary>
+    /// <param name="axis">axis</param>
+    /// <param name="ddof">degrees of freedom</param>
+    /// <param name="keepdim">flag to indicate if the reduced dimension is to be kept (at size 1) or removed. Default true</param>
+    /// <returns>variation tensor</returns>
+    /// <exception cref="ArgumentOutOfRangeException">thrown when ddot is greater than or equal to axis length</exception>
+    public Tensor<TNum> Variance(Index axis, int ddof = 0, bool keepdim = true)
+    {
+        int axisIndex = NormalizeAxis(axis);
+        int count = this.Shape.Length(axisIndex);
+
+        if (ddof >= count)
+            throw new ArgumentOutOfRangeException(nameof(ddof), "ddof must be less than the number of elements.");
+
+        // Step 1: Compute mean
+        var mean = this.Mean(axis, keepdim: true); // Pree sure this is broken because I don't really support broadcasting in subtracton
+
+        // Step 2: Subtract mean and square (reuse mean tensor for all values)
+        ElementWiseSubtract(mean.elements, this.elements, mean.elements); // Difference
+        ElementWiseMultiply(mean.elements, mean.elements, mean.elements); // Square
+
+        // Step 3: Reduce (sum of square differences)
+        var sumsq = mean.Sum(axis);
+        sumsq.ScaleByInplace(TNum.One / TNum.CreateChecked(count - ddof));
+        return sumsq;
+    } 
+
+    /// <summary>
+    /// Compute the global variance of all elements in the tensor
+    /// </summary>
+    /// <param name="ddof">degrees of freedom</param>
+    /// <returns>global variance</returns>
+    /// <exception cref="ArgumentOutOfRangeException">thrown when ddot is greater than or equal to number of elements</exception>
+    public TNum Variance(int ddof = 0)
+    {
+        int n = this.elements.Length;
+        if (ddof >= n)
+            throw new ArgumentOutOfRangeException(nameof(ddof), "ddof must be less than the number of elements.");
+
+        // Compute mean
+        var mean = this.Mean();
+
+        // Compute squared differences
+        TNum sumSqDiff = TNum.Zero;
+        foreach (var val in this.elements)
+        {
+            var diff = val - mean;
+            sumSqDiff += diff * diff;
+        }
+
+        TNum variance = sumSqDiff / TNum.CreateChecked(n - ddof);
+        return variance;
     }
 
     /// <summary>

@@ -50,7 +50,7 @@ public static class TensorSqrt
     /// Elementwise value square root in-place
     /// </summary>
     /// <returns>tensor with each element square rooted</returns>
-    public static void FloorInplace<TNum>(this Tensor<TNum> self)
+    public static void SqrtInplace<TNum>(this Tensor<TNum> self)
     where TNum : INumber<TNum>, IRootFunctions<TNum>
     {
         var elements = self.AsArray();

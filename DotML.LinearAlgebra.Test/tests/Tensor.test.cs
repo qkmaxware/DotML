@@ -1,9 +1,11 @@
 namespace DotML.Test;
 
 [TestClass]
-public class TestTensor {
+public class TestTensor
+{
     [TestMethod]
-    public void TestCreation() {
+    public void TestCreation()
+    {
         Tensor<double> matrix = Tensor<double>.Zeros(new TensorShape(5, 2));
         Assert.AreEqual(5, matrix.Shape.Length(0));
         Assert.AreEqual(2, matrix.Shape.Length(1));
@@ -33,7 +35,8 @@ public class TestTensor {
     }
 
     [TestMethod]
-    public void TestTranspose() {
+    public void TestTranspose()
+    {
         Tensor<double> m2 = Tensor<double>.FromRectangularArray(new double[,]{
             {1, 2, 3},
             {4, 5, 6}
@@ -48,20 +51,49 @@ public class TestTensor {
         Assert.AreEqual(2, m2shape.Length(0));
         Assert.AreEqual(3, m2shape.Length(1));
 
-        var transposed = m2.Transpose();
-        Assert.AreEqual(3, transposed.Shape.Length(0));
-        Assert.AreEqual(2, transposed.Shape.Length(1));
-        Assert.AreEqual(1, transposed[0, 0]);
-        Assert.AreEqual(4, transposed[0, 1]);
-        Assert.AreEqual(3, transposed[2, 0]);
-        Assert.AreEqual(6, transposed[2, 1]);
-        var tshape = transposed.Shape;
-        Assert.AreEqual(3, tshape.Length(0));
-        Assert.AreEqual(2, tshape.Length(1));
+        {
+            var transposed = m2.Transpose();
+            Assert.AreEqual(3, transposed.Shape.Length(0));
+            Assert.AreEqual(2, transposed.Shape.Length(1));
+            Assert.AreEqual(1, transposed[0, 0]);
+            Assert.AreEqual(4, transposed[0, 1]);
+            Assert.AreEqual(3, transposed[2, 0]);
+            Assert.AreEqual(6, transposed[2, 1]);
+            var tshape = transposed.Shape;
+            Assert.AreEqual(3, tshape.Length(0));
+            Assert.AreEqual(2, tshape.Length(1));
+        }
+
+        {
+            var transposed = m2.MatrixTranspose();
+            Assert.AreEqual(3, transposed.Shape.Length(0));
+            Assert.AreEqual(2, transposed.Shape.Length(1));
+            Assert.AreEqual(1, transposed[0, 0]);
+            Assert.AreEqual(4, transposed[0, 1]);
+            Assert.AreEqual(3, transposed[2, 0]);
+            Assert.AreEqual(6, transposed[2, 1]);
+            var tshape = transposed.Shape;
+            Assert.AreEqual(3, tshape.Length(0));
+            Assert.AreEqual(2, tshape.Length(1));
+        }
+
+        {
+            var transposed = m2.Transpose(^2, ^1);
+            Assert.AreEqual(3, transposed.Shape.Length(0));
+            Assert.AreEqual(2, transposed.Shape.Length(1));
+            Assert.AreEqual(1, transposed[0, 0]);
+            Assert.AreEqual(4, transposed[0, 1]);
+            Assert.AreEqual(3, transposed[2, 0]);
+            Assert.AreEqual(6, transposed[2, 1]);
+            var tshape = transposed.Shape;
+            Assert.AreEqual(3, tshape.Length(0));
+            Assert.AreEqual(2, tshape.Length(1));
+        }
     }
 
     [TestMethod]
-    public void TestElementWise() {
+    public void TestElementWise()
+    {
         {
             Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {
                 { 1, 2 },
@@ -69,10 +101,10 @@ public class TestTensor {
             });
 
             var B = A.ElementWise((x) => x * x);
-            Assert.AreEqual(1, B[0,0]);
-            Assert.AreEqual(2*2, B[0,1]);
-            Assert.AreEqual(3*3, B[1,0]);
-            Assert.AreEqual(4*4, B[1,1]);
+            Assert.AreEqual(1, B[0, 0]);
+            Assert.AreEqual(2 * 2, B[0, 1]);
+            Assert.AreEqual(3 * 3, B[1, 0]);
+            Assert.AreEqual(4 * 4, B[1, 1]);
 
             var C = A.ElementWise<float>((x) => (float)(x * x));
         }
@@ -88,15 +120,16 @@ public class TestTensor {
             });
 
             var C = A.ElementWiseBinary(B, (a, b) => a + b);
-            Assert.AreEqual(1+5, C[0,0]);
-            Assert.AreEqual(2+6, C[0,1]);
-            Assert.AreEqual(3+7, C[1,0]);
-            Assert.AreEqual(4+8, C[1,1]);
+            Assert.AreEqual(1 + 5, C[0, 0]);
+            Assert.AreEqual(2 + 6, C[0, 1]);
+            Assert.AreEqual(3 + 7, C[1, 0]);
+            Assert.AreEqual(4 + 8, C[1, 1]);
         }
     }
 
     [TestMethod]
-    public void TestReshape() {
+    public void TestReshape()
+    {
         Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {
             { 1, 2 },
             { 3, 4 }
@@ -107,14 +140,15 @@ public class TestTensor {
         //Assert.AreEqual(1, row.Length);
         Assert.AreEqual(1, row.Shape.Length(0));
         Assert.AreEqual(4, row.Shape.Length(1));
-        
+
         //Assert.AreEqual(1, col.Length);
         Assert.AreEqual(4, col.Shape.Length(0));
         Assert.AreEqual(1, col.Shape.Length(1));
     }
 
     [TestMethod]
-    public void TestHadamard() {
+    public void TestHadamard()
+    {
         Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {
             { 1, 2 },
             { 3, 4 }
@@ -123,14 +157,15 @@ public class TestTensor {
         var c = A.HadamardWith(A);
         Assert.AreEqual(2, c.Shape.Length(0));
         Assert.AreEqual(2, c.Shape.Length(1));
-        Assert.AreEqual(1*1, c[0, 0]);
-        Assert.AreEqual(2*2, c[0, 1]);
-        Assert.AreEqual(3*3, c[1, 0]);
-        Assert.AreEqual(4*4, c[1, 1]);
+        Assert.AreEqual(1 * 1, c[0, 0]);
+        Assert.AreEqual(2 * 2, c[0, 1]);
+        Assert.AreEqual(3 * 3, c[1, 0]);
+        Assert.AreEqual(4 * 4, c[1, 1]);
     }
 
     [TestMethod]
-    public void TestAdd() {
+    public void TestAdd()
+    {
         Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {
             { 1, 2 },
             { 3, 4 }
@@ -139,14 +174,15 @@ public class TestTensor {
         var c = A.AddWith(A);
         Assert.AreEqual(2, c.Shape.Length(0));
         Assert.AreEqual(2, c.Shape.Length(1));
-        Assert.AreEqual(1+1, c[0, 0]);
-        Assert.AreEqual(2+2, c[0, 1]);
-        Assert.AreEqual(3+3, c[1, 0]);
-        Assert.AreEqual(4+4, c[1, 1]);
+        Assert.AreEqual(1 + 1, c[0, 0]);
+        Assert.AreEqual(2 + 2, c[0, 1]);
+        Assert.AreEqual(3 + 3, c[1, 0]);
+        Assert.AreEqual(4 + 4, c[1, 1]);
     }
 
     [TestMethod]
-    public void TestAbs() {
+    public void TestAbs()
+    {
         Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {
             { -1, 2 },
             { 3, -4 }
@@ -162,7 +198,8 @@ public class TestTensor {
     }
 
     [TestMethod]
-    public void TestMatMulCompatible() {
+    public void TestMatMulCompatible()
+    {
         // Arrange: Define two matrices to multiply
         Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {
             { 1, 2 },
@@ -189,7 +226,8 @@ public class TestTensor {
             Assert.AreEqual(expected.Shape.Length(1), result.Shape.Length(1));
 
             var enumerable = expected.AsSpan().ToArray().Zip(result.AsSpan().ToArray());
-            foreach (var pair in enumerable) {
+            foreach (var pair in enumerable)
+            {
                 Assert.AreEqual(pair.First, pair.Second, 0.01);
             }
         }
@@ -201,14 +239,16 @@ public class TestTensor {
             Assert.AreEqual(expected.Shape.Length(1), result.Shape.Length(1));
 
             var enumerable = expected.AsSpan().ToArray().Zip(result.AsSpan().ToArray());
-            foreach (var pair in enumerable) {
+            foreach (var pair in enumerable)
+            {
                 Assert.AreEqual(pair.First, pair.Second, 0.01);
             }
         }
     }
 
     // TODO 
-    public void TestMatMulBatchedCompatible() {
+    public void TestMatMulBatchedCompatible()
+    {
         /*
         1. 2D × 2D matrix multiplication (no batch). DONE ^^
 
@@ -227,7 +267,8 @@ public class TestTensor {
     }
 
     [TestMethod]
-    public void TestMatMulIncompatible() {
+    public void TestMatMulIncompatible()
+    {
         // Arrange: Define two incompatible matrices
         Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {
             { 1, 2, 3 }
@@ -249,7 +290,8 @@ public class TestTensor {
     }
 
     [TestMethod]
-    public void TestConvolve2D_1() {
+    public void TestConvolve2D_1()
+    {
         var kernels = Tensor<double>.FromRectangularArray(new double[,] {
                 {1, 0, 1},
                 {0, 1, 0},
@@ -272,10 +314,43 @@ public class TestTensor {
 
         Assert.AreEqual(result.Shape.Length(^2), output.Shape.Length(^2));
         Assert.AreEqual(result.Shape.Length(^1), output.Shape.Length(^1));
-        for (var r = 0; r < result.Shape.Length(^2); r++) {
-            for (var c = 0; c < result.Shape.Length(^1); c++) {
+        for (var r = 0; r < result.Shape.Length(^2); r++)
+        {
+            for (var c = 0; c < result.Shape.Length(^1); c++)
+            {
                 Assert.AreEqual(result[r, c], output[0, 0, r, c], $"Element mismatch @ row {r}, column {c}. Expected {result}, got {output}");
             }
+        }
+    }
+
+    [TestMethod]
+    public void TestTransposeConvolve2D_InPadding0OutPadding0Stride1()
+    {
+        Tensor<double> input = Tensor<double>.FromRectangularArray(new double[,]{
+            {1, 2, 3},
+            {4, 5, 6},
+            {7, 8, 9}
+        });
+
+        Tensor<double> kernel = Tensor<double>.FromRectangularArray(new double[,]{
+            {1, 2, 3},
+            {4, 5, 6},
+            {7, 8, 9}
+        });
+
+        Tensor<double> result_truth = Tensor<double>.FromRectangularArray(new double[,]{
+            {1, 4, 10, 12, 9},
+            {8, 26, 56, 54, 36},
+            {30, 84, 165, 144, 90},
+            {56, 134, 236, 186, 108},
+            {49, 112, 190, 144, 81}
+        });
+        var result_predicted = input.TransposeConvolve2D(kernel);
+        Assert.AreEqual(result_truth.Shape.Length(^2), result_predicted.Shape.Length(^2));
+        Assert.AreEqual(result_truth.Shape.Length(^1), result_predicted.Shape.Length(^1));
+
+        foreach (var (predicted, truth) in result_predicted.AsArray().Zip(result_truth.AsArray())) {
+            Assert.AreEqual(truth, predicted, 0.0001);
         }
     }
 
