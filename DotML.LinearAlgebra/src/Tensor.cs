@@ -2107,25 +2107,6 @@ where TNum : INumber<TNum>
         var outStrides_2 = outputShape.Stride(2);
         var outStrides_3 = outputShape.Stride(3);
 
-        // Pre-computations (avoid computing inside the loops)
-        /*const int StackKernelThreshold = 16;
-        Span<int> kx_dilations = kernelWidth < StackKernelThreshold ? stackalloc int[kernelWidth] : new int[kernelWidth];
-        Span<int> ky_dilations = kernelHeight < StackKernelThreshold ? stackalloc int[kernelHeight] : new int[kernelHeight];
-        for (var kx = 0; kx < kernelWidth; kx++) kx_dilations[kx] = kx * dilationX;
-        for (var ky = 0; ky < kernelHeight; ky++) ky_dilations[ky] = ky * dilationY;*/
-        
-        // Setup spans and references
-        //Span<TNum> inputSpan = inData;
-        //Span<TNum> kernelSpan = kernelData;
-        //Span<TNum> outputSpan = outputData;
-
-        //ref TNum inputRef = ref MemoryMarshal.GetReference(inputSpan);
-        //ref TNum kernelRef = ref MemoryMarshal.GetReference(kernelSpan);
-        //ref TNum outputRef = ref MemoryMarshal.GetReference(outputSpan);
-
-        //ref int kx_dilationsRef = ref MemoryMarshal.GetReference(kx_dilations);
-        //ref int ky_dilationsRef = ref MemoryMarshal.GetReference(ky_dilations);
-
         TNum zero = TNum.Zero;
         TNum initial = bias ?? zero;
 
@@ -2148,8 +2129,12 @@ where TNum : INumber<TNum>
                     var oc_kerStrides_1 = oc * kerStrides_1;
 
                     Parallel.For(0, outHeight, oy => {
+                    // Need to have these here because ref types cannot be captured by anonymous functions
+                    ref TNum inputRef = ref MemoryMarshal.GetArrayDataReference(inData);
+                    ref TNum kernelRef = ref MemoryMarshal.GetArrayDataReference(kernelData);
+                    ref TNum outputRef = ref MemoryMarshal.GetArrayDataReference(outputData);
                     //for (int oy = 0; oy < outHeight; oy++)
-                    {
+                        {
                         int outYBase = oy - outPadTop + inPadTop;
                         int oy_outStrides_2 = oy * outStrides_2;
                         var out_offset_part1 = out_offset_part0 + oy_outStrides_2;
@@ -2170,7 +2155,7 @@ where TNum : INumber<TNum>
 
                                 for (int ky = 0; ky < kernelHeight; ky++)
                                 {
-                                    if (!TryComputeInputCoord(oy, strideY, inPadTop, ky * dilationY, out int iy) || iy < 0 || iy >= inHeight)
+                                    if (!TryComputeInputCoord(oy, strideY, inPadTop, ky * dilationY, out int iy) || iy >= inHeight)
                                         continue;
 
                                     var kerIndexBase = ky * kerStrides_2;
@@ -2178,22 +2163,20 @@ where TNum : INumber<TNum>
 
                                     for (int kx = 0; kx < kernelWidth; kx++)
                                     {
-                                        if (!TryComputeInputCoord(ox, strideX, inPadLeft, kx * dilationX, out int ix) || ix < 0 || ix >= inWidth)
+                                        if (!TryComputeInputCoord(ox, strideX, inPadLeft, kx * dilationX, out int ix) || ix >= inWidth)
                                             continue;
 
                                         int in_idx = in_offset_part1 + ix * inStrides_3;
-                                        TNum val = inData[in_idx]; // inData[in_idx];
-                                        // Hmm this could be slower than just adding 0, idk
-                                        if (val == zero) continue; // Skip 0's (can result in real wins when ReLU is used)
+                                        TNum val = Unsafe.Add(ref inputRef, in_idx); //TNum val = inData[in_idx]; 
 
                                         int kerIdx = kerIndexBase + kx * kerStrides_3;
-                                        TNum src = kernelData[kerIdx];
-                                        sum += val * src;
+                                        TNum src = Unsafe.Add(ref kernelRef, kerIdx); //TNum src = kernelData[kerIdx];
+                                        sum += val == zero ? TNum.Zero : val * src;
                                     }
                                 }
                             }
 
-                            outputData[out_idx] = sum;
+                            Unsafe.Add(ref outputRef, out_idx) = sum; //outputData[out_idx] = sum;
                         }
                     } });
                 } //});
@@ -2948,6 +2931,62 @@ where TNum : INumber<TNum>
     }
 
     /// <summary>
+    /// Compute the variance along the given axis
+    /// </summary>
+    /// <param name="axis">axis</param>
+    /// <param name="ddof">degrees of freedom</param>
+    /// <param name="keepdim">flag to indicate if the reduced dimension is to be kept (at size 1) or removed. Default true</param>
+    /// <returns>variation tensor</returns>
+    /// <exception cref="ArgumentOutOfRangeException">thrown when ddot is greater than or equal to axis length</exception>
+    public Tensor<TNum> Variance(Index axis, out Tensor<TNum> mean, int ddof = 0, bool keepdim = true)
+    {
+        int axisIndex = NormalizeAxis(axis);
+        int count = this.Shape.Length(axisIndex);
+
+        if (ddof >= count)
+            throw new ArgumentOutOfRangeException(nameof(ddof), "ddof must be less than the number of elements.");
+
+        // Step 1: Compute mean
+        mean = this.Mean(axis, keepdim: true); // Pree sure this is broken because I don't really support broadcasting in subtracton
+
+        // Step 2: Subtract mean and square (reuse mean tensor for all values)
+        ElementWiseSubtract(mean.elements, this.elements, mean.elements); // Difference
+        ElementWiseMultiply(mean.elements, mean.elements, mean.elements); // Square
+
+        // Step 3: Reduce (sum of square differences)
+        var sumsq = mean.Sum(axis);
+        sumsq.ScaleByInplace(TNum.One / TNum.CreateChecked(count - ddof));
+        return sumsq;
+    } 
+
+    /// <summary>
+    /// Compute the global variance of all elements in the tensor
+    /// </summary>
+    /// <param name="ddof">degrees of freedom</param>
+    /// <returns>global variance</returns>
+    /// <exception cref="ArgumentOutOfRangeException">thrown when ddot is greater than or equal to number of elements</exception>
+    public TNum Variance(out TNum mean, int ddof = 0)
+    {
+        int n = this.elements.Length;
+        if (ddof >= n)
+            throw new ArgumentOutOfRangeException(nameof(ddof), "ddof must be less than the number of elements.");
+
+        // Compute mean
+        mean = this.Mean();
+
+        // Compute squared differences
+        TNum sumSqDiff = TNum.Zero;
+        foreach (var val in this.elements)
+        {
+            var diff = val - mean;
+            sumSqDiff += diff * diff;
+        }
+
+        TNum variance = sumSqDiff / TNum.CreateChecked(n - ddof);
+        return variance;
+    }
+
+    /// <summary>
     /// Create an exact duplicate of this tensor
     /// </summary>
     /// <returns>tensor</returns>
@@ -2964,6 +3003,34 @@ where TNum : INumber<TNum>
     /// <returns>span of elements in row-major order</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Span<TNum> AsSpan() => elements.AsSpan();
+
+    /// <summary>
+    /// Access the tensor elements as a span
+    /// </summary>
+    /// <returns>span of elements in row-major order</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span<TNum> AsSpan(int start, int length) => elements.AsSpan(start, length);
+
+    /// <summary>
+    /// Access the tensor elements as a span
+    /// </summary>
+    /// <returns>span of elements in row-major order</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span<TNum> AsSpan(int start) => elements.AsSpan(start);
+
+    /// <summary>
+    /// Access the tensor elements as a span
+    /// </summary>
+    /// <returns>span of elements in row-major order</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span<TNum> AsSpan(Index start) => elements.AsSpan(start);
+
+    /// <summary>
+    /// Access the tensor elements as a span
+    /// </summary>
+    /// <returns>span of elements in row-major order</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span<TNum> AsSpan(Range range) => elements.AsSpan(range);
 
     /// <summary>
     /// Access the tensor elements as an array (non-copying)

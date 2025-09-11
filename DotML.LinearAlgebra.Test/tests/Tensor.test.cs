@@ -345,7 +345,7 @@ public class TestTensor
             {56, 134, 236, 186, 108},
             {49, 112, 190, 144, 81}
         });
-        var result_predicted = input.TransposeConvolve2D(kernel);
+        var result_predicted = input.TransposeConvolve2D_OutputDriven(kernel);
         Assert.AreEqual(result_truth.Shape.Length(^2), result_predicted.Shape.Length(^2));
         Assert.AreEqual(result_truth.Shape.Length(^1), result_predicted.Shape.Length(^1));
 
