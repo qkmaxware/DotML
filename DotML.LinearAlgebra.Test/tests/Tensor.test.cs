@@ -198,6 +198,34 @@ public class TestTensor
     }
 
     [TestMethod]
+    public void TestSum()
+    {
+        var data = new float[]
+        {
+            1, 2, 3, 4,     // N=0, C=0
+            5, 6, 7, 8,     // N=0, C=1
+            9,10,11,12,     // N=1, C=0
+            13,14,15,16     // N=1, C=1
+        };
+        Tensor<float> tensor = Tensor<float>.FromFlattenedArray(new TensorShape(2, 2, 2, 2), data);
+
+        var totalA = tensor.Sum();                  // Should be [136]
+        var totalB = tensor.Sum([1, 2, 3], keepdim: false);     // Should be [36, 100] (same as Sum() I believe)
+
+        Assert.AreEqual(136, totalA);
+        Assert.AreEqual(1, totalB.Rank);
+        Assert.AreEqual(2, totalB.ElementCount);
+        Assert.AreEqual(36, totalB[0]);
+        Assert.AreEqual(100, totalB[1]);
+
+        var SubSum = tensor.Sum([0, 2, 3], keepdim: false); // Should return [36, 100]
+        Assert.AreEqual(1, totalB.Rank);
+        Assert.AreEqual(2, totalB.ElementCount);
+        Assert.AreEqual(52, SubSum[0]);
+        Assert.AreEqual(84, SubSum[1]);
+    }
+
+    [TestMethod]
     public void TestMatMulCompatible()
     {
         // Arrange: Define two matrices to multiply

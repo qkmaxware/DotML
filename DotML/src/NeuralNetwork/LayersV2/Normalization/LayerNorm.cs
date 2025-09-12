@@ -6,7 +6,8 @@ using DotML.Network.Training;
 namespace DotML.Network;
 
 /// <summary>
-/// A layer that acts as a normalization layer
+/// Layer that performs layer (non batch) normalization. Each channel is normalized across all channels.
+/// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
 public class LayerNorm2 : NormalizationLayer
 {
@@ -40,7 +41,7 @@ public class LayerNorm2 : NormalizationLayer
     {
         // Assume input is [N, C, H, W], if not force it to be by collapsing leading dimensions or 1 padding
         channels = channels.Clone().ReshapeShared(channels.Shape.NormalizeRank(4));
-        var batches = channels.Shape.Length(0); var batchStride = channels.Shape.Stride(1);
+        var batches = channels.Shape.Length(0); var batchStride = channels.Shape.Stride(0);
 
         // Get references to the underlying weights and biases in row-major order
         var gammas = Weights.AsSpan();

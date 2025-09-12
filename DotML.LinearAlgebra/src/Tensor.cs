@@ -1751,7 +1751,7 @@ where TNum : INumber<TNum>
     /// <param name="padBottom">Padding on the bottom side of the input</param>
     /// <returns>Tensor resulting from the convolution with shape [batches, outChannels, outRows, outColumns]</returns>
     /// <exception cref="ArgumentException">Thrown if the input channels, output channels, or groups are incompatible or invalid</exception>
-    public Tensor<TNum> Convolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int padLeft = 0, int padRight = 0, int padTop = 0, int padBottom = 0, TNum? bias = default)
+    public Tensor<TNum> Convolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int padLeft = 0, int padRight = 0, int padTop = 0, int padBottom = 0, ReadOnlySpan<TNum> bias = default)
     {
         // Normalize all tensors to 4D (expand or reduce as required)
         var input = this.ReshapeShared(this.Shape.NormalizeRank(4));            // [batch, channels, rows, columns]
@@ -1784,7 +1784,7 @@ where TNum : INumber<TNum>
             throw new ArgumentException("Invalid output dimensions. Check padding, stride, and dilation.");
 
         var outputShape = new TensorShape(batch, outChannels, outHeight, outWidth);
-        var outputTensor = Tensor<TNum>.ConstantValued(outputShape, bias ?? TNum.Zero);
+        var outputTensor = Tensor<TNum>.Defaults(outputShape);
         TNum[] outputData = outputTensor.elements;
 
         var inStrides_0 = input.Shape.Stride(0);
@@ -1801,8 +1801,6 @@ where TNum : INumber<TNum>
         var outStrides_1 = outputShape.Stride(1);
         var outStrides_2 = outputShape.Stride(2);
         var outStrides_3 = outputShape.Stride(3);
-
-        var initial = TNum.Zero;
 
         for (var b = 0; b < batch; b++)
         {
@@ -1822,6 +1820,8 @@ where TNum : INumber<TNum>
                     int fullOutChannel_outStrides1 = fullOutChannel * outStrides_1;
                     int outOffset_oc_kerStrides0 = (outOffset + oc) * kerStrides_0;
                     int result_offset_part0 = b_outStrides0 + fullOutChannel_outStrides1;
+
+                    var initial = oc < bias.Length ? bias[oc] : TNum.Zero;
 
                     //for (int oy = 0; oy < outHeight; oy++)
                     Parallel.For(0, outHeight, oy =>
@@ -2550,6 +2550,94 @@ where TNum : INumber<TNum>
         return result;
     }
     /// <summary>
+    /// Reduce over a given set of axes in the tensor by applying a reduction function along those axes
+    /// </summary>
+    /// <typeparam name="TAccumulate">Reduced or accumulated element type</typeparam>
+    /// <param name="axes">axes to reduce</param>
+    /// <param name="seed">initial reducer value</param>
+    /// <param name="reducer">reducer or accumulator function to be invoked on each element</param>
+    /// <param name="keepdim">flag to indicate if the reduced dimension is to be kept (at size 1) or removed. Default true</param>
+    /// <returns>Tensor with reduced shape</returns>
+    /// <exception cref="ArgumentNullException">thrown if the reducer is null</exception>
+    /// <exception cref="ArgumentOutOfRangeException">thrown if any axis is invalid</exception>
+    public Tensor<TAccumulate> Reduce<TAccumulate>(
+        ReadOnlySpan<Index> axes,
+        TAccumulate seed,
+        Func<TAccumulate, TNum, TAccumulate> reducer,
+        bool keepdim = true)
+        where TAccumulate : INumber<TAccumulate>
+    {
+        if (reducer is null)
+            throw new ArgumentNullException(nameof(reducer));
+        if (axes.Length == 0)
+            throw new ArgumentException("Axes must not be empty.", nameof(axes));
+
+        var shape = this.Shape;
+        var rank = shape.Rank;
+
+        // Normalize axes (handle negatives)
+        Span<int> positiveAxes = stackalloc int[axes.Length];
+        for (int i = 0; i < axes.Length; i++)
+            positiveAxes[i] = NormalizeAxis(axes[i]);
+
+        // Create output shape
+        int[] reducedShape = keepdim ? new int[rank] : new int[rank - positiveAxes.Length];
+        {
+            int j = 0;
+            for (int i = 0; i < rank; i++)
+            {
+                if (positiveAxes.Contains(i))
+                {
+                    if (keepdim)
+                        reducedShape[i] = 1;
+                    // else skip
+                }
+                else
+                {
+                    reducedShape[keepdim ? i : j++] = shape.Length(i);
+                }
+            }
+        }
+
+        var resultShape = new TensorShape(reducedShape);
+        var result = Tensor<TAccumulate>.ConstantValued(resultShape, seed);
+        Span<TAccumulate> resultElements = result.elements;
+
+        Span<int> outputIndices = stackalloc int[keepdim ? rank : rank - positiveAxes.Length];
+
+        var ienumerator = shape.CreateIndexEnumerator();
+        Span<TNum> inputElements = this.elements;
+        Span<int> indices = stackalloc int[rank];
+        int flatIndex = 0;
+
+        ienumerator.Initialize(indices, ref flatIndex);
+        while (ienumerator.MoveNext(indices, ref flatIndex))
+        {
+            // Build output index based on keepdim and axes
+            if (keepdim)
+            {
+                for (int i = 0; i < rank; i++)
+                    outputIndices[i] = positiveAxes.Contains(i) ? 0 : indices[i];
+            }
+            else
+            {
+                int j = 0;
+                for (int i = 0; i < rank; i++)
+                {
+                    if (!positiveAxes.Contains(i))
+                        outputIndices[j++] = indices[i];
+                }
+            }
+
+            var outFlat = resultShape.FlattenIndices(outputIndices);
+            var oldVal = resultElements[outFlat];
+            resultElements[outFlat] = reducer(oldVal, inputElements[flatIndex]);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Perform reduction on the row dimension (2nd last)
     /// </summary>
     /// <typeparam name="TAccumulate">Reduced or accumulated element type</typeparam>
@@ -2561,6 +2649,7 @@ where TNum : INumber<TNum>
     public Tensor<TAccumulate> ReduceRows<TAccumulate>(TAccumulate seed, Func<TAccumulate, TNum, TAccumulate> reducer, bool keepdim = true)
     where TAccumulate : INumber<TAccumulate>
     => Reduce(axis: ^2, seed, reducer, keepdim);
+
     /// <summary>
     /// Perform reduction on the columns dimension (last)
     /// </summary>
@@ -2573,6 +2662,7 @@ where TNum : INumber<TNum>
     public Tensor<TAccumulate> ReduceColumns<TAccumulate>(TAccumulate seed, Func<TAccumulate, TNum, TAccumulate> reducer, bool keepdim = true)
     where TAccumulate : INumber<TAccumulate>
     => Reduce(axis: ^1, seed, reducer, keepdim);
+
     /// <summary>
     /// Sum reduction along the given axis
     /// </summary>
@@ -2583,10 +2673,20 @@ where TNum : INumber<TNum>
     public Tensor<TNum> Sum(Index axis, bool keepdim = true) => Reduce(axis, TNum.Zero, static (a, b) => a + b, keepdim);
 
     /// <summary>
+    /// Sum reduction along the given axes
+    /// </summary>
+    /// <param name="axes">axes to sum over</param>
+    /// <param name="keepdim">flag to indicate if the reduced dimension is to be kept (at size 1) or removed. Default true</param>
+    /// <returns>reduced tensor</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Tensor<TNum> Sum(ReadOnlySpan<Index> axes, bool keepdim = true) => Reduce(axes, TNum.Zero, static (a, b) => a + b, keepdim);
+
+    /// <summary>
     /// Global sum of all elements in the tensor
     /// </summary>
     /// <returns>sum</returns>
-    public TNum Sum() {
+    public TNum Sum()
+    {
         TNum total = TNum.Zero;
         foreach (var val in this.elements)
             total += val;
