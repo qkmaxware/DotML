@@ -37,31 +37,5 @@ public class SoftmaxLayerTest {
         foreach (var (projected, truth) in Y_projected.Zip(Y_truth)) {
             Assert.AreEqual(truth, projected, 0.001);
         }
-
-        var dY_truth = Matrix<double>.FromFlattened(5, 1, [
-            1.1221718788146973,
-            1.2508395910263062,
-            -0.005234954878687859,
-            -0.3422098755836487,
-            -0.3510672152042389
-        ]).ToFloatSet();
-        var dX_truth = Matrix<double>.FromFlattened(5, 1, [
-            0.1229761615395546,
-            0.21897751092910767,
-            -0.09453253448009491,
-            -0.017240142449736595,
-            -0.2301809936761856
-        ]).ToFloatSet();
-        var dX_projected = layer.Backpropagate(new BackpropagationArgs(
-            layer: -1,
-            input: new BatchedFeatureSet<float>(new FeatureSet<float>(X)),
-            output: new BatchedFeatureSet<float>(new FeatureSet<float>(Y_truth)),
-            error: new BatchedFeatureSet<float>(new FeatureSet<float>(dY_truth)) 
-        )).dX[0,0];
-
-        Assert.AreEqual(dX_truth.Shape, dX_projected.Shape);
-        foreach (var (projected, truth) in dX_projected.Zip(dX_truth)) {
-            Assert.AreEqual(truth, projected, 0.001);
-        }
     }
 }

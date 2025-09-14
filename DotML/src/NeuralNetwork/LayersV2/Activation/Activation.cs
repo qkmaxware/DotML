@@ -8,11 +8,11 @@ namespace DotML.Network;
 /// Activation layer for a FeedforwardNetwork
 /// <see href="https://en.wikipedia.org/wiki/Activation_function"/>
 /// </summary>
-public class Activation : NetworkLayer
+public class ActivationLayer2 : NetworkLayer
 {
     public ActivationFunction ActivationFunction { get; init; }
 
-    public Activation(ActivationFunction activation)
+    public ActivationLayer2(ActivationFunction activation)
     {
         this.ActivationFunction = activation;
     }

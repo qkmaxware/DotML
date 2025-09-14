@@ -23,6 +23,7 @@ public class SoftmaxOutput : NetworkLayer
 
     public override Tensor<float> Forward(Tensor<float> channels)
     {
+        var originalRank = channels.Rank;
         var inShape = channels.Shape.EnsureRank(4); // Expecting NCHW (note this can be larger than 4, additional dimensions are just more batch dimensions)
         var inRank = inShape.Rank;
         int axis = this.ClassAxis.GetOffset(inRank);
@@ -80,7 +81,7 @@ public class SoftmaxOutput : NetworkLayer
             }
         }
 
-        return Tensor<float>.FromFlattenedArray(inShape, output);
+        return Tensor<float>.FromFlattenedArray(inShape, output).Squeeze(0..^originalRank);
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy) {

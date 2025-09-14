@@ -85,6 +85,7 @@ public abstract class LocalPooling2D : LocalPooling
     public override Tensor<float> Forward(Tensor<float> inputs)
     {
         // Each channel generates exactly 1 output
+        var originalRank = inputs.Shape.Rank;
         inputs = inputs.ReshapeShared(inputs.Shape.EnsureRank(4)); // Minimum of [N,C,H,W], but can have more batch dims [D1, D2, ..., C, H, W]
 
         var filterWidth = this.FilterWidth;
@@ -166,7 +167,7 @@ public abstract class LocalPooling2D : LocalPooling
             }
         }
 
-        return output;
+        return output.Squeeze(0..^originalRank);
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)

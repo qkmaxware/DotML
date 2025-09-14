@@ -1,0 +1,35 @@
+using DotML;
+using DotML.Network;
+using DotML.Network.Training;
+
+namespace DotML.Test.Layers;
+
+[TestClass]
+public class SoftmaxLayerTest_V2 {
+    [TestMethod]
+    public void TestSafetensors() {
+        throw new NotImplementedException();
+    }
+
+    [TestMethod]
+    public void TestSoftmax() {
+        var layer = new SoftmaxOutput(^2);
+        var X = Tensor<float>.FromFlattenedArray(new TensorShape(5, 1), [
+            0.6108487248420715f,
+            0.9583313465118408f,
+            0.11642353981733322f,
+            -2.0144927501678467f,
+            0.5680017471313477f
+        ]);
+        var Y_truth = Tensor<float>.FromFlattenedArray(new TensorShape(5, 1), [
+            0.24655473232269287f,
+            0.34899815917015076f,
+            0.15037901699543f,
+            0.017854267731308937f,
+            0.23621372878551483f
+        ]);
+        var Y_projected = layer.Forward(X);
+        var equals = Y_projected.Equals(Y_truth, 0.001f);
+        Assert.AreEqual(true, equals);
+    }
+}
