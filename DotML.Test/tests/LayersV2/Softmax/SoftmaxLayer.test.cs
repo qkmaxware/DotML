@@ -2,10 +2,10 @@ using DotML;
 using DotML.Network;
 using DotML.Network.Training;
 
-namespace DotML.Test.Layers;
+namespace DotML.Test.Layers.Softmax;
 
 [TestClass]
-public class SoftmaxLayerTest_V2 {
+public class SoftmaxOutputTest {
     [TestMethod]
     public void TestSafetensors() {
         throw new NotImplementedException();

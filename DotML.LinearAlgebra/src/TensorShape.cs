@@ -663,11 +663,33 @@ public readonly struct TensorShape
     public ReadOnlySpan<int> AsDimensionSpan() => dims;
 
     /// <summary>
+    /// Access this shape as an enumerable of dimension lengths
+    /// </summary>
+    /// <returns></returns>
+    public IEnumerable<int> AsDimensionEnumerable()
+    {
+        var span = dims;
+        foreach (var dim in span)
+            yield return dim;
+    }
+
+    /// <summary>
     /// Access this shape as a span of stride lengths
     /// </summary>
     /// <returns>dimension length span</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ReadOnlySpan<int> AsStrideSpan() => strides;
+
+    /// <summary>
+    /// Access this shape as an enumerable of stride lengths
+    /// </summary>
+    /// <returns></returns>
+    public IEnumerable<int> AsStrideEnumerable()
+    {
+        var span = strides;
+        foreach (var dim in span)
+            yield return dim;
+    }
 
     public override bool Equals([NotNullWhen(true)] object? obj)
     {

@@ -256,22 +256,22 @@ where TNum : INumber<TNum>
     /// </summary>
     /// <param name="values">c# array</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> FromRectangularArray(TNum[] vector) => FromRectangularArray(vector);
+    public static Tensor<TNum> FromRectangularArray(TNum[] vector) => FromRectangularArray((Array)vector);
     /// Create a tensor from a C# rectangular array 
     /// </summary>
     /// <param name="values">c# array</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> FromRectangularArray(TNum[,] matrix) => FromRectangularArray(matrix);
+    public static Tensor<TNum> FromRectangularArray(TNum[,] matrix) => FromRectangularArray((Array)matrix);
     /// Create a tensor from a C# rectangular array 
     /// </summary>
     /// <param name="values">c# array</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> FromRectangularArray(TNum[,,] featureSet) => FromRectangularArray(featureSet);
+    public static Tensor<TNum> FromRectangularArray(TNum[,,] featureSet) => FromRectangularArray((Array)featureSet);
     /// Create a tensor from a C# rectangular array 
     /// </summary>
     /// <param name="values">c# array</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> FromRectangularArray(TNum[,,,] batchedFeatureSet) => FromRectangularArray(batchedFeatureSet);
+    public static Tensor<TNum> FromRectangularArray(TNum[,,,] batchedFeatureSet) => FromRectangularArray((Array)batchedFeatureSet);
 
     /// <summary>
     /// Create a tensor from a C# jagged array (array of arrays)
@@ -300,28 +300,28 @@ where TNum : INumber<TNum>
     /// <param name="array">jagged array</param>
     /// <returns>tensor</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Tensor<TNum> FromJaggedArray(TNum[] vector) => FromJaggedArray(vector);
+    public static Tensor<TNum> FromJaggedArray(TNum[] vector) => FromJaggedArray((Array)vector);
     /// <summary>
     /// Create a tensor from a C# jagged array (array of arrays)
     /// </summary>
     /// <param name="array">jagged array</param>
     /// <returns>tensor</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Tensor<TNum> FromJaggedArray(TNum[][] matrix) => FromJaggedArray(matrix);
+    public static Tensor<TNum> FromJaggedArray(TNum[][] matrix) => FromJaggedArray((Array)matrix);
     /// <summary>
     /// Create a tensor from a C# jagged array (array of arrays)
     /// </summary>
     /// <param name="array">jagged array</param>
     /// <returns>tensor</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Tensor<TNum> FromJaggedArray(TNum[][][] featureSet) => FromJaggedArray(featureSet);
+    public static Tensor<TNum> FromJaggedArray(TNum[][][] featureSet) => FromJaggedArray((Array)featureSet);
     /// <summary>
     /// Create a tensor from a C# jagged array (array of arrays)
     /// </summary>
     /// <param name="array">jagged array</param>
     /// <returns>tensor</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Tensor<TNum> FromJaggedArray(TNum[][][][] batchedFeatureSet) => FromJaggedArray(batchedFeatureSet);
+    public static Tensor<TNum> FromJaggedArray(TNum[][][][] batchedFeatureSet) => FromJaggedArray((Array)batchedFeatureSet);
     private static void GetJaggedShape(object? item, List<int> shape, int dim_index)
     {
         if (item is not Array array)
@@ -3316,8 +3316,8 @@ where TNum : INumber<TNum>
     public Tensor<TNum> Squeeze()
     {
         var shape = this.Shape;
-        var dims = shape.AsDimensionSpan();
-        var newDims = dims.ToArray().Where(d => d != 1).ToArray();
+        var dims = shape.AsDimensionEnumerable();
+        var newDims = dims.Where(d => d != 1).ToArray();
         return this.ReshapeShared(new TensorShape(newDims));
     }
 
@@ -3426,13 +3426,13 @@ where TNum : INumber<TNum>
     public Tensor<TNum> Squeeze(Range range)
     {
         var shape = this.Shape;
-        var dims = shape.AsDimensionSpan();
-        var (start, length) = range.GetOffsetAndLength(dims.Length);
+        var dims = shape.AsDimensionEnumerable();
+        var (start, length) = range.GetOffsetAndLength(shape.Rank);
 
-        if (start < 0 || start > dims.Length || start + length < 0 || start + length > dims.Length)
+        if (start < 0 || start > shape.Rank || start + length < 0 || start + length > shape.Rank)
             throw new ArgumentOutOfRangeException(nameof(range), $"Range is invalid for a tensor of rank {shape.Rank}");
 
-        var newDims = dims.ToArray().Where((dim, index) => index < start || index >= start + length || dim != 1).ToArray();
+        var newDims = dims.Where((dim, index) => index < start || index >= start + length || dim != 1).ToArray();
         return this.ReshapeShared(new TensorShape(newDims));
     }
 
@@ -3487,6 +3487,33 @@ where TNum : INumber<TNum>
         }
 
         return this.ReshapeShared(new TensorShape(newDims));
+    }
+
+    /// <summary>
+    /// Lightweight hash for the tensor including the tensor shape and some of its values
+    /// </summary>
+    /// <returns>hashcode</returns>
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+
+        // Shape encoding
+        hash.Add(Shape.Rank);
+        foreach (var dim in Shape.AsDimensionSpan())
+            hash.Add(dim);
+
+        // Data length
+        hash.Add(elements.Length);                      
+
+        // Sample 3 key elements: first, middle, last
+        if (elements.Length > 0)
+            hash.Add(elements[0]);                      // First element
+        if (elements.Length > 2)
+            hash.Add(elements[elements.Length / 2]);    // Middle element
+        if (elements.Length > 1)
+            hash.Add(elements[elements.Length - 1]);    // Last element
+
+        return hash.ToHashCode();
     }
 
     /// <summary>

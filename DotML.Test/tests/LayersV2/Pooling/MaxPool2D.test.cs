@@ -1,7 +1,7 @@
 using DotML.Network;
 using DotML.Network.Training;
 
-namespace DotML.Test.Layers;
+namespace DotML.Test.Layers.Pooling;
 
 [TestClass]
 public class MaxPool2DLayerTest

@@ -1,7 +1,7 @@
 using DotML.Network;
 using DotML.Network.Training;
 
-namespace DotML.Test.Layers;
+namespace DotML.Test.Layers.Activation;
 
 [TestClass]
 public class ActivationLayerTest_V2 {

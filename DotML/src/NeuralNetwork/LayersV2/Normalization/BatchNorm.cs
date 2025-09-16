@@ -11,10 +11,18 @@ namespace DotML.Network;
 public class BatchNorm2 : NormalizationLayer
 {
 
+    private float running_mean_momentum = 0.9f;
+    private Tensor<float> RunningMean { get; set; }
+    private float running_variance_momentum = 0.9f;
+    private Tensor<float> RunningVariance { get; set; }
+
     public Tensor<float> Weights { get; private set; }
     public Tensor<float> Biases { get; private set; }
 
     public BatchNorm2 (int channels) {
+
+        RunningMean = Tensor<float>.Ones(new TensorShape(channels));
+        RunningVariance = Tensor<float>.Zeros(new TensorShape(channels));
 
         Weights = Tensor<float>.Ones(new TensorShape(channels));
         Biases = Tensor<float>.Zeros(new TensorShape(channels));
@@ -44,18 +52,41 @@ public class BatchNorm2 : NormalizationLayer
         var channels = shape.Length(1); var channelStride = shape.Stride(1);
         var arr = x.AsArray();
 
-        Parallel.For(0, channels, (channel) =>
+        for(var channel = 0; channel < channels; channel++)
         {
             // Get references to all spans to this channel across all batches
             var channelInEachBatch = new SpanSurrogate<float>[batches];
             for (var i = 0; i < channelInEachBatch.Length; i++)
             {
-                channelInEachBatch[i] = new SpanSurrogate<float>(arr, i * batchStride + channel * channelStride, channelStride);
+                // Can be used to span a SPAN over the array region at a later time. Used because we can't store Spans in an array/span of spans to pass to the MeanAndVariance computation.
+                channelInEachBatch[i] = new SpanSurrogate<float>(
+                    underlying: arr,
+                    offset: i * batchStride + channel * channelStride,
+                    count: channelStride
+                );
             }
 
             // Compute the mean and variance across the entire list of channels
-            MeanAndVariance(channelInEachBatch, out float mean, out float variance);
+            float mean; float variance;
+            if (IsInference)
+            {
+                // During inference always use the computed mean and variances
+                mean = this.RunningMean[channel];
+                variance = this.RunningVariance[channel];
+            }
+            else
+            {
+                // During training always use the computed values out of the batches
+                MeanAndVariance(channelInEachBatch, out mean, out variance);
+            }
             var sqrt = 1.0f / MathF.Sqrt(variance + epsilon);
+
+            // Update running means and variances which are typically used in Inference or when batch size is too small
+            if (batches > 1)
+            {
+                this.RunningMean[channel] = running_mean_momentum * mean + (1 - running_mean_momentum) * RunningMean[channel];
+                this.RunningVariance[channel] = running_variance_momentum * variance + (1 - running_variance_momentum) * RunningVariance[channel];
+            }
 
             var gamma = Weights[channel];
             var beta = Biases[channel];
@@ -76,18 +107,122 @@ public class BatchNorm2 : NormalizationLayer
                     batch[i] = batch[i] * gamma + beta;
                 }
             }
-        });
+        };
 
         return x;
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)
     {
-        throw new NotImplementedException();
+        var originalShape = x.Shape;
+        var shape = x.Shape.NormalizeRank(4);
+        x = x.ReshapeShared(shape);
+        y = y.ReshapeShared(shape);
+        dy = dy.ReshapeShared(shape);
+
+        int N = shape.Length(0);
+        int C = shape.Length(1);
+        int H = shape.Length(2);
+        int W = shape.Length(3);
+        int batchStride = shape.Stride(0);
+        int channelStride = shape.Stride(1);
+        int spatialSize = H * W;
+        int m = N * spatialSize; // total elements per channel
+
+        var gamma = Weights.AsSpan();   // [C]
+        var beta = Biases.AsSpan();     // [C]
+        var dW_tensor = Tensor<float>.Zeros(Weights.Shape); var dW = dW_tensor.AsSpan();  // dγ
+        var dB_tensor = Tensor<float>.Zeros(Biases.Shape); var dB = dB_tensor.AsSpan();   // dβ
+        var dX = Tensor<float>.Zeros(x.Shape);
+        var dxSpan = dX.AsSpan();
+
+        var xArr = x.AsArray();
+        var dyArr = dy.AsArray();
+        var xSpan = x.AsSpan();
+        var dySpan = dy.AsSpan();
+
+        for (int c = 0; c < C; c++)
+        {
+            // 1. Gather all [N, H, W] values for this channel across batches
+            SpanSurrogate<float>[] xChannel = new SpanSurrogate<float>[N];
+            SpanSurrogate<float>[] dyChannel = new SpanSurrogate<float>[N];
+
+            for (int n = 0; n < N; n++)
+            {
+                int offset = n * batchStride + c * channelStride;
+                xChannel[n] = new SpanSurrogate<float>(xArr, offset, channelStride);
+                dyChannel[n] = new SpanSurrogate<float>(dyArr, offset, channelStride);
+            }
+
+            // 2. Compute mean and variance of x[c] across all batches
+            float mean, variance;
+            MeanAndVariance(xChannel, out mean, out variance);
+            float stdInv = 1.0f / MathF.Sqrt(variance + epsilon);
+
+            float g = gamma[c];
+
+            // 3. First pass: compute x̂ and dy * gamma for accumulation
+            float sum_dy = 0f;
+            float sum_dy_xhat = 0f;
+
+            // Store temporaries to avoid recomputing
+            Span<float> xhat_flat = new float[m];
+            Span<float> dy_gamma_flat = new float[m];
+
+            int flatIdx = 0;
+            for (int n = 0; n < N; n++)
+            {
+                var xBatch = xChannel[n].AsSpan();
+                var dyBatch = dyChannel[n].AsSpan();
+
+                for (int i = 0; i < xBatch.Length; i++)
+                {
+                    float xhat = (xBatch[i] - mean) * stdInv;
+                    float dy_gamma = dyBatch[i] * g;
+
+                    xhat_flat[flatIdx] = xhat;
+                    dy_gamma_flat[flatIdx] = dy_gamma;
+
+                    sum_dy += dy_gamma;
+                    sum_dy_xhat += dy_gamma * xhat;
+
+                    // dγ += dy * x̂
+                    dW[c] += dyBatch[i] * xhat;
+
+                    // dβ += dy
+                    dB[c] += dyBatch[i];
+
+                    flatIdx++;
+                }
+            }
+
+            float mean1 = sum_dy / m;
+            float mean2 = sum_dy_xhat / m;
+
+            // 4. Second pass: compute dX
+            flatIdx = 0;
+            for (int n = 0; n < N; n++)
+            {
+                int dxOffset = n * batchStride + c * channelStride;
+                var dxBatch = dxSpan.Slice(dxOffset, channelStride);
+
+                for (int i = 0; i < dxBatch.Length; i++)
+                {
+                    dxBatch[i] = stdInv * (dy_gamma_flat[flatIdx] - mean1 - xhat_flat[flatIdx] * mean2);
+                    flatIdx++;
+                }
+            }
+        }
+
+        return new WeightAndBiasGradients(dX.ReshapeShared(originalShape), dW_tensor, dB_tensor);
     }
 
     public override void SubtractGradients(Gradients grads)
     {
-        throw new NotImplementedException();
+        if (grads is not WeightAndBiasGradients wbg)
+            throw new ArgumentException("Expected WeightAndBiasGradients", nameof(grads));
+
+        this.Weights.SubtractWithInplace(wbg.dW);
+        this.Biases.SubtractWithInplace(wbg.dB);
     }
 }
