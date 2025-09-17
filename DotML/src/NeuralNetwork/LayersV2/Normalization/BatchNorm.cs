@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Numerics;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
 
@@ -12,20 +13,59 @@ public class BatchNorm2 : NormalizationLayer
 {
 
     private float running_mean_momentum = 0.9f;
-    private Tensor<float> RunningMean { get; set; }
+    private Tensor<float> _runningMean;
+    public Tensor<float> RunningMean {
+        get => _runningMean;
+        set
+        {
+            if (!value.Shape.Equals(_runningMean.Shape))
+                throw new ArgumentException("Cannot change the shape of the channel running means via assignment");
+            _runningMean = value;
+        }
+    }
     private float running_variance_momentum = 0.9f;
-    private Tensor<float> RunningVariance { get; set; }
+    private Tensor<float> _runningVariance;
+    public Tensor<float> RunningVariance {
+        get => _runningVariance;
+        set
+        {
+            if (!value.Shape.Equals(_runningVariance.Shape))
+                throw new ArgumentException("Cannot change the shape of the channel running variances via assignment");
+            _runningVariance = value;
+        }
+    }
 
-    public Tensor<float> Weights { get; private set; }
-    public Tensor<float> Biases { get; private set; }
+    private Tensor<float> _weights;
+    public Tensor<float> Weights
+    {
+        get => _weights;
+        set
+        {
+            if (!value.Shape.Equals(_weights.Shape))
+                throw new ArgumentException("Cannot change the shape of the layer weights via assignment");
+            _weights = value;
+        }
+    }
+    private Tensor<float> _biases;
+    public Tensor<float> Biases
+    {
+        get => _biases;
+        set
+        {
+            if (!value.Shape.Equals(_biases.Shape))
+                throw new ArgumentException("Cannot change the shape of the layer biases via assignment");
+            _biases = value;
+        }
+    }
+
 
     public BatchNorm2 (int channels) {
 
-        RunningMean = Tensor<float>.Ones(new TensorShape(channels));
-        RunningVariance = Tensor<float>.Zeros(new TensorShape(channels));
+        _runningMean = Tensor<float>.Ones(new TensorShape(channels));
+        _runningVariance = Tensor<float>.Zeros(new TensorShape(channels));
 
-        Weights = Tensor<float>.Ones(new TensorShape(channels));
-        Biases = Tensor<float>.Zeros(new TensorShape(channels));
+        _weights = Tensor<float>.Ones(new TensorShape(channels));
+        _biases = Tensor<float>.Zeros(new TensorShape(channels));
     }
 
     public override int TrainableParameterCount()
@@ -46,6 +86,7 @@ public class BatchNorm2 : NormalizationLayer
 
     public override Tensor<float> Forward(Tensor<float> x)
     {
+        var originalRank = x.Shape.Rank;
         var shape = x.Shape.NormalizeRank(4); // Force to be [N, C, H, W]
         x = x.Clone();
         var batches = shape.Length(0); var batchStride = shape.Stride(0);
@@ -95,21 +136,51 @@ public class BatchNorm2 : NormalizationLayer
             {
                 var batch = chan.AsSpan();
 
-                // Normalize 
-                for (var i = 0; i < batch.Length; i++)
+                // Normalize
+                int i = 0;
+                if (Vector.IsHardwareAccelerated && Vector<float>.IsSupported)
+                {
+                    var sqrtVector = new Vector<float>(sqrt);
+                    var meanVector = new Vector<float>(mean);
+                    int simdLength = Vector<float>.Count;
+                    int simdLimit = batch.Length - simdLength + 1;
+
+                    for (; i < simdLimit; i += simdLength)
+                    {
+                        var simdSlice = batch.Slice(i, simdLength);
+                        var batchVec = new Vector<float>(simdSlice);
+                        ((batchVec - meanVector) * sqrtVector).CopyTo(simdSlice);
+                    }
+                }
+                for (; i < batch.Length; i++)
                 {
                     batch[i] = (batch[i] - mean) * sqrt;
                 }
 
                 // Shift-scale
-                for (var i = 0; i < batch.Length; i++)
+                i = 0;
+                if (Vector.IsHardwareAccelerated && Vector<float>.IsSupported)
+                {
+                    int simdLength = Vector<float>.Count;
+                    int simdLimit = batch.Length - simdLength + 1;
+                    var gammaVec = new Vector<float>(gamma);
+                    var betaVec = new Vector<float>(beta);
+
+                    for (; i < simdLimit; i += simdLength)
+                    {
+                        var simdSlice = batch.Slice(i, simdLength);
+                        var batchVec = new Vector<float>(simdSlice);
+                        ((batchVec * gammaVec) + betaVec).CopyTo(simdSlice);
+                    }
+                }
+                for (; i < batch.Length; i++)
                 {
                     batch[i] = batch[i] * gamma + beta;
                 }
             }
         };
 
-        return x;
+        return x.Squeeze(0..^originalRank);
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)

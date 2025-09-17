@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Numerics;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
 
@@ -10,8 +11,29 @@ namespace DotML.Network;
 /// </summary>
 public class GroupNorm2 : NormalizationLayer
 {
-    public Tensor<float> Weights { get; private set; }
-    public Tensor<float> Biases { get; private set; }
+    private Tensor<float> _weights;
+    public Tensor<float> Weights
+    {
+        get => _weights;
+        set
+        {
+            if (!value.Shape.Equals(_weights.Shape))
+                throw new ArgumentException("Cannot change the shape of the layer weights via assignment");
+            _weights = value;
+        }
+    }
+    private Tensor<float> _biases;
+    public Tensor<float> Biases
+    {
+        get => _biases;
+        set
+        {
+            if (!value.Shape.Equals(_biases.Shape))
+                throw new ArgumentException("Cannot change the shape of the layer biases via assignment");
+            _biases = value;
+        }
+    }
+
 
     public int Groups {get; private set;}
 
@@ -22,8 +44,8 @@ public class GroupNorm2 : NormalizationLayer
             throw new ArgumentException($"Number of groups {num_groups} must divide the number of channels {channels} evenly.");
         }
 
-        Weights = Tensor<float>.Ones(new TensorShape(channels, height, width));
-        Biases = Tensor<float>.Zeros(new TensorShape(channels, height, width));
+        _weights = Tensor<float>.Ones(new TensorShape(channels, height, width));
+        _biases = Tensor<float>.Zeros(new TensorShape(channels, height, width));
     }
 
     public override int TrainableParameterCount()
@@ -45,6 +67,7 @@ public class GroupNorm2 : NormalizationLayer
     public override Tensor<float> Forward(Tensor<float> x)
     {
         // Assume input is [N, C, H, W], if not force it to be by collapsing leading dimensions or 1 padding
+        var originalRank = x.Shape.Rank;
         x = x.Clone().ReshapeShared(x.Shape.NormalizeRank(4));
         var batches = x.Shape.Length(0); var batchStride = x.Shape.Stride(0);
         var channels = x.Shape.Length(1); var channelStride = x.Shape.Stride(1);
@@ -63,30 +86,61 @@ public class GroupNorm2 : NormalizationLayer
 
         for (int b = 0; b < batches; b++)
         {
-            var offset = b * batchStride;  
-            for (var g = 0; g < groups; g++) {
+            var offset = b * batchStride;
+            for (var g = 0; g < groups; g++)
+            {
                 // Compute means and variances across each group         
-                var gOffset = g * groupStride;                             
+                var gOffset = g * groupStride;
                 var c = offset + gOffset;                                       // Chunk size of G * H * W
                 var batch = x.AsSpan(c, groupStride);                           // Span for the current group
                 MeanAndVariance(batch, out float mean, out float variance);     // Compute mean and variance
                 var sqrt = 1.0f / MathF.Sqrt(variance + epsilon);               // Precompute sqrt once
-
+                
                 // Normalize each group
-                for (var i = 0; i < batch.Length; i++)
+                int i = 0;
+                if (Vector.IsHardwareAccelerated && Vector<float>.IsSupported)
+                {
+                    var sqrtVector = new Vector<float>(sqrt);
+                    var meanVector = new Vector<float>(mean);
+                    int simdLength = Vector<float>.Count;
+                    int simdLimit = batch.Length - simdLength + 1;
+
+                    for (; i < simdLimit; i += simdLength)
+                    {
+                        var simdSlice = batch.Slice(i, simdLength);
+                        var batchVec = new Vector<float>(simdSlice);
+                        ((batchVec - meanVector) * sqrtVector).CopyTo(simdSlice);
+                    }
+                }
+                for (; i < batch.Length; i++)
                 {
                     batch[i] = (batch[i] - mean) * sqrt;
                 }
 
                 // Shift-scale
-                for (var i = 0; i < batch.Length; i++)
+                i = 0;
+                if (Vector.IsHardwareAccelerated && Vector<float>.IsSupported)
+                {
+                    int simdLength = Vector<float>.Count;
+                    int simdLimit = batch.Length - simdLength + 1;
+
+                    for (; i < simdLimit; i += simdLength)
+                    {
+                        var simdSlice = batch.Slice(i, simdLength);
+                        var batchVec = new Vector<float>(simdSlice);
+                        var gammaVec = new Vector<float>(gammas.Slice(i, simdLength));
+                        var betaVec = new Vector<float>(betas.Slice(i, simdLength));
+                        ((batchVec * gammaVec) + betaVec).CopyTo(simdSlice);
+                    }
+                }
+                for (; i < batch.Length; i++)
                 {
                     batch[i] = batch[i] * gammas[g + i] + betas[g + i];
                 }
             }
         } 
 
-        return x;
+        return x.Squeeze(0..^originalRank);
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)

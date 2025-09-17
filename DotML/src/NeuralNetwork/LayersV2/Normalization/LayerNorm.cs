@@ -13,13 +13,33 @@ namespace DotML.Network;
 public class LayerNorm2 : NormalizationLayer
 {
 
-    public Tensor<float> Weights { get; private set; }
-    public Tensor<float> Biases { get; private set; }
+    private Tensor<float> _weights;
+    public Tensor<float> Weights
+    {
+        get => _weights;
+        set
+        {
+            if (!value.Shape.Equals(_weights.Shape))
+                throw new ArgumentException("Cannot change the shape of the layer weights via assignment");
+            _weights = value;
+        }
+    }
+    private Tensor<float> _biases;
+    public Tensor<float> Biases
+    {
+        get => _biases;
+        set
+        {
+            if (!value.Shape.Equals(_biases.Shape))
+                throw new ArgumentException("Cannot change the shape of the layer biases via assignment");
+            _biases = value;
+        }
+    }
 
     public LayerNorm2(int channels, int height, int width)
     {
-        Weights = Tensor<float>.Ones(new TensorShape(channels, height, width));
-        Biases = Tensor<float>.Zeros(new TensorShape(channels, height, width));
+        _weights = Tensor<float>.Ones(new TensorShape(channels, height, width));
+        _biases = Tensor<float>.Zeros(new TensorShape(channels, height, width));
     }
 
     public override int TrainableParameterCount()
@@ -41,6 +61,7 @@ public class LayerNorm2 : NormalizationLayer
     public override Tensor<float> Forward(Tensor<float> channels)
     {
         // Assume input is [N, C, H, W], if not force it to be by collapsing leading dimensions or 1 padding
+        var originalRank = channels.Shape.Rank;
         channels = channels.Clone().ReshapeShared(channels.Shape.NormalizeRank(4));
         var batches = channels.Shape.Length(0); var batchStride = channels.Shape.Stride(0);
 
@@ -99,7 +120,7 @@ public class LayerNorm2 : NormalizationLayer
             }
         } 
 
-        return channels;
+        return channels.Squeeze(0..^originalRank);
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)

@@ -3146,6 +3146,88 @@ where TNum : INumber<TNum>
     }
 
     /// <summary>
+    /// Concatenate the data from this tensor and another along the given axis
+    /// </summary>
+    /// <param name="other">tensor to concatenate with</param>
+    /// <param name="axis">axis to concatenate along</param>
+    /// <returns>concatenated tensor</returns>
+    /// <exception cref="ArgumentException">thrown if concatenation is not possible</exception>
+    public Tensor<TNum> Concat(Tensor<TNum> other, Index axis)
+    {
+        // Compute the minimum rank for concatenation
+        var matchedRank = Math.Max(this.Shape.Rank, other.Shape.Rank);
+        var dim = axis.GetOffset(matchedRank);
+        if (dim < 0)
+        {
+            matchedRank = matchedRank + Math.Abs(dim);
+            dim = axis.GetOffset(matchedRank);
+        }
+
+        // Force both tensors to be treated as if they are of the matched rank by padding with leading '1' if rank is to small
+        var a_shape = this.Shape.EnsureRank(matchedRank);
+        var a = this.ReshapeShared(a_shape);
+
+        var b_shape = other.Shape.EnsureRank(matchedRank);
+        var b = other.ReshapeShared(b_shape);
+
+        // Validate the dimensions for compatibility
+        for (int i = 0; i < matchedRank; i++)
+        {
+            if (i != dim && a_shape.Length(i) != b_shape.Length(i))
+                throw new ArgumentException("Tensors must have the same shape on all axes except the concatenation axis.");
+        }
+
+        // Determine output shape
+        var outDims = new int[matchedRank];
+        for (int i = 0; i < matchedRank; i++)
+        {
+            if (i != dim)
+                outDims[i] = a_shape.Length(i);
+            else
+                outDims[i] = a_shape.Length(i) + b_shape.Length(i);
+        }
+        var outShape = new TensorShape(outDims);
+
+        // Concatenate
+        var outTensor = Tensor<TNum>.Defaults(outShape);
+        var outSpan = outTensor.AsSpan();
+        var aSpan = a.AsSpan();
+        var bSpan = b.AsSpan();
+
+        int rank = matchedRank;
+        int innerBlockSize = 1;
+        for (int i = dim + 1; i < rank; i++)
+            innerBlockSize *= outShape.Length(i); // elements per slice
+
+        int outerBlockSize = 1;
+        for (int i = 0; i < dim; i++)
+            outerBlockSize *= outShape.Length(i); // number of slices
+
+        int aBlockSize = a_shape.Length(dim) * innerBlockSize;
+        int bBlockSize = b_shape.Length(dim) * innerBlockSize;
+        int outBlockSize = outShape.Length(dim) * innerBlockSize;
+
+        int aOffset = 0;
+        int bOffset = 0;
+        int outOffset = 0;
+
+        for (int i = 0; i < outerBlockSize; i++)
+        {
+            // Copy a block
+            aSpan.Slice(aOffset, aBlockSize).CopyTo(outSpan.Slice(outOffset, aBlockSize));
+            outOffset += aBlockSize;
+            aOffset += aBlockSize;
+
+            // Copy b block
+            bSpan.Slice(bOffset, bBlockSize).CopyTo(outSpan.Slice(outOffset, bBlockSize));
+            outOffset += bBlockSize;
+            bOffset += bBlockSize;
+        }
+
+        return outTensor;
+    }
+
+    /// <summary>
     /// Create an exact duplicate of this tensor
     /// </summary>
     /// <returns>tensor</returns>

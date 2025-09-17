@@ -95,8 +95,8 @@ public abstract class NormalizationLayer : NetworkLayer
     /// <param name="stride">amount to increment by (useful for non-sequential values)</param>
     protected void MeanAndVariance(IList<SpanSurrogate<float>> sets, out float mean, out float variance, int offset = 0, int stride = 1)
     {
-        var length = sets.Count;
-        if (length == 0)
+        var setCount = sets.Count;
+        if (setCount == 0)
         {
             mean = 0;
             variance = 0;
@@ -106,10 +106,11 @@ public abstract class NormalizationLayer : NetworkLayer
         // Vectorized elements
         int count = 0;                  // Since we can have stride, count may not = length
         float sum = 0, sumSq = 0;       // Sum and sum of squares
-        foreach (var set in sets)
+        foreach (var set in sets)       // Loop over all "channels" that the mean should be computed over (each channel usually is the same channel across different batches)
         {
             var values = set.AsSpan();
-            if (values.Length == 0)
+            var length = values.Length;
+            if (length == 0)
                 continue;
 
             int i = offset;             // Starting index 0 or offset

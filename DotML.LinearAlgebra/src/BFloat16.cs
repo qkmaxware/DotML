@@ -13,6 +13,15 @@ public readonly struct BFloat16
     public float FloatValue => (float)this;
 
     /// <summary>
+    /// Construct a BFloat16 from from a 16bit pattern.
+    /// </summary>
+    /// <param name="u">bit pattern</param>
+    public BFloat16(ushort u)
+    {
+        value = u;
+    }
+
+    /// <summary>
     /// Construct a BFloat16 from a float by truncating the lower 16 bits.
     /// </summary>
     /// <param name="f"></param>
