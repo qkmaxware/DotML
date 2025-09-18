@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using DotML.Network.Initialization;
 using DotML.Network.Training;
 
@@ -10,7 +11,7 @@ namespace DotML.Network;
 public abstract class Gradients
 {
     /// <summary>
-    /// gradient of loss w.r.t input
+    /// Gradient of loss w.r.t input
     /// </summary>
     public Tensor<float> dX { get; init; }
 
@@ -34,12 +35,12 @@ public class Gradient : Gradients
 public class WeightAndBiasGradients : Gradients
 {
     /// <summary>
-    /// gradient of loss w.r.t weights
+    /// Gradient of loss w.r.t weights
     /// </summary>
     public Tensor<float> dW { get; init; }
-    
+
     /// <summary>
-    /// gradient of loss w.r.t biases
+    /// Gradient of loss w.r.t biases
     /// </summary>
     public Tensor<float> dB { get; init; }
 
@@ -48,4 +49,25 @@ public class WeightAndBiasGradients : Gradients
         this.dW = dw;
         this.dB = db;
     }
+}
+
+/// <summary>
+/// Container storing input gradient and a list of numbered component gradients
+/// </summary>
+public class GradientList : Gradient
+{
+    private Gradients[] subgradients;
+
+    public GradientList(Tensor<float> dx, Gradients[] list) : base(dx)
+    {
+        this.subgradients = list;
+    }
+
+    /// <summary>
+    /// gradient of loss w.r.t the n'th component
+    /// </summary>
+    /// <param name="n">component number</param>
+    /// <returns>gradient</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Gradients dN(int n) => subgradients[n];
 }
