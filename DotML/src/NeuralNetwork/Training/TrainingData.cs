@@ -387,7 +387,7 @@ public class TrainingSet<T> : IEnumerable<TrainingPair<T>>, ITrainingDataSet<T> 
     public static bool IsBinaryTrainingSet(FileInfo file) {
         using var reader = new BinaryReader(file.OpenRead());
         // Read magic (and validate)
-        foreach (var magic in TrainingSetBuilder.BinaryTrainingSetMagicNumber) {
+        foreach (var magic in BinaryVectorBuilder.BinaryTrainingSetMagicNumber) {
             if (reader.ReadByte() != magic)
                 return false;
         }
@@ -416,7 +416,7 @@ public class TrainingSet<T> : IEnumerable<TrainingPair<T>>, ITrainingDataSet<T> 
     /// <param name="reader">reader containing binary data</param>
     /// <exception cref="ArgumentException">thrown when vector data-type is unknown</exception>
     public void AddFrom(BinaryReader reader) {
-        foreach (var magic in TrainingSetBuilder.BinaryTrainingSetMagicNumber) {
+        foreach (var magic in BinaryVectorBuilder.BinaryTrainingSetMagicNumber) {
             if (reader.ReadByte() != magic)
                 throw new FormatException("Stream is not formatted as a binary training set");
         }
@@ -489,7 +489,7 @@ public class TrainingSet<T> : IEnumerable<TrainingPair<T>>, ITrainingDataSet<T> 
     /// <param name="writer">writer to dump vectors to</param>
     public void WriteTo(BinaryWriter writer) {
         // Write magic number
-        foreach (var magic in TrainingSetBuilder.BinaryTrainingSetMagicNumber) {
+        foreach (var magic in BinaryVectorBuilder.BinaryTrainingSetMagicNumber) {
             writer.Write((byte)magic);
         }
 

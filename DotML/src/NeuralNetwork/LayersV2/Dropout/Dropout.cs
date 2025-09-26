@@ -59,6 +59,14 @@ public class Dropout : NetworkLayer
         return input.HadamardWith(mask!);
     }
 
+    public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx) {
+        var res = this.Forward(channels);
+        if (ctx is not null) {
+            ctx.Save(this, new MaskContext(channels, res, mask!));
+        }
+        return res;
+    }
+
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)
     {
         if (mask is null)
@@ -67,6 +75,15 @@ public class Dropout : NetworkLayer
         // Elementwise multiply gradient by mask
         var dx = dy.HadamardWith(mask);
         return new Gradient(dx);
+    }
+
+    public override Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null) {
+        var io = ctx.Get<MaskContext>(this);
+        this.mask = io.Mask;
+        var grads = this.Backward(io.Input, io.Output, dy);
+        if (clipping is not null)
+            grads.Clip(clipping);
+        return grads;
     }
 
     public override void SubtractGradients(Gradients grads) { }

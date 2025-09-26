@@ -19,6 +19,12 @@ public abstract class Gradients
     {
         this.dX = dx;
     }
+
+    /// <summary>
+    /// Perform clipping on these gradients
+    /// </summary>
+    /// <param name="clipping">clipping strategy</param>
+    public abstract void Clip(IClippingStrategy clipping);
 }
 
 /// <summary>
@@ -27,6 +33,10 @@ public abstract class Gradients
 public class Gradient : Gradients
 {
     public Gradient(Tensor<float> dx) : base(dx) { }
+
+    public override void Clip(IClippingStrategy clipping) {
+        this.dX.ElementWiseInplace((x) => clipping.ClipInput(x));
+    }
 }
 
 /// <summary>
@@ -49,6 +59,12 @@ public class WeightAndBiasGradients : Gradients
         this.dW = dw;
         this.dB = db;
     }
+
+    public override void Clip(IClippingStrategy clipping) {
+        this.dX.ElementWiseInplace((x) => clipping.ClipInput(x));
+        this.dW.ElementWiseInplace((w) => clipping.ClipWeight(w));
+        this.dB.ElementWiseInplace((b) => clipping.ClipBias(b));
+    }
 }
 
 /// <summary>
@@ -70,4 +86,9 @@ public class GradientList : Gradient
     /// <returns>gradient</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Gradients dN(int n) => subgradients[n];
+
+    public override void Clip(IClippingStrategy clipping) {
+        this.dX.ElementWiseInplace((x) => clipping.ClipInput(x));
+        // Don't clip subgradients as those should already be clipped by .Backward of other layers
+    }
 }

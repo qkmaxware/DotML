@@ -32,7 +32,7 @@ public class Program {
 
         var parser = new BinaryClassifiedVectors();
         // TrainingSet set = new TrainingSet();
-        var builder = new TrainingSetBuilder<byte>();
+        var builder = new BinaryVectorBuilder<byte>();
         builder.ScalingFactor = 1.0 / 255.0;
         foreach (var file in files) {
             Console.Write($"Processing '{file}'...");

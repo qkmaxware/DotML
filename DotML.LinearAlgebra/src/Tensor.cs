@@ -14,6 +14,7 @@ namespace DotML;
 /// </summary>
 /// <typeparam name="TNum">tensor element type</typeparam>
 public sealed class TensorView<TNum>
+: ITensorLike<TNum>
 where TNum : INumber<TNum>
 {
     private readonly TNum[] elements;
@@ -26,6 +27,17 @@ where TNum : INumber<TNum>
         this.offset = offset;
         this.Shape = shape;
     }
+
+    /// <summary>
+    /// Number of dimensions in tensor
+    /// </summary>
+    public int Rank => Shape.Rank;
+    /// <summary>
+    /// Length/size of a particular dimension
+    /// </summary>
+    /// <param name="index">dimension index</param>
+    /// <returns>dimension length</returns>
+    public int GetDimension(int index) => Shape.Length(index);
 
     /// <summary>
     /// Multi-dimensional index access to tensor elements
@@ -55,6 +67,13 @@ where TNum : INumber<TNum>
     }
 
     /// <summary>
+    /// Get a particular element from the tensor by index
+    /// </summary>
+    /// <param name="indices">list of indexes for each dimension, should match the number of dimensions</param>
+    /// <returns>element at the given index</returns>
+    public TNum GetElementAt(params int[] indices) => this[indices];
+
+    /// <summary>
     /// Materialize this view into a concreate tensor via element copying
     /// </summary>
     /// <returns>tensor</returns>
@@ -80,6 +99,7 @@ where TNum : INumber<TNum>
 /// </summary>
 /// <typeparam name="T">Element type</typeparam>
 public class Tensor<TNum>
+: IMutableTensorLike<TNum>
 where TNum : INumber<TNum>
 {
     /// <summary>
@@ -500,6 +520,21 @@ where TNum : INumber<TNum>
     }
 
     /// <summary>
+    /// Get a particular element from the tensor by index
+    /// </summary>
+    /// <param name="indices">list of indexes for each dimension, should match the number of dimensions</param>
+    /// <returns>element at the given index</returns>
+    public TNum GetElementAt(params int[] indices) => this[indices];
+
+    /// <summary>
+    /// Set a particular element in the tensor by index
+    /// </summary>
+    /// <param name="value">value to store</param>
+    /// <param name="indices">list of indexes for each dimension, should match the number of dimensions</param>
+    /// <returns>element at the given index</returns>
+    public void SetElementAt(TNum value, params int[] indices) => this[indices] = value;
+
+    /// <summary>
     /// Operator for .Slice
     /// </summary>
     /// <param name="ranges">ranges to slice over</param>
@@ -590,6 +625,13 @@ where TNum : INumber<TNum>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => Shape.Rank;
     }
+
+    /// <summary>
+    /// Length/size of a particular dimension
+    /// </summary>
+    /// <param name="index">dimension index</param>
+    /// <returns>dimension length</returns>
+    public int GetDimension(int index) => Shape.Length(index);
 
     /// <summary>
     /// Number of elements in the tensor
@@ -3389,6 +3431,25 @@ where TNum : INumber<TNum>
                 sb.Append(dimClose);
             }
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Shuffle(Span<TNum> span) {
+        // Fisher-Yates shuffle
+        for (var i = span.Length - 1; i >= 1; i--) {
+            var j = rng.Next(i);
+
+            var ej = span[j];
+            span[j] = span[i];
+            span[i] = ej;
+        }
+    }
+
+    /// <summary>
+    /// Shuffle the elements of the tensor
+    /// </summary>
+    public void Shuffle() {
+        Shuffle(this.elements);
     }
 
     /// <summary>

@@ -16,13 +16,13 @@ public interface IShape {
     /// <summary>
     /// Number of dimensions in the shape
     /// </summary>
-    public int Dimensions {get;}
+    public int Rank {get;}
     /// <summary>
     /// Length/size of a particular dimension
     /// </summary>
     /// <param name="index">dimension index</param>
     /// <returns>dimension length</returns>
-    public int GetDimension(int index);
+    public int Length(int index); 
 }
 
 /// <summary>
@@ -54,7 +54,7 @@ public struct Shape4D : IShape {
     /// </summary>
     public Shape3D Shape3D => new Shape3D(Channels, Rows, Columns);
 
-    public readonly int Dimensions => 4;
+    public readonly int Rank => 4;
 
     public Shape4D() {}
 
@@ -97,7 +97,7 @@ public struct Shape4D : IShape {
 
     public override string ToString() => $"{Batches}x{Channels}x{Rows}x{Columns}";
 
-    public int GetDimension(int index) => index switch {
+    public int Length(int index) => index switch {
         0 => Batches,
         1 => Channels,
         2 => Rows,
@@ -131,7 +131,7 @@ public struct Shape3D : IShape {
     /// </summary>
     public Shape2D Shape2D => new Shape2D(Rows, Columns);
 
-    public readonly int Dimensions => 3;
+    public readonly int Rank => 3;
 
     public Shape3D() {}
 
@@ -172,7 +172,7 @@ public struct Shape3D : IShape {
 
     public override string ToString() => $"{Channels}x{Rows}x{Columns}";
 
-    public int GetDimension(int index) => index switch {
+    public int Length(int index) => index switch {
         0 => Channels,
         1 => Rows,
         2 => Columns,
@@ -193,7 +193,7 @@ public struct Shape2D : IShape {
     /// </summary>
     public readonly int Columns {get; init;}
 
-    public readonly int Dimensions => 2;
+    public readonly int Rank => 2;
 
     public Shape2D() {}
 
@@ -230,7 +230,7 @@ public struct Shape2D : IShape {
 
     public override string ToString() => $"{Rows}x{Columns}";
 
-    public int GetDimension(int index) => index switch {
+    public int Length(int index) => index switch {
         0 => Rows,
         1 => Columns,
         _ => 1

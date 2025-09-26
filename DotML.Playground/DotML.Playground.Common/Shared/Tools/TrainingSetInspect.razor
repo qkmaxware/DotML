@@ -97,7 +97,7 @@ else if (set is not null) {
 
 @code {
     private string fileaname = string.Empty;
-    private TrainingSetBuilder? set;
+    private BinaryVectorBuilder? set;
     private int selected_pair = 0;
 
     private Exception? failed_load = null;
@@ -105,7 +105,7 @@ else if (set is not null) {
     private TrainingPairVisualizations.Visualization input_visualization = TrainingPairVisualizations.Visualization.None;
     private TrainingPairVisualizations.Visualization output_visualization = TrainingPairVisualizations.Visualization.None;
 
-    private async Task<(string? FileName, TrainingSetBuilder Builder)?> TryLoadFile(InputFileChangeEventArgs e) {
+    private async Task<(string? FileName, BinaryVectorBuilder Builder)?> TryLoadFile(InputFileChangeEventArgs e) {
         try {
             failed_load = null;
             var file = e.GetMultipleFiles(1)[0];
@@ -114,7 +114,7 @@ else if (set is not null) {
             await stream.CopyToAsync(memory);
             memory.Position = 0;
             using var reader = new BinaryReader(memory);
-            TrainingSetBuilder set = TrainingSetBuilder.From(reader);
+            BinaryVectorBuilder set = BinaryVectorBuilder.From(reader);
             return (file.Name, set);
         }
         catch (Exception ex) {

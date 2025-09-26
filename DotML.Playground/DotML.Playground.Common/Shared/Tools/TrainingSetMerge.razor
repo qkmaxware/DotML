@@ -64,10 +64,10 @@
 </table>
 
 @code {
-    private TrainingSetBuilder? first;
-    private TrainingSetBuilder? second;
+    private BinaryVectorBuilder? first;
+    private BinaryVectorBuilder? second;
 
-    private async Task<TrainingSetBuilder?> LoadFile(InputFileChangeEventArgs e) {
+    private async Task<BinaryVectorBuilder?> LoadFile(InputFileChangeEventArgs e) {
         try {
             var file = e.GetMultipleFiles(1)[0];
             using var stream = file.OpenReadStream(100_000_000);
@@ -75,7 +75,7 @@
             await stream.CopyToAsync(memory);
             memory.Position = 0;
             using var reader = new BinaryReader(memory);
-            var set = TrainingSetBuilder.From(reader);
+            var set = BinaryVectorBuilder.From(reader);
             return set;
         }
         catch (Exception ex) {

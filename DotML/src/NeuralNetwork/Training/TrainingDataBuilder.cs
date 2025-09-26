@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 namespace DotML.Network.Training;
 
-public class TrainingSetBuilder {
+public class BinaryVectorBuilder {
     private static char[] magic = ['v', 'e', 'c'];
     internal static ReadOnlyCollection<char> BinaryTrainingSetMagicNumber => Array.AsReadOnly(magic);
     
@@ -69,12 +69,12 @@ public class TrainingSetBuilder {
         };
     }
 
-    protected TrainingSetBuilder(TrainingVectorStorageType storage) {
+    protected BinaryVectorBuilder(TrainingVectorStorageType storage) {
         this.StorageType = storage;
         this.pairs = new List<KeyValuePair<Array, Array>>();
     }
 
-    protected TrainingSetBuilder(TrainingSetBuilder builder, bool deep) {
+    protected BinaryVectorBuilder(BinaryVectorBuilder builder, bool deep) {
         this.StorageType = builder.StorageType;
         this.ScalingFactor = builder.ScalingFactor;
         if (deep) {
@@ -215,7 +215,7 @@ public class TrainingSetBuilder {
     /// <returns></returns>
     /// <exception cref="FormatException">If the binary reader's stream is not a binary training set</exception>
     /// <exception cref="InvalidCastException">If the storage type is incompatible with this builder implementation</exception>
-    public static TrainingSetBuilder From(BinaryReader reader) {
+    public static BinaryVectorBuilder From(BinaryReader reader) {
         // Copy of AddFrom 
         // Read magic number
         var magic = BinaryTrainingSetMagicNumber;
@@ -257,7 +257,7 @@ public class TrainingSetBuilder {
             outputs.Add(data);
         }
 
-        TrainingSetBuilder builder = new TrainingSetBuilder(type);
+        BinaryVectorBuilder builder = new BinaryVectorBuilder(type);
         builder.ScalingFactor = scaling;
         builder.EnsureCapacity(input_count);
 
@@ -394,18 +394,18 @@ public class TrainingSetBuilder {
     /// <summary>
     /// Clone this builder to a new instance
     /// </summary>
-    /// <returns>TrainingSetBuilder with identical values</returns>
-    public TrainingSetBuilder Clone() {
-        return new TrainingSetBuilder(this, deep: true);
+    /// <returns>BinaryVectorBuilder with identical values</returns>
+    public BinaryVectorBuilder Clone() {
+        return new BinaryVectorBuilder(this, deep: true);
     }
 
     /// <summary>
     /// Cast a weakly typed training data builder to a strongly typed one
     /// </summary>
     /// <typeparam name="T">strong value typing</typeparam>
-    /// <returns>TrainingSetBuilder for values of type T</returns>
+    /// <returns>BinaryVectorBuilder for values of type T</returns>
     /// <exception cref="InvalidCastException">thrown if the cast is invalid, like of the wrong type</exception>
-    public TrainingSetBuilder<T> Cast<T>() where T:INumber<T>,IConvertible {
+    public BinaryVectorBuilder<T> Cast<T>() where T:INumber<T>,IConvertible {
         var storage_type = typeof(T) switch {
             Type u8_type when u8_type == typeof(byte) => TrainingVectorStorageType.U8,   
             Type u16_type when u16_type == typeof(ushort) => TrainingVectorStorageType.U16,  
@@ -427,14 +427,14 @@ public class TrainingSetBuilder {
             throw new InvalidCastException(nameof(T));
         }
 
-        return new TrainingSetBuilder<T>(this, deep: false);
+        return new BinaryVectorBuilder<T>(this, deep: false);
     }
 
 }
 
-public class TrainingSetBuilder<T> : TrainingSetBuilder where T:INumber<T>, IConvertible {
+public class BinaryVectorBuilder<T> : BinaryVectorBuilder where T:INumber<T>, IConvertible {
 
-    public TrainingSetBuilder() : base(typeof(T) switch {
+    public BinaryVectorBuilder() : base(typeof(T) switch {
             Type u8_type when u8_type == typeof(byte) => TrainingVectorStorageType.U8,   
             Type u16_type when u16_type == typeof(ushort) => TrainingVectorStorageType.U16,  
             Type u32_type when u32_type == typeof(uint) => TrainingVectorStorageType.U32,  
@@ -452,9 +452,9 @@ public class TrainingSetBuilder<T> : TrainingSetBuilder where T:INumber<T>, ICon
             _ => throw new ArgumentException(nameof(T))
         }) { }
 
-    public TrainingSetBuilder(TrainingSetBuilder<T> builder) : base(builder, deep: true) { }
+    public BinaryVectorBuilder(BinaryVectorBuilder<T> builder) : base(builder, deep: true) { }
 
-    internal TrainingSetBuilder(TrainingSetBuilder builder, bool deep) : base(builder, deep) {
+    internal BinaryVectorBuilder(BinaryVectorBuilder builder, bool deep) : base(builder, deep) {
         var determined_type = typeof(T) switch {
             Type u8_type when u8_type == typeof(byte) => TrainingVectorStorageType.U8,   
             Type u16_type when u16_type == typeof(ushort) => TrainingVectorStorageType.U16,  

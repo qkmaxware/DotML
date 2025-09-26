@@ -8,7 +8,7 @@ namespace DotML.Network;
 /// Base class for all neural network layers
 /// <see href="https://en.wikipedia.org/wiki/Layer_(deep_learning)"/>
 /// </summary>
-public abstract class NetworkLayer
+public abstract class NetworkLayer : INetworkModule
 {
     /// <summary>
     /// Test if the layer is in training mode (defaults to false, inference mode)
@@ -65,6 +65,16 @@ public abstract class NetworkLayer
     /// <returns>layer output</returns>
     public abstract Tensor<float> Forward(Tensor<float> channels);
 
+    public virtual Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)
+    {
+        var res = this.Forward(channels);
+        if (ctx is not null)
+        {
+            ctx.Save(this, new IOContext(channels, res));
+        }
+        return res;
+    }
+
     /// <summary>
     /// Backwards evaluation of this layer
     /// </summary>
@@ -74,9 +84,21 @@ public abstract class NetworkLayer
     /// <returns>gradient of loss w.r.t input and layer specific gradients if applicable</returns>
     public abstract Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy);
 
+    public virtual Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null)
+    {
+        var io = ctx.Get<IOContext>(this);
+        var grads = this.Backward(io.Input, io.Output, dy);
+        if (clipping is not null)
+            grads.Clip(clipping);
+        return grads;
+    }
+
     /// <summary>
     /// Update this layer's weights and biases used the provided gradients usually computed via a call to <see cref="Backward"/>
     /// </summary>
     /// <param name="grads">layer specific gradients</param>
     public abstract void SubtractGradients(Gradients grads);
+
+    public void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null)
+    {}
 }

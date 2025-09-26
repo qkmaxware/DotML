@@ -137,7 +137,7 @@ public readonly struct RowMajorIndexSpanEnumerator
 /// <summary>
 /// Shape of a tensor
 /// </summary>
-public readonly struct TensorShape
+public readonly struct TensorShape: IShape
 {
     private readonly int[] dims;
     private readonly int[] strides;
