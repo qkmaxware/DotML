@@ -96,4 +96,6 @@ public class Flatten : Reshape
             _ => throw new InvalidOperationException()
         };
     }
+
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

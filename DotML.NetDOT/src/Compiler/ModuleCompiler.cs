@@ -17,7 +17,7 @@ public class ModuleCompiler
         new LayerPattern<Conv2D>(),
         new LayerPattern<TransposeConv2D>(),
         new LayerPattern<Flatten>(),
-        new LayerPattern<ActivationLayer2>(),
+        new LayerPattern<Activation>(),
         new LayerPattern<MaxPool2D>(),
         new LayerPattern<MinPool2D>(),
         new LayerPattern<AvgPool2D>(),

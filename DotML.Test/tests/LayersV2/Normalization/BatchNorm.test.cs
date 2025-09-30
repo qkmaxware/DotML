@@ -1,4 +1,5 @@
 using DotML.Network;
+using DotML.Network.IO;
 using DotML.Network.Training;
 
 namespace DotML.Test.Layers.Normalization;
@@ -9,7 +10,33 @@ public class BatchNormTest
     [TestMethod]
     public void TestSafetensors()
     {
-        throw new NotImplementedException();
+        var saver = new SafetensorSerializer();
+        var loader = new SafetensorDeserializer();
+
+        var layer = new BatchNorm2(channels: 1);
+
+        var tensors = saver.Serialize(layer);
+
+        // Assert that the correct tensors are stored
+        Assert.AreEqual(2, tensors.Count);
+        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2.Weights)));
+        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2.Biases)));
+
+        // Assert that the stored values in the safetensor set are in fact the same as configured in the layer
+        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Weights)), 0.0001f));
+        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Biases)), 0.0001f));
+
+        // Store and load from file
+        var path = "batchnorm2_test.safetensors";
+        tensors.WriteToFile(path);
+        var reloadedTensors = Safetensors.ReadFromFile(path);
+
+        // Update the layer weights from the reloaded ones
+        loader.Deserialize(layer, reloadedTensors);
+
+        // See that the newly set tensors matched the original ones exactly
+        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Weights)), 0.0001f));
+        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Biases)), 0.0001f));
     }
 
     [TestMethod]

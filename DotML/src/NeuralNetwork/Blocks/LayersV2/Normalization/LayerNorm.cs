@@ -55,7 +55,7 @@ public class LayerNorm2 : NormalizationLayer
         Weights.FillGenerated(() => initializer.RandomWeight(neurons, neurons, parameters));
         Biases.FillGenerated(() => initializer.RandomWeight(neurons, neurons, parameters));
     }
-    
+
     const float epsilon = 1e-8f;
 
     public override TensorShape ForwardShape(TensorShape input) => input;
@@ -217,4 +217,6 @@ public class LayerNorm2 : NormalizationLayer
         optimizer.UpdateParameter(this, nameof(Weights), learningRate, this.Weights, dW);
         optimizer.UpdateParameter(this, nameof(Biases), learningRate, this.Biases, dB);
     }
+    
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

@@ -36,7 +36,7 @@ public class ResidualBlockContext : IModuleContext
 /// </code>
 /// </para>
 /// </summary>
-public abstract class ResidualBlock : INetworkModule
+public abstract class ResidualBlock : INetworkModule, IBlockVisitable
 {
     public INetworkModule MainPath;
     public INetworkModule? ResidualPath;
@@ -122,6 +122,8 @@ public abstract class ResidualBlock : INetworkModule
         this.MainPath.Update(learningRate, res.Main, optimizer, regularization);
         this.ResidualPath?.Update(learningRate, res.Residual, optimizer, regularization);
     }
+
+    public TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }
 
 public class ResidualBlockGradients : Gradients
@@ -143,4 +145,5 @@ public class ResidualBlockGradients : Gradients
         this.Main.Clip(clipping);
         this.Residual.Clip(clipping);
     }
+    
 }

@@ -8,13 +8,13 @@ namespace DotML.Network;
 /// Activation layer for a FeedforwardNetwork
 /// <see href="https://en.wikipedia.org/wiki/Activation_function"/>
 /// </summary>
-public class ActivationLayer2 : NetworkLayer
+public class Activation : NetworkLayer
 {
     public ActivationFunction ActivationFunction { get; init; }
 
-    public ActivationLayer2(ActivationFunction activation)
+    public Activation(ActivationFunction fn)
     {
-        this.ActivationFunction = activation;
+        this.ActivationFunction = fn;
     }
 
     public override void Initialize(IInitializer initializer) { }
@@ -37,5 +37,7 @@ public class ActivationLayer2 : NetworkLayer
         return new Gradient(dx);
     }
 
-    public override void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null)  { /* Nothing to do here */ }
+    public override void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null) { /* Nothing to do here */ }
+
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

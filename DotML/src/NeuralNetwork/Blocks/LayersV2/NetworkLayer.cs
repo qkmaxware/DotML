@@ -8,7 +8,7 @@ namespace DotML.Network;
 /// Base class for all neural network layers
 /// <see href="https://en.wikipedia.org/wiki/Layer_(deep_learning)"/>
 /// </summary>
-public abstract class NetworkLayer : INetworkModule
+public abstract class NetworkLayer : INetworkModule, IBlockVisitable
 {
     /// <summary>
     /// Test if the layer is in training mode (defaults to false, inference mode)
@@ -101,4 +101,12 @@ public abstract class NetworkLayer : INetworkModule
     }
 
     public abstract void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null);
+
+    /// <summary>
+    /// Visit this layer with a given visitor
+    /// </summary>
+    /// <param name="visitor">visitor</param>
+    /// <param name="arg">optional argument</param>
+    /// <returns>optional return</returns>
+    public abstract TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg);
 }

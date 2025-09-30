@@ -195,4 +195,6 @@ public class Conv2D : NetworkLayer
         optimizer.UpdateParameter(this, nameof(Weights), learningRate, this.Weights, dW);
         optimizer.UpdateParameter(this, nameof(Biases), learningRate, this.Biases, dB);
     }
+
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

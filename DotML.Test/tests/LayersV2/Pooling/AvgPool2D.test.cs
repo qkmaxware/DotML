@@ -1,4 +1,5 @@
 using DotML.Network;
+using DotML.Network.IO;
 using DotML.Network.Training;
 
 namespace DotML.Test.Layers.Pooling;
@@ -7,7 +8,16 @@ namespace DotML.Test.Layers.Pooling;
 public class AvgPool2DTest {
     [TestMethod]
     public void TestSafetensors() {
-        throw new NotImplementedException();
+        var saver = new SafetensorSerializer();
+        var loader = new SafetensorDeserializer();
+
+        var layer = new AvgPool2D(size: 2, stride: 2, padding: 0);
+
+        var tensors = saver.Serialize(layer);
+
+        Assert.AreEqual(0, tensors.Count); // No tensors in activation layer
+
+        loader.Deserialize(layer, tensors);
     }
 
     [TestMethod]

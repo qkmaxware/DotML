@@ -8,11 +8,13 @@ Create an extension of GraphViz DOT that is fully compatible with the rendering 
 Below is an concept for making a classical 2-2-1 neural network using DOT attributes. Note, attribute names and namespaces are subject to change. 
 ```dot
 digraph MyNetwork {
-    dense1      ["net:type"="DenseLinear" "net:neurons"="2"];
-    sigmoid1    ["net:type"="Activation" "net:fn"="sigmoid"];
-    dense2      ["net:type"="DenseLinear" "net:neurons"="2"];
-    sigmoid2    ["net:type"="Activation" "net:fn"="sigmoid"];
-    dense3      ["net:type"="DenseLinear" "net:neurons"="1"];
-    dense1 -> sigmoid1 -> dense2 -> sigmoid2 -> dense3;
+    INPUT       ["type"="input"]
+    dense1      ["type"="DenseLinear" "neurons"="2"];
+    sigmoid1    ["type"="Activation" "fn"="sigmoid"];
+    dense2      ["type"="DenseLinear" "neurons"="2"];
+    sigmoid2    ["type"="Activation" "fn"="sigmoid"];
+    dense3      ["type"="DenseLinear" "neurons"="1"];
+    OUTPUT      ["type"="output"]
+    INPUT -> dense1 -> sigmoid1 -> dense2 -> sigmoid2 -> dense3 -> OUTPUT;
 }
 ```

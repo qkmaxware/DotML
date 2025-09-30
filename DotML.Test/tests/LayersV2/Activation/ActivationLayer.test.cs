@@ -1,4 +1,5 @@
 using DotML.Network;
+using DotML.Network.IO;
 using DotML.Network.Training;
 
 namespace DotML.Test.Layers.Activation;
@@ -7,12 +8,21 @@ namespace DotML.Test.Layers.Activation;
 public class ActivationLayerTest_V2 {
     [TestMethod]
     public void TestSafetensors() {
-        throw new NotImplementedException();
+        var saver = new SafetensorSerializer();
+        var loader = new SafetensorDeserializer();
+
+        var layer = new Network.Activation(ReLU.Instance);
+
+        var tensors = saver.Serialize(layer);
+
+        Assert.AreEqual(0, tensors.Count); // No tensors in activation layer
+
+        loader.Deserialize(layer, tensors);
     }
 
     [TestMethod]
     public void TestReLU() {
-        var layer = new ActivationLayer2(ReLU.Instance);
+        var layer = new Network.Activation(ReLU.Instance);
         var X = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
             0.158983513712883,
             -0.25363606214523315,
@@ -133,7 +143,7 @@ public class ActivationLayerTest_V2 {
 
     [TestMethod]
     public void TestSigmoid() {
-        var layer = new ActivationLayer2(ReLU.Instance);
+        var layer = new Network.Activation(ReLU.Instance);
         var X = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
             -0.2038573920726776,
             0.3062525689601898,

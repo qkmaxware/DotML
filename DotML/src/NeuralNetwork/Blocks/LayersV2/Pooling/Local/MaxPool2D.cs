@@ -15,7 +15,7 @@ public class MaxPool2D : LocalPooling2D
 
     protected override float Aggregate(float current, int count)
     {
-         return current;                    // Current is the max
+        return current;                    // Current is the max
     }
 
     protected override void Backpropagate(Span2D<float> dx, ReadOnlySpan2D<float> x, float dy, int items, int startX, int endX, int startY, int endY)
@@ -23,17 +23,20 @@ public class MaxPool2D : LocalPooling2D
         var inputHeight = x.Rows;
         var inputWidth = x.Columns;
         int maxRow = startY, maxCol = startX; float maxVal = float.MinValue; // Values for max pooling
-        for (int kr = startY; kr < endY; kr++) {
+        for (int kr = startY; kr < endY; kr++)
+        {
             if (kr < 0 || kr >= inputHeight)
                 continue;
 
-            for (int kc = startX; kc < endX; kc++) {
+            for (int kc = startX; kc < endX; kc++)
+            {
                 if (kc < 0 || kc >= inputWidth)
                     continue;
                 var value = x[kr, kc];
 
                 // Compute; Assume max pooling (avg is different)
-                if (value > maxVal) {
+                if (value > maxVal)
+                {
                     maxVal = value;
                     maxRow = kr;
                     maxCol = kc;
@@ -42,6 +45,8 @@ public class MaxPool2D : LocalPooling2D
         }
         if (maxRow < 0 || maxRow >= inputHeight || maxCol < 0 || maxCol >= inputWidth)
             return;
-        dx[maxRow, maxCol] += dy; 
+        dx[maxRow, maxCol] += dy;
     }
+    
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

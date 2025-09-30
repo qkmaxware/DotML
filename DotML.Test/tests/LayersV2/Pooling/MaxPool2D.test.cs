@@ -1,4 +1,5 @@
 using DotML.Network;
+using DotML.Network.IO;
 using DotML.Network.Training;
 
 namespace DotML.Test.Layers.Pooling;
@@ -9,7 +10,16 @@ public class MaxPool2DLayerTest
     [TestMethod]
     public void TestSafetensors()
     {
-        throw new NotImplementedException();
+        var saver = new SafetensorSerializer();
+        var loader = new SafetensorDeserializer();
+
+        var layer = new MaxPool2D(2, 2, 0);
+
+        var tensors = saver.Serialize(layer);
+
+        Assert.AreEqual(0, tensors.Count); // No tensors in activation layer
+
+        loader.Deserialize(layer, tensors);
     }
 
     [TestMethod]

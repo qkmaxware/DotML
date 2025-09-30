@@ -21,16 +21,20 @@ public class AvgPool2D : LocalPooling2D
         var inputHeight = x.Rows;
         var inputWidth = x.Columns;
         float errorContribution = dy / Math.Max(1, items); // Distribute the error
-        for (int kr = startY; kr < endY; kr++) {
+        for (int kr = startY; kr < endY; kr++)
+        {
             if (kr < 0 || kr >= inputHeight)
                 continue;
 
-            for (int kc = startX; kc < endX; kc++) {
+            for (int kc = startX; kc < endX; kc++)
+            {
                 if (kc < 0 || kc >= inputWidth)
                     continue;
 
                 dx[kr, kc] += errorContribution;            // Assign the error contribution to each element in the pooling region
-            }   
+            }
         }
     }
+    
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

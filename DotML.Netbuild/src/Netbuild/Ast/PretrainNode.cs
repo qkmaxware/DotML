@@ -19,7 +19,13 @@ public class PretrainStatement : Statement {
 
     public override void ModuleAction(BuildEnvironment env)
     {
-        throw new NotImplementedException();
+        var net = env.NetworkBlock;
+        if (net is null)
+            return;
+
+        var safe = Safetensors.ReadFromFile(this.path);
+        var deserializer = new SafetensorDeserializer();
+        deserializer.Deserialize(net, safe);
     }
 
     public override string ToString()

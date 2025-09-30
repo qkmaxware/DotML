@@ -63,7 +63,7 @@ public class MultilayerPerceptronFactory : INetworkModuleFactory<MultilayerPerce
         block.Add(ilayer);
         if (activation is not null)
         {
-            block.Add(new ActivationLayer2(activation));
+            block.Add(new Activation(activation));
         }
 
         // Subsequent layers (layer[i-1] -> layer[i])
@@ -76,7 +76,7 @@ public class MultilayerPerceptronFactory : INetworkModuleFactory<MultilayerPerce
             // Only add activations on middle layers, never last layer (last layer is logits)
             if (i != layer_sizes.Length - 1 && activation is not null)
             {
-                block.Add(new ActivationLayer2(activation));
+                block.Add(new Activation(activation));
             }
         }
 

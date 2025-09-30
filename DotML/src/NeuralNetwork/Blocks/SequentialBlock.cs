@@ -6,7 +6,7 @@ namespace DotML.Network;
 /// <summary>
 /// A simple network composed of sequential layers with no skip connections, residuals, or branches
 /// </summary>
-public class SequentialBlock: INetworkModule
+public class SequentialBlock : INetworkModule, IBlockVisitable
 {
     public string? Alias { get; set; }
     public int SubmoduleCount => layers.Count;
@@ -26,7 +26,7 @@ public class SequentialBlock: INetworkModule
     public SequentialBlock(IEnumerable<INetworkModule> modules)
     {
         layers = new List<INetworkModule>(modules);
-    }   
+    }
 
     public void Add(INetworkModule module) => layers.Add(module);
     public void Remove(INetworkModule module) => layers.Remove(module);
@@ -149,7 +149,7 @@ public class SequentialBlock: INetworkModule
         return new GradientList(dy, subGrad);
     }
 
-    public void Update(float learningRate,Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null)
+    public void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null)
     {
         if (gradients is not GradientList lst)
             throw new ArgumentException("Expected a GradientList object", nameof(gradients));
@@ -160,4 +160,6 @@ public class SequentialBlock: INetworkModule
             layer.Update(learningRate, lst.dN(i), optimizer, regularization);
         }
     }
+    
+    public TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

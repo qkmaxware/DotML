@@ -15,9 +15,9 @@ public class DenseLinear : NetworkLayer
 
     public int Neurons { get; init; }
 
-    public Tensor<float> Weights { get; private set; }
+    public Tensor<float> Weights;
 
-    public Tensor<float> Biases { get; private set; }
+    public Tensor<float> Biases;
 
     public DenseLinear(int input_size, int neurons)
     {
@@ -141,4 +141,6 @@ public class DenseLinear : NetworkLayer
         optimizer.UpdateParameter(this, nameof(Weights), learningRate, this.Weights, dW);
         optimizer.UpdateParameter(this, nameof(Biases), learningRate, this.Biases, dB);
     }
+
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

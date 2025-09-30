@@ -59,7 +59,8 @@ public class Dropout : NetworkLayer
         return new Gradient(dy);
     }
 
-    public override Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null) {
+    public override Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null)
+    {
         var io = ctx.Get<MaskContext>(this);
         var grads = this.Backward(io.Input, io.Output, dy, io.Mask);
         if (clipping is not null)
@@ -67,5 +68,7 @@ public class Dropout : NetworkLayer
         return grads;
     }
 
-    public override void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null)  { /* Nothing to do here */ }
+    public override void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null) { /* Nothing to do here */ }
+
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

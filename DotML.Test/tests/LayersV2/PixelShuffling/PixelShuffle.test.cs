@@ -10,7 +10,7 @@ public class PixelShuffleTest
     [TestMethod]
     public void Test2x()
     {
-        var layer = new PixelShuffle2(upscale: 2);
+        var layer = new PixelShuffler(upscale: 2);
         var X_true = Tensor<double>.FromJaggedArray(
             [
                 [

@@ -7,14 +7,14 @@ namespace DotML.Network;
 /// A layer that helps super-resolution models implement efficient sub-pixel convolutions.
 /// <see href="https://paperswithcode.com/method/pixelshuffle"/>
 /// </summary>
-public class PixelShuffle2 : NetworkLayer
+public class PixelShuffler : NetworkLayer
 {
     /// <summary>
     /// Upscaling factor for the output image size
     /// </summary>
-    public int UpscalingFactor {get; init;}
+    public int UpscalingFactor { get; init; }
 
-    public PixelShuffle2(int upscale)
+    public PixelShuffler(int upscale)
     {
         this.UpscalingFactor = upscale;
     }
@@ -110,12 +110,17 @@ public class PixelShuffle2 : NetworkLayer
 
         Parallel.For(0, batches, (batch) =>
         {
-            for (var channel = 0; channel < outChannels; channel++) {
-                for (var row = 0; row < inHeight; row++) {
-                    for (var col = 0; col < inWidth; col++) {
-                        for (var i = 0; i < r; i++) {
-                            for (var j = 0; j < r; j++) {
-                                int inChannel = channel*rr + i*r + j;
+            for (var channel = 0; channel < outChannels; channel++)
+            {
+                for (var row = 0; row < inHeight; row++)
+                {
+                    for (var col = 0; col < inWidth; col++)
+                    {
+                        for (var i = 0; i < r; i++)
+                        {
+                            for (var j = 0; j < r; j++)
+                            {
+                                int inChannel = channel * rr + i * r + j;
                                 int outRow = row * r + i;
                                 int outCol = col * r + j;
 
@@ -126,9 +131,11 @@ public class PixelShuffle2 : NetworkLayer
                 }
             }
         });
-        
+
         return new Gradient(dX);
     }
 
-    public override void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null)  { /* Nothing to do here */ }
+    public override void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null) { /* Nothing to do here */ }
+    
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }

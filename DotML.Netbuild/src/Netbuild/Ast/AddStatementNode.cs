@@ -62,7 +62,7 @@ public class AddStatement : Statement {
             nameof(Conv2D) => makeLayer<Conv2D>(ishape, args),
             nameof(TransposeConv2D) => makeLayer<TransposeConv2D>(ishape, args),
             nameof(Flatten) => makeLayer<Flatten>(ishape, args),
-            nameof(ActivationLayer2) => makeLayer<ActivationLayer2>(ishape, args),
+            nameof(Activation) => makeLayer<Activation>(ishape, args),
             nameof(MaxPool2D) => makeLayer<MaxPool2D>(ishape, args),
             nameof(MinPool2D) => makeLayer<MinPool2D>(ishape, args),
             nameof(AvgPool2D) => makeLayer<AvgPool2D>(ishape, args),

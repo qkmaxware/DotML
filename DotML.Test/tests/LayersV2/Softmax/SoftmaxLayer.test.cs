@@ -1,5 +1,6 @@
 using DotML;
 using DotML.Network;
+using DotML.Network.IO;
 using DotML.Network.Training;
 
 namespace DotML.Test.Layers.Softmax;
@@ -8,7 +9,16 @@ namespace DotML.Test.Layers.Softmax;
 public class SoftmaxOutputTest {
     [TestMethod]
     public void TestSafetensors() {
-        throw new NotImplementedException();
+        var saver = new SafetensorSerializer();
+        var loader = new SafetensorDeserializer();
+
+        var layer = new SoftmaxOutput(^2);
+
+        var tensors = saver.Serialize(layer);
+
+        Assert.AreEqual(0, tensors.Count); // No tensors in activation layer
+
+        loader.Deserialize(layer, tensors);
     }
 
     [TestMethod]

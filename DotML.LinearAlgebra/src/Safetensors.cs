@@ -35,6 +35,11 @@ public class Safetensors {
     private Dictionary<string, Dictionary<string, string>> tensor_metadata = new Dictionary<string, Dictionary<string, string>>();
 
     /// <summary>
+    /// Number of saved tensors
+    /// </summary>
+    public int Count => tensors.Count;
+
+    /// <summary>
     /// All keys in this safetensors set
     /// </summary>
     /// <returns>enumerable of keys</returns>

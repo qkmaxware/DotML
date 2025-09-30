@@ -232,7 +232,7 @@ public class GroupNorm2 : NormalizationLayer
 
         return new WeightAndBiasGradients(dX.ReshapeShared(originalShape), dW_tensor, dB_tensor);
     }
-    
+
     public override void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null)
     {
         if (gradients is not WeightAndBiasGradients wbg)
@@ -252,4 +252,6 @@ public class GroupNorm2 : NormalizationLayer
         optimizer.UpdateParameter(this, nameof(Weights), learningRate, this.Weights, dW);
         optimizer.UpdateParameter(this, nameof(Biases), learningRate, this.Biases, dB);
     }
+    
+    public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 }
