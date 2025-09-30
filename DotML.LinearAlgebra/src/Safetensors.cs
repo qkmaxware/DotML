@@ -187,11 +187,11 @@ public class Safetensors {
             // Allocate a new array transform the data and copy it
             var obj = Tensor<TElement>.Defaults(shape);
             // Since this is all stored in row-major order there is a faster way to do this
-            var converter = TypeDescriptor.GetConverter(typeof(TElement));
+            //var converter = TypeDescriptor.GetConverter(typeof(TElement));
             TElement[] results = obj.AsArray();
             for (var i = 0; i < results.Length; i++) {
-                results[i] = (TElement)converter.ConvertFrom(((Array)tensor.data).GetValue(i));
-                //results[i] = (TElement)Convert.ChangeType(tensor.data.GetValue(i), typeof(TElement));
+                //results[i] = (TElement)converter.ConvertFrom(((Array)tensor.data).GetValue(i));
+                results[i] = (TElement)Convert.ChangeType(((Array)tensor.data).GetValue(i), typeof(TElement));
             }
             //LoadTensorInto<GenericTensor<TElement>, TElement>(key, obj);
             return obj;
@@ -218,10 +218,10 @@ public class Safetensors {
             TElement[] results = new TElement[shape.LogicalElementCount()];
             var obj = new GenericTensor<TElement>(shape.ToArray(), results);
             // Since this is all stored in row-major order there is a faster way to do this
-            var converter = TypeDescriptor.GetConverter(typeof(TElement));
+            //var converter = TypeDescriptor.GetConverter(typeof(TElement));
             for (var i = 0; i < results.Length; i++) {
-                results[i] = (TElement)converter.ConvertFrom(((Array)tensor.data).GetValue(i));
-                //results[i] = (TElement)Convert.ChangeType(tensor.data.GetValue(i), typeof(TElement));
+                //results[i] = (TElement)converter.ConvertFrom(((Array)tensor.data).GetValue(i));
+                results[i] = (TElement)Convert.ChangeType(((Array)tensor.data).GetValue(i), typeof(TElement));
             }
             //LoadTensorInto<GenericTensor<TElement>, TElement>(key, obj);
             return obj;
@@ -283,12 +283,12 @@ public class Safetensors {
             throw new IndexOutOfRangeException($"Resulting shape {string.Join('x', shape)} doesn't match shape of tensor {key} {string.Join('x', tensor.shape.AsDimensionEnumerable())}.");
         }
 
-        var converter = TypeDescriptor.GetConverter(typeof(TElement));
+        //var converter = TypeDescriptor.GetConverter(typeof(TElement));
         var data = (Array)tensor.data;
         foreach (var indices in iterate_over_dimensions(shape)) {
             var index1d = create_1d_index(shape, indices);
-            var value = (TElement?)converter.ConvertFrom(data.GetValue(index1d));
-            //var value = (TElement?)Convert.ChangeType(data.GetValue(index1d), typeof(TElement));
+            //var value = (TElement?)converter.ConvertFrom(data.GetValue(index1d));
+            var value = (TElement?)Convert.ChangeType(data.GetValue(index1d), typeof(TElement));
             if (value is not null)
                 result.SetElementAt(value, indices);
         }
