@@ -1,3 +1,5 @@
+using DotML.Network.Templates;
+
 namespace DotML.Network.IO.Netbuild;
 
 public class Preamble : AstNode{
@@ -56,9 +58,30 @@ public class FromStatement : Statement {
         }
     }
 
-    public override string ToString() {
-        if (Identifier is null) {
-            var ishape = manualInputShape ?? new Shape3D(1,1,1);
+    public override void ModuleAction(BuildEnvironment env)
+    {
+        env.NetworkBlock = new SequentialBlock();
+
+        INetworkModule? root = (Identifier?.ToLower()) switch
+        {
+            // TODO alexnet => env.NetworkBlock.Add(AlexNet.Make(), output_classes: AlexNet.OUT_CLASSES);
+            // ...
+            "xor" => new MultilayerPerceptronFactory().MakeDefault(),
+            _ => null
+        };
+        if (root is not null)
+            env.NetworkBlock.Add(root);
+
+        // TODO set input shape (needs some kind of shape propagation technique) 
+        // Relies on having these networks return some kind of "Fixed" input shape which doesn't yet exist
+        //env.InputShape = (root is not null) ? root.InputShape : manualInputShape ?? new Shape3D(1,1,1);
+    }
+
+    public override string ToString()
+    {
+        if (Identifier is null)
+        {
+            var ishape = manualInputShape ?? new Shape3D(1, 1, 1);
             return $"FROM SCRATCH INPUT {ishape.Channels} {ishape.Rows} {ishape.Columns}";
         }
         return $"FROM {Identifier}:{Version}";

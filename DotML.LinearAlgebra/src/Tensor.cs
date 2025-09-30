@@ -827,6 +827,55 @@ where TNum : INumber<TNum>
         return new Tensor<TNumResult>(this.Shape, tensor);
     }
     /// <summary>
+    /// Perform an elementwise transformation of the tensor elements with another tensor's elements
+    /// </summary>
+    /// <typeparam name="TNumOther">2nd tensor's element type</typeparam>
+    /// <typeparam name="TNumResult">resulting tensor's element type</typeparam>
+    /// <param name="other">tensor to perform elementwise operations with</param>
+    /// <param name="vectorizedTransformation">transformation to use for vectorizable components</param>
+    /// <param name="scalarTransformation">transformation to use for scalar components</param>
+    /// <returns>tensor with the same shape but transformed elements</returns>
+    /// <exception cref="InvalidOperationException">thrown when the shape of the other tensor is incompatible with this tensor</exception>
+    public Tensor<TNumResult> ElementWiseBinary<TNumOther, TNumResult>(
+        Tensor<TNumOther> other,
+        Func<Vector<TNum>, Vector<TNumOther>, Vector<TNumResult>> vectorizedTransformation,
+        Func<TNum, TNumOther, TNumResult> scalarTransformation
+    )
+    where TNumOther : INumber<TNumOther>
+    where TNumResult : INumber<TNumResult>
+    {
+        if (!this.Shape.Equals(other.Shape))
+        {
+            throw new InvalidOperationException("Tensors have incompatible dimensions for elementwise operations");
+        }
+
+        var arr = new TNumResult[this.elements.Length];
+        var a = this.elements;
+        var b = other.elements;
+        var len = arr.Length;
+        int i = 0;
+
+        // Vector part
+        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        {
+            int simdLength = Vector<TNum>.Count;
+            int simdLimit = len - simdLength + 1;
+            for (; i < simdLimit; i += simdLength)
+            {
+                var aVec = new Vector<TNum>(a, i);
+                var bVec = new Vector<TNumOther>(b, i);
+                vectorizedTransformation(aVec, bVec).CopyTo(arr, i);
+            }
+        }
+        // Scalar fallback for remaining elements
+        for (; i < len; i++)
+        {
+            arr[i] = scalarTransformation(a[i], b[i]);
+        }
+
+        return new Tensor<TNumResult>(this.Shape, arr);
+    }
+    /// <summary>
     /// Perform an elementwise transformation of the tensor elements with another tensor's elements storing the results in-place
     /// </summary>
     /// <typeparam name="TNumOther">2nd tensor's element type</typeparam>
@@ -2012,7 +2061,7 @@ where TNum : INumber<TNum>
     /// <param name="outPadBottom">Padding on the bottom side of the output (expansion)</param>
     /// <returns>Tensor resulting from the transposed convolution with shape [batches, outChannels, outRows, outColumns]</returns>
     /// <exception cref="ArgumentException">Thrown if the input channels, output channels, or groups are incompatible or invalid</exception>
-    public Tensor<TNum> TransposeConvolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0, TNum? bias = default)
+    /*public Tensor<TNum> TransposeConvolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0, TNum? bias = default)
     {
         // Normalize all tensors to 4D (expand or reduce as required)
         var input = this.ReshapeShared(this.Shape.NormalizeRank(4));            // [batch, channels, rows, columns]
@@ -2153,8 +2202,8 @@ where TNum : INumber<TNum>
 
         return outputTensor;
     }
-
-    public Tensor<TNum> TransposeConvolve2D_OutputDriven(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0, TNum? bias = default)
+    */
+    public Tensor<TNum> TransposeConvolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0,  ReadOnlySpan<TNum> bias = default)
     {
         // Normalize all tensors to 4D (expand or reduce as required)
         var input = this.ReshapeShared(this.Shape.NormalizeRank(4));            // [batch, channels, rows, columns]
@@ -2186,7 +2235,7 @@ where TNum : INumber<TNum>
         var outWidth = (inWidth - 1) * strideX - inPadLeft - inPadRight + dilationX * (kernelWidth - 1) + 1 + outPadLeft + outPadRight;
 
         var outputShape = new TensorShape(batch, outChannels, outHeight, outWidth);
-        var outputTensor = Tensor<TNum>.ConstantValued(outputShape, bias ?? TNum.Zero);
+        var outputTensor = Tensor<TNum>.Defaults(outputShape);
         var outputData = outputTensor.elements;
 
         var inStrides_0 = input.Shape.Stride(0);
@@ -2205,7 +2254,6 @@ where TNum : INumber<TNum>
         var outStrides_3 = outputShape.Stride(3);
 
         TNum zero = TNum.Zero;
-        TNum initial = bias ?? zero;
 
         // Here be giants vvvv
         for (int b = 0; b < batch; b++)
@@ -2224,6 +2272,8 @@ where TNum : INumber<TNum>
                     int fullOutChannel = outOffset + oc;
                     var out_offset_part0 = b_outStrides_0 + fullOutChannel * outStrides_1;
                     var oc_kerStrides_1 = oc * kerStrides_1;
+
+                    TNum initial = oc < bias.Length ? bias[oc] : TNum.Zero;
 
                     Parallel.For(0, outHeight, oy =>
                     {
@@ -2528,6 +2578,26 @@ where TNum : INumber<TNum>
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Extract/Slice the tensor to get a subset of the tensor elements
+    /// </summary>
+    /// <param name="axis">axis to slice</param>
+    /// <param name="range">range to sliec over</param>
+    /// <returns>sliced tensor</returns>
+    /// <exception cref="ArgumentException">thrown when slices are invalid</exception>
+    public Tensor<TNum> SliceAlong(Index axis, Range range)
+    {
+        var s = this.Shape;
+        var r = s.Rank;
+        var abs = NormalizeAxis(axis);
+        Span<Range> ranges = stackalloc Range[r];
+        for (var i = 0; i < r; i++)
+        {
+            ranges[i] = i == abs ? range : new Range(0, s.Length(i));
+        }
+        return Slice(ranges);
     }
 
     /// <summary>

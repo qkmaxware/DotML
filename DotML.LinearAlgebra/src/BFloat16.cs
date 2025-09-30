@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Numerics;
 
 namespace DotML;
 
@@ -9,7 +10,7 @@ namespace DotML;
 /// </summary>
 [TypeConverter(typeof(BFloat16Converter))]
 public readonly struct BFloat16
-: IConvertible
+: IConvertible //TODO, INumber<BFloat16>
 {
     private readonly ushort value;
 

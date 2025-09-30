@@ -13,8 +13,15 @@ public class NameStatement : Statement {
         if (net is not null)
             net.Name = name;
     }
+    
+    public override void ModuleAction(BuildEnvironment env) {
+        var net = env.NetworkBlock;
+        if (net is not null)
+            net.Alias = name;
+    }
 
-    public override string ToString() {
+    public override string ToString()
+    {
         return $"NAME {name}";
     }
 }

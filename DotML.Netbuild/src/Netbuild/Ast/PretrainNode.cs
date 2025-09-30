@@ -17,7 +17,13 @@ public class PretrainStatement : Statement {
         net.FromSafetensor(safe);
     }
 
-    public override string ToString() {
+    public override void ModuleAction(BuildEnvironment env)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override string ToString()
+    {
         return $"PRETRAIN {path}";
     }
 }

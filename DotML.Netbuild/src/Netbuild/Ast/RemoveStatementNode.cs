@@ -13,8 +13,17 @@ public class RemoveStatement : Statement {
         
         network.RemoveLayer(reference.IndexOf(env.LayerAliases));
     }
+    
+    public override void ModuleAction(BuildEnvironment env) {
+        var network = env.NetworkBlock;
+        if (network is null)
+            return;
+        
+        network.RemoveAt(reference.IndexOf(env.LayerAliases));
+    }
 
-    public override string ToString() {
+    public override string ToString()
+    {
         return $"REMOVE {reference}";
     }
 }

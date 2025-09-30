@@ -15,8 +15,15 @@ public class ArgStatement : Statement {
             env.Arguments[arg.Key] = arg.Value.ValueOf();
         }
     }
+    
+    public override void ModuleAction(BuildEnvironment env) {
+        foreach (var arg in values) {
+            env.Arguments[arg.Key] = arg.Value.ValueOf();
+        }
+    }
 
-    public override string ToString() {
+    public override string ToString()
+    {
         return $"ARG {string.Join(' ', values.Select(kv => $"{kv.Key}={kv.Value}"))}";
     }
     }

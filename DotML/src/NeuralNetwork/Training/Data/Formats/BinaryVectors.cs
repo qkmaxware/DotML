@@ -3,8 +3,12 @@ using System.Numerics;
 
 namespace DotML.Network.Training.Formats;
 
+/// <summary>
+/// An object that can load training data from a given source
+/// </summary>
+/// <typeparam name="T">data format</typeparam>
 public interface ITrainingDataLoader<T>
-where T:INumber<T>
+where T : INumber<T>
 {
     public ITrainingDataSource<T> Load(string path);
     public void SaveFile(string path, ITrainingDataSource<T> src);

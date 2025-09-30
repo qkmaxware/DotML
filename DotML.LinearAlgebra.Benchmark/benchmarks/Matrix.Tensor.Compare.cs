@@ -142,15 +142,10 @@ public class BenchmarkMatrixVsTensor
         }
     }
     [Benchmark]
-    public void TensorTransposeConvolve_InputSpread()
+    public void TensorTransposeConvolve()
     {
         var result = tensor.TransposeConvolve2D(tensor_kernel);
     }
-    [Benchmark]
-    public void TensorTransposeConvolve_OutputDriven() {
-        var result = tensor.TransposeConvolve2D_OutputDriven(tensor_kernel);
-    }
-
     
     /// A Convolution stress test. Current best time: 4.8s
     /*[Benchmark]

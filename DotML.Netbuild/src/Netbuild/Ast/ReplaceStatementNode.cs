@@ -25,8 +25,23 @@ public class ReplaceStatement : Statement {
         IFeedforwardNetworkLayer layer = factory(input_shape, new ArgumentMap(env, arguments));
         network.ReplaceLayer(replacement_index, layer);
     }
+    
+    public override void ModuleAction(BuildEnvironment env) {
+        var network = env.NetworkBlock;
+        if (network is null)
+            return;
+        
+        var replacement_index = reference.IndexOf(env.LayerAliases);
+        var original = network.GetLayer(replacement_index);
+        var output_shape = network.LayerCount > 0 ? network.ForwardShapeUntil(env.InputShape, replacement_index - 1) : env.InputShape;
+        INetworkModule? module = AddStatement.makeLayer(this.layer_name, output_shape, new ArgumentMap(env, arguments));
 
-    public override string ToString() {
+        if (module is not null)
+            network.Replace(original, module);
+    }
+
+    public override string ToString()
+    {
         return $"REPLACE {reference} WITH {layer_name} {string.Join(' ', arguments.Select(kv => $"{kv.Key}={kv.Value}"))}";
     }
 }
