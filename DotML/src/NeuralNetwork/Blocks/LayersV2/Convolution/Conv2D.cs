@@ -163,10 +163,14 @@ public class Conv2D : NetworkLayer
             strideY: this.Stride.Y,
             dilationX: this.Dilation.X,
             dilationY: this.Dilation.Y,
-            outPadLeft: this.Padding.Left,
-            outPadRight: this.Padding.Right,
-            outPadTop: this.Padding.Top,
-            outPadBottom: this.Padding.Bottom
+            inPadLeft: this.Padding.Left,       // Cropping
+            inPadRight: this.Padding.Right,     // Cropping
+            inPadTop: this.Padding.Top,         // Cropping
+            inPadBottom: this.Padding.Bottom,   // Cropping
+            outPadLeft: 0,
+            outPadRight: 0,
+            outPadTop: 0,
+            outPadBottom: 0
         );
 
         return new WeightAndBiasGradients(

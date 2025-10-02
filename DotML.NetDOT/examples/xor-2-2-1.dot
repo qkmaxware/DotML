@@ -5,6 +5,7 @@ digraph XOR {
     dense2      ["type"="DenseLinear" "neurons"="2"];
     sigmoid2    ["type"="Activation" "fn"="sigmoid"];
     dense3      ["type"="DenseLinear" "neurons"="1"];
-    OUTPUT      ["type"="output" shape="diamond"]
+    OUTPUT      ["type"="output" shape="diamond"];
+    
     INPUT -> dense1 -> sigmoid1 -> dense2 -> sigmoid2 -> dense3 -> OUTPUT;
 }

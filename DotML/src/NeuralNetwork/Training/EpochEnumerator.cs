@@ -12,20 +12,22 @@ public delegate void EpochEndHandler(int epoch, int epochCount);
 /// An enumerable that iterates during network training allowing for access to partial information in the middle of training
 /// </summary>
 /// <typeparam name="TNetwork"></typeparam>
-public interface IEpochEnumerator<TNetwork> : IEnumerator<TNetwork> where TNetwork:INeuralNetwork {
+public interface IEpochEnumerator<TNetwork> : IEnumerator<TNetwork> where TNetwork : INeuralNetwork
+{
     /// <summary>
     /// Current training epoch
     /// </summary>
-    public int CurrentEpoch {get;}
+    public int CurrentEpoch { get; }
     /// <summary>
     /// Max number of epochs
     /// </summary>
-    public int MaxEpochs {get;}
+    public int MaxEpochs { get; }
 
     /// <summary>
     /// Advance the enumerator to the end of the sequence
     /// </summary>
-    public void MoveToEnd() {
+    public void MoveToEnd()
+    {
         while (this.MoveNext()) { }
     }
 
@@ -37,3 +39,14 @@ public interface IEpochEnumerator<TNetwork> : IEnumerator<TNetwork> where TNetwo
     public event ValidationEndHandler OnValidationEnd;
     public event EpochEndHandler OnEpochEnd;
 }
+
+public static class EnumeratorExtensions {
+    /// <summary>
+    /// Advance the enumerator to the end of the sequence
+    /// </summary>
+    public static void MoveEnd<T>(this IEnumerator<T> self)
+    {
+        while (self.MoveNext()) { }
+    }
+}
+

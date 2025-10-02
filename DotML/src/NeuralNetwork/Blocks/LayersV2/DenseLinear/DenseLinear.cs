@@ -45,40 +45,15 @@ public class DenseLinear : NetworkLayer
     {
         // See Forward
         var x2 = Flatten.FlattenCHW2H(input);
-        // See Tensor.BatchedMatMul
-        var broadcast_shape = TensorShape.ComputeBroadcastShape(this.Weights.Shape, x2);
-        var a = Weights.Shape.BroadcastTo(broadcast_shape, 0, broadcast_shape.Rank - 2);
-        var b = x2.BroadcastTo(broadcast_shape, 0, broadcast_shape.Rank - 2);
 
-        var a_rank = a.Rank;
-        var b_rank = b.Rank;
+        // MatMul(Weights * X2) dimensions with batch dimensions kept as prefix
+        int[] dims = new int[x2.Rank];
+        dims[dims.Length - 2] = Weights.Shape.Length(^2); // a_rows
+        dims[dims.Length - 1] = 1;                        // b_cols Its a column vector as a result of flattening
+        for (var i = 0; i < x2.Rank - 2; i++)
+            dims[i] = x2.Length(i);
 
-        // Last 2 dims must be matrix multiplication compatible
-        var a_row_idx = a_rank - 2;
-        var a_col_idx = a_rank - 1;
-        var b_row_idx = b_rank - 2;
-        var b_col_idx = b_rank - 1;
-        int a_rows = a.Length(a_row_idx);
-        int a_cols = a.Length(a_col_idx);
-        int b_rows = b.Length(b_row_idx);
-        int b_cols = b.Length(b_col_idx);
-
-        if (a_cols != b_rows)
-            throw new InvalidOperationException("Inner dimensions are not compatible for matrix multiplication");
-
-        int r_matsize = a_rows * b_cols;
-
-        int[] r_shape = new int[broadcast_shape.Rank]; // The actual shape of the output (most copied from the broadcast shape, the last 2 from mat-mul)
-        r_shape[r_shape.Length - 2] = a_rows;
-        r_shape[r_shape.Length - 1] = b_cols;
-        int r_count = r_matsize;
-        for (var i = 0; i < r_shape.Length - 2; i++)
-        {
-            var dim_length = broadcast_shape.Length(i);
-            r_shape[i] = dim_length;
-            r_count *= dim_length;
-        }
-        return new TensorShape(r_shape);
+        return new TensorShape(dims);
     }
 
     public override Tensor<float> Forward(Tensor<float> x)
@@ -87,7 +62,7 @@ public class DenseLinear : NetworkLayer
         x = Flatten.FlattenCHW2H(x);
 
         // Matrix multiplication, do broadcasting for batch dimensions as needed: [O, F] x [..., F, 1]
-        var mul = Weights.BatchedMatMul(x);
+        var mul = Weights.MatMulEach(x);
 
         // Add bias (broadcasting for batch dimensions as needed): [..., O, 1] + [O, 1]
         mul.AddWithInplace(Biases);
@@ -107,14 +82,14 @@ public class DenseLinear : NetworkLayer
 
         // Compute dW = sum_over_batch( dy * x^T ) => [O, F]
         var dW = dyFlat.BatchedMatMul(xFlatT)                              // [N, O, F]
-                    .Sum(axis: 0);                                         // [O, F]
+                    .Sum(axis: 0, keepdim: false);                         // [O, F]
 
         // Compute dB = sum_over_batch(dy) => [O, 1]
-        var dB = dyFlat.Sum(axis: 0);                                      // [O, 1]
+        var dB = dyFlat.Sum(axis: 0, keepdim: false);                      // [O, 1]
 
         // Compute dx = dy * W^T => [N, F, 1]
         var WT = Weights.Transpose();                                      // [F, O]
-        var dx = dyFlat.BatchedMatMul(WT);                                 // [N, F, 1]
+        var dx = WT.MatMulEach(dyFlat);                                    // [N, F, 1]
 
         // Reshape dx back to original input shape from the flattened format
         dx = dx.ReshapeShared(x.Shape);

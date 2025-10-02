@@ -606,44 +606,6 @@ public readonly struct TensorShape: IShape
         return new TensorShape(resultDims, newStrides);
     }
 
-    /// <summary>
-    /// Create a shape that both shapes can be broadcasted to
-    /// </summary>
-    /// <param name="a">first shape</param>
-    /// <param name="b">second shape</param>
-    /// <returns>broacasted shape</returns>
-    /// <exception cref="InvalidOperationException">thrown if the broadcast cannot be performed</exception>
-    public static TensorShape ComputeBroadcastShape(TensorShape a, TensorShape b)
-    {
-        var aDims = a.AsDimensionSpan();
-        var bDims = b.AsDimensionSpan();
-        int aRank = aDims.Length;
-        int bRank = bDims.Length;
-        int resultRank = Math.Max(aRank, bRank);
-
-        int[] resultDims = new int[resultRank];
-
-        for (int i = 0; i < resultRank; i++)
-        {
-            int aIndex = i - (resultRank - aRank);
-            int bIndex = i - (resultRank - bRank);
-
-            int aDim = aIndex >= 0 ? aDims[aIndex] : 1;
-            int bDim = bIndex >= 0 ? bDims[bIndex] : 1;
-
-            if (aDim == bDim)
-                resultDims[i] = aDim;
-            else if (aDim == 1)
-                resultDims[i] = bDim;
-            else if (bDim == 1)
-                resultDims[i] = aDim;
-            else
-                throw new InvalidOperationException($"Shapes {a} and {b} are not broadcastable at axis {i}");
-        }
-
-        return new TensorShape(resultDims);
-    }
-
     public static TensorShape operator +(TensorShape a, TensorShape b) => a.Append(b);
 
     /// <summary>

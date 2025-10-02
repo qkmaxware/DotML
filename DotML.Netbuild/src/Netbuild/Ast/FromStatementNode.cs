@@ -61,6 +61,7 @@ public class FromStatement : Statement {
     public override void ModuleAction(BuildEnvironment env)
     {
         env.NetworkBlock = new SequentialBlock();
+        env.InputShape = manualInputShape ?? new Shape3D(1,1,1); // Default input shape if nothing else is specified
 
         INetworkModule? root = (Identifier?.ToLower()) switch
         {
@@ -70,11 +71,13 @@ public class FromStatement : Statement {
             _ => null
         };
         if (root is not null)
+        {
             env.NetworkBlock.Add(root);
 
-        // TODO set input shape (needs some kind of shape propagation technique) 
-        // Relies on having these networks return some kind of "Fixed" input shape which doesn't yet exist
-        //env.InputShape = (root is not null) ? root.InputShape : manualInputShape ?? new Shape3D(1,1,1);
+            // TODO set input shape based on root if possible
+            // Relies on having these networks return some kind of "Fixed" input shape which doesn't yet exist
+            //env.InputShape = root.InputShape;
+        }
     }
 
     public override string ToString()

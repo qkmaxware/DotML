@@ -28,6 +28,8 @@ public class SequentialBlock : INetworkModule, IBlockVisitable
         layers = new List<INetworkModule>(modules);
     }
 
+    public static SequentialBlockBuilder Begin(TensorShape ishape) => new SequentialBlockBuilder(ishape);
+
     public void Add(INetworkModule module) => layers.Add(module);
     public void Remove(INetworkModule module) => layers.Remove(module);
     public void RemoveAt(int index) => layers.RemoveAt(index);
@@ -160,6 +162,73 @@ public class SequentialBlock : INetworkModule, IBlockVisitable
             layer.Update(learningRate, lst.dN(i), optimizer, regularization);
         }
     }
-    
+
     public TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
+    
+}
+
+public class SequentialBlockBuilder
+{
+    public TensorShape InputShape { get; init; }
+    private TensorShape outputshape;
+    private SequentialBlock block = new SequentialBlock();
+
+    public SequentialBlockBuilder(TensorShape ishape)
+    {
+        this.InputShape = ishape;
+        this.outputshape = ishape;
+    }
+    public SequentialBlock Finalize() => block;
+
+    public SequentialBlockBuilder Then(INetworkModule layer)
+    {
+        block.Add(layer);
+        outputshape = layer.ForwardShape(outputshape);
+        return this;
+    }
+
+    public SequentialBlockBuilder Then(Func<TensorShape, INetworkModule> layerFactory)
+    {
+        var layer = layerFactory(outputshape);
+        block.Add(layer);
+        outputshape = layer.ForwardShape(outputshape);
+        return this;
+    }
+    
+    public SequentialBlockBuilder ThenIf(bool condition, INetworkModule layer)
+    {
+        if (condition)
+        {
+            block.Add(layer);
+            outputshape = layer.ForwardShape(outputshape);
+        }
+        return this;
+    }
+
+    public SequentialBlockBuilder ThenIf(bool condition, Func<TensorShape, INetworkModule> layerFactory)
+    {
+        if (condition)
+        {
+            var layer = layerFactory(outputshape);
+            block.Add(layer);
+            outputshape = layer.ForwardShape(outputshape);
+        }
+        return this;
+    }
+
+    public SequentialBlockBuilder WithActivation(ActivationFunction activation)
+    {
+        var act = new Activation(activation);
+        block.Add(act);
+        // No need to recompute outputshape, activation does not change shape
+        return this;
+    }
+
+    public SequentialBlockBuilder WithDropout(float dropoutRate)
+    {
+        var act = new Dropout(dropoutRate);
+        block.Add(act); 
+        // No need to recompute outputshape, Dropout does not change shape
+        return this;
+    }
 }

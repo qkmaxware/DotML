@@ -5,6 +5,9 @@ namespace System
     /// </summary>
     public readonly struct None
     {
+        /// <summary>
+        /// The only possible value for None
+        /// </summary>
         public static readonly None Value = new None();
 
         public override string ToString() => "None";

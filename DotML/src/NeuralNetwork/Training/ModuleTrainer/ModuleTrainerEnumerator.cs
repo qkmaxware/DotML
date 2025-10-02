@@ -19,7 +19,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingReport> {
 
     public RegularizationFunction Regularization {get; init;}
     public IOptimizer Optimizer {get; init;}
-    public IClippingStrategy GradientClipping {get; init;}
+    public IClippingStrategy? GradientClipping {get; init;}
     public IInitializer Initializer {get; init;}
     public LossFunction Loss {get; init;}
     public Predicate<ModuleTrainingReport>? StopCondition {get; init;}
@@ -34,9 +34,43 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingReport> {
     private int _patienceCounter;
     private bool target_reached;
 
+    public ModuleTrainingEnumerator(
+        INetworkModule module,
+        ITrainingDataSampler<float> training,
+        ITrainingDataSampler<float> testing,
+        RegularizationFunction regularization,
+        IOptimizer optimizer,
+        IClippingStrategy? gradientClipping,
+        IInitializer initializer,
+        LossFunction loss,
+        Predicate<ModuleTrainingReport>? stopCondition,
+        int maxEpochs,
+        float learningRate,
+        int batchSize,
+        int patience
+    )
+    {
+        this.Network = module;
+        this.TrainingData = training;
+        this.TestingData = testing;
+        this.Regularization = regularization;
+        this.Optimizer = optimizer;
+        this.GradientClipping = gradientClipping;
+        this.Initializer = initializer;
+        this.Loss = loss;
+        this.StopCondition = stopCondition;
+        this.MaxEpochs = maxEpochs;
+        this.LearningRate = learningRate;
+        this.BatchSize = batchSize;
+        this.Patience = patience;
+
+        this.Current = new ModuleTrainingReport();
+    }
+
     public void Dispose() { }
 
-    public void Reset() {
+    public void Reset()
+    {
         this.Epoch = 0;
         this.Network.Initialize(this.Initializer);
         this.Optimizer.ClearCaches();
@@ -108,7 +142,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingReport> {
         this.Current.AvgLoss = loss_avg;
 
         // Check stop condition based on the report
-        if (StopCondition.Invoke(this.Current)) {
+        if (StopCondition is not null && StopCondition.Invoke(this.Current)) {
             // Decrement patience and stop if patience reached
             _patienceCounter--;
             if (_patienceCounter <= 0)

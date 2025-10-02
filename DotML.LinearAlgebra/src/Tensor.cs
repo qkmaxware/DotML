@@ -1638,6 +1638,62 @@ where TNum : INumber<TNum>
         return result;
     }
 
+    /// <summary>
+    /// Performs matrix multiplication between this matrix and each matrix in the batch dimensions of the other tensor.
+    /// Equivalent to applying the same matrix multiply across a batch.
+    /// </summary>
+    /// <param name="other">tensor to multiply with</param>
+    /// <returns>result of matrix multiplication</returns>
+    /// <exception cref="InvalidOperationException">thrown if rank is invalid or dimensions are not compatible with matrix multiplication</exception>
+    public Tensor<TNum> MatMulEach(Tensor<TNum> other)
+    {
+        var a = this; // A single matrix
+        var b = other;
+
+        if (a.Shape.Rank != 2 || b.Shape.Rank < 2)
+            throw new InvalidOperationException("This tensor must be rank 2, and 'other' tensor must be at least rank 2");
+
+        var a_row_idx = a.Shape.Rank - 2;
+        var a_col_idx = a.Shape.Rank - 1;
+        int a_rows = a.Shape.Length(a_row_idx);
+        int a_cols = a.Shape.Length(a_col_idx);
+        var b_row_idx = b.Shape.Rank - 2;
+        var b_col_idx = b.Shape.Rank - 1;
+        int b_rows = b.Shape.Length(b_row_idx);
+        int b_cols = b.Shape.Length(b_col_idx);
+
+        ReadOnlySpan<TNum> a_span = a.AsSpan();
+        ReadOnlySpan<TNum> b_span = b.AsSpan();
+
+        if (a_cols != b_rows)
+            throw new InvalidOperationException("Inner dimensions are not compatible for matrix multiplication");
+
+        int rows = a_rows;
+        int cols = b_cols;
+        int innerDim = a_cols;
+
+        var shape = new int[other.Rank];
+        shape[^2] = rows;
+        shape[^1] = cols;
+        for (var i = 0; i < shape.Length - 2; i++)
+        {
+            shape[i] = other.Shape.Length(i);
+        }
+
+        var result = Tensor<TNum>.Zeros(new TensorShape(shape));
+        var r_span = result.AsSpan();
+        var r_batch_size = rows * cols;
+
+        var b_batch_size = b_rows * b_cols;
+        var batches = b_span.Length / b_batch_size;
+        for (var batch = 0; batch < batches; batch++)
+        {
+            MatMul(a_span, a_rows, a_cols, b_span.Slice(batch * b_batch_size, b_batch_size), b_rows, b_cols, r_span.Slice(batch * r_batch_size, r_batch_size));
+        }
+
+        return result;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void MatMul(
         ReadOnlySpan<TNum> a, int a_rows, int a_cols,
@@ -1707,6 +1763,53 @@ where TNum : INumber<TNum>
         }
     }
 
+    private static TensorShape ComputeMatMulBroadcastShape(TensorShape a, TensorShape b)
+    {
+        // Assume a: [..., M, K], b: [..., K, N]
+        // First, check if ranks are at least 2
+        if (a.Rank < 2 || b.Rank < 2)
+            throw new InvalidOperationException("Both tensors must be at least rank 2 for matmul.");
+
+        int aRank = a.Rank;
+        int bRank = b.Rank;
+
+        // Extract batch dimensions (exclude last 2 dims)
+        var aBatchDims = a.AsDimensionSpan().Slice(0, aRank - 2);
+        var bBatchDims = b.AsDimensionSpan().Slice(0, bRank - 2);
+
+        int maxBatchRank = Math.Max(aBatchDims.Length, bBatchDims.Length);
+        int[] resultBatchDims = new int[maxBatchRank + 2];
+
+        // Align batch dims from the right (like numpy/pytorch)
+        for (int i = 0; i < maxBatchRank; i++)
+        {
+            int aIndex = aBatchDims.Length - 1 - i;
+            int bIndex = bBatchDims.Length - 1 - i;
+
+            int aDim = aIndex >= 0 ? aBatchDims[aIndex] : 1;
+            int bDim = bIndex >= 0 ? bBatchDims[bIndex] : 1;
+
+            if (aDim == bDim || aDim == 1 || bDim == 1)
+                resultBatchDims[maxBatchRank - 1 - i] = Math.Max(aDim, bDim);
+            else
+                throw new InvalidOperationException($"Cannot broadcast batch dimensions at position {i}: {aDim} vs {bDim}");
+        }
+
+        // Determine output matrix dimensions
+        int M = a.Length(aRank - 2);
+        int K_a = a.Length(aRank - 1);
+        int K_b = b.Length(bRank - 2);
+        int N = b.Length(bRank - 1);
+
+        if (K_a != K_b)
+            throw new InvalidOperationException($"Matrix dimensions do not align for matmul: {K_a} vs {K_b}");
+
+        // Construct final broadcasted shape: [...broadcasted_batches, M, N]
+        resultBatchDims[^2] = M;
+        resultBatchDims[^1] = N;
+
+        return new TensorShape(resultBatchDims);
+    }
     /// <summary>
     /// Perform batched matrix multiplication. Batch dimensions must be broadcastable
     /// </summary>
@@ -1719,7 +1822,7 @@ where TNum : INumber<TNum>
         if (this.Rank < 2 || other.Rank < 2)
             throw new InvalidOperationException("Shape rank mismatch for batched matrix multiplication, number of dimensions must be greater or equal to 2");
 
-        var broadcast_shape = TensorShape.ComputeBroadcastShape(this.Shape, other.Shape);                   // Compute a general broadcast shape (all dimensions)
+        var broadcast_shape = ComputeMatMulBroadcastShape(this.Shape, other.Shape);                   // Compute a general broadcast shape (all dimensions)
         var a = this.ReshapeShared(this.Shape.BroadcastTo(broadcast_shape, 0, broadcast_shape.Rank - 2));   // Broadcast to the computed shape, preserve the mat-mul dimensions (last 2)
         var b = other.ReshapeShared(other.Shape.BroadcastTo(broadcast_shape, 0, broadcast_shape.Rank - 2)); // Broadcast to the computed shape, preserve the mat-mul dimensions (last 2)
 
@@ -2061,7 +2164,7 @@ where TNum : INumber<TNum>
     /// <param name="outPadBottom">Padding on the bottom side of the output (expansion)</param>
     /// <returns>Tensor resulting from the transposed convolution with shape [batches, outChannels, outRows, outColumns]</returns>
     /// <exception cref="ArgumentException">Thrown if the input channels, output channels, or groups are incompatible or invalid</exception>
-    /*public Tensor<TNum> TransposeConvolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0, TNum? bias = default)
+    public Tensor<TNum> TransposeConvolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0, ReadOnlySpan<TNum> bias = default)
     {
         // Normalize all tensors to 4D (expand or reduce as required)
         var input = this.ReshapeShared(this.Shape.NormalizeRank(4));            // [batch, channels, rows, columns]
@@ -2093,7 +2196,18 @@ where TNum : INumber<TNum>
         var outWidth = (inWidth - 1) * strideX - inPadLeft - inPadRight + dilationX * (kernelWidth - 1) + 1 + outPadLeft + outPadRight;
 
         var outputShape = new TensorShape(batch, outChannels, outHeight, outWidth);
-        var outputTensor = Tensor<TNum>.ConstantValued(outputShape, bias ?? TNum.Zero);
+        var outputBatchStride = outputShape.Stride(0);
+        var outputChannelStride = outputShape.Stride(1);
+        var outputTensor = Tensor<TNum>.Defaults(outputShape);
+        for (var b = 0; b < batch; b++) {
+            var batchOffset = b * outputBatchStride;
+            for (var oc = 0; oc < outChannels; oc++)
+            {
+                var biasv = oc < bias.Length ? bias[oc] : TNum.Zero;
+                var channelOffset = oc * outputChannelStride;
+                outputTensor.AsSpan(batchOffset + channelOffset).Fill(biasv); // Fill initial bias in all output channels
+            }
+        }
         var outputData = outputTensor.elements;
 
         var inStrides_0 = input.Shape.Stride(0);
@@ -2202,8 +2316,7 @@ where TNum : INumber<TNum>
 
         return outputTensor;
     }
-    */
-    public Tensor<TNum> TransposeConvolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0,  ReadOnlySpan<TNum> bias = default)
+/*  public Tensor<TNum> TransposeConvolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0,  ReadOnlySpan<TNum> bias = default)
     {
         // Normalize all tensors to 4D (expand or reduce as required)
         var input = this.ReshapeShared(this.Shape.NormalizeRank(4));            // [batch, channels, rows, columns]
@@ -2367,7 +2480,7 @@ where TNum : INumber<TNum>
     private static int transConv_compute_input_x(int outputX, int strideX, int padLeft, int padRight, int dilationX, int kernelX)
     {
         return (outputX + padLeft - dilationX * kernelX) / strideX;
-    }
+    }*/
 
     /// <summary>
     /// Fill the tensor with all values being the same
