@@ -163,10 +163,10 @@ public class Conv2D : NetworkLayer
             strideY: this.Stride.Y,
             dilationX: this.Dilation.X,
             dilationY: this.Dilation.Y,
-            inPadLeft: this.Padding.Left,       // Cropping
-            inPadRight: this.Padding.Right,     // Cropping
-            inPadTop: this.Padding.Top,         // Cropping
-            inPadBottom: this.Padding.Bottom,   // Cropping
+            inCropLeft: this.Padding.Left,       // Cropping
+            inCropRight: this.Padding.Right,     // Cropping
+            inCropTop: this.Padding.Top,         // Cropping
+            inCropBottom: this.Padding.Bottom,   // Cropping
             outPadLeft: 0,
             outPadRight: 0,
             outPadTop: 0,

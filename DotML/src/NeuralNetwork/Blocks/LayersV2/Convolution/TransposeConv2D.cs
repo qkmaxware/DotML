@@ -9,20 +9,20 @@ public class TransposeConv2D : NetworkLayer
     public int Groups { get; set; }
     public (int X, int Y) Stride { get; set; }
     public (int X, int Y) Dilation { get; set; }
-    public (int Left, int Top, int Right, int Bottom) InputPadding { get; set; }
+    public (int Left, int Top, int Right, int Bottom) InputCropping { get; set; }
     public (int Left, int Top, int Right, int Bottom) OutputPadding { get; set; }
-    public Tensor<float> Weights;   // [outChannels, inChannelsPerGroup, kernelHeight, kernelWidth]
+    public Tensor<float> Weights;   // [inChannelsPerGroup, outChannels, kernelHeight, kernelWidth]
     public Tensor<float> Biases;    // [outChannels]
 
-    public TransposeConv2D(int outChannels, int inChannelsPerGroup, int groups, (int Width, int Height) kernel, (int X, int Y) stride, (int X, int Y) dilation, (int Left, int Top, int Right, int Bottom) inputPadding, (int Left, int Top, int Right, int Bottom) outputPadding)
+    public TransposeConv2D(int outChannels, int inChannelsPerGroup, int groups, (int Width, int Height) kernel, (int X, int Y) stride, (int X, int Y) dilation, (int Left, int Top, int Right, int Bottom) inputCropping, (int Left, int Top, int Right, int Bottom) outputPadding)
     {
-        this.Weights = Tensor<float>.Ones(new TensorShape(outChannels, inChannelsPerGroup, kernel.Height, kernel.Width));
+        this.Weights = Tensor<float>.Ones(new TensorShape(inChannelsPerGroup, outChannels, kernel.Height, kernel.Width));
         this.Biases = Tensor<float>.Zeros(new TensorShape(outChannels));
 
         this.Groups = groups;
         this.Stride = stride;
         this.Dilation = dilation;
-        this.InputPadding = inputPadding;
+        this.InputCropping = inputCropping;
         this.OutputPadding = outputPadding;
     }
 
@@ -60,8 +60,8 @@ public class TransposeConv2D : NetworkLayer
         var kernelWidth = kernels.Length(3);
 
         // Compute output size (based on standard transposed conv formula)
-        var outHeight = (inHeight - 1) * Stride.Y - InputPadding.Top - InputPadding.Bottom + Dilation.Y * (kernelHeight - 1) + 1 + OutputPadding.Top + OutputPadding.Bottom;
-        var outWidth = (inWidth - 1) * Stride.X - InputPadding.Left - InputPadding.Right + Dilation.X * (kernelWidth - 1) + 1 + OutputPadding.Left + OutputPadding.Right;
+        var outHeight = (inHeight - 1) * Stride.Y - InputCropping.Top - InputCropping.Bottom + Dilation.Y * (kernelHeight - 1) + 1 + OutputPadding.Top + OutputPadding.Bottom;
+        var outWidth = (inWidth - 1) * Stride.X - InputCropping.Left - InputCropping.Right + Dilation.X * (kernelWidth - 1) + 1 + OutputPadding.Left + OutputPadding.Right;
 
         var outputShape = new TensorShape(batch, outChannels, outHeight, outWidth);
         return outputShape;
@@ -76,14 +76,17 @@ public class TransposeConv2D : NetworkLayer
             strideY: this.Stride.Y,
             dilationX: this.Dilation.X,
             dilationY: this.Dilation.Y,
-            inPadLeft: this.InputPadding.Left,
-            inPadRight: this.InputPadding.Right,
-            inPadTop: this.InputPadding.Top,
-            inPadBottom: this.InputPadding.Bottom,
+
+            inCropLeft: this.InputCropping.Left,
+            inCropRight: this.InputCropping.Right,
+            inCropTop: this.InputCropping.Top,
+            inCropBottom: this.InputCropping.Bottom,
+
             outPadLeft: this.OutputPadding.Left,
             outPadRight: this.OutputPadding.Right,
             outPadTop: this.OutputPadding.Top,
             outPadBottom: this.OutputPadding.Bottom,
+
             bias: this.Biases.AsSpan() // Per channel bias
         );
     }
@@ -108,22 +111,8 @@ public class TransposeConv2D : NetworkLayer
         var inChannelsPerGroup = inChannels / Groups;
         var outChannelsPerGroup = outChannels / Groups;
 
-        var flippedWeights = Weights.Mirror(^2, ^1); // Flip kernelHeight and kernelWidth
-        var swappedWeights = flippedWeights.Permute(1, 0, 2, 3); // Swap in/out channels
-
-        // Gradient w.r.t input - Convolve the output gradient with the weights flipped spatially
-        var dX = dy.Convolve2D(
-            kernels: swappedWeights,
-            groups: Groups,
-            strideX: Stride.X,
-            strideY: Stride.Y,
-            dilationX: Dilation.X,
-            dilationY: Dilation.Y,
-            padLeft: OutputPadding.Left,
-            padRight: OutputPadding.Right,
-            padTop: OutputPadding.Top,
-            padBottom: OutputPadding.Bottom
-        );
+        // Gradient w.r.t. biases - just sum over N, H_out, W_out
+        var dB = dy.Sum(axes: [0, 2, 3], keepdim: false);
 
         // Gradient w.r.t weights - Convolve the input with the output gradient summing over the batch
         var dW = Tensor<float>.Zeros(Weights.Shape); // [outChannels, inChannelsPerGroup, kernelHeight, kernelWidth]
@@ -148,8 +137,8 @@ public class TransposeConv2D : NetworkLayer
                                     for (int iw = 0; iw < inWidth; iw++)
                                     {
                                         // Calculate output position for this input pixel and kernel offset
-                                        int oh = ih * Stride.Y - InputPadding.Top + kh * Dilation.Y + OutputPadding.Top;
-                                        int ow = iw * Stride.X - InputPadding.Left + kw * Dilation.X + OutputPadding.Left;
+                                        int oh = ih * Stride.Y - InputCropping.Top + kh * Dilation.Y + OutputPadding.Top;
+                                        int ow = iw * Stride.X - InputCropping.Left + kw * Dilation.X + OutputPadding.Left;
 
                                         if (oh >= 0 && oh < outHeight && ow >= 0 && ow < outWidth)
                                         {
@@ -160,15 +149,35 @@ public class TransposeConv2D : NetworkLayer
                                     }
                                 }
                             }
-                            dW[outOffset + oc, ic, kh, kw] = grad;
+                            dW[ic, outOffset + oc, kh, kw] = grad;
                         }
                     }
                 }
             }
         }
 
-        // Gradient w.r.t. biases - just sum over N, H_out, W_out
-        var dB = dy.Sum(axes: [0, 2, 3], keepdim: false);
+        // Gradient w.r.t input - Convolve the output gradient with the weights flipped spatially and swapped input/output channels
+        // Swap input/output channels for weights and flip kernel spatial dimensions
+        var weightsForDX = Weights.Mirror(^2, ^1); // [outChannels, inChannelsPerGroup, kernelHeight, kernelWidth] -> [inChannelsPerGroup, outChannels, kernelHeight, kernelWidth] and flip H/W
+
+        // Compute padding for backward pass (see transposed conv backward math)
+        int padLeft = Dilation.X * (kernelWidth - 1) - InputCropping.Left;
+        int padRight = Dilation.X * (kernelWidth - 1) - InputCropping.Right;
+        int padTop = Dilation.Y * (kernelHeight - 1) - InputCropping.Top;
+        int padBottom = Dilation.Y * (kernelHeight - 1) - InputCropping.Bottom;
+
+        var dX = dy.Convolve2D(
+            kernels: weightsForDX,
+            groups: Groups,
+            strideX: 1,
+            strideY: 1,
+            dilationX: Stride.X,
+            dilationY: Stride.Y,
+            padLeft: padLeft,
+            padRight: padRight,
+            padTop: padTop,
+            padBottom: padBottom
+        );
 
         return new WeightAndBiasGradients(dX, dW, dB);
     }

@@ -117,7 +117,7 @@ where T:INumber<T>
             src.Add((input, output));
         }
 
-        return src;
+        return src ?? new ListTrainingDataSource<T>(new TensorShape(), new TensorShape());
     }
 
     public void SaveFile(string path, ITrainingDataSource<T> src) {

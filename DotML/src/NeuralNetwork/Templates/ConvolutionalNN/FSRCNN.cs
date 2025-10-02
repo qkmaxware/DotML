@@ -110,7 +110,7 @@ public class FSRCNNFactory
                 kernel: (kernel_height, kernel_width),
                 stride: (scaling, scaling),
                 dilation: (1, 1),
-                inputPadding: (0, 0, 0, 0), // No padding
+                inputCropping: (0, 0, 0, 0), // No padding
                 outputPadding: (0, 0, 0, 0) // No output padding
             ))
             .Then((ishape) => new Conv2D(
