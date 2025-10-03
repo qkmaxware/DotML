@@ -137,7 +137,7 @@ public readonly struct RowMajorIndexSpanEnumerator
 /// <summary>
 /// Shape of a tensor
 /// </summary>
-public readonly struct TensorShape: IShape
+public readonly struct TensorShape : IShape
 {
     private readonly int[] dims;
     private readonly int[] strides;
@@ -160,7 +160,8 @@ public readonly struct TensorShape: IShape
     /// </summary>
     /// <returns>stride array</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TensorShape CloneDimensions() {
+    public TensorShape CloneDimensions()
+    {
         return new TensorShape(this.dims);
     }
 
@@ -213,7 +214,8 @@ public readonly struct TensorShape: IShape
     /// <param name="dim">dimension index</param>
     /// <returns>dimension stride</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int Stride(int dim) {
+    public int Stride(int dim)
+    {
         return strides[dim];
     }
 
@@ -282,8 +284,9 @@ public readonly struct TensorShape: IShape
         var rank = this.dims.Length;
 
         // Unroll for common ranks
-        switch (rank) {
-            case 1: 
+        switch (rank)
+        {
+            case 1:
                 return indices[0] * strides[0];
             case 2:
                 return indices[0] * strides[0] + indices[1] * strides[1];
@@ -439,15 +442,16 @@ public readonly struct TensorShape: IShape
     /// <returns>true if the last dimensions match the shape, false otherwise</returns>
     public bool AreTrailingDimensions(TensorShape other)
     {
-        var self = this.dims;       var self_length = self.Length;          var self_offset = self_length - 1;
-        var smaller = other.dims;   var smaller_length = smaller.Length;    var smaller_offset = smaller_length - 1;
+        var self = this.dims; var self_length = self.Length; var self_offset = self_length - 1;
+        var smaller = other.dims; var smaller_length = smaller.Length; var smaller_offset = smaller_length - 1;
 
         if (smaller_length > self_length)
             return false;
 
         for (var i = 0; i < smaller_length; i++)
         {
-            if (self[self_offset - i] != smaller[smaller_offset - i]) {
+            if (self[self_offset - i] != smaller[smaller_offset - i])
+            {
                 return false;
             }
         }
@@ -652,6 +656,77 @@ public readonly struct TensorShape: IShape
         foreach (var dim in span)
             yield return dim;
     }
+
+    // Support Deconstruction for up to 8 dimensions
+    public void Deconstruct(out int dim0)
+    {
+        dim0 = GetOrDefault(0);
+    }
+
+    public void Deconstruct(out int dim0, out int dim1)
+    {
+        dim0 = GetOrDefault(0);
+        dim1 = GetOrDefault(1);
+    }
+
+    public void Deconstruct(out int dim0, out int dim1, out int dim2)
+    {
+        dim0 = GetOrDefault(0);
+        dim1 = GetOrDefault(1);
+        dim2 = GetOrDefault(2);
+    }
+
+    public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3)
+    {
+        dim0 = GetOrDefault(0);
+        dim1 = GetOrDefault(1);
+        dim2 = GetOrDefault(2);
+        dim3 = GetOrDefault(3);
+    }
+
+    public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3, out int dim4)
+    {
+        dim0 = GetOrDefault(0);
+        dim1 = GetOrDefault(1);
+        dim2 = GetOrDefault(2);
+        dim3 = GetOrDefault(3);
+        dim4 = GetOrDefault(4);
+    }
+
+    public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3, out int dim4, out int dim5)
+    {
+        dim0 = GetOrDefault(0);
+        dim1 = GetOrDefault(1);
+        dim2 = GetOrDefault(2);
+        dim3 = GetOrDefault(3);
+        dim4 = GetOrDefault(4);
+        dim5 = GetOrDefault(5);
+    }
+
+    public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3, out int dim4, out int dim5, out int dim6)
+    {
+        dim0 = GetOrDefault(0);
+        dim1 = GetOrDefault(1);
+        dim2 = GetOrDefault(2);
+        dim3 = GetOrDefault(3);
+        dim4 = GetOrDefault(4);
+        dim5 = GetOrDefault(5);
+        dim6 = GetOrDefault(6);
+    }
+
+    public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3, out int dim4, out int dim5, out int dim6, out int dim7)
+    {
+        dim0 = GetOrDefault(0);
+        dim1 = GetOrDefault(1);
+        dim2 = GetOrDefault(2);
+        dim3 = GetOrDefault(3);
+        dim4 = GetOrDefault(4);
+        dim5 = GetOrDefault(5);
+        dim6 = GetOrDefault(6);
+        dim7 = GetOrDefault(7);
+    }
+
+    private int GetOrDefault(int index) => index < dims.Length ? dims[index] : 0;
 
     public override bool Equals([NotNullWhen(true)] object? obj)
     {

@@ -2154,17 +2154,17 @@ where TNum : INumber<TNum>
     /// <param name="strideY">Vertical stride</param>
     /// <param name="dilationX">Kernel horizontal dilation (spacing of the kernel)</param>
     /// <param name="dilationY">Kernel vertical dilation (spacing of the kernel)</param>
-    /// <param name="inCropLeft">Padding on the left side of the input (cropping)</param>
-    /// <param name="inCropRight">Padding on the right side of the input (cropping)</param>
-    /// <param name="inCropTop">Padding on the top side of the input (cropping)</param>
-    /// <param name="inCropBottom">Padding on the bottom side of the input (cropping)</param>
+    /// <param name="inPadLeft">Padding on the left side of the input (cropping)</param>
+    /// <param name="inPadRight">Padding on the right side of the input (cropping)</param>
+    /// <param name="inPadTop">Padding on the top side of the input (cropping)</param>
+    /// <param name="inPadBottom">Padding on the bottom side of the input (cropping)</param>
     /// <param name="outPadLeft">Padding on the left side of the output (expansion)</param>
     /// <param name="outPadRight">Padding on the right side of the output (expansion)</param>
     /// <param name="outPadTop">Padding on the top side of the output (expansion)</param>
     /// <param name="outPadBottom">Padding on the bottom side of the output (expansion)</param>
     /// <returns>Tensor resulting from the transposed convolution with shape [batches, outChannels, outRows, outColumns]</returns>
     /// <exception cref="ArgumentException">Thrown if the input channels, output channels, or groups are incompatible or invalid</exception>
-    public Tensor<TNum> TransposeConvolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inCropLeft = 0, int inCropRight = 0, int inCropTop = 0, int inCropBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0, ReadOnlySpan<TNum> bias = default)
+    public Tensor<TNum> TransposeConvolve2D(Tensor<TNum> kernels, int groups = 1, int strideX = 1, int strideY = 1, int dilationX = 1, int dilationY = 1, int inPadLeft = 0, int inPadRight = 0, int inPadTop = 0, int inPadBottom = 0, int outPadLeft = 0, int outPadRight = 0, int outPadTop = 0, int outPadBottom = 0, ReadOnlySpan<TNum> bias = default)
     {
         // Normalize all tensors to 4D (expand or reduce as required)
         var input = this.ReshapeShared(this.Shape.NormalizeRank(4));            // [batch, channels, rows, columns]
@@ -2192,8 +2192,8 @@ where TNum : INumber<TNum>
         var kernelData = kernels.elements;
 
         // Compute output size (based on standard transposed conv formula)
-        var outHeight = (inHeight - 1) * strideY - inCropTop - inCropBottom + dilationY * (kernelHeight - 1) + 1 + outPadTop + outPadBottom;
-        var outWidth = (inWidth - 1) * strideX - inCropLeft - inCropRight + dilationX * (kernelWidth - 1) + 1 + outPadLeft + outPadRight;
+        var outHeight = (inHeight - 1) * strideY - inPadTop - inPadBottom + dilationY * (kernelHeight - 1) + 1 + outPadTop + outPadBottom;
+        var outWidth = (inWidth - 1) * strideX - inPadLeft - inPadRight + dilationX * (kernelWidth - 1) + 1 + outPadLeft + outPadRight;
 
         var outputShape = new TensorShape(batch, outChannels, outHeight, outWidth);
         var outputBatchStride = outputShape.Stride(0);
@@ -2264,7 +2264,7 @@ where TNum : INumber<TNum>
 
                     for (int iy = 0; iy < inHeight; iy++)
                     {
-                        int outYBase = iy * strideY - inCropTop + outPadTop;
+                        int outYBase = iy * strideY - inPadTop + outPadTop;
                         int iy_inStrides_2 = iy * inStrides_2;
                         var in_offset_part1 = in_offset_part0 + iy_inStrides_2;
 
@@ -2274,7 +2274,7 @@ where TNum : INumber<TNum>
                             TNum val = Unsafe.Add(ref inputRef, in_idx); // inData[in_idx];
                             if (val == zero) continue; // Skip 0's (can result in real wins when ReLU is used)
 
-                            int outXBase = ix * strideX - inCropLeft + outPadLeft;
+                            int outXBase = ix * strideX - inPadLeft + outPadLeft;
 
                             for (int oc = 0; oc < outChannelsPerGroup; oc++)
                             {
@@ -3476,6 +3476,16 @@ where TNum : INumber<TNum>
     /// <returns>span of elements in row-major order</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Span<TNum> AsSpan(int start, int length) => elements.AsSpan(start, length);
+
+    /// <summary>
+    /// Create a 2D span over the given region to access tensor elements
+    /// </summary>
+    /// <param name="start">start offset</param>
+    /// <param name="rows">number of rows in span</param>
+    /// <param name="columns">number of columns in span</param>
+    /// <returns>span of elements in row-major order</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span2D<TNum> AsSpan2D(int start, int rows, int columns) => new Span2D<TNum>(elements.AsSpan(start, rows * columns), rows, columns);
 
     /// <summary>
     /// Access the tensor elements as a span

@@ -65,6 +65,10 @@ public readonly ref struct Span2D<T>
 
     public Span<T> AsSpan() => values;
 
+    public ReadOnlySpan2D<T> AsReadOnly => new ReadOnlySpan2D<T>(this.values, this.Rows, this.Columns);
+
+    public static implicit operator ReadOnlySpan2D<T>(Span2D<T> span) => new ReadOnlySpan2D<T>(span.values, span.Rows, span.Columns);
+
     public T[,] ToArray()
     {
         var array = new T[Rows, Columns];
