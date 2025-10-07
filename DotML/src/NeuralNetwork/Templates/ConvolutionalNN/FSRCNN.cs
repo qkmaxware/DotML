@@ -51,8 +51,13 @@ public class FSRCNNFactory
         var kernel_height = (scaling * settings.ImgHeight) - (settings.ImgHeight - 1) * scaling;
         var kernel_width = (scaling * settings.ImgWidth) - (settings.ImgWidth - 1) * scaling;
 
-        return SequentialBlock
-            .Begin(new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth))
+        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+
+        return new ArchitectureBlock(
+            name: "FSRCNN",
+            inputShape: ishape,
+            rootModule: SequentialBlock
+            .Begin(ishape)
             .Then((ishape) => new Conv2D(
                 outChannels: features_to_recognize,
                 inChannelsPerGroup: ishape.Length(^3), // [C, H, W]
@@ -122,6 +127,7 @@ public class FSRCNNFactory
                 dilation: (1, 1),
                 padding: Padding.Same.ToTuple(kernel: (3, 3), stride: (1, 1), dilation: (1, 1)) // Same padding
             ))
-            .Finalize();
+            .Finalize() 
+        );
     }
 }

@@ -1,14 +1,41 @@
+using System.Numerics;
+
 namespace DotML.Network.Training;
 
 /// <summary>
 /// A loss function between computed output vectors (predicted) and their expected values (true)
 /// <see href="https://en.wikipedia.org/wiki/Loss_function"/>
 /// </summary>
-public abstract class LossFunction : DelegateObject<Vec<float>, Vec<float>, float> {
+public abstract class LossFunction
+{
     /// <summary>
     /// Loss function name
     /// </summary>
     public string Name => this.GetType().Name;
+
+    /// <summary>
+    /// Compute the loss of the predicted output compared against the ground truth values.
+    /// </summary>
+    /// <param name="predicted">The predicted vector as output from forward-propagation</param>
+    /// <param name="true">The true vector expected as output</param>
+    /// <returns>computed loss</returns>
+    public abstract float Invoke(ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true);
+
+    /// <summary>
+    /// Compute the loss of the predicted output compared against the ground truth values.
+    /// </summary>
+    /// <param name="predicted">The predicted vector as output from forward-propagation</param>
+    /// <param name="true">The true vector expected as output</param>
+    /// <returns>computed loss</returns>
+    public float Invoke(Vec<float> predicted, Vec<float> @true) => Invoke(predicted.AsSpan(), @true.AsSpan());
+
+    /// <summary>
+    /// Compute the gradient of the loss function with respect to the predicted output
+    /// </summary>
+    /// <param name="gradient">Span to insert the gradient computation into</param>
+    /// <param name="predicted">The predicted vector as output from forward-propagation</param>
+    /// <param name="true">The true vector expected as output</param>
+    public abstract void Gradient(Span<float> gradient, ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true);
 
     /// <summary>
     /// Compute the gradient of the loss function with respect to the predicted output
@@ -16,7 +43,12 @@ public abstract class LossFunction : DelegateObject<Vec<float>, Vec<float>, floa
     /// <param name="predicted">The predicted vector as output from forward-propagation</param>
     /// <param name="true">The true vector expected as output</param>
     /// <returns>Gradient for use in backpropagation</returns>
-    public abstract Vec<float> Gradient(Vec<float> predicted, Vec<float> @true);
+    public Vec<float> Gradient(Vec<float> predicted, Vec<float> @true)
+    {
+        float[] vs = new float[predicted.Dimensionality];
+        Gradient(vs, predicted.AsSpan(), @true.AsSpan());
+        return Vec<float>.Wrap(vs);
+    }
 }
 
 /// <summary>
@@ -60,9 +92,9 @@ public static class LossFunctions {
 /// Mean squared error (MSE) loss function
 /// </summary>
 public class MeanSquaredError : LossFunction {
-    public override float Invoke(Vec<float> predicted, Vec<float> @true) {
+    public override float Invoke(ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true) {
         float mse = 0.0f;
-        var N = Math.Min(predicted.Dimensionality, @true.Dimensionality);
+        var N = Math.Min(predicted.Length, @true.Length);
 
         for (var i = 0; i < N; i++) {
             var to_square = predicted[i] - @true[i];
@@ -72,8 +104,9 @@ public class MeanSquaredError : LossFunction {
         return mse/N;
     }
     
-    public override Vec<float> Gradient(Vec<float> predicted, Vec<float> @true) {
-        return /*scalar * */ predicted - @true;
+    public override void Gradient(Span<float> gradient, ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true) {
+        for (var i = 0; i < predicted.Length; i++)
+            gradient[i] = predicted[i] - @true[i];
     }
 }
 
@@ -81,9 +114,9 @@ public class MeanSquaredError : LossFunction {
 /// Mean squared error (RMSE) loss function
 /// </summary>
 public class RootMeanSquaredError : LossFunction {
-    public override float Invoke(Vec<float> predicted, Vec<float> @true) {
+    public override float Invoke(ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true) {
         float mse = 0.0f;
-        var N = Math.Min(predicted.Dimensionality, @true.Dimensionality);
+        var N = Math.Min(predicted.Length, @true.Length);
 
         for (var i = 0; i < N; i++) {
             var to_square = (predicted[i] - @true[i]);
@@ -93,8 +126,9 @@ public class RootMeanSquaredError : LossFunction {
         return MathF.Sqrt(mse/N);
     }
     
-    public override Vec<float> Gradient(Vec<float> predicted, Vec<float> @true) {
-        return /*scalar * */ predicted - @true;
+    public override void Gradient(Span<float> gradient, ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true) {
+        for (var i = 0; i < predicted.Length; i++)
+            gradient[i] = predicted[i] - @true[i];
     }
 }
 
@@ -102,9 +136,9 @@ public class RootMeanSquaredError : LossFunction {
 /// Mean absolute error (MAE) loss function
 /// </summary>
 public class MeanAbsoluteError : LossFunction {
-    public override float Invoke(Vec<float> predicted, Vec<float> @true) {
+    public override float Invoke(ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true) {
         float mae = 0.0f;
-        var N = Math.Min(predicted.Dimensionality, @true.Dimensionality);
+        var N = Math.Min(predicted.Length, @true.Length);
 
         for (var i = 0; i < N; i++) {
             mae += MathF.Abs(predicted[i] - @true[i]);
@@ -113,8 +147,9 @@ public class MeanAbsoluteError : LossFunction {
         return mae/N;
     }
     
-    public override Vec<float> Gradient(Vec<float> predicted, Vec<float> @true) {
-        return (predicted - @true).Transform(x => /*scalar * */ (float)Math.Sign(x));
+    public override void Gradient(Span<float> gradient, ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true) {
+         for (var i = 0; i < predicted.Length; i++)
+            gradient[i] = Math.Sign(predicted[i] - @true[i]);
     }
 }
 
@@ -126,27 +161,67 @@ public class CategoricalCrossEntropy : LossFunction {
     private const float epsilon = 1e-15f;
 
     /// <summary>
+    /// Normalize the vector using the softmax function which converts the vector into a probability distribution with values between 0 and 1.
+    /// </summary>
+    /// <returns>normalized vector</returns>
+    public Span<T> SoftmaxNormalized<T>(ReadOnlySpan<T> vec) where T:INumber<T>, IExponentialFunctions<T>  {
+        var sum = T.Zero;
+        T[] values = new T[vec.Length];
+        for (var i = 0; i < vec.Length; i++) {
+            var exp_i = T.Exp(vec[i]);
+            values[i] = exp_i;
+            sum += exp_i;
+        }
+        for (var i = 0; i < vec.Length; i++) {
+            values[i] = values[i] / sum;
+        }
+        return values;
+    } 
+
+    /// <summary>
+    /// Check if the vector likely represents a probability distribution or not
+    /// </summary>
+    /// <param name="vec">vector</param>
+    /// <returns>true if the vector exhibits properties commonly associated with probability distributions</returns>
+    public bool IsLikelyAProbabilityDistribution<T>(ReadOnlySpan<T> vec)  where T:IFloatingPoint<T> {
+        const double epsilon = 1e-8;
+        
+        var sum = T.Zero; 
+        foreach (var p in vec) {
+            if (p < T.Zero || p > T.One) {
+                return false;
+            }
+            sum += p;
+        }
+        
+        return Convert.ToDouble(T.Abs(sum - T.One)) < epsilon;
+    }
+
+    /// <summary>
     /// Compute the loss of between a predicted and true vector
     /// </summary>
     /// <param name="predicted">The predicted vector as output from forward-propagation</param>
     /// <param name="true">The true vector expected as output</param>
     /// <returns>The computed loss between the predicted and true vectors</returns>
-    public override float Invoke(Vec<float> predicted, Vec<float> @true) {
-        if (predicted.Dimensionality != @true.Dimensionality) {
+    public override float Invoke(ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true)
+    {
+        if (predicted.Length != @true.Length)
+        {
             throw new ArgumentException("Predicted and true vectors must have the same length.");
         }
 
         // Predicted must be a softmax distribution
-        var predictedNormalized = predicted.IsLikelyAProbabilityDistribution() ? predicted : predicted.SoftmaxNormalized();
+        var predictedNormalized = IsLikelyAProbabilityDistribution(predicted) ? predicted : SoftmaxNormalized(predicted);
 
         // -SUM(exp_i * log(actual_i))
         var sum = 0.0f;
-        var M = predictedNormalized.Dimensionality; // Each dimension is a class
-        for (var i = 0; i < M; i++) { 
+        var M = predictedNormalized.Length; // Each dimension is a class
+        for (var i = 0; i < M; i++)
+        {
             // @true is a class label, predicted is the predicted probability
             sum += @true[i] * MathF.Log(Math.Max(predictedNormalized[i], epsilon));
         }
-        return -(1.0f/M)*sum;
+        return -(1.0f / M) * sum;
     }
     
     /// <summary>
@@ -155,15 +230,16 @@ public class CategoricalCrossEntropy : LossFunction {
     /// <param name="predicted">The predicted vector as output from forward-propagation</param>
     /// <param name="true">The true vector expected as output</param>
     /// <returns>Gradient for use in backpropagation</returns>
-    public override Vec<float> Gradient(Vec<float> predicted, Vec<float> @true) {
-        if (predicted.Dimensionality != @true.Dimensionality) {
+    public override void Gradient(Span<float> gradient, ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true) {
+        if (predicted.Length != @true.Length) {
             throw new ArgumentException("Predicted and true vectors must have the same length.");
         }
 
         // Predicted must be a softmax distribution
-        var predictedNormalized = predicted.IsLikelyAProbabilityDistribution() ? predicted : predicted.SoftmaxNormalized();
+        var predictedNormalized = IsLikelyAProbabilityDistribution(predicted) ? predicted : SoftmaxNormalized(predicted);
 
-        return predictedNormalized - @true; // Is it or isn't it what's written below?
+        for (var i = 0; i < predicted.Length; i++)
+            gradient[i] = predictedNormalized[i] - @true[i]; // Is it or isn't it what's written below?
 
         // dL/dYhat_i = - Ytrue_i / Yhat_u
         //var grad = new Vec<double>(predicted.Dimensionality);

@@ -56,11 +56,15 @@ where T:INetworkModule
                 }
 
                 var objs = new object?[param.Length];
+                float alpha = 0;
+                if (attrs.TryGetValue("alpha", out string? alphastr))
+                    float.TryParse(alphastr, out alpha);
+
                 for (var i = 0; i < objs.Length; i++)
                 {
                     ParameterInfo p = param[i];
                     string s = attrs[p.Name ?? string.Empty];
-                    objs[i] = ChangeTypeToParameter(s, p);
+                    objs[i] = ChangeTypeToParameter(s, p, alpha);
                 }
                 var mod = con.Invoke(objs) as INetworkModule;
                 if (mod is null)
@@ -74,7 +78,7 @@ where T:INetworkModule
         return false;
     }
 	
-	private static object? ChangeTypeToParameter(string value, ParameterInfo param)
+	private static object? ChangeTypeToParameter(string value, ParameterInfo param, float alpha)
     {
         var targetType = param.ParameterType;
         
@@ -87,19 +91,51 @@ where T:INetworkModule
             }
         }
 
-        // Get the type converter
-        var converter = TypeDescriptor.GetConverter(targetType);
-        if (converter is null || !converter.CanConvertFrom(typeof(string)))
+        // If the target is a activation function, handle that specially via name mapping
+        if (targetType == typeof(ActivationFunction))
         {
-            if (param.HasDefaultValue)
-                return param.DefaultValue; // If the constructor provided a default value, just use that
-            else
-                throw new ArgumentException($"Value cannot be converted to object of type {targetType}", nameof(value));
+            ActivationFunctionMapper.DecodeStatic(value, alpha);
         }
 
-        // Convert
-        var def = param.HasDefaultValue ? param.DefaultValue : null;
-        var converted = converter.ConvertFromInvariantString(value);
-        return converted ?? def;
+        // If the target is a tuple handle that specifically
+        if (targetType.IsAssignableTo(typeof(ValueTuple)))
+        {
+            var parts = value.Split(',');
+            var types = targetType.GenericTypeArguments;
+            if (parts.Length != types.Length)
+                throw new ArgumentException($"Value '{value}' cannot be converted to tuple of type {targetType}", nameof(value));
+            var tupleParts = new object?[types.Length];
+            for (var i = 0; i < types.Length; i++)
+            {
+                var converter = TypeDescriptor.GetConverter(types[i]);
+                if (converter is null || !converter.CanConvertFrom(typeof(string)))
+                {
+                    throw new ArgumentException($"Value '{value}' cannot be converted to tuple of type {targetType}", nameof(value));
+                }
+                tupleParts[i] = converter.ConvertFromInvariantString(parts[i]);
+            }
+            var tuple = Activator.CreateInstance(targetType, tupleParts);
+            return tuple;
+        }
+
+        // If the target is an enumerable handle that specifically
+        // TODO 
+
+        // Use type converter to convert from string to the target type
+        {
+            var converter = TypeDescriptor.GetConverter(targetType);
+            if (converter is null || !converter.CanConvertFrom(typeof(string)))
+            {
+                if (param.HasDefaultValue)
+                    return param.DefaultValue; // If the constructor provided a default value, just use that
+                else
+                    throw new ArgumentException($"Value cannot be converted to object of type {targetType}", nameof(value));
+            }
+
+            // Convert
+            var def = param.HasDefaultValue ? param.DefaultValue : null;
+            var converted = converter.ConvertFromInvariantString(value);
+            return converted ?? def;
+        }
 	}
 }

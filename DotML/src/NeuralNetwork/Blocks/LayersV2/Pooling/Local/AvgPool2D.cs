@@ -26,12 +26,14 @@ public class AvgPool2D : LocalPooling2D
             if (kr < 0 || kr >= inputHeight)
                 continue;
 
+            var row = dx[kr];
+
             for (int kc = startX; kc < endX; kc++)
             {
                 if (kc < 0 || kc >= inputWidth)
                     continue;
 
-                dx[kr, kc] += errorContribution;            // Assign the error contribution to each element in the pooling region
+                row[kc] += errorContribution;            // Assign the error contribution to each element in the pooling region
             }
         }
     }

@@ -93,9 +93,31 @@ public class TransposeConv2D : NetworkLayer
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)
     {
-        // Shapes
-        var xShape = x.Shape.NormalizeRank(4);                     // [batch, channels, rows, columns]
+        var xOrigShape = x.Shape;
+        x = x.ReshapeShared(x.Shape.NormalizeRank(4));
+        dy = dy.ReshapeShared(dy.Shape.NormalizeRank(4));
 
+        // Shapes
+        var xShape = x.Shape;                     // [batch, channels, rows, columns]
+
+        // Gradient w.r.t. biases - just sum over N, H_out, W_out
+        var dB = dy.Sum(axes: [0, 2, 3], keepdim: false);
+
+        // Gradient w.r.t weights - Convolve the input with the output gradient summing over the batch
+        var dW = BackpropagateWrtWeights(xShape, x, dy);
+
+        // Gradient w.r.t input - Convolve the output gradient with the weights flipped spatially and swapped input/output channels
+        var dX = BackpropagateWrtInput(xShape, dy);
+
+        return new WeightAndBiasGradients(
+            dx: dX.ReshapeShared(xOrigShape),
+            dw: dW,
+            db: dB
+        );
+    }
+
+    private Tensor<float> BackpropagateWrtWeights(TensorShape xShape, Tensor<float> x, Tensor<float> dy)
+    {
         var batch = xShape.Length(0);
         var inChannels = xShape.Length(1);
         var inHeight = xShape.Length(2);
@@ -105,107 +127,90 @@ public class TransposeConv2D : NetworkLayer
         var outHeight = dy.Shape.Length(2);
         var outWidth = dy.Shape.Length(3);
 
+        var weightStride0 = Weights.Shape.Stride(0);
+        var xStride0 = xShape.Stride(0);
+        var dyStride0 = dy.Shape.Stride(0);
+
+        var weightOutChannel = Weights.Shape.Length(1);
         var kernelHeight = Weights.Shape.Length(2);
         var kernelWidth = Weights.Shape.Length(3);
 
         var inChannelsPerGroup = inChannels / Groups;
         var outChannelsPerGroup = outChannels / Groups;
 
-        // Gradient w.r.t. biases - just sum over N, H_out, W_out
-        var dB = dy.Sum(axes: [0, 2, 3], keepdim: false);
-
-        // Gradient w.r.t weights - Convolve the input with the output gradient summing over the batch
         var dW = Tensor<float>.Zeros(Weights.Shape); // [outChannels, inChannelsPerGroup, kernelHeight, kernelWidth]
         for (int g = 0; g < Groups; g++)
         {
             int inOffset = g * inChannelsPerGroup;
             int outOffset = g * outChannelsPerGroup;
 
-            for (int oc = 0; oc < outChannelsPerGroup; oc++)
+            Parallel.For(0, inChannelsPerGroup, ParallelOptions, (ic) =>
+            //for (int ic = 0; ic < inChannelsPerGroup; ic++)
             {
-                for (int ic = 0; ic < inChannelsPerGroup; ic++)
+                Span3D<float> dwIc = dW.AsSpan3D(ic * weightStride0, weightOutChannel, kernelHeight, kernelWidth);
+                var inOffsetIc = inOffset + ic;
+
+                for (int oc = 0; oc < outChannelsPerGroup; oc++)
                 {
+                    var outOffsetOc = outOffset + oc;
+                    Span2D<float> dwIcOc = dwIc[outOffsetOc];
+
                     for (int kh = 0; kh < kernelHeight; kh++)
                     {
+                        var khDilation = kh * Dilation.Y;
+                        var dwIcOckH = dwIcOc[kh];
+
                         for (int kw = 0; kw < kernelWidth; kw++)
                         {
                             float grad = 0f;
+                            var kwDilation = kw * Dilation.X;
+
                             for (int b = 0; b < batch; b++)
                             {
+                                ReadOnlySpan3D<float> xB = x.AsSpan3D(b * xStride0, inChannels, inHeight, inWidth);
+                                ReadOnlySpan3D<float> dyB = dy.AsSpan3D(b * dyStride0, outChannels, outHeight, outWidth);
+
+                                ReadOnlySpan2D<float> xBIc = xB[inOffsetIc];
+                                ReadOnlySpan2D<float> dyBOc = dyB[outOffsetOc];
+
                                 for (int ih = 0; ih < inHeight; ih++)
                                 {
+                                    var ihStrideY = ih * Stride.Y;
+                                    int oh = ihStrideY - InputPadding.Top + khDilation + OutputPadding.Top;
+
+                                    if (oh < 0 || oh >= outHeight)
+                                        continue;
+
+                                    ReadOnlySpan<float> xBIcIH = xBIc[ih];
+                                    ReadOnlySpan<float> dyBOcOh = dyBOc[oh];
+
                                     for (int iw = 0; iw < inWidth; iw++)
                                     {
                                         // Calculate output position for this input pixel and kernel offset
-                                        int oh = ih * Stride.Y - InputPadding.Top + kh * Dilation.Y + OutputPadding.Top;
-                                        int ow = iw * Stride.X - InputPadding.Left + kw * Dilation.X + OutputPadding.Left;
+                                        int ow = iw * Stride.X - InputPadding.Left + kwDilation + OutputPadding.Left;
 
-                                        if (oh >= 0 && oh < outHeight && ow >= 0 && ow < outWidth)
-                                        {
-                                            float xval = x[b, inOffset + ic, ih, iw];
-                                            float dyval = dy[b, outOffset + oc, oh, ow];
-                                            grad += xval * dyval;
-                                        }
+                                        if (ow < 0 || ow >= outWidth)
+                                            continue;
+
+                                        float xval = xBIcIH[iw];
+                                        float dyval = dyBOcOh[ow];
+                                        grad += xval * dyval;
                                     }
                                 }
                             }
-                            dW[ic, outOffset + oc, kh, kw] = grad;
+                            dwIcOckH[kw] = grad;
                         }
                     }
                 }
-            }
+            });
+            //}
         }
 
-        // Gradient w.r.t input - Convolve the output gradient with the weights flipped spatially and swapped input/output channels
-        /*var weightsForDX = Weights
-            .ReshapeShared(new TensorShape(
-                inChannelsPerGroup, // C_in
-                Groups,
-                outChannelsPerGroup,
-                kernelHeight,
-                kernelWidth
-            ))
-            .Permute(1, 2, 0, 3, 4) // [Groups, outPerGroup, inPerGroup, H, W]
-            .ReshapeShared(new TensorShape(
-                inChannels, // Groups * inPerGroup
-                outChannelsPerGroup,
-                kernelHeight,
-                kernelWidth
-            ))
-            .Mirror(^2, ^1); // Flip H, W
-        ;
-
-        // Compute padding for backward pass (see transposed conv backward math)
-        inHeight = xShape.Length(2) + InputPadding.Top + InputPadding.Bottom;
-        inWidth = xShape.Length(3) + InputPadding.Left + InputPadding.Right;
-
-        int totalPadX = (inWidth - 1) * Stride.X + Dilation.X * (kernelWidth - 1) + 1 - outWidth;
-        int padLeft = totalPadX / 2;
-        int padRight = totalPadX - padLeft;
-
-        int totalPadY = (inHeight - 1) * Stride.Y + Dilation.Y * (kernelHeight - 1) + 1 - outHeight;
-        int padTop = totalPadY / 2;
-        int padBottom = totalPadY - padTop;
-
-        
-        var dX = dy.Convolve2D(
-            kernels: weightsForDX,
-            groups: Groups,
-            strideX: 1,
-            strideY: 1,
-            dilationX: Stride.X,
-            dilationY: Stride.Y,
-            padLeft: padLeft,
-            padRight: padRight,
-            padTop: padTop,
-            padBottom: padBottom
-        );*/
-        var dX = BackpropagateWrtInput(xShape, dy);
-
-        return new WeightAndBiasGradients(dX.ReshapeShared(x.Shape), dW, dB);
+        return dW;
     }
 
-    private Tensor<float> BackpropagateWrtInput(TensorShape xShape, Tensor<float> dY) {
+    private Tensor<float> BackpropagateWrtInput(TensorShape xShape, Tensor<float> dY)
+    {
         var (batch_size, in_channels, out_rows, out_columns) = xShape; // In and out rows/columns flipped here since the "input" is dY and the output is "dX" for the convolution
         var (inChannelsPerGroup, out_channels, kernelHeight, kernelWidth) = Weights.Shape;
         var (_, _, in_rows, in_columns) = dY.Shape;
@@ -219,7 +224,7 @@ public class TransposeConv2D : NetworkLayer
         var dX = Tensor<float>.Zeros(xShape);
         var dxStride0 = dX.Shape.Stride(0);
         var dxStride1 = dX.Shape.Stride(1);
-        
+
         int inChannelsPerGroupCount = inChannelsPerGroup; // from Weights.Shape
         int outChannelsPerGroupCount = out_channels / Groups;
 
@@ -238,11 +243,12 @@ public class TransposeConv2D : NetworkLayer
                 int outChannelStart = group * outChannelsPerGroupCount;
                 int outChannelEnd = outChannelStart + outChannelsPerGroupCount;
 
-                for (var output_index = 0; output_index < out_channels; output_index++)
+                Parallel.For(0, out_channels, ParallelOptions, (output_index) =>
+                //for (var output_index = 0; output_index < out_channels; output_index++)
                 {
                     int localOutputIndex = output_index - outChannelStart;
-                    
-                    ReadOnlySpan2D<float> ouput_span = new ReadOnlySpan2D<float>(dY.AsSpan(batch * dyStride0 + output_index * dyStride1, dyStride1), in_rows, in_columns); // TODO ergonomic tensor method for this?
+
+                    ReadOnlySpan2D<float> output_span = new ReadOnlySpan2D<float>(dY.AsSpan(batch * dyStride0 + output_index * dyStride1, dyStride1), in_rows, in_columns); // TODO ergonomic tensor method for this?
 
                     for (var kernel_index = 0; kernel_index < in_channels; kernel_index++)
                     {
@@ -257,6 +263,7 @@ public class TransposeConv2D : NetworkLayer
                         for (var y = 0; y < out_rows; y++)
                         {
                             var startY = y * Stride.Y - InputPadding.Top;
+                            Span<float> result_row = result_span[y];
 
                             for (var x = 0; x < out_columns; x++)
                             {
@@ -268,26 +275,30 @@ public class TransposeConv2D : NetworkLayer
                                     var inY = startY + ky;
                                     if (inY < 0 || inY >= in_rows) continue; // Skip out-of-bounds rows
 
+                                    ReadOnlySpan<float> kernel_row = kernel_span[ky];
+                                    ReadOnlySpan<float> output_row = output_span[inY];
+
                                     for (int kx = 0; kx < kernelWidth; kx++)
                                     {
                                         var inX = startX + kx;
                                         if (inX < 0 || inX >= in_columns) continue; // Skip out-of-bounds columns
 
                                         //var kernel = Weights[localInputIndex, localOutputIndex, ky, kx];
-                                        var kernel = kernel_span[ky, kx];
+                                        var kernel = kernel_row[kx];
                                         //var output = dY[batch, output_index, inY, inX];
-                                        var output = ouput_span[inY, inX];
+                                        var output = output_row[inX];
                                         total_sum += output * kernel;
                                     }
                                 }
 
                                 //dX[batch, kernel_index, y, x] += total_sum;
-                                result_span[y, x] += total_sum;
+                                result_row[x] += total_sum;
                             }
                         }
                         // --------------------------------------
                     }
-                }
+                //}
+                });
             }
         }
 

@@ -62,34 +62,36 @@ public class DenseLinear : NetworkLayer
         x = Flatten.FlattenCHW2H(x);
 
         // Matrix multiplication, do broadcasting for batch dimensions as needed: [O, F] x [..., F, 1]
-        var mul = Weights.MatMulEach(x);
+        // Use the column dimension (^2) as the vector dimension
+        var mul = Weights.MatMulEachVector(dimension: ^2, x, Biases.AsArray());
 
         // Add bias (broadcasting for batch dimensions as needed): [..., O, 1] + [O, 1]
-        mul.AddWithInplace(Biases);
+        // Already handled by the above method
 
-        return mul;
+        // Convert back to column vector from row vector by unsqueezing to the right
+        return mul.ReshapeShared(mul.Shape.Append(1)); 
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)
     {
         // Flatten the input to column/height dimension: [...N, C, H, W] -> [N, 1, F, 1]
         x = x.ReshapeShared(x.Shape.NormalizeRank(4));  // Collapse all leading batch dims into 1
-        x = Flatten.FlattenCHW2H(x);                    // Flatten the training CHW dims
+        x = Flatten.FlattenCHW2H(x);                    // Flatten the training CHW dims [N, 1, F, 1]
 
         // Reshape x and dy for matmuls: [N, F, 1], [N, O, 1]
-        var xFlatT = x.ReshapeShared(new TensorShape(x.Shape.Length(0), 1, InputSize));     // [N, 1, F]
-        var dyFlat = dy.ReshapeShared(new TensorShape(dy.Shape.Length(0), OutputSize, 1));  // [N, O, 1]
+        var xFlatT = x.ReshapeShared(new TensorShape(x.Shape.Length(0), InputSize));     // [N, F]
+        var dyFlat = dy.ReshapeShared(new TensorShape(dy.Shape.Length(0), OutputSize));  // [N, O]
 
         // Compute dW = sum_over_batch( dy * x^T ) => [O, F]
-        var dW = dyFlat.BatchedMatMul(xFlatT)                              // [N, O, F]
-                    .Sum(axis: 0, keepdim: false);                         // [O, F]
+        var dW = dyFlat.TransposedMatMul(xFlatT); // [O, N] * [N, F] = [O, F]
 
         // Compute dB = sum_over_batch(dy) => [O, 1]
-        var dB = dyFlat.Sum(axis: 0, keepdim: false);                      // [O, 1]
+        var dB = dy.ReshapeShared(new TensorShape(dy.Shape.Length(0), OutputSize, 1))
+            .Sum(axis: 0, keepdim: false);                        // [O, 1]
 
         // Compute dx = dy * W^T => [N, F, 1]
-        var WT = Weights.Transpose();                                      // [F, O]
-        var dx = WT.MatMulEach(dyFlat);                                    // [N, F, 1]
+        // [N, O] * [O, F] = [N, F]
+        var dx = dyFlat.MatMul(Weights);
 
         // Reshape dx back to original input shape from the flattened format
         dx = dx.ReshapeShared(x.Shape);

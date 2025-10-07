@@ -11,6 +11,15 @@ namespace DotML.Network;
 public abstract class NetworkLayer : INetworkModule, IBlockVisitable
 {
     /// <summary>
+    /// Pre-configured parallel executions options for Parallel.For or other uses in child classes
+    /// </summary>
+    protected static ParallelOptions ParallelOptions = new ParallelOptions
+    {
+        // TODO if we need better determination of max threads, put the logic here
+        MaxDegreeOfParallelism = Tensor<float>.DegreesOfParallelism
+    };
+
+    /// <summary>
     /// Test if the layer is in training mode (defaults to false, inference mode)
     /// </summary>
     public bool IsTraining { get; private set; } = false;

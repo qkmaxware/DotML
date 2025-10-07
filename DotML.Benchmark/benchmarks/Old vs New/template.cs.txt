@@ -1,0 +1,59 @@
+using BenchmarkDotNet.Attributes;
+using DotML.Network;
+
+namespace DotML.Benchmark;
+
+[Benchmarkable]
+public class CompareDenseLinear
+{
+    #region Input Shape
+    [Params(1)]
+    public int CHANNELS;
+    [Params(4096)]
+    public int ROWS;
+    [Params(1)]
+    public int COLUMNS;
+    #endregion
+
+    #region Output Shape
+    [Params(100)]
+    public int OUTPUT_CLASSES;
+    #endregion
+
+    private TensorShape ishape;
+    private Matrix<float> inputMatrix;
+    private Tensor<float> inputTensor;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        var generator = new Random();
+        ishape = new TensorShape(CHANNELS, ROWS, COLUMNS);
+        inputMatrix = Matrix<float>.Generate(ROWS, COLUMNS, () => (float)generator.NextDouble());
+        inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
+
+        old = new DotML.Network.DenseLinearLayer(ROWS, OUTPUT_CLASSES);
+        updated = new DenseLinear(ROWS, OUTPUT_CLASSES);
+    }
+
+    [GlobalCleanup]
+    public void Cleanup()
+    {
+        // No need to do anything
+    }
+
+    DenseLinearLayer old;
+    DenseLinear updated;
+
+    [Benchmark(Baseline = true)]
+    public void Old()
+    {
+        var output = old.EvaluateSync(new FeatureSet<float>(inputMatrix));
+    }
+
+    [Benchmark()]
+    public void Updated()
+    {
+        var output = updated.Forward(inputTensor);
+    }
+}

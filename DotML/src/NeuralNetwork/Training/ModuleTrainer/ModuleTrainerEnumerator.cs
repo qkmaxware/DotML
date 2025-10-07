@@ -3,14 +3,19 @@ using DotML.Network.Initialization;
 
 namespace DotML.Network.Training;
 
-public class ModuleTrainingReport {
-    public float MaxLoss;
-    public float MinLoss;
-    public float AvgLoss;
-}
+public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Report> {
+    
+    /// <summary>
+    /// Training report
+    /// </summary>
+    public class Report
+    {
+        public float MaxLoss;
+        public float MinLoss;
+        public float AvgLoss;
+    }
 
-public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingReport> {
-    public ModuleTrainingReport Current {get; private set;}
+    public Report Current { get; private set; }
     object IEnumerator.Current => Current;
 
     public INetworkModule Network { get; init; }
@@ -22,7 +27,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingReport> {
     public IClippingStrategy? GradientClipping {get; init;}
     public IInitializer Initializer {get; init;}
     public LossFunction Loss {get; init;}
-    public Predicate<ModuleTrainingReport>? StopCondition {get; init;}
+    public Predicate<Report>? StopCondition {get; init;}
     public int Epoch {get; private set;}
     public int MaxEpochs {get; init;}
     public float LearningRate {get; init;}
@@ -43,7 +48,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingReport> {
         IClippingStrategy? gradientClipping,
         IInitializer initializer,
         LossFunction loss,
-        Predicate<ModuleTrainingReport>? stopCondition,
+        Predicate<Report>? stopCondition,
         int maxEpochs,
         float learningRate,
         int batchSize,
@@ -64,7 +69,9 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingReport> {
         this.BatchSize = batchSize;
         this.Patience = patience;
 
-        this.Current = new ModuleTrainingReport();
+        this.Current = new Report();
+
+        Reset();
     }
 
     public void Dispose() { }
@@ -84,21 +91,31 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingReport> {
             return false;
 
         // Training loop
-        foreach ((Tensor<float> batch, Tensor<float> truth) in TrainingData.Sample(batchSize: BatchSize)) {
+        foreach ((Tensor<float> batch, Tensor<float> truth) in TrainingData.Sample(batchSize: BatchSize))
+        {
             // Forward step
             var context = new EvaluationContext();
             var outputs = Network.Forward(batch);
 
             // Compute loss/error/dy
-            var loss = Loss.Gradient(Vec<float>.Wrap(outputs.AsArray()), Vec<float>.Wrap(truth.AsArray()));
-            var dy = Tensor<float>.FromFlattenedArray(outputs.Shape, loss.AsArray());
+            var batches = outputs.Shape.Length(0);
+            var batchStride = outputs.Shape.Stride(0);
+
+            var dY = Tensor<float>.Defaults(outputs.Shape);
+            for (var batchIndex = 0; batchIndex < batches; batchIndex++) {
+                Loss.Gradient(
+                    gradient: dY.AsSpan(batchIndex * batchStride, batchStride),         // Subspan of dY to store the results of the gradient computation in
+                    predicted: outputs.AsSpan(batchIndex * batchStride, batchStride),   // Treat subspan of output as a vector across non-batch dimensions
+                    @true: truth.AsSpan(batchIndex * batchStride, batchStride)          // Treat subspan of truth as a vector across non-batch dimensions
+                );
+            }
 
             // Backward step
-            var gradients = Network.Backward(dy, ctx: context, clipping: this.GradientClipping);
+            var gradients = Network.Backward(dY, ctx: context, clipping: this.GradientClipping);
 
             // Update step
             Network.Update(
-                this.LearningRate, 
+                this.LearningRate,
                 gradients,
                 optimizer: this.Optimizer,
                 regularization: this.Regularization
@@ -114,27 +131,40 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingReport> {
     }
 
     private void validate() {
-        float loss_sum = 0;
-        float loss_min = float.MinValue;
-        float loss_max = float.MaxValue;
-        int batch_count = 0;
+        float loss_sum = 0;                 // sum of all losses
+        float loss_min = float.MinValue;    // min loss
+        float loss_max = float.MaxValue;    // max loss
+        int loss_count = 0;                 // number of losses computed
+        int batch_count = 0;                // number of batches checked
 
         // Testing loop
-        foreach ((Tensor<float> batch, Tensor<float> truth) in TestingData.Sample(batchSize: BatchSize)) {
+        foreach ((Tensor<float> batch, Tensor<float> truth) in TestingData.Sample(batchSize: BatchSize))
+        {
             // Feedforward step
             var result = Network.Forward(batch);
 
             // Compute loss (should this be broken up by batch size?)
-            var loss = Loss.Invoke(Vec<float>.Wrap(result.AsArray()), Vec<float>.Wrap(truth.AsArray()));
+            var batches = result.Shape.Length(0);
+            var batchStride = result.Shape.Stride(0);
 
-            // Update metrics
-            loss_sum += loss;
-            loss_min = Math.Min(loss_min, loss);
-            loss_max = Math.Max(loss_max, loss);
+            for (var batchIndex = 0; batchIndex < batches; batchIndex++)
+            {
+                var loss = Loss.Invoke(
+                    predicted: result.AsSpan(batchIndex * batchStride, batchStride),    // Treat subspan of output as a vector across non-batch dimensions
+                    @true: truth.AsSpan(batchIndex * batchStride, batchStride)          // Treat subspan of truth as a vector across non-batch dimensions
+                );
+
+                // Update metrics
+                loss_sum += loss;
+                loss_min = Math.Min(loss_min, loss);
+                loss_max = Math.Max(loss_max, loss);
+                loss_count++;
+            }
+
             batch_count++;
         }
 
-        float loss_avg = loss_sum / batch_count;
+        float loss_avg = loss_sum / loss_count;
 
         // Update report    
         this.Current.MaxLoss = loss_max;

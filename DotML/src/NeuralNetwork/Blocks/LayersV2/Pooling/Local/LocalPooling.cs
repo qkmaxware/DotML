@@ -102,7 +102,7 @@ public abstract class LocalPooling2D : LocalPooling
     {
         // Each channel generates exactly 1 output
         var originalRank = inputs.Shape.Rank;
-        inputs = inputs.ReshapeShared(inputs.Shape.EnsureRank(4)); // Minimum of [N,C,H,W], but can have more batch dims [D1, D2, ..., C, H, W]
+        inputs = inputs.ReshapeShared(inputs.Shape.EnsureRank(2)); // Minimum of [N,C,H,W], but can have more batch dims [D1, D2, ..., C, H, W]
 
         var filterWidth = this.FilterWidth;
         var filterHeight = this.FilterHeight;
@@ -193,13 +193,13 @@ public abstract class LocalPooling2D : LocalPooling
         var filterElementCount = filterWidth * filterHeight;
 
         var errSpan = dy.AsSpan();
-        var errShape = dy.Shape.EnsureRank(4);
+        var errShape = dy.Shape.EnsureRank(2);
         var errRows = errShape.Length(^2);
         var errColumns = errShape.Length(^1);
         var errMatSize = errRows * errColumns;
 
         var inputSpan = x.AsSpan();
-        var inputShape = x.Shape.EnsureRank(4);
+        var inputShape = x.Shape.EnsureRank(2);
         var inputRows = inputShape.Length(^2);
         var inputColumns = inputShape.Length(^1);
         var inputMatrixSize = inputRows * inputColumns;

@@ -73,8 +73,13 @@ public class LeNetFactory
     {
         var activation = settings.Activation ?? ReLU.Instance;
 
-        return SequentialBlock
-            .Begin(new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth))
+        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+
+        return new ArchitectureBlock(
+            name: "LeNetV1",
+            inputShape: ishape,
+            SequentialBlock
+            .Begin(ishape)
             .Then((ishape) => new Conv2D(
                 outChannels: 12,
                 inChannelsPerGroup: ishape.Length(^3), // [C, H, W]
@@ -110,7 +115,8 @@ public class LeNetFactory
                 settings.OutputClasses
             ))
             .Then(ishape => new SoftmaxOutput())
-            .Finalize();
+            .Finalize()
+        );
     }
 
     public INetworkModule Make(BuildSettingsV5 settings)
@@ -124,8 +130,13 @@ public class LeNetFactory
         int fullyConnectedNeurons1  = Math.Max(120, (int)(120 * scalingFactor));
         int fullyConnectedNeurons2  = Math.Max(84, (int)(84 * scalingFactor));
 
-        return SequentialBlock
-            .Begin(new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth))
+        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+
+        return new ArchitectureBlock(
+            name: "LeNetV5",
+            inputShape: ishape,
+            rootModule: SequentialBlock
+            .Begin(ishape)
             .Then((ishape) => new Conv2D(
                 outChannels: 6,
                 inChannelsPerGroup: ishape.Length(^3), // [C, H, W]
@@ -171,6 +182,7 @@ public class LeNetFactory
                 settings.OutputClasses
             ))
             .Then(ishape => new SoftmaxOutput())
-            .Finalize();
+            .Finalize()
+        );
     }
 }

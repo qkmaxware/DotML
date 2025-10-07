@@ -55,8 +55,13 @@ public class AlexNetFactory
         double scalingFactor = Math.Max(1, (settings.ImgWidth * settings.ImgHeight) / (double)(IMG_WIDTH * IMG_HEIGHT));
         var neurons = Math.Max(4096, (int)(4096 * scalingFactor));
 
-        return SequentialBlock
-            .Begin(new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth))
+        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+
+        return new ArchitectureBlock(
+            name: "AlexNet",
+            inputShape: ishape,
+            rootModule: SequentialBlock
+            .Begin(ishape)
             // Convo 1
             .Then(ishape => new Conv2D(
                 outChannels: 96,
@@ -68,7 +73,7 @@ public class AlexNetFactory
                 padding: (0, 0, 0, 0)
             ))
             .Then(ishape => new Activation(activation))
-            .ThenIf(settings.NormalizeLayers, (ishape) => new LayerNorm2(channels: ishape.Length(^3), height: ishape.Length(^2), width: ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, (ishape) => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new MaxPool2D(
                 size: 3,
                 stride: 2,
@@ -85,7 +90,7 @@ public class AlexNetFactory
                 padding: (2, 2, 2, 2) // 'Same' padding for 5x5
             ))
             .Then(ishape => new Activation(activation))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(channels: ishape.Length(^3), height: ishape.Length(^2), width: ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new MaxPool2D(
                 size: 3,
                 stride: 2,
@@ -122,7 +127,7 @@ public class AlexNetFactory
                 padding: (1, 1, 1, 1)
             ))
             .Then(ishape => new Activation(activation))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(channels: ishape.Length(^3), height: ishape.Length(^2), width: ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new MaxPool2D(
                 size: 3,
                 stride: 2,
@@ -133,19 +138,20 @@ public class AlexNetFactory
                 ishape.LogicalElementCount(),
                 neurons
             ))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(channels: ishape.Length(^3), height: ishape.Length(^2), width: ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new Activation(activation))
             .Then(ishape => new DenseLinear(
                 ishape.LogicalElementCount(),
                 neurons
             ))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(channels: ishape.Length(^3), height: ishape.Length(^2), width: ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new Activation(activation))
             .Then(ishape => new DenseLinear(
                 ishape.LogicalElementCount(),
                 settings.OutputClasses
             ))
             .Then(ishape => new SoftmaxOutput())
-            .Finalize();
+            .Finalize()
+        );
     }
 }

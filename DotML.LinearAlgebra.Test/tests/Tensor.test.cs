@@ -318,6 +318,63 @@ public class TestTensor
     }
 
     [TestMethod]
+    public void TestMatMulVectorCompatible()
+    {
+        // Arrange: Define two matrices to multiply
+        Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {
+            { 1, 2 },
+            { 3, 4 }
+        });
+
+        Tensor<double> B = Tensor<double>.Vec(new double[]{
+            5,
+            6
+        });
+
+        // Expected result of A * B
+        Tensor<double> expected = Tensor<double>.Vec(new double[] {
+            17,
+            39
+        });
+
+        // Act: Multiply matrices A and B
+        var result = A.MatMulVector(B.AsSpan());
+        Assert.AreEqual(true, result.Equals(expected));
+
+        result = A.MatMulEachVector(^1, B);
+        Assert.AreEqual(true, result.Equals(expected));
+
+        B = B.ReshapeShared(new TensorShape(2, 1)); // Convert to column vector
+        result = A.MatMulEachVector(^2, B);
+        Assert.AreEqual(true, result.Equals(expected));
+    }
+
+    [TestMethod]
+    public void TestMatMulBatchedVectorCompatible()
+    {
+        // Arrange: Define two matrices to multiply
+        Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {
+            { 1, 2 },
+            { 3, 4 }
+        });
+
+        Tensor<double> B = Tensor<double>.FromRectangularArray(new double[,]{
+            { 5, 6 },
+            { 8, 3 }
+        });
+
+        // Expected result of A * B
+        Tensor<double> expected = Tensor<double>.FromRectangularArray(new double[,]{
+            { 17, 39 },
+            { 14, 36 }
+        });
+
+        // Act: Multiply matrices A and B
+        var result = A.MatMulEachVector(^1, B);
+        Assert.AreEqual(true, result.Equals(expected));
+    }
+
+    [TestMethod]
     public void TestConvolve2D_1()
     {
         var kernels = Tensor<double>.FromRectangularArray(new double[,] {
@@ -377,9 +434,82 @@ public class TestTensor
         Assert.AreEqual(result_truth.Shape.Length(^2), result_predicted.Shape.Length(^2));
         Assert.AreEqual(result_truth.Shape.Length(^1), result_predicted.Shape.Length(^1));
 
-        foreach (var (predicted, truth) in result_predicted.AsArray().Zip(result_truth.AsArray())) {
+        foreach (var (predicted, truth) in result_predicted.AsArray().Zip(result_truth.AsArray()))
+        {
             Assert.AreEqual(truth, predicted, 0.0001);
         }
+    }
+
+    [TestMethod]
+    public void TestSoftmax()
+    {
+        double[][][] input = [[[ 0.0637, -0.5338],
+         [ 0.0342,  0.9319],
+         [ 0.1470,  0.3923]],
+
+        [[ 0.4529, -0.3350],
+         [-0.3405, -0.2906],
+         [ 0.1697,  1.5471]],
+
+        [[ 1.2464,  0.9875],
+         [-1.2910, -1.0184],
+         [-0.4568,  1.8662]],
+
+        [[ 0.7523, -1.0616],
+         [ 0.3214,  0.8427],
+         [-0.8794,  1.3009]]];
+
+        Tensor<double> inputTensor = Tensor<double>.FromJaggedArray(input);
+
+        double[][][] o1 = [[[0.1294, 0.1354],
+         [0.3043, 0.4253],
+         [0.3415, 0.0907]],
+
+        [[0.1909, 0.1651],
+         [0.2092, 0.1252],
+         [0.3494, 0.2880]],
+
+        [[0.4222, 0.6197],
+         [0.0809, 0.0605],
+         [0.1867, 0.3962]],
+
+        [[0.2576, 0.0799],
+         [0.4056, 0.3890],
+         [0.1224, 0.2251]]];
+        double[][][] o2 = [[[0.3270, 0.1273],
+         [0.3175, 0.5513],
+         [0.3554, 0.3214]],
+
+        [[0.4534, 0.1161],
+         [0.2051, 0.1214],
+         [0.3416, 0.7625]],
+
+        [[0.7929, 0.2823],
+         [0.0627, 0.0380],
+         [0.1444, 0.6797]],
+
+        [[0.5419, 0.0546],
+         [0.3522, 0.3663],
+         [0.1060, 0.5792]]];
+        double[][][] o3 = [[[0.6451, 0.3549],
+         [0.2895, 0.7105],
+         [0.4390, 0.5610]],
+
+        [[0.6874, 0.3126],
+         [0.4875, 0.5125],
+         [0.2014, 0.7986]],
+
+        [[0.5644, 0.4356],
+         [0.4323, 0.5677],
+         [0.0892, 0.9108]],
+
+        [[0.8598, 0.1402],
+         [0.3726, 0.6274],
+         [0.1015, 0.8985]]];
+
+        Assert.AreEqual(true, inputTensor.Softmax(0).Equals(Tensor<double>.FromJaggedArray(o1), 0.001f));
+        Assert.AreEqual(true, inputTensor.Softmax(1).Equals(Tensor<double>.FromJaggedArray(o2), 0.001f));
+        Assert.AreEqual(true, inputTensor.Softmax(2).Equals(Tensor<double>.FromJaggedArray(o3), 0.001f));
     }
 
 }

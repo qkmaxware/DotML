@@ -47,8 +47,13 @@ public class ESPCNFactory
         var scaling = Math.Max(1, settings.UpscalingFactor);
         var activation = settings.Activation ?? ReLU.Instance;
 
-        return SequentialBlock
-            .Begin(new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth))
+        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+
+        return new ArchitectureBlock(
+            name: "ESPCN",
+            inputShape: ishape,
+            rootModule: SequentialBlock
+            .Begin(ishape)
             .Then((ishape) => new Conv2D(
                 outChannels: 64,
                 inChannelsPerGroup: ishape.Length(^3), // [C, H, W]
@@ -81,7 +86,8 @@ public class ESPCNFactory
             .Then((ishape) => new PixelShuffler(
                 upscale: scaling
             ))
-            .Finalize();
+            .Finalize()
+        );
     }
 
 }

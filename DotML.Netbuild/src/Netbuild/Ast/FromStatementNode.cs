@@ -65,7 +65,9 @@ public class FromStatement : Statement {
 
         INetworkModule? root = (Identifier?.ToLower()) switch
         {
-            // TODO alexnet => env.NetworkBlock.Add(AlexNet.Make(), output_classes: AlexNet.OUT_CLASSES);
+            "alexnet" => new AlexNetFactory().MakeDefault(),
+            "espcn" => ((INetworkModuleFactory)new ESPCNFactory()).MakeDefault(),
+            "fsrcnn" => ((INetworkModuleFactory)new FSRCNNFactory()).MakeDefault(),
             // ...
             "xor" => new MultilayerPerceptronFactory().MakeDefault(),
             _ => null
@@ -74,9 +76,15 @@ public class FromStatement : Statement {
         {
             env.NetworkBlock.Add(root);
 
-            // TODO set input shape based on root if possible
-            // Relies on having these networks return some kind of "Fixed" input shape which doesn't yet exist
-            //env.InputShape = root.InputShape;
+            if (root is ArchitectureBlock)
+            {
+                var arch = (ArchitectureBlock)root;
+                if (arch.RequiredInputShape.HasValue)
+                {
+                    var tshape = arch.RequiredInputShape.Value;
+                    env.InputShape = new Shape3D(tshape.LengthOrDefault(0), tshape.LengthOrDefault(1), tshape.LengthOrDefault(2));
+                }
+            }
         }
     }
 

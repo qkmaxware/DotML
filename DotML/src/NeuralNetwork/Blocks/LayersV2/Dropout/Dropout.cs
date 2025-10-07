@@ -56,7 +56,7 @@ public class Dropout : NetworkLayer
 
         // Elementwise multiply gradient by mask
         var dx = dy.HadamardWith(mask);
-        return new Gradient(dy);
+        return new Gradient(dx);
     }
 
     public override Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null)

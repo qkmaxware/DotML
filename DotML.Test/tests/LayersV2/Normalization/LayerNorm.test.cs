@@ -11,7 +11,7 @@ public class LayerNormTest {
         var saver = new SafetensorSerializer();
         var loader = new SafetensorDeserializer();
 
-        var layer = new LayerNorm2(channels: 1, height: 5, width: 5);
+        var layer = new LayerNorm2(1, 5, 5);
 
         var tensors = saver.Serialize(layer);
 
@@ -41,7 +41,7 @@ public class LayerNormTest {
     [TestMethod]
     public void Test1FeatureDefaultGammaDefaultBeta() {
         // Step 1: Setup layer and input
-        var layer = new LayerNorm2(channels: 1, height: 5, width: 5);
+        var layer = new LayerNorm2(1, 5, 5);
         var GammaTruth = Tensor<double>.FromJaggedArray(
             [
                 [
@@ -378,7 +378,7 @@ public class LayerNormTest {
     public void Test2FeaturesDefaultGammaDefaultBeta()
     {
         // Step 1: Setup layer and input
-        var layer = new LayerNorm2(channels: 2, height: 5, width: 5);
+        var layer = new LayerNorm2(2, 5, 5);
         var GammaTruth = Tensor<double>.FromJaggedArray(
             [
                 [
@@ -1042,7 +1042,7 @@ public class LayerNormTest {
     [TestMethod]
     public void Test1FeatureRandomGammaRandomBeta() {
         // Step 1: Setup layer and input
-        var layer = new LayerNorm2(channels: 1, height: 5, width: 5);
+        var layer = new LayerNorm2(1, 5, 5);
         var GammaTruth = Tensor<double>.FromJaggedArray(
             [
                 [

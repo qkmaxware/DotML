@@ -80,6 +80,10 @@ public class MultilayerPerceptronFactory : INetworkModuleFactory<MultilayerPerce
             }
         }
 
-        return block;
+        return new ArchitectureBlock(
+            name: "MultilayerPerceptron",
+            inputShape: new TensorShape(1, input_size, 1),
+            block
+        );
     }
 }

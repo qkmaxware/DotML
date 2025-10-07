@@ -41,6 +41,12 @@ public readonly ref struct Span2D<T>
         set => values[row * Columns + col] = value;
     }
 
+    public Span<T> this[int row]
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => values.Slice(row * Columns, Columns);
+    }
+
     public void Clear() => values.Clear();
 
     public void CopyTo(Span2D<T> destination)
@@ -89,7 +95,7 @@ public readonly ref struct ReadOnlySpan2D<T>
     public readonly int Rows;
     public readonly int Columns;
 
-    public ReadOnlySpan2D(Span<T> span, int rows, int columns)
+    public ReadOnlySpan2D(ReadOnlySpan<T> span, int rows, int columns)
     {
         values = span; // Implicit cast to ReadOnlySpan
         Rows = rows;
@@ -100,6 +106,12 @@ public readonly ref struct ReadOnlySpan2D<T>
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => values[row * Columns + col];
+    }
+
+    public ReadOnlySpan<T> this[int row]
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => values.Slice(row * Columns, Columns);
     }
 
     public static Span2D<T> Empty => new(Span<T>.Empty, 0, 0);

@@ -7,7 +7,7 @@ using Microsoft.VisualBasic;
 namespace DotML.Network;
 
 /// <summary>
-/// Layer that performs layer (non batch) normalization. Each channel is normalized across all channels.
+/// Layer that performs layer (non batch) normalization. Each channel is normalized across the entire normalized shape
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
 public class LayerNorm2 : NormalizationLayer
@@ -36,10 +36,15 @@ public class LayerNorm2 : NormalizationLayer
         }
     }
 
-    public LayerNorm2(int channels, int height, int width)
+    public TensorShape NormalizedShape { get; init; }
+
+    public LayerNorm2(params int[] normalizedShape) : this(new TensorShape(normalizedShape)) {}
+
+    public LayerNorm2(TensorShape normalizedShape)
     {
-        _weights = Tensor<float>.Ones(new TensorShape(channels, height, width));
-        _biases = Tensor<float>.Zeros(new TensorShape(channels, height, width));
+        this.NormalizedShape = normalizedShape;
+        _weights = Tensor<float>.Ones(normalizedShape);
+        _biases = Tensor<float>.Zeros(normalizedShape);
     }
 
     public override int TrainableParameterCount()
@@ -56,20 +61,20 @@ public class LayerNorm2 : NormalizationLayer
         Biases.FillGenerated(() => initializer.RandomWeight(neurons, neurons, parameters));
     }
 
-    const float epsilon = 1e-8f;
-
     public override TensorShape ForwardShape(TensorShape input) => input;
+
+    const float epsilon = 1e-8f;
 
     public override Tensor<float> Forward(Tensor<float> channels)
     {
         // Assume input is [N, C, H, W], if not force it to be by collapsing leading dimensions or 1 padding
-        var originalRank = channels.Shape.Rank;
-        channels = channels.Clone().ReshapeShared(channels.Shape.NormalizeRank(4));
+        var originalShape = channels.Shape;
+        channels = channels.Reshape(channels.Shape.NormalizeRank(NormalizedShape.Rank + 1)); // Collapse leading dims into 1 batch dim or prepend a 1 length batch dim
         var batches = channels.Shape.Length(0); var batchStride = channels.Shape.Stride(0);
 
         // Get references to the underlying weights and biases in row-major order
-        var gammas = Weights.AsSpan();  // [C, H, W]
-        var betas = Biases.AsSpan();    // [C, H, W]
+        var gammas = Weights.AsSpan();
+        var betas = Biases.AsSpan();
 
         for (int b = 0; b < batches; b++)
         {
@@ -122,17 +127,19 @@ public class LayerNorm2 : NormalizationLayer
             }
         }
 
-        return channels.Squeeze(0..^originalRank);
+        return channels.ReshapeShared(originalShape);
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)
     {
         var originalShape = x.Shape;
-        x = x.ReshapeShared(x.Shape.NormalizeRank(4));
-        dy = dy.ReshapeShared(dy.Shape.NormalizeRank(4));
+        x = x.ReshapeShared(x.Shape.NormalizeRank(NormalizedShape.Rank + 1));
+        if (!x.Shape.AreTrailingDimensions(this.NormalizedShape))
+            throw new NotSupportedException($"The trailing dimensions of the input must match the normalized shape {this.NormalizedShape}");
+        dy = dy.ReshapeShared(dy.Shape.NormalizeRank(NormalizedShape.Rank + 1));
 
         int batches = x.Shape.Length(0);
-        int normSize = x.Shape.Length(1) * x.Shape.Length(2) * x.Shape.Length(3); // size of C*H*W
+        int normSize = x.Shape.Stride(0); // size of C*H*W or whatever the normalized shape is
         int batchStride = x.Shape.Stride(0);
 
         var gamma = Weights.AsSpan(); // [C, H, W]
@@ -217,6 +224,22 @@ public class LayerNorm2 : NormalizationLayer
         optimizer.UpdateParameter(this, nameof(Weights), learningRate, this.Weights, dW);
         optimizer.UpdateParameter(this, nameof(Biases), learningRate, this.Biases, dB);
     }
-    
+
     public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
+}
+
+/// <summary>
+/// Layer that performs layer (non batch) normalization for CNNs. Input is assumed to be in NCHW format and layer normalization is performed across the entire CHW sample.
+/// </summary>
+public class SampleNorm : LayerNorm2
+{
+    public SampleNorm(int channels, int height, int width) : base(new TensorShape(channels, height, width)) { }
+}
+
+/// <summary>
+/// Layer that performs layer (non batch) normalization for CNNs. Input is assumed to be in NCHW format and layer normalization is performed across each HW instance.
+/// </summary>
+public class InstanceNorm : LayerNorm2
+{
+    public InstanceNorm(int height, int width) : base(new TensorShape(height, width)) { }
 }

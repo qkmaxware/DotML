@@ -14,34 +14,43 @@ public class ModuleTrainer
     public IClippingStrategy? GradientClipping { get; set; } = null;
     public IInitializer Initializer { get; set; } = new NormalXavierInitialization();
     public LossFunction Loss {get; set;} = LossFunctions.MeanSquaredError;
-    public Predicate<ModuleTrainingReport>? StopCondition { get; set; } = defaultStopCondition;
+    public Predicate<ModuleTrainingEnumerator.Report>? StopCondition { get; set; } = StopOnAvgLossDefault;
     public int MaxEpochs { get; set; } = 500;
     public float LearningRate { get; set; } = 0.01f;
     public int BatchSize { get; set; } = 1;
     public int Patience { get; set; } = 1;
-    
-    public IValidationReport? ValidationReport { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-    private static bool defaultStopCondition(ModuleTrainingReport report) {
-        return report.AvgLoss < 0.01;
+    public const float DefaultLossThreshold = 0.01f;
+
+    public static bool StopOnAvgLossDefault(ModuleTrainingEnumerator.Report report)
+    {
+        return report.AvgLoss < DefaultLossThreshold;
+    }
+    
+    public static bool StopOnMaxLossDefault(ModuleTrainingEnumerator.Report report) {
+        return report.MaxLoss < DefaultLossThreshold;
     }
 
-    public IEnumerator<ModuleTrainingReport> EnumerateTraining(INetworkModule network, ITrainingDataSampler<float> dataset, ITrainingDataSampler<float>? validation)
+    public static bool StopOnMinLossDefault(ModuleTrainingEnumerator.Report report) {
+        return report.MinLoss < DefaultLossThreshold;
+    }
+
+    public IEnumerator<ModuleTrainingEnumerator.Report> EnumerateTraining(INetworkModule network, ITrainingDataSampler<float> dataset, ITrainingDataSampler<float>? validation)
     {
         return new ModuleTrainingEnumerator(
-            module:             network,
-            training:           dataset,
-            testing:            validation is null ? dataset : validation,
-            regularization:     this.Regularization,
-            optimizer:          this.Optimizer,
-            gradientClipping:   this.GradientClipping,
-            initializer:        this.Initializer,
-            loss:               this.Loss,
-            stopCondition:      this.StopCondition,
-            maxEpochs:          Math.Max(1, this.MaxEpochs),
-            learningRate:       Math.Max(0, this.LearningRate),
-            batchSize:          Math.Max(1, this.BatchSize),
-            patience:           Math.Max(1, this.Patience)
+            module: network,
+            training: dataset,
+            testing: validation is null ? dataset : validation,
+            regularization: this.Regularization,
+            optimizer: this.Optimizer,
+            gradientClipping: this.GradientClipping,
+            initializer: this.Initializer,
+            loss: this.Loss,
+            stopCondition: this.StopCondition,
+            maxEpochs: Math.Max(1, this.MaxEpochs),
+            learningRate: Math.Max(0, this.LearningRate),
+            batchSize: Math.Max(1, this.BatchSize),
+            patience: Math.Max(1, this.Patience)
         );
     }
 

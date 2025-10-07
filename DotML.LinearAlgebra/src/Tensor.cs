@@ -103,6 +103,29 @@ public class Tensor<TNum>
 where TNum : INumber<TNum>
 {
     /// <summary>
+    /// Maximum amount of parallelism to use
+    /// </summary>
+    public static int DegreesOfParallelism
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => ParallelOptions.MaxDegreeOfParallelism;
+    }
+
+    /// <summary>
+    /// A parallel options object preset to the degrees of parallelism to use
+    /// </summary>
+    private static ParallelOptions ParallelOptions = new ParallelOptions
+    {
+        // TODO if we need better determination of max threads, put the logic here
+        MaxDegreeOfParallelism = Environment.ProcessorCount
+    };
+
+    /// <summary>
+    /// Smallest chunk size allowed during parallel operations
+    /// </summary>
+    public const int MinParallelChunkSize = 2048;
+
+    /// <summary>
     /// Shape of the tensor
     /// </summary>
     public TensorShape Shape
@@ -197,8 +220,6 @@ where TNum : INumber<TNum>
         return new Tensor<TNum>(shape, elems);
     }
 
-    private static readonly Random rng = new Random();
-
     /// <summary>
     /// Generate a random binary mask tensor of the given shape with the given dropout rate
     /// </summary>
@@ -211,9 +232,47 @@ where TNum : INumber<TNum>
         dropoutRate = Math.Clamp(dropoutRate, 0.0, 1.0);
         TNum[] elems = new TNum[shape.LogicalElementCount()];
 
-        for (var i = 0; i < elems.Length; i++)
+        const int bitsPerWord = 64;
+        int onesPerWord = (int)Math.Round((1.0 - dropoutRate) * bitsPerWord);
+        ulong template = 0UL;
+        for (int i = 0; i < onesPerWord; i++)
+            template |= (1UL << i);
+
+        var zero = TNum.Zero;
+        var one = TNum.One;
+        var rng = Random.Shared;
+
+        int iElem = 0;
+        var count = elems.Length;
+        ulong pattern;
+        while (iElem < count)
         {
-            elems[i] = (rng.NextDouble() < dropoutRate) ? TNum.Zero : TNum.One;
+            // Shuffle Fisher-Yates
+            pattern = template;
+            for (var i = bitsPerWord - 1; i >= 1; i--)
+            {
+                var j = rng.Next(i);
+
+                // Swap ith and jth bits
+                {
+                    // Extract the bits
+                    ulong bit1 = (pattern >> i) & 1;
+                    ulong bit2 = (pattern >> j) & 1;
+
+                    // If bits are not the same, swap
+                    if (bit1 != bit2)
+                    {
+                        pattern ^= (1UL << i) | (1UL << j);
+                    }
+                }
+            }
+
+            // Insert
+            for (int i = 0; i < bitsPerWord && iElem < count; i++)
+            {
+                bool keep = ((pattern >> i) & 1UL) != 0;
+                elems[iElem++] = keep ? one : zero;
+            }
         }
 
         return new Tensor<TNum>(shape, elems);
@@ -693,12 +752,27 @@ where TNum : INumber<TNum>
     public Tensor<TResult> ElementWise<TResult>(Func<TNum, TResult> transformation)
     where TResult : INumber<TResult>
     {
+        int spanlength = this.elements.Length;
+        var chunksize = Math.Max(spanlength / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (spanlength + chunksize - 1) / chunksize;
+
         var tensor = new TResult[this.elements.Length];
-        ReadOnlySpan<TNum> elements = this.elements;
-        for (var i = 0; i < tensor.Length; i++)
+
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            tensor[i] = transformation(elements[i]);
-        }
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int length = end - start;
+
+            Span<TResult> output = tensor.AsSpan(start, length);
+            ReadOnlySpan<TNum> elements = this.elements.AsSpan(start, length);
+            for (var i = 0; i < length; i++)
+            {
+                output[i] = transformation(elements[i]);
+            }
+        });
+        
         return new Tensor<TResult>(this.Shape, tensor);
     }
     /// <summary>
@@ -707,12 +781,26 @@ where TNum : INumber<TNum>
     /// <param name="transformation">transformation</param>
     public void ElementWiseInplace(Func<TNum, TNum> transformation)
     {
-        Span<TNum> tensor = this.elements;
-        ReadOnlySpan<TNum> elements = this.elements;
-        for (var i = 0; i < tensor.Length; i++)
+        int spanlength = this.elements.Length;
+        var chunksize = Math.Max(spanlength / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (spanlength + chunksize - 1) / chunksize;
+
+        var tensor = this.elements;
+
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            tensor[i] = transformation(elements[i]);
-        }
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int length = end - start;
+
+            Span<TNum> output = tensor.AsSpan(start, length);
+            ReadOnlySpan<TNum> elements = this.elements.AsSpan(start, length);
+            for (var i = 0; i < length; i++)
+            {
+                output[i] = transformation(elements[i]);
+            }
+        });
     }
     /// <summary>
     /// <para>
@@ -738,24 +826,36 @@ where TNum : INumber<TNum>
         var src = this.elements;
         var len = src.Length;
         var dst = new TNum[len];
-        int i = 0;
 
-        // Vector part
-        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        var chunksize = Math.Max(len / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (len + chunksize - 1) / chunksize;
+
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            int simdLength = Vector<TNum>.Count;
-            int simdLimit = len - simdLength + 1;
-            for (; i < simdLimit; i += simdLength)
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, len);
+            int length = end - start;
+
+            // Vector part
+            int i = 0;
+            if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
             {
-                var v = new Vector<TNum>(src, i);
-                vectorizedTransformation(v).CopyTo(dst, i);
+                int simdLength = Vector<TNum>.Count;
+                int simdLimit = length - simdLength + 1;
+                for (; i < simdLimit; i += simdLength)
+                {
+                    var v = new Vector<TNum>(src, start + i);
+                    vectorizedTransformation(v).CopyTo(dst, start + i);
+                }
             }
-        }
-        // Scalar fallback for remaining elements
-        for (; i < len; i++)
-        {
-            dst[i] = scalarTransformation(src[i]);
-        }
+            // Scalar fallback for remaining elements
+            for (; i < length; i++)
+            {
+                dst[start + i] = scalarTransformation(src[start + i]);
+            }
+        });
+
         return new Tensor<TNum>(this.Shape, dst);
     }
 
@@ -779,26 +879,38 @@ where TNum : INumber<TNum>
         Func<Vector<TNum>, Vector<TNum>> vectorizedTransformation,
         Func<TNum, TNum> scalarTransformation)
     {
-        var arr = this.elements;
-        var len = arr.Length;
-        int i = 0;
+        var src = this.elements;
+        var dst = this.elements;
+        var len = dst.Length;
 
-        // Vector part
-        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        var chunksize = Math.Max(len / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (len + chunksize - 1) / chunksize;
+
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            int simdLength = Vector<TNum>.Count;
-            int simdLimit = len - simdLength + 1;
-            for (; i < simdLimit; i += simdLength)
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, len);
+            int length = end - start;
+
+            // Vector part
+            int i = 0;
+            if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
             {
-                var v = new Vector<TNum>(arr, i);
-                vectorizedTransformation(v).CopyTo(arr, i);
+                int simdLength = Vector<TNum>.Count;
+                int simdLimit = length - simdLength + 1;
+                for (; i < simdLimit; i += simdLength)
+                {
+                    var v = new Vector<TNum>(src, start + i);
+                    vectorizedTransformation(v).CopyTo(dst, start + i);
+                }
             }
-        }
-        // Scalar fallback for remaining elements
-        for (; i < len; i++)
-        {
-            arr[i] = scalarTransformation(arr[i]);
-        }
+            // Scalar fallback for remaining elements
+            for (; i < length; i++)
+            {
+                dst[start + i] = scalarTransformation(src[start + i]);
+            }
+        });
     }
 
     /// <summary>
@@ -819,12 +931,28 @@ where TNum : INumber<TNum>
             throw new InvalidOperationException("Tensors have incompatible dimensions for elementwise operations");
         }
 
-        var tensor = new TNumResult[this.elements.Length];
-        for (var i = 0; i < tensor.Length; i++)
+        var srcA = this.elements;
+        var srcB = other.elements;
+        var dst = new TNumResult[this.elements.Length];
+        var len = dst.Length;
+
+        var chunksize = Math.Max(len / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (len + chunksize - 1) / chunksize;
+
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            tensor[i] = transformation(this.elements[i], other.elements[i]);
-        }
-        return new Tensor<TNumResult>(this.Shape, tensor);
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, len);
+            int length = end - start;
+
+            for (var i = 0; i < length; i++)
+            {
+                dst[start + i] = transformation(srcA[start + i], srcB[i]);
+            }
+        });
+
+        return new Tensor<TNumResult>(this.Shape, dst);
     }
     /// <summary>
     /// Perform an elementwise transformation of the tensor elements with another tensor's elements
@@ -849,31 +977,43 @@ where TNum : INumber<TNum>
             throw new InvalidOperationException("Tensors have incompatible dimensions for elementwise operations");
         }
 
-        var arr = new TNumResult[this.elements.Length];
-        var a = this.elements;
-        var b = other.elements;
-        var len = arr.Length;
-        int i = 0;
+        var srcA = this.elements;
+        var srcB = other.elements;
+        var dst = new TNumResult[this.elements.Length];
+        var len = dst.Length;
 
-        // Vector part
-        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        var chunksize = Math.Max(len / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (len + chunksize - 1) / chunksize;
+
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            int simdLength = Vector<TNum>.Count;
-            int simdLimit = len - simdLength + 1;
-            for (; i < simdLimit; i += simdLength)
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, len);
+            int length = end - start;
+
+            // Vector part
+            int i = 0;
+            if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
             {
-                var aVec = new Vector<TNum>(a, i);
-                var bVec = new Vector<TNumOther>(b, i);
-                vectorizedTransformation(aVec, bVec).CopyTo(arr, i);
+                int simdLength = Vector<TNum>.Count;
+                int simdLimit = length - simdLength + 1;
+                for (; i < simdLimit; i += simdLength)
+                {
+                    var aVec = new Vector<TNum>(srcA, start + i);
+                    var bVec = new Vector<TNumOther>(srcB, start + i);
+                    vectorizedTransformation(aVec, bVec).CopyTo(dst, start + i);
+                }
             }
-        }
-        // Scalar fallback for remaining elements
-        for (; i < len; i++)
-        {
-            arr[i] = scalarTransformation(a[i], b[i]);
-        }
+            // Scalar fallback for remaining elements
+            for (; i < length; i++)
+            {
+                dst[start + i] = scalarTransformation(srcA[start + i], srcB[start + i]);
+            }
 
-        return new Tensor<TNumResult>(this.Shape, arr);
+        });
+
+        return new Tensor<TNumResult>(this.Shape, dst);
     }
     /// <summary>
     /// Perform an elementwise transformation of the tensor elements with another tensor's elements storing the results in-place
@@ -891,11 +1031,26 @@ where TNum : INumber<TNum>
             throw new InvalidOperationException("Tensors have incompatible dimensions for elementwise operations");
         }
 
-        var tensor = this.elements;
-        for (var i = 0; i < tensor.Length; i++)
+        var srcA = this.elements;
+        var srcB = other.elements;
+        var dst = this.elements;
+        var len = dst.Length;
+
+        var chunksize = Math.Max(len / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (len + chunksize - 1) / chunksize;
+
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            tensor[i] = transformation(this.elements[i], other.elements[i]);
-        }
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, len);
+            int length = end - start;
+
+            for (var i = 0; i < length; i++)
+            {
+                dst[start + i] = transformation(srcA[start + i], srcB[start + i]);
+            }
+        });
     }
 
     /// <summary>
@@ -1145,9 +1300,15 @@ where TNum : INumber<TNum>
 
         for (var i = 0; i < slice_count; i++)
         {
-            var result_span = tensor.AsSpan(i * slice_length, slice_length);
-            var lhs_span = this.elements.AsSpan(i * slice_length, slice_length);
-            ElementWiseAdd(result_span, lhs_span, other.elements); // Get's inlined here for maximum performance
+            ElementWiseAdd(
+                slice_length,
+                tensor,
+                i * slice_length,
+                this.elements,
+                i * slice_length,
+                other.elements,
+                0
+            );
         }
 
         return new Tensor<TNum>(this.Shape, tensor);
@@ -1172,37 +1333,54 @@ where TNum : INumber<TNum>
 
         for (var i = 0; i < slice_count; i++)
         {
-            var result_span = tensor.AsSpan(i * slice_length, slice_length);
-            var lhs_span = this.elements.AsSpan(i * slice_length, slice_length);
-            ElementWiseAdd(result_span, lhs_span, other.elements); // Get's inlined here for maximum performance
+            ElementWiseAdd(
+                slice_length,
+                tensor,
+                i * slice_length,
+                this.elements,
+                i * slice_length,
+                other.elements,
+                0
+            ); // Get's inlined here for maximum performance
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ElementWiseAdd(Span<TNum> result, ReadOnlySpan<TNum> lhs, ReadOnlySpan<TNum> rhs)
+    private static void ElementWiseAdd(
+        int spanlength, TNum[] output, int oOffset, TNum[] lhs, int lOffset, TNum[] rhs, int rOffset
+    )
     {
-        var length = result.Length;
+        var chunksize = Math.Max(spanlength / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (spanlength + chunksize - 1) / chunksize;
 
-        // Vectorized elements
-        int i = 0;
-        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            int simdLength = Vector<TNum>.Count;
-            int simdLimit = length - simdLength + 1;
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int length = end - start;
 
-            for (; i < simdLimit; i += simdLength)
+            // Vectorized elements
+            int i = 0;
+            if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
             {
-                var va = new Vector<TNum>(lhs.Slice(i, simdLength));
-                var vb = new Vector<TNum>(rhs.Slice(i, simdLength));
-                var vr = va + vb;
-                vr.CopyTo(result.Slice(i, simdLength));
+                int simdLength = Vector<TNum>.Count;
+                int simdLimit = length - simdLength + 1;
+
+                for (; i < simdLimit; i += simdLength)
+                {
+                    var va = new Vector<TNum>(lhs, lOffset + start + i);
+                    var vb = new Vector<TNum>(rhs, rOffset + start + i);
+                    var vr = va + vb;
+                    vr.CopyTo(output, oOffset + start + i);
+                }
             }
-        }
-        // Remaining elements
-        for (; i < length; i++)
-        {
-            result[i] = lhs[i] + rhs[i];
-        }
+            // Remaining elements
+            for (; i < length; i++)
+            {
+                output[oOffset + start + i] = lhs[lOffset + start + i] + rhs[rOffset + start + i];
+            }
+        });
     }
 
     /// <summary>
@@ -1235,9 +1413,15 @@ where TNum : INumber<TNum>
 
         for (var i = 0; i < slice_count; i++)
         {
-            var result_span = tensor.AsSpan(i * slice_length, slice_length);
-            var lhs_span = this.elements.AsSpan(i * slice_length, slice_length);
-            ElementWiseSubtract(result_span, lhs_span, other.elements); // Get's inlined here for maximum performance
+            ElementWiseSubtract(
+                slice_length,
+                tensor,
+                i * slice_length,
+                this.elements,
+                i * slice_length,
+                other.elements,
+                0
+            ); // Get's inlined here for maximum performance
         }
 
         return new Tensor<TNum>(this.Shape, tensor);
@@ -1262,38 +1446,56 @@ where TNum : INumber<TNum>
 
         for (var i = 0; i < slice_count; i++)
         {
-            var result_span = tensor.AsSpan(i * slice_length, slice_length);
-            var lhs_span = this.elements.AsSpan(i * slice_length, slice_length);
-            ElementWiseSubtract(result_span, lhs_span, other.elements); // Get's inlined here for maximum performance
+            ElementWiseSubtract(
+                slice_length,
+                tensor,
+                i * slice_length,
+                this.elements,
+                i * slice_length,
+                other.elements,
+                0
+            ); // Get's inlined here for maximum performance
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ElementWiseSubtract(Span<TNum> result, ReadOnlySpan<TNum> lhs, ReadOnlySpan<TNum> rhs)
+    private static void ElementWiseSubtract(
+        int spanlength, TNum[] output, int oOffset, TNum[] lhs, int lOffset, TNum[] rhs, int rOffset
+    )
     {
-        var length = result.Length;
+        var chunksize = Math.Max(spanlength / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (spanlength + chunksize - 1) / chunksize;
 
-        // Vectorized elements
-        int i = 0;
-        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            int simdLength = Vector<TNum>.Count;
-            int simdLimit = length - simdLength + 1;
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int length = end - start;
 
-            for (; i < simdLimit; i += simdLength)
+            // Vectorized elements
+            int i = 0;
+            if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
             {
-                var va = new Vector<TNum>(lhs.Slice(i, simdLength));
-                var vb = new Vector<TNum>(rhs.Slice(i, simdLength));
-                var vr = va - vb;
-                vr.CopyTo(result.Slice(i, simdLength));
+                int simdLength = Vector<TNum>.Count;
+                int simdLimit = length - simdLength + 1;
+
+                for (; i < simdLimit; i += simdLength)
+                {
+                    var va = new Vector<TNum>(lhs, lOffset + start + i);
+                    var vb = new Vector<TNum>(rhs, rOffset + start + i);
+                    var vr = va - vb;
+                    vr.CopyTo(output, oOffset + start + i);
+                }
             }
-        }
-        // Remaining elements
-        for (; i < length; i++)
-        {
-            result[i] = lhs[i] - rhs[i];
-        }
+            // Remaining elements
+            for (; i < length; i++)
+            {
+                output[oOffset + start + i] = lhs[lOffset + start + i] - rhs[rOffset + start + i];
+            }
+        });
     }
+
 
     /// <summary>
     /// Operator for .SubtractWith 
@@ -1325,9 +1527,15 @@ where TNum : INumber<TNum>
 
         for (var i = 0; i < slice_count; i++)
         {
-            var result_span = tensor.AsSpan(i * slice_length, slice_length);
-            var lhs_span = this.elements.AsSpan(i * slice_length, slice_length);
-            ElementWiseMultiply(result_span, lhs_span, other.elements); // Get's inlined here for maximum performance
+            ElementWiseMultiply(
+                slice_length,
+                tensor,
+                i * slice_length,
+                this.elements,
+                i * slice_length,
+                other.elements,
+                0
+            ); // Get's inlined here for maximum performance
         }
 
         return new Tensor<TNum>(this.Shape, tensor);
@@ -1352,37 +1560,54 @@ where TNum : INumber<TNum>
 
         for (var i = 0; i < slice_count; i++)
         {
-            var result_span = tensor.AsSpan(i * slice_length, slice_length);
-            var lhs_span = this.elements.AsSpan(i * slice_length, slice_length);
-            ElementWiseMultiply(result_span, lhs_span, other.elements); // Get's inlined here for maximum performance
+            ElementWiseMultiply(
+                slice_length,
+                tensor,
+                i * slice_length,
+                this.elements,
+                i * slice_length,
+                other.elements,
+                0
+            ); // Get's inlined here for maximum performance
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ElementWiseMultiply(Span<TNum> result, ReadOnlySpan<TNum> lhs, ReadOnlySpan<TNum> rhs)
+    private static void ElementWiseMultiply(
+        int spanlength, TNum[] output, int oOffset, TNum[] lhs, int lOffset, TNum[] rhs, int rOffset
+    )
     {
-        var length = result.Length;
+        var chunksize = Math.Max(spanlength / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (spanlength + chunksize - 1) / chunksize;
 
-        // Vectorized elements
-        int i = 0;
-        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            int simdLength = Vector<TNum>.Count;
-            int simdLimit = length - simdLength + 1;
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int length = end - start;
 
-            for (; i < simdLimit; i += simdLength)
+            // Vectorized elements
+            int i = 0;
+            if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
             {
-                var va = new Vector<TNum>(lhs.Slice(i, simdLength));
-                var vb = new Vector<TNum>(rhs.Slice(i, simdLength));
-                var vr = va * vb;
-                vr.CopyTo(result.Slice(i, simdLength));
+                int simdLength = Vector<TNum>.Count;
+                int simdLimit = length - simdLength + 1;
+
+                for (; i < simdLimit; i += simdLength)
+                {
+                    var va = new Vector<TNum>(lhs, lOffset + start + i);
+                    var vb = new Vector<TNum>(rhs, rOffset + start + i);
+                    var vr = va * vb;
+                    vr.CopyTo(output, oOffset + start + i);
+                }
             }
-        }
-        // Remaining elements
-        for (; i < length; i++)
-        {
-            result[i] = lhs[i] * rhs[i];
-        }
+            // Remaining elements
+            for (; i < length; i++)
+            {
+                output[oOffset + start + i] = lhs[lOffset + start + i] * rhs[rOffset + start + i];
+            }
+        });
     }
 
     /// <summary>
@@ -1392,30 +1617,43 @@ where TNum : INumber<TNum>
     /// <returns>element-wise tensor multiplication</returns>
     public Tensor<TNum> ScaleBy(TNum other)
     {
-        var length = this.elements.Length;
-        var tensor = new TNum[length];
+        var src = this.elements;
+        var len = src.Length;
+        var dst = new TNum[len];
 
-        // Vectorized elements
-        int i = 0;
-        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        var chunksize = Math.Max(len / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (len + chunksize - 1) / chunksize;
+
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            int simdLength = Vector<TNum>.Count;
-            int simdLimit = length - simdLength + 1;
-            Vector<TNum> constant = new Vector<TNum>(other);
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, len);
+            int length = end - start;
 
-            for (; i < simdLimit; i += simdLength)
+            // Vectorized elements
+            int i = 0;
+            if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
             {
-                var va = new Vector<TNum>(this.elements, i);
-                var vr = va * constant;
-                vr.CopyTo(tensor, i);
+                int simdLength = Vector<TNum>.Count;
+                int simdLimit = length - simdLength + 1;
+                Vector<TNum> constant = new Vector<TNum>(other);
+
+                for (; i < simdLimit; i += simdLength)
+                {
+                    var va = new Vector<TNum>(src, start + i);
+                    var vr = va * constant;
+                    vr.CopyTo(dst, start + i);
+                }
             }
-        }
-        // Remaining elements
-        for (; i < length; i++)
-        {
-            tensor[i] = this.elements[i] * other;
-        }
-        return new Tensor<TNum>(this.Shape, tensor);
+            // Remaining elements
+            for (; i < length; i++)
+            {
+                dst[start + i] = src[start + i] * other;
+            }
+        });
+
+        return new Tensor<TNum>(this.Shape, dst);
     }
     /// <summary>
     /// Scale all elements of the tensor in-place
@@ -1423,29 +1661,41 @@ where TNum : INumber<TNum>
     /// <param name="other">scalar to multiply values with</param>
     public void ScaleByInplace(TNum other)
     {
-        var length = this.elements.Length;
-        var tensor = this.elements;
+        var src = this.elements;
+        var len = src.Length;
+        var dst = this.elements;
 
-        // Vectorized elements
-        int i = 0;
-        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        var chunksize = Math.Max(len / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (len + chunksize - 1) / chunksize;
+
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            int simdLength = Vector<TNum>.Count;
-            int simdLimit = length - simdLength + 1;
-            Vector<TNum> constant = new Vector<TNum>(other);
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, len);
+            int length = end - start;
 
-            for (; i < simdLimit; i += simdLength)
+            // Vectorized elements
+            int i = 0;
+            if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
             {
-                var va = new Vector<TNum>(this.elements, i);
-                var vr = va * constant;
-                vr.CopyTo(tensor, i);
+                int simdLength = Vector<TNum>.Count;
+                int simdLimit = length - simdLength + 1;
+                Vector<TNum> constant = new Vector<TNum>(other);
+
+                for (; i < simdLimit; i += simdLength)
+                {
+                    var va = new Vector<TNum>(src, start + i);
+                    var vr = va * constant;
+                    vr.CopyTo(dst, start  +i);
+                }
             }
-        }
-        // Remaining elements
-        for (; i < length; i++)
-        {
-            tensor[i] = this.elements[i] * other;
-        }
+            // Remaining elements
+            for (; i < length; i++)
+            {
+                dst[start + i] = src[start + i] * other;
+            }
+        });
     }
 
     /// <summary>
@@ -1496,9 +1746,15 @@ where TNum : INumber<TNum>
 
         for (var i = 0; i < slice_count; i++)
         {
-            var result_span = tensor.AsSpan(i * slice_length, slice_length);
-            var lhs_span = this.elements.AsSpan(i * slice_length, slice_length);
-            ElementWiseDivision(result_span, lhs_span, other.elements); // Get's inlined here for maximum performance
+            ElementWiseDivision(
+                slice_length,
+                tensor,
+                i * slice_length,
+                this.elements,
+                i * slice_length,
+                other.elements,
+                0
+            ); // Get's inlined here for maximum performance
         }
 
         return new Tensor<TNum>(this.Shape, tensor);
@@ -1523,39 +1779,55 @@ where TNum : INumber<TNum>
 
         for (var i = 0; i < slice_count; i++)
         {
-            var result_span = tensor.AsSpan(i * slice_length, slice_length);
-            var lhs_span = this.elements.AsSpan(i * slice_length, slice_length);
-            ElementWiseDivision(result_span, lhs_span, other.elements); // Get's inlined here for maximum performance
+            ElementWiseDivision(
+                slice_length,
+                tensor,
+                i * slice_length,
+                this.elements,
+                i * slice_length,
+                other.elements,
+                0
+            ); // Get's inlined here for maximum performance
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ElementWiseDivision(Span<TNum> result, ReadOnlySpan<TNum> lhs, ReadOnlySpan<TNum> rhs)
+    private static void ElementWiseDivision(
+        int spanlength, TNum[] output, int oOffset, TNum[] lhs, int lOffset, TNum[] rhs, int rOffset
+    )
     {
-        var length = result.Length;
+        var chunksize = Math.Max(spanlength / DegreesOfParallelism, MinParallelChunkSize);
+        int chunkCount = (spanlength + chunksize - 1) / chunksize;
 
-        // Vectorized elements
-        int i = 0;
-        if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
+        Parallel.For(0, chunkCount, (chunkIdx) =>
         {
-            int simdLength = Vector<TNum>.Count;
-            int simdLimit = length - simdLength + 1;
+            // Start, end, length within region spanned by oOffset + spanlength etc.
+            int start = chunkIdx * MinParallelChunkSize;
+            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int length = end - start;
 
-            for (; i < simdLimit; i += simdLength)
+            // Vectorized elements
+            int i = 0;
+            if (Vector.IsHardwareAccelerated && Vector<TNum>.IsSupported)
             {
-                var va = new Vector<TNum>(lhs.Slice(i, simdLength));
-                var vb = new Vector<TNum>(rhs.Slice(i, simdLength));
-                var vr = va / vb;
-                vr.CopyTo(result.Slice(i, simdLength));
-            }
-        }
-        // Remaining elements
-        for (; i < length; i++)
-        {
-            result[i] = lhs[i] / rhs[i];
-        }
-    }
+                int simdLength = Vector<TNum>.Count;
+                int simdLimit = length - simdLength + 1;
 
+                for (; i < simdLimit; i += simdLength)
+                {
+                    var va = new Vector<TNum>(lhs, lOffset + start + i);
+                    var vb = new Vector<TNum>(rhs, rOffset + start + i);
+                    var vr = va * vb;
+                    vr.CopyTo(output, oOffset + start + i);
+                }
+            }
+            // Remaining elements
+            for (; i < length; i++)
+            {
+                output[oOffset + start + i] = lhs[lOffset + start + i] * rhs[rOffset + start + i];
+            }
+        });
+    }
 
     /// <summary>
     /// Shift all values over by one to insert this value onto the first element of the tensor
@@ -1639,12 +1911,172 @@ where TNum : INumber<TNum>
     }
 
     /// <summary>
+    /// Performs matrix multiplication as if this matrix was transposed before multiplication
+    /// </summary>
+    /// <param name="other">tensor to multiply with</param>
+    /// <returns>result of multiplying this transposed with other</returns>
+    public Tensor<TNum> TransposedMatMul(Tensor<TNum> other)
+    {
+        var a = this;
+
+        int m = a.Shape.Length(0); // M
+        int k = a.Shape.Length(1); // K
+
+        int b_m = other.Shape.Length(0); // M (must match A's first dim)
+        int n = other.Shape.Length(1);   // N
+
+        if (a.Rank != 2 || other.Rank != 2 || m != b_m)
+            throw new ArithmeticException($"Incompatible shapes for Aᵗ * B: A[{m},{k}]ᵗ * B[{b_m},{n}]");
+
+        // Result: [K, N]
+        var result = Tensor<TNum>.Zeros(new TensorShape(k, n));
+        var aSpan = a.AsSpan();        // [M x K], row-major
+        var bSpan = other.AsSpan();    // [M x N], row-major
+        var resSpan = result.AsSpan(); // [K x N], row-major
+
+        int aStride = k;
+        int bStride = n;
+        int rStride = n;
+
+        // k, j, i ordering. optimal for transposed multiplication
+        Parallel.For(0, k, ParallelOptions, (k) =>
+        {
+            var resultSpan = result.AsSpan();
+            var aSpan = a.AsSpan();
+            var bSpan = other.AsSpan();
+
+            // aRow: this is A's k-th column, i.e. Aᵗ[k] = A[:,k]
+            int aColOffset = k; // offset within each A[i,k] = A[i * aStride + k]
+
+            // B's k-th row (B[k,:]) — sequential access
+            int bRowOffset = k * bStride;
+
+            for (int j = 0; j < n; j++) // each col in B
+            {
+                TNum sum = TNum.Zero;
+                for (int i = 0; i < m; i++) // shared dim
+                {
+                    TNum aVal = aSpan[i * aStride + k]; // A[i, p] → Aᵗ[p, i]
+                    TNum bVal = bSpan[i * bStride + j]; // B[i, j]
+                    sum += aVal * bVal;
+                }
+
+                resultSpan[k * rStride + j] = sum;
+            }
+        });
+        return result;
+    }
+
+    /// <summary>
+    /// Simple matrix/vector multiplication, matrix must be of rank 2 and have equal number of columns to vector length
+    /// </summary>
+    /// <param name="vector">vector to multiply with</param>
+    /// <param name="bias">bias vector</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Tensor<TNum> MatMulVector(Vec<TNum> vector, ReadOnlySpan<TNum> bias = default) => this.MatMulVector(vector.AsSpan(), bias);
+
+    /// <summary>
+    /// Simple matrix/vector multiplication, matrix must be of rank 2 and have equal number of columns to vector length
+    /// </summary>
+    /// <param name="vector">vector to multiply with</param>
+    /// <param name="bias">bias vector</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+    public Tensor<TNum> MatMulVector(ReadOnlySpan<TNum> vector, ReadOnlySpan<TNum> bias = default)
+    {
+        if (this.Shape.Rank != 2 || this.Shape.Length(^1) != vector.Length)
+            throw new InvalidOperationException("Shape or rank mismatch for matrix/vector multiplication");
+
+        int rows = this.Shape.Length(^2);
+        int innerDim = vector.Length;
+
+        var mul = Tensor<TNum>.Zeros(new TensorShape(rows));
+        var result = mul.AsSpan();
+
+        if (!bias.TryCopyTo(result))
+            throw new InvalidOperationException("Bias vector could not be added to results due to length mismatch");
+
+        for (var i = 0; i < rows; i++)
+        {
+            TNum sum = result[i];
+            var row = this.AsSpan(i * innerDim, innerDim);
+            for (int j = 0; j < innerDim; j++)
+            {
+                sum += row[j] * vector[j];
+            }
+            result[i] = sum;
+        }
+
+        return mul;
+    }
+
+    /// <summary>
+    /// Simple matrix/vector multiplication, matrix must be of rank 2 and have equal number of columns to vector length. The last dimension is used as the vector dimension and the preceding dimensions as batches.
+    /// </summary>
+    /// <param name="batchedVectors">batch of vectors to multiply with</param>
+    /// <param name="bias">bias vector</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Tensor<TNum> MatMulEachVector(Tensor<TNum> batchedVectors, TNum[]? bias = default) => MatMulEachVector(^1, batchedVectors, bias);
+
+    /// <summary>
+    /// Simple matrix/vector multiplication, matrix must be of rank 2 and have equal number of columns to vector length
+    /// </summary>
+    /// <param name="dimension">The dimension indicating the start of the vector</param>
+    /// <param name="batchedVectors">batch of vectors to multiply with</param>
+    /// <param name="bias">bias vector</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+    public Tensor<TNum> MatMulEachVector(Index dimension, Tensor<TNum> batchedVectors, TNum[]? bias = default)
+    {
+        var axis = batchedVectors.NormalizeAxis(dimension);
+        var vecLength = batchedVectors.Shape.Length(axis) * batchedVectors.Shape.Stride(axis);
+        var batches = axis == 0 ? 1 : batchedVectors.Shape.Length(0..axis);
+        if (this.Shape.Rank != 2 || this.Shape.Length(^1) != vecLength)
+            throw new InvalidOperationException($"Matrix must be 2D and its column count ({this.Shape.Length(^1)}) must match vector length ({vecLength})");
+
+        int rows = this.Shape.Length(^2);
+        int innerDim = vecLength;
+
+        var mul = Tensor<TNum>.Zeros(batchedVectors.Shape.SliceAndAppend(0..dimension, rows));
+
+        if (bias is not null && bias.Length != rows)
+            throw new InvalidOperationException("Bias vector could not be added to results due to length mismatch");
+
+        Parallel.For(0, batches, ParallelOptions, (b) =>
+        {
+            var result = mul.AsSpan(b * rows, rows);
+            var vector = batchedVectors.AsSpan(b * vecLength, vecLength);
+
+            bias?.CopyTo(result);
+            for (var i = 0; i < rows; i++)
+            {
+                TNum sum = result[i];
+                var row = this.AsSpan(i * innerDim, innerDim);
+                for (int j = 0; j < innerDim; j++)
+                {
+                    sum += row[j] * vector[j];
+                }
+                result[i] = sum;
+            }
+        });
+
+        return mul;
+    }
+
+    /// <summary>
     /// Performs matrix multiplication between this matrix and each matrix in the batch dimensions of the other tensor.
     /// Equivalent to applying the same matrix multiply across a batch.
     /// </summary>
     /// <param name="other">tensor to multiply with</param>
     /// <returns>result of matrix multiplication</returns>
     /// <exception cref="InvalidOperationException">thrown if rank is invalid or dimensions are not compatible with matrix multiplication</exception>
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public Tensor<TNum> MatMulEach(Tensor<TNum> other)
     {
         var a = this; // A single matrix
@@ -1816,6 +2248,7 @@ where TNum : INumber<TNum>
     /// <param name="other">tensor to multiply with</param>
     /// <returns>batched matrix product</returns>
     /// <exception cref="InvalidOperationException">thrown if matrix multiplication cannot be performed or if batch dimensions are not broadcastable</exception>
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public Tensor<TNum> BatchedMatMul(Tensor<TNum> other)
     {
         // Shapes must have same number of dimensions (at least 2)
@@ -2073,7 +2506,7 @@ where TNum : INumber<TNum>
                     var initial = oc < bias.Length ? bias[oc] : TNum.Zero;
 
                     //for (int oy = 0; oy < outHeight; oy++)
-                    Parallel.For(0, outHeight, oy =>
+                    Parallel.For(0, outHeight, ParallelOptions, oy =>
                     {
                         var inputSpan = inData.AsSpan();
                         var kernelSpan = kernelData.AsSpan();
@@ -2948,22 +3381,169 @@ where TNum : INumber<TNum>
     => Reduce(axis: ^1, seed, reducer, keepdim);
 
     /// <summary>
-    /// Sum reduction along the given axis
+    /// Optimized sum reduction along the given axis
     /// </summary>
     /// <param name="axis">axis to sum over</param>
     /// <param name="keepdim">flag to indicate if the reduced dimension is to be kept (at size 1) or removed. Default true</param>
     /// <returns>reduced tensor</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Tensor<TNum> Sum(Index axis, bool keepdim = true) => Reduce(axis, TNum.Zero, static (a, b) => a + b, keepdim);
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+    public Tensor<TNum> Sum(Index axis, bool keepdim = true)
+    {
+        int dim = NormalizeAxis(axis);
+        int rank = Shape.Rank;
+
+        if (rank == 0)
+            throw new InvalidOperationException("Cannot reduce scalar tensor");
+
+        int axisSize = Shape.Length(dim);
+        int axisStride = Shape.Stride(dim);
+
+        // Compute outer and inner sizes
+        int outerSize = 1;
+        for (int i = 0; i < dim; i++)
+            outerSize *= Shape.Length(i);
+
+        int innerSize = 1;
+        for (int i = dim + 1; i < rank; i++)
+            innerSize *= Shape.Length(i);
+
+        // Output shape
+        int[] newShape = new int[keepdim ? rank : rank - 1];
+        for (int i = 0, j = 0; i < rank; i++)
+        {
+            if (i == dim)
+            {
+                if (keepdim)
+                    newShape[i] = 1;
+            }
+            else
+            {
+                newShape[keepdim ? i : j++] = Shape.Length(i);
+            }
+        }
+
+        var output = Tensor<TNum>.Zeros(new TensorShape(newShape));
+        var input = this.AsSpan();
+        var outputSpan = output.AsSpan();
+
+        // Fast flat loop over output elements
+        for (int outer = 0; outer < outerSize; outer++)
+        {
+            var outOffsetBase = outer * innerSize;
+            var outerAxisStride = outer * axisSize;
+
+            for (int inner = 0; inner < innerSize; inner++)
+            {
+                int outputOffset = outOffsetBase + inner;
+                var innerAxisStride = outerAxisStride * innerSize + inner;
+
+                TNum sum = TNum.Zero;
+                for (int a = 0; a < axisSize; a++)
+                {
+                    int inputOffset = innerAxisStride + a * axisStride;
+
+                    sum += input[inputOffset];
+                }
+
+                outputSpan[outputOffset] = sum;
+            }
+        }
+
+        return output;
+    }
 
     /// <summary>
-    /// Sum reduction along the given axes
+    /// Optimized sum reduction along the given axes
     /// </summary>
     /// <param name="axes">axes to sum over</param>
     /// <param name="keepdim">flag to indicate if the reduced dimension is to be kept (at size 1) or removed. Default true</param>
     /// <returns>reduced tensor</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Tensor<TNum> Sum(ReadOnlySpan<Index> axes, bool keepdim = true) => Reduce(axes, TNum.Zero, static (a, b) => a + b, keepdim);
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+    public Tensor<TNum> Sum(ReadOnlySpan<Index> axes, bool keepdim = true)
+    {
+        var shape = this.Shape;
+        int rank = shape.Rank;
+
+        if (axes.Length == 0)
+            throw new ArgumentException("Axes must not be empty.", nameof(axes));
+
+        // Normalize and prepare reduction info
+        Span<bool> isReduced = stackalloc bool[rank];
+        foreach (var ax in axes)
+        {
+            int norm = NormalizeAxis(ax);
+            isReduced[norm] = true;
+        }
+
+        // Compute output shape
+        int outRank = keepdim ? rank : rank - axes.Length;
+        var outShapeArr = new int[outRank];
+        {
+            int j = 0;
+            for (int i = 0; i < rank; i++)
+            {
+                if (!isReduced[i])
+                    outShapeArr[keepdim ? i : j++] = shape.Length(i);
+                else if (keepdim)
+                    outShapeArr[i] = 1;
+            }
+        }
+
+        var outShape = new TensorShape(outShapeArr);
+        var result = Tensor<TNum>.Zeros(outShape);
+
+        // Get strides
+        var inStrides = shape.AsStrideSpan();
+        var outStrides = outShape.AsStrideSpan();
+
+        // Precompute output stride deltas (0 if reduced)
+        Span<int> outStridePerInputDim = stackalloc int[rank];
+        {
+            int j = 0;
+            for (int i = 0; i < rank; i++)
+            {
+                if (!isReduced[i])
+                    outStridePerInputDim[i] = outStrides[keepdim ? i : j++];
+                else
+                    outStridePerInputDim[i] = 0;
+            }
+        }
+
+        // Begin flat iteration
+        int totalInputSize = this.ElementCount;
+        var input = this.AsSpan();
+        var output = result.AsSpan();
+
+        Span<int> index = stackalloc int[rank]; // reused index
+        int inputOffset = 0;
+        int outputOffset = 0;
+
+        for (int i = 0; i < totalInputSize; i++)
+        {
+            // Accumulate
+            output[outputOffset] += input[i];
+
+            // Advance index + offsets
+            for (int d = rank - 1; d >= 0; d--)
+            {
+                index[d]++;
+                inputOffset += inStrides[d];
+                outputOffset += outStridePerInputDim[d];
+
+                if (index[d] < shape.Length(d))
+                    break;
+
+                // Carry over
+                index[d] = 0;
+                inputOffset -= inStrides[d] * shape.Length(d);
+                outputOffset -= outStridePerInputDim[d] * shape.Length(d);
+            }
+        }
+
+        return result;
+    }
+    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+    //public Tensor<TNum> Sum(ReadOnlySpan<Index> axes, bool keepdim = true) => Reduce(axes, TNum.Zero, static (a, b) => a + b, keepdim);
 
     /// <summary>
     /// Global sum of all elements in the tensor
@@ -3278,8 +3858,8 @@ where TNum : INumber<TNum>
         var mean = this.Mean(axis, keepdim: true); // Pree sure this is broken because I don't really support broadcasting in subtracton
 
         // Step 2: Subtract mean and square (reuse mean tensor for all values)
-        ElementWiseSubtract(mean.elements, this.elements, mean.elements); // Difference
-        ElementWiseMultiply(mean.elements, mean.elements, mean.elements); // Square
+        ElementWiseSubtract(mean.elements.Length, mean.elements, 0, this.elements, 0, mean.elements, 0); // Difference
+        ElementWiseMultiply(mean.elements.Length, mean.elements, 0, mean.elements, 0, mean.elements, 0); // Square
 
         // Step 3: Reduce (sum of square differences)
         var sumsq = mean.Sum(axis);
@@ -3334,8 +3914,8 @@ where TNum : INumber<TNum>
         mean = this.Mean(axis, keepdim: true); // Pree sure this is broken because I don't really support broadcasting in subtracton
 
         // Step 2: Subtract mean and square (reuse mean tensor for all values)
-        ElementWiseSubtract(mean.elements, this.elements, mean.elements); // Difference
-        ElementWiseMultiply(mean.elements, mean.elements, mean.elements); // Square
+        ElementWiseSubtract(mean.elements.Length, mean.elements, 0, this.elements, 0, mean.elements, 0); // Difference
+        ElementWiseMultiply(mean.elements.Length, mean.elements, 0, mean.elements, 0, mean.elements, 0); // Square
 
         // Step 3: Reduce (sum of square differences)
         var sumsq = mean.Sum(axis);
@@ -3488,6 +4068,17 @@ where TNum : INumber<TNum>
     public Span2D<TNum> AsSpan2D(int start, int rows, int columns) => new Span2D<TNum>(elements.AsSpan(start, rows * columns), rows, columns);
 
     /// <summary>
+    /// Create a 3D span over the given region to access tensor elements
+    /// </summary>
+    /// <param name="start">start offset</param>
+    /// <param name="channels">number of channels in span</param>
+    /// <param name="rows">number of rows in span</param>
+    /// <param name="columns">number of columns in span</param>
+    /// <returns>span of elements in row-major order</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span3D<TNum> AsSpan3D(int start, int channels, int rows, int columns) => new Span3D<TNum>(elements.AsSpan(start, channels * rows * columns), channels, rows, columns);
+
+    /// <summary>
     /// Access the tensor elements as a span
     /// </summary>
     /// <returns>span of elements in row-major order</returns>
@@ -3629,7 +4220,10 @@ where TNum : INumber<TNum>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Shuffle(Span<TNum> span) {
         // Fisher-Yates shuffle
-        for (var i = span.Length - 1; i >= 1; i--) {
+        var rng = Random.Shared;
+
+        for (var i = span.Length - 1; i >= 1; i--)
+        {
             var j = rng.Next(i);
 
             var ej = span[j];

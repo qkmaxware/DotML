@@ -139,6 +139,25 @@ public readonly struct RowMajorIndexSpanEnumerator
 /// </summary>
 public readonly struct TensorShape : IShape
 {
+    #region Dimension Shortcuts
+    /// <summary>
+    /// Reference to the column dimension in NCHW format
+    /// </summary>
+    public static Index Columns = ^1;
+    /// <summary>
+    /// Reference to the row dimension in NCHW format
+    /// </summary>
+    public static Index Rows = ^2;
+    /// <summary>
+    /// Reference to the channel dimension in NCHW format
+    /// </summary>
+    public static Index Channels = ^3;
+    /// <summary>
+    /// Reference to the batch dimension in NCHW format
+    /// </summary>
+    public static Index Batches = ^4;
+    #endregion
+
     private readonly int[] dims;
     private readonly int[] strides;
 
@@ -187,6 +206,28 @@ public readonly struct TensorShape : IShape
     /// </summary>
     /// <param name="dim">dimension index</param>
     /// <returns>dimension length</returns>
+    public int this[int dim]
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => dims[dim];
+    }   
+
+    /// <summary>
+    /// Length of the given dimension of the shape
+    /// </summary>
+    /// <param name="dim">dimension index</param>
+    /// <returns>dimension length</returns>
+    public int this[Index dim]
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => dims[dim];
+    }
+
+    /// <summary>
+    /// Length of the given dimension of the shape
+    /// </summary>
+    /// <param name="dim">dimension index</param>
+    /// <returns>dimension length</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int Length(int dim) => dims[dim];
 
@@ -197,6 +238,20 @@ public readonly struct TensorShape : IShape
     /// <returns>dimension length</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int Length(Index index) => dims[index];
+
+    /// <summary>
+    /// Get the length of a range of dimensions
+    /// </summary>
+    /// <param name="range">dimension range</param>
+    /// <returns>length of the combined dimensions</returns>
+    public int Length(Range range)
+    {
+        var (off, len) = range.GetOffsetAndLength(this.dims.Length);
+        var prod = this.dims[off];
+        for (var i = 1; i < len; i++)
+            prod *= this.dims[off + i];
+        return prod;
+    }
 
     /// <summary>
     /// Rank of the shape (number of dimensions)
@@ -218,6 +273,18 @@ public readonly struct TensorShape : IShape
     {
         return strides[dim];
     }
+
+    /// <summary>
+    /// Stride for a given dimension
+    /// </summary>
+    /// <param name="dim">dimension index</param>
+    /// <returns>dimension stride</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int Stride(Index dim)
+    {
+        return strides[dim];
+    }
+
 
     /// <summary>
     /// Number of logical (virtual) elements represented by the given shape
@@ -366,6 +433,20 @@ public readonly struct TensorShape : IShape
     /// <summary>
     /// Create a new shape from the concatenation of this shape with another
     /// </summary>
+    /// <param name="rhs">shape to concatenate onto the end</param>
+    /// <returns>new shape</returns>
+    public TensorShape Append(params ReadOnlySpan<int> rhs)
+    {
+        var shape = new int[this.Rank + rhs.Length];
+        this.dims.CopyTo(shape, 0);
+        rhs.CopyTo(shape.AsSpan(this.Rank));
+        return new TensorShape(shape);
+    }
+
+
+    /// <summary>
+    /// Create a new shape from the concatenation of this shape with another
+    /// </summary>
     /// <param name="rhs">shape to concatenate onto the start</param>
     /// <returns>new shape</returns>
     public TensorShape Prepend(TensorShape lhs)
@@ -384,6 +465,21 @@ public readonly struct TensorShape : IShape
     public TensorShape Slice(Range range)
     {
         return new TensorShape(this.dims[range]);
+    }
+
+    /// <summary>
+    /// Create a new shape from a subset of this shape appended with a given set of additional dimensions
+    /// </summary>
+    /// <param name="range">range to slice over</param>
+    /// <param name="dims">dimensions to appen</param>
+    /// <returns>new shape</returns>
+    public TensorShape SliceAndAppend(Range range, params ReadOnlySpan<int> dims)
+    {
+        var (off, len) = range.GetOffsetAndLength(this.dims.Length);
+        var shape = new int[len + dims.Length];
+        this.dims.AsSpan(off, len).CopyTo(shape);
+        dims.CopyTo(shape.AsSpan(len));
+        return new TensorShape(shape);
     }
 
     /// <summary>
@@ -660,73 +756,78 @@ public readonly struct TensorShape : IShape
     // Support Deconstruction for up to 8 dimensions
     public void Deconstruct(out int dim0)
     {
-        dim0 = GetOrDefault(0);
+        dim0 = LengthOrDefault(0);
     }
 
     public void Deconstruct(out int dim0, out int dim1)
     {
-        dim0 = GetOrDefault(0);
-        dim1 = GetOrDefault(1);
+        dim0 = LengthOrDefault(0);
+        dim1 = LengthOrDefault(1);
     }
 
     public void Deconstruct(out int dim0, out int dim1, out int dim2)
     {
-        dim0 = GetOrDefault(0);
-        dim1 = GetOrDefault(1);
-        dim2 = GetOrDefault(2);
+        dim0 = LengthOrDefault(0);
+        dim1 = LengthOrDefault(1);
+        dim2 = LengthOrDefault(2);
     }
 
     public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3)
     {
-        dim0 = GetOrDefault(0);
-        dim1 = GetOrDefault(1);
-        dim2 = GetOrDefault(2);
-        dim3 = GetOrDefault(3);
+        dim0 = LengthOrDefault(0);
+        dim1 = LengthOrDefault(1);
+        dim2 = LengthOrDefault(2);
+        dim3 = LengthOrDefault(3);
     }
 
     public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3, out int dim4)
     {
-        dim0 = GetOrDefault(0);
-        dim1 = GetOrDefault(1);
-        dim2 = GetOrDefault(2);
-        dim3 = GetOrDefault(3);
-        dim4 = GetOrDefault(4);
+        dim0 = LengthOrDefault(0);
+        dim1 = LengthOrDefault(1);
+        dim2 = LengthOrDefault(2);
+        dim3 = LengthOrDefault(3);
+        dim4 = LengthOrDefault(4);
     }
 
     public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3, out int dim4, out int dim5)
     {
-        dim0 = GetOrDefault(0);
-        dim1 = GetOrDefault(1);
-        dim2 = GetOrDefault(2);
-        dim3 = GetOrDefault(3);
-        dim4 = GetOrDefault(4);
-        dim5 = GetOrDefault(5);
+        dim0 = LengthOrDefault(0);
+        dim1 = LengthOrDefault(1);
+        dim2 = LengthOrDefault(2);
+        dim3 = LengthOrDefault(3);
+        dim4 = LengthOrDefault(4);
+        dim5 = LengthOrDefault(5);
     }
 
     public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3, out int dim4, out int dim5, out int dim6)
     {
-        dim0 = GetOrDefault(0);
-        dim1 = GetOrDefault(1);
-        dim2 = GetOrDefault(2);
-        dim3 = GetOrDefault(3);
-        dim4 = GetOrDefault(4);
-        dim5 = GetOrDefault(5);
-        dim6 = GetOrDefault(6);
+        dim0 = LengthOrDefault(0);
+        dim1 = LengthOrDefault(1);
+        dim2 = LengthOrDefault(2);
+        dim3 = LengthOrDefault(3);
+        dim4 = LengthOrDefault(4);
+        dim5 = LengthOrDefault(5);
+        dim6 = LengthOrDefault(6);
     }
 
     public void Deconstruct(out int dim0, out int dim1, out int dim2, out int dim3, out int dim4, out int dim5, out int dim6, out int dim7)
     {
-        dim0 = GetOrDefault(0);
-        dim1 = GetOrDefault(1);
-        dim2 = GetOrDefault(2);
-        dim3 = GetOrDefault(3);
-        dim4 = GetOrDefault(4);
-        dim5 = GetOrDefault(5);
-        dim6 = GetOrDefault(6);
-        dim7 = GetOrDefault(7);
+        dim0 = LengthOrDefault(0);
+        dim1 = LengthOrDefault(1);
+        dim2 = LengthOrDefault(2);
+        dim3 = LengthOrDefault(3);
+        dim4 = LengthOrDefault(4);
+        dim5 = LengthOrDefault(5);
+        dim6 = LengthOrDefault(6);
+        dim7 = LengthOrDefault(7);
     }
 
-    private int GetOrDefault(int index) => index < dims.Length ? dims[index] : 0;
+    /// <summary>
+    /// Get the length of a dimension or return 0 if the dimension is out of range
+    /// </summary>
+    /// <param name="index">dimension</param>
+    /// <returns>length of dimension or 0</returns>
+    public int LengthOrDefault(int index) => index < dims.Length ? dims[index] : 0;
 
     public override bool Equals([NotNullWhen(true)] object? obj)
     {

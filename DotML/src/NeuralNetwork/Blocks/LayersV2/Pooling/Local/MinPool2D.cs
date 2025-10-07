@@ -28,11 +28,13 @@ public class MinPool2D : LocalPooling2D
             if (kr < 0 || kr >= inputHeight)
                 continue;
 
+            var xrow = x[kr];
+
             for (int kc = startX; kc < endX; kc++)
             {
                 if (kc < 0 || kc >= inputWidth)
                     continue;
-                var value = x[kr, kc];
+                var value = xrow[kc];
 
                 // Compute; Assume max pooling (avg is different)
                 if (value < minValue)

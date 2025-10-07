@@ -90,9 +90,12 @@ public class Conv2D : NetworkLayer
         );
     }
 
-
     public override Gradients Backward(Tensor<float> x, Tensor<float> _y, Tensor<float> dy)
     {
+        var xOrigShape = x.Shape;
+        x = x.ReshapeShared(x.Shape.NormalizeRank(4));
+        dy = dy.ReshapeShared(dy.Shape.NormalizeRank(4));
+
         // Gradient w.r.t. biases: just sum over N, H_out, W_out
         Tensor<float> dB = dy.Sum(axes: [0, 2, 3], keepdim: false); // shape: [C_out]
 
@@ -112,48 +115,70 @@ public class Conv2D : NetworkLayer
         int C_in_per_group = C_in / G;
         int C_out_per_group = C_out / G;
 
-        for (int n = 0; n < N; n++)
+        var xStride0 = x.Shape.Stride(0);
+        var dyStride0 = dy.Shape.Stride(0);
+        var wStride0 = this.Weights.Shape.Stride(0);
+
+        Parallel.For(0, N, ParallelOptions, (n) =>
         {
+            ReadOnlySpan3D<float> xN = x.AsSpan3D(n * xStride0, C_in, H_in, W_in);
+            ReadOnlySpan3D<float> dyN = dy.AsSpan3D(n * dyStride0, C_out, H_out, W_out);
+
             for (int g = 0; g < G; g++)
             {
+                int gCoutPerGroup = g * C_out_per_group;
+                int gCinPerGroup = g * C_in_per_group;
+
                 for (int oc = 0; oc < C_out_per_group; oc++)
                 {
-                    int outChannel = g * C_out_per_group + oc;
+                    int outChannel = gCoutPerGroup + oc;
+
+                    ReadOnlySpan2D<float> dyNOut = dyN[outChannel];
+                    Span3D<float> dwOutChannel = dW.AsSpan3D(outChannel * wStride0, C_in_per_group, H_k, W_k);
 
                     for (int ic = 0; ic < C_in_per_group; ic++)
                     {
-                        int inChannel = g * C_in_per_group + ic;
+                        int inChannel = gCinPerGroup + ic;
+
+                        ReadOnlySpan2D<float> xNIn = xN[inChannel];
+                        Span2D<float> dwInChannel = dwOutChannel[inChannel];
 
                         for (int kh = 0; kh < H_k; kh++)
                         {
+                            Span<float> dwKh = dwInChannel[kh];
+                            var khDilation = kh * Dilation.Y;
+
                             for (int kw = 0; kw < W_k; kw++)
                             {
                                 float sum = 0f;
+                                var kwDilation = kw * Dilation.X;
 
                                 for (int y = 0; y < H_out; y++)
                                 {
-                                    int in_y = y * Stride.Y - Padding.Top + kh * Dilation.Y;
+                                    int in_y = y * Stride.Y - Padding.Top + khDilation;
                                     if (in_y < 0 || in_y >= H_in) continue;
+
+                                    ReadOnlySpan<float> gradRow = dyNOut[y];
+                                    ReadOnlySpan<float> xrow = xNIn[in_y];
 
                                     for (int x_ = 0; x_ < W_out; x_++)
                                     {
-                                        int in_x = x_ * Stride.X - Padding.Left + kw * Dilation.X;
+                                        int in_x = x_ * Stride.X - Padding.Left + kwDilation;
                                         if (in_x < 0 || in_x >= W_in) continue;
 
-                                        float inputVal = x[n, inChannel, in_y, in_x];
-                                        float gradOutVal = dy[n, outChannel, y, x_];
+                                        float inputVal = xrow[in_x];
+                                        float gradOutVal = gradRow[x_];
 
                                         sum += inputVal * gradOutVal;
                                     }
                                 }
-
-                                dW[outChannel, ic, kh, kw] += sum;
+                                dwKh[kw] += sum;
                             }
                         }
                     }
                 }
             }
-        }
+        });
 
         // Gradient w.r.t. input
         Tensor<float> dx = dy.TransposeConvolve2D(
@@ -174,7 +199,7 @@ public class Conv2D : NetworkLayer
         );
 
         return new WeightAndBiasGradients(
-            dx: dx,
+            dx: dx.ReshapeShared(xOrigShape),
             dw: dW,
             db: dB
         );
