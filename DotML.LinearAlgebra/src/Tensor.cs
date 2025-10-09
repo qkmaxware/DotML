@@ -228,54 +228,12 @@ where TNum : INumber<TNum>
     /// <returns>binary mask tensor</returns>
     public static Tensor<TNum> Mask(TensorShape shape, double dropoutRate)
     {
-        shape = shape.CloneDimensions();
-        dropoutRate = Math.Clamp(dropoutRate, 0.0, 1.0);
-        TNum[] elems = new TNum[shape.LogicalElementCount()];
-
-        const int bitsPerWord = 64;
-        int onesPerWord = (int)Math.Round((1.0 - dropoutRate) * bitsPerWord);
-        ulong template = 0UL;
-        for (int i = 0; i < onesPerWord; i++)
-            template |= (1UL << i);
-
+        var tensor = Tensor<TNum>.Defaults(shape);
+        var rng = Random.Shared;
         var zero = TNum.Zero;
         var one = TNum.One;
-        var rng = Random.Shared;
-
-        int iElem = 0;
-        var count = elems.Length;
-        ulong pattern;
-        while (iElem < count)
-        {
-            // Shuffle Fisher-Yates
-            pattern = template;
-            for (var i = bitsPerWord - 1; i >= 1; i--)
-            {
-                var j = rng.Next(i);
-
-                // Swap ith and jth bits
-                {
-                    // Extract the bits
-                    ulong bit1 = (pattern >> i) & 1;
-                    ulong bit2 = (pattern >> j) & 1;
-
-                    // If bits are not the same, swap
-                    if (bit1 != bit2)
-                    {
-                        pattern ^= (1UL << i) | (1UL << j);
-                    }
-                }
-            }
-
-            // Insert
-            for (int i = 0; i < bitsPerWord && iElem < count; i++)
-            {
-                bool keep = ((pattern >> i) & 1UL) != 0;
-                elems[iElem++] = keep ? one : zero;
-            }
-        }
-
-        return new Tensor<TNum>(shape, elems);
+        tensor.ElementWiseInplace((_) => rng.NextDouble() < dropoutRate ? zero : one);
+        return tensor;
     }
 
     /// <summary>
@@ -2658,29 +2616,30 @@ where TNum : INumber<TNum>
         var outStrides_2 = outputShape.Stride(2);
         var outStrides_3 = outputShape.Stride(3);
 
-        // Setup spans and references
-        Span<TNum> inputSpan = inData;
-        Span<TNum> kernelSpan = kernelData;
-        Span<TNum> outputSpan = outputData;
-
-        ref TNum inputRef = ref MemoryMarshal.GetReference(inputSpan);
-        ref TNum kernelRef = ref MemoryMarshal.GetReference(kernelSpan);
-        ref TNum outputRef = ref MemoryMarshal.GetReference(outputSpan);
-
-        // Pre-computations (avoid computing inside the loops)
-        const int StackKernelThreshold = 16;
-        Span<int> kx_dilations = kernelWidth < StackKernelThreshold ? stackalloc int[kernelWidth] : new int[kernelWidth];
-        Span<int> ky_dilations = kernelHeight < StackKernelThreshold ? stackalloc int[kernelHeight] : new int[kernelHeight];
-        for (var kx = 0; kx < kernelWidth; kx++) kx_dilations[kx] = kx * dilationX;
-        for (var ky = 0; ky < kernelHeight; ky++) ky_dilations[ky] = ky * dilationY;
-        ref int kx_dilationsRef = ref MemoryMarshal.GetReference(kx_dilations);
-        ref int ky_dilationsRef = ref MemoryMarshal.GetReference(ky_dilations);
-
         TNum zero = TNum.Zero;
 
+        // Pre-computations (avoid computing inside the loops)
+        int[] kx_dilations = new int[kernelWidth];
+        int[] ky_dilations = new int[kernelHeight];
+        for (var kx = 0; kx < kernelWidth; kx++) kx_dilations[kx] = kx * dilationX;
+        for (var ky = 0; ky < kernelHeight; ky++) ky_dilations[ky] = ky * dilationY;
+
         // Here be giants vvvv
-        for (int b = 0; b < batch; b++)
+        Parallel.For(0, batch, ParallelOptions, (b) =>
+        //for (int b = 0; b < batch; b++)
         {
+            // Setup spans and references
+            Span<TNum> inputSpan = inData;
+            Span<TNum> kernelSpan = kernelData;
+            Span<TNum> outputSpan = outputData;
+
+            ref TNum inputRef = ref MemoryMarshal.GetReference(inputSpan);
+            ref TNum kernelRef = ref MemoryMarshal.GetReference(kernelSpan);
+            ref TNum outputRef = ref MemoryMarshal.GetReference(outputSpan);
+
+            ref int kx_dilationsRef = ref MemoryMarshal.GetArrayDataReference(kx_dilations);
+            ref int ky_dilationsRef = ref MemoryMarshal.GetArrayDataReference(ky_dilations);
+
             var b_inStrides_0 = b * inStrides_0;
             var b_outStrides_0 = b * outStrides_0;
 
@@ -2745,7 +2704,8 @@ where TNum : INumber<TNum>
                     }
                 }
             }
-        }
+        //}
+        });
 
         return outputTensor;
     }
@@ -3144,6 +3104,60 @@ where TNum : INumber<TNum>
             ranges[i] = i == abs ? range : new Range(0, s.Length(i));
         }
         return Slice(ranges);
+    }
+
+    /// <summary>
+    /// Extract a row of the tensor at the given row index
+    /// </summary>
+    /// <param name="indices">index to the precise row</param>
+    /// <returns>span over the row values</returns>
+    /// <exception cref="ArgumentException">thrown when an index is invalid or the wrong number of indices are provided</exception>
+    public Span<TNum> ViewRow(params ReadOnlySpan<Index> indices)
+    {
+        if (indices.Length != Rank - 1)
+            throw new ArgumentException("To extract a row span you must provide indices for all dimensions except the last one");
+            
+        // Compute the flat offset to the start of the span
+        int offset = 0;
+        var strides = Shape.AsStrideSpan();
+        for (int i = 0; i < indices.Length; i++)
+        {
+            offset += NormalizeAxis(indices[i]) * strides[i];
+        }
+    
+        // Deterime the row length
+        var rowLength = Shape.Length(^1);
+    
+        // Slice
+        return this.elements.AsSpan(offset, rowLength);
+    }
+    
+    /// <summary>
+    /// Extract a submatrix of the tensor at the given matrix index
+    /// </summary>
+    /// <param name="indices">index to the submatrix</param>
+    /// <returns>span over the rows and columns of the submatrix</returns>
+    /// <exception cref="ArgumentException">thrown when an index is invalid or the wrong number of indices are provided</exception>
+    public Span2D<TNum> ViewSubmatrix(params ReadOnlySpan<Index> indices)
+    {
+        if (indices.Length != Rank - 2)
+            throw new ArgumentException("To extract a submatrix span you must provide indices for all dimensions except the last two");
+    
+        // Compute the flat offset to the start of the span
+        int offset = 0;
+        var strides = Shape.AsStrideSpan();
+        for (int i = 0; i < indices.Length; i++)
+        {
+            offset += NormalizeAxis(indices[i]) * strides[i];
+        }
+     
+        // Deterime the row length
+        var size = Shape.Stride(^2);
+        var rows = Shape.Length(^2);
+        var cols = Shape.Length(^1);
+    
+        // Slice and wrap as a 2D span
+        return new Span2D<TNum>(this.elements.AsSpan(offset, size), rows, cols);
     }
 
     /// <summary>

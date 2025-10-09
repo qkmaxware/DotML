@@ -70,6 +70,8 @@ public class SafetensorSerializer : IBlockVisitor
 
     public None Visit(Dropout dropout, None arg) { /* No tensors */ return None.Value; }
 
+    public None Visit(Center2D center, None arg) { /* No tensors */ return None.Value; }
+
     public None Visit(BatchNorm2 norm, None arg)
     {
         Push(nameof(BatchNorm2.Weights), norm.Weights);
@@ -206,6 +208,8 @@ public class SafetensorDeserializer : IBlockVisitor<Safetensors, None>
     }
 
     public None Visit(Dropout dropout, Safetensors arg) { /* No tensors */ return None.Value; }
+
+    public None Visit(Center2D center, Safetensors arg) { /* No tensors */ return None.Value; }
 
     public None Visit(BatchNorm2 norm, Safetensors arg)
     {

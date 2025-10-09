@@ -7,6 +7,8 @@ namespace DotML.Benchmark;
 public class CompareActivation
 {
     #region Input Shape
+    [Params(8)]
+    public int BATCHES;
     [Params(256)]
     public int CHANNELS;
     [Params(27)]
@@ -19,8 +21,8 @@ public class CompareActivation
     #endregion
 
     private TensorShape ishape;
-    private FeatureSet<float> inputMatrix;
-    private FeatureSet<float> outputMatrix;
+    private BatchedFeatureSet<float> inputMatrix;
+    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -28,15 +30,16 @@ public class CompareActivation
     public void Setup()
     {
         var generator = new Random();
-        ishape = new TensorShape(CHANNELS, ROWS, COLUMNS);
+        ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
+        var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
-        old = new ActivationLayer(new Shape3D(CHANNELS, ROWS, COLUMNS), ActivationFunctions.Sigmoid);
+        old = new ActivationLayer(shape4.Shape3D, ActivationFunctions.Sigmoid);
         updated = new Activation(ActivationFunctions.Sigmoid);
 
-        inputMatrix = new FeatureSet<float>(old.InputShape);
+        inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Defaults(ishape);
-        outputMatrix = new FeatureSet<float>(old.OutputShape);
-        outputTensor = Tensor<float>.Defaults(ishape);
+        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
+        outputTensor = Tensor<float>.Defaults(updated.ForwardShape(ishape));
     }
 
     [GlobalCleanup]
@@ -66,9 +69,9 @@ public class CompareActivation
         var output = old.EvaluateSync(inputMatrix);
         old.Backpropagate(new Network.Training.BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<float>(inputMatrix),
-            output: new BatchedFeatureSet<float>(output),
-            error: new BatchedFeatureSet<float>(outputMatrix)
+            input: (inputMatrix),
+            output: (output),
+            error: (outputMatrix)
         ));
     }
 

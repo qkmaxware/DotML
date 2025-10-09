@@ -7,6 +7,8 @@ namespace DotML.Benchmark;
 public class CompareDenseLinear
 {
     #region Input Shape
+    [Params(8)]
+    public int BATCHES;
     [Params(1)]
     public int CHANNELS;
     [Params(4096)]
@@ -21,8 +23,8 @@ public class CompareDenseLinear
     #endregion
 
     private TensorShape ishape;
-    private Matrix<float> inputMatrix;
-    private Matrix<float> outputMatrix;
+    private BatchedFeatureSet<float> inputMatrix;
+    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -30,15 +32,16 @@ public class CompareDenseLinear
     public void Setup()
     {
         var generator = new Random();
-        ishape = new TensorShape(CHANNELS, ROWS, COLUMNS);
+        ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
+        var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
         old = new DotML.Network.DenseLinearLayer(ROWS, OUTPUT_CLASSES);
         updated = new DenseLinear(ROWS, OUTPUT_CLASSES);
 
-        inputMatrix = Matrix<float>.Generate(ROWS, COLUMNS, () => (float)generator.NextDouble());
+        inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
-        outputMatrix = new Matrix<float>(OUTPUT_CLASSES, 1);
-        outputTensor = Tensor<float>.Defaults(new TensorShape(1, OUTPUT_CLASSES, 1));
+        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
+        outputTensor = Tensor<float>.Defaults(updated.ForwardShape(ishape));
     }
 
     [GlobalCleanup]
@@ -53,7 +56,7 @@ public class CompareDenseLinear
     [Benchmark()]
     public void ForwardOld()
     {
-        var output = old.EvaluateSync(new FeatureSet<float>(inputMatrix));
+        var output = old.EvaluateSync(inputMatrix);
     }
 
     [Benchmark()]
@@ -66,12 +69,12 @@ public class CompareDenseLinear
     [Benchmark()]
     public void BackwardOld()
     {
-        var output = old.EvaluateSync(new FeatureSet<float>(inputMatrix));
+        var output = old.EvaluateSync(inputMatrix);
         old.Backpropagate(new Network.Training.BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<float>(new FeatureSet<float>(inputMatrix)),
-            output: new BatchedFeatureSet<float>(output),
-            error: new BatchedFeatureSet<float>(new FeatureSet<float>(outputMatrix))
+            input: (inputMatrix),
+            output: (output),
+            error: (outputMatrix)
         ));
     }
 

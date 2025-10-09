@@ -27,9 +27,22 @@ public class MaskContext : IOContext {
     }
 }
 
+public enum EvaluationMode
+{
+    Inference, Training
+}
+
 public class EvaluationContext
 {
+    public EvaluationMode Mode {get; init;}
     private Dictionary<object, IModuleContext> _storage = new Dictionary<object, IModuleContext>();
+
+    public EvaluationContext() : this(EvaluationMode.Inference) {}
+
+    public EvaluationContext(EvaluationMode mode)
+    {
+        this.Mode = mode;
+    }
 
     public void Save(object module, IModuleContext context)
     {

@@ -7,6 +7,8 @@ namespace DotML.Benchmark;
 public class CompareConv2D
 {
     #region Input Shape
+    [Params(8)]
+    public int BATCHES;
     [Params(256)]
     public int CHANNELS;
     [Params(27)]
@@ -21,8 +23,8 @@ public class CompareConv2D
     #endregion
 
     private TensorShape ishape;
-    private FeatureSet<float> inputMatrix;
-    private FeatureSet<float> outputMatrix;
+    private BatchedFeatureSet<float> inputMatrix;
+    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -30,7 +32,8 @@ public class CompareConv2D
     public void Setup()
     {
         var generator = new Random();
-        ishape = new TensorShape(CHANNELS, ROWS, COLUMNS);
+        ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
+        var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
         var updated_layer = new Conv2D(
             outChannels: OUT_CHANNELS,
@@ -43,19 +46,19 @@ public class CompareConv2D
         );
         this.updated = updated_layer;
         var old_layer = new ConvolutionLayer(
-            new Shape3D(ishape.Length(0), ishape.Length(1), ishape.Length(2)),
+            new Shape3D(ishape.Length(1), ishape.Length(2), ishape.Length(3)),
             Padding.Same,
             ConvolutionFilter.Make(filters: OUT_CHANNELS, kernels_per_filter: CHANNELS, kernel_size: 3)
         );
         this.old = old_layer;
 
-        if (!updated_layer.Weights.Shape.Equals((TensorShape)old_layer.FilterShape))
-            throw new Exception("These are not equivalent layers");
+        if (!updated.ForwardShape(ishape).Slice(1..).Equals((TensorShape)old_layer.OutputShape))
+            throw new Exception($"These are not equivalent layers {ishape} -> {updated.ForwardShape(ishape)} vs {old_layer.InputShape} -> {old_layer.OutputShape}");
 
-        inputMatrix = new FeatureSet<float>(old.InputShape);
+        inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
-        outputMatrix = new FeatureSet<float>(old.OutputShape);
-        outputTensor = Tensor<float>.Generate(old.OutputShape, () => (float)generator.NextDouble());
+        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
+        outputTensor = Tensor<float>.Generate(updated.ForwardShape(ishape), () => (float)generator.NextDouble());
     }
 
     [GlobalCleanup]
@@ -85,9 +88,9 @@ public class CompareConv2D
         var output = old.EvaluateSync(inputMatrix);
         old.Backpropagate(new Network.Training.BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<float>(inputMatrix),
-            output: new BatchedFeatureSet<float>(output),
-            error: new BatchedFeatureSet<float>(outputMatrix)
+            input: (inputMatrix),
+            output: (output),
+            error: (outputMatrix)
         ));
     }
 

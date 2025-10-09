@@ -94,7 +94,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         foreach ((Tensor<float> batch, Tensor<float> truth) in TrainingData.Sample(batchSize: BatchSize))
         {
             // Forward step
-            var context = new EvaluationContext();
+            var context = new EvaluationContext(EvaluationMode.Training);
             var outputs = Network.Forward(batch);
 
             // Compute loss/error/dy

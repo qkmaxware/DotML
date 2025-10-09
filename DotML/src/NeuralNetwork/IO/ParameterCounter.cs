@@ -52,6 +52,13 @@ public class ParameterCounter : IBlockVisitor
         return None.Value;
     }
 
+    public None Visit(Center2D center, None arg)
+    {
+        Trainable += center.TrainableParameterCount();
+        UnTrainable += center.UnTrainableParameterCount();
+        return None.Value;
+    }
+
     public None Visit(BatchNorm2 norm, None arg)
     {
         Trainable += norm.TrainableParameterCount();

@@ -126,17 +126,16 @@ public abstract class LocalPooling2D : LocalPooling
         var outShape = new TensorShape(outDimensions);
         var output = Tensor<float>.Defaults(outShape);
 
-        var kernelSize = filterWidth * filterHeight;
-
         Span<float> inputSpan = inputs.AsSpan();
         Span<float> outputSpan = output.AsSpan();
         var batches = inputSpan.Length / inputSliceLength;
 
         // Iterate in groups of size inputSliceLength
-        for (var batch = 0; batch < batches; batch++)
+        Parallel.For(0, batches, ParallelOptions, (batch) =>
+        //for (var batch = 0; batch < batches; batch++)
         {
-            var inputMatrix = inputSpan.Slice(batch * inputSliceLength);
-            var ouputMatrix = outputSpan.Slice(batch * outputSliceLength);
+            var inputMatrix = inputs.AsSpan(batch * inputSliceLength, inputSliceLength);
+            var ouputMatrix = output.AsSpan(batch * outputSliceLength, outputSliceLength);
 
             for (var row = 0; row < outputHeight; row++)
             {
@@ -181,9 +180,10 @@ public abstract class LocalPooling2D : LocalPooling
                     ouputMatrix[row_base + col] = Aggregate(accumulator, count);
                 }
             }
-        }
+            //}
+        });
 
-        return output.Squeeze(0..^originalRank);
+        return output;
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)
@@ -192,25 +192,27 @@ public abstract class LocalPooling2D : LocalPooling
         var filterHeight = FilterHeight;
         var filterElementCount = filterWidth * filterHeight;
 
-        var errSpan = dy.AsSpan();
         var errShape = dy.Shape.EnsureRank(2);
         var errRows = errShape.Length(^2);
         var errColumns = errShape.Length(^1);
         var errMatSize = errRows * errColumns;
 
-        var inputSpan = x.AsSpan();
         var inputShape = x.Shape.EnsureRank(2);
         var inputRows = inputShape.Length(^2);
         var inputColumns = inputShape.Length(^1);
         var inputMatrixSize = inputRows * inputColumns;
 
         var dx = Tensor<float>.Defaults(x.Shape);
-        var outSpan = dx.AsSpan();
 
-        var batches = inputSpan.Length / inputMatrixSize;
+        var batches = x.ElementCount / inputMatrixSize;
 
-        for (var batch = 0; batch < batches; batch++)
+        Parallel.For(0, batches, ParallelOptions, (batch) =>
+        //for (var batch = 0; batch < batches; batch++)
         {
+            var inputSpan = x.AsSpan();
+            var outSpan = dx.AsSpan();
+            var errSpan = dy.AsSpan();
+
             var input = new ReadOnlySpan2D<float>(inputSpan.Slice(batch * inputMatrixSize, inputMatrixSize), inputRows, inputColumns);
             var inputErrors = new Span2D<float>(outSpan.Slice(batch * inputMatrixSize, inputMatrixSize), inputRows, inputColumns); ;
             var errors = new Span2D<float>(errSpan.Slice(batch * errMatSize, errMatSize), errRows, errColumns);
@@ -240,7 +242,8 @@ public abstract class LocalPooling2D : LocalPooling
                     );
                 }
             }
-        }
+            //}
+        });
 
         // Pass errors along for next layer
         return new Gradient(dx);

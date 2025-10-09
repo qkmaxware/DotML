@@ -7,6 +7,8 @@ namespace DotML.Benchmark;
 public class CompareDropout
 {
     #region Input Shape
+    [Params(8)]
+    public int BATCHES;
     [Params(256)]
     public int CHANNELS;
     [Params(27)]
@@ -19,8 +21,8 @@ public class CompareDropout
     #endregion
 
     private TensorShape ishape;
-    private FeatureSet<float> inputMatrix;
-    private FeatureSet<float> outputMatrix;
+    private BatchedFeatureSet<float> inputMatrix;
+    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -28,15 +30,16 @@ public class CompareDropout
     public void Setup()
     {
         var generator = new Random();
-        ishape = new TensorShape(CHANNELS, ROWS, COLUMNS);
+        ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
+        var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
         old = new DropoutLayer(new Shape3D(CHANNELS, ROWS, COLUMNS), 0.5f);
         updated = new Dropout(0.5f);
 
-        inputMatrix = new FeatureSet<float>(old.InputShape);
-        inputTensor = Tensor<float>.Defaults(ishape);
-        outputMatrix = new FeatureSet<float>(old.OutputShape);
-        outputTensor = Tensor<float>.Defaults(old.OutputShape);
+        inputMatrix = new BatchedFeatureSet<float>(shape4);
+        inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
+        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
+        outputTensor = Tensor<float>.Defaults(updated.ForwardShape(ishape));
     }
 
     [GlobalCleanup]
@@ -68,9 +71,9 @@ public class CompareDropout
         var output = old.EvaluateSync(inputMatrix);
         old.Backpropagate(new Network.Training.BackpropagationArgs(
             layer: -1,
-            input: new BatchedFeatureSet<float>(inputMatrix),
-            output: new BatchedFeatureSet<float>(output),
-            error: new BatchedFeatureSet<float>(outputMatrix)
+            input: (inputMatrix),
+            output: (output),
+            error: (outputMatrix)
         ));
     }
 

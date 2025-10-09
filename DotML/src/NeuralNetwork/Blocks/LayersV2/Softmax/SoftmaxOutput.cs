@@ -21,17 +21,15 @@ public class SoftmaxOutput : NetworkLayer
 
     public override void Initialize(IInitializer initializer) { }
 
-    public override TensorShape ForwardShape(TensorShape input) => input.EnsureRank(4);
+    public override TensorShape ForwardShape(TensorShape input) => input;
 
-    public override Tensor<float> Forward(Tensor<float> channels)
+    public override Tensor<float> Forward(Tensor<float> channels) => channels.Softmax(this.ClassAxis); // Softmax during inference
+    public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)
     {
-        if (this.IsTraining)
-        {
-            // Don't do any processing. ASSUME SOFTMAX IS DONE BY CROSS_ENTROPY LOSS
-            return channels; // IDK what to do here anymore
-        }
+        if (ctx is not null && ctx.Mode == EvaluationMode.Training)
+            return channels; // Do nothing during training. ASSUME SOFTMAX IS DONE BY CROSS_ENTROPY LOSS
 
-        return channels.Softmax(this.ClassAxis);
+        return channels.Softmax(this.ClassAxis); // Softmax during inference
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)

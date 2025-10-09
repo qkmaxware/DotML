@@ -80,6 +80,7 @@ namespace DotML.Network
         public TResult Visit(MinPool2D pool, TArg arg);
         public TResult Visit(Reshape reshape, TArg arg);
         public TResult Visit(Flatten flatten, TArg arg);
+        public TResult Visit(Center2D center, TArg arg);
         public TResult Visit(SoftmaxOutput softmax, TArg arg);
         #endregion
 

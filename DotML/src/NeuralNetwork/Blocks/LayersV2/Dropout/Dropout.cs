@@ -39,12 +39,20 @@ public class Dropout : NetworkLayer
 
     public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)
     {
-        var res = this.Forward(channels, out var mask);
-        if (ctx is not null)
+        // Mask only used during training
+        var use_mask = ctx is not null && ctx.Mode == EvaluationMode.Training;
+        if (use_mask)
         {
-            ctx.Save(this, new MaskContext(channels, res, mask!));
+            var res = this.Forward(channels, out var mask);
+            if (ctx is not null)
+            {
+                ctx.Save(this, new MaskContext(channels, res, mask!));
+            }
+            return res;
         }
-        return res;
+
+        // During inference, no dropout
+        return Forward(channels);
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy) => new Gradient(dy);

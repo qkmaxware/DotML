@@ -34,20 +34,22 @@ public class GroupNorm2 : NormalizationLayer
         }
     }
 
+    public TensorShape NormalizedShape { get; init; }
 
     public int Groups { get; private set; }
 
-    public GroupNorm2(int channels, int height, int width, int num_groups)
+    public GroupNorm2(int num_groups, TensorShape normalizedShape)
     {
+        this.NormalizedShape = normalizedShape;
         this.Groups = num_groups;
 
-        if (channels % num_groups != 0)
+        if (normalizedShape.Length(0) % num_groups != 0)
         {
-            throw new ArgumentException($"Number of groups {num_groups} must divide the number of channels {channels} evenly.");
+            throw new ArgumentException($"Number of groups {num_groups} must divide the number of channels {normalizedShape.Length(0)} evenly.");
         }
 
-        _weights = Tensor<float>.Ones(new TensorShape(channels, height, width));
-        _biases = Tensor<float>.Zeros(new TensorShape(channels, height, width));
+        _weights = Tensor<float>.Ones(normalizedShape);
+        _biases = Tensor<float>.Zeros(normalizedShape);
     }
 
     public override int TrainableParameterCount()
@@ -71,15 +73,15 @@ public class GroupNorm2 : NormalizationLayer
     public override Tensor<float> Forward(Tensor<float> x)
     {
         // Assume input is [N, C, H, W], if not force it to be by collapsing leading dimensions or 1 padding
-        var originalRank = x.Shape.Rank;
-        x = x.Clone().ReshapeShared(x.Shape.NormalizeRank(4));
+        var originalShape = x.Shape;
+        x = x.Clone().ReshapeShared(x.Shape.NormalizeRank(NormalizedShape.Rank + 1));
         var batches = x.Shape.Length(0); var batchStride = x.Shape.Stride(0);
         var channels = x.Shape.Length(1); var channelStride = x.Shape.Stride(1);
 
 
         // Get references to the underlying weights and biases in row-major order
-        var gammas = Weights.AsSpan();  // [C, H, W]
-        var betas = Biases.AsSpan();    // [C, H, W]
+        var gammas = Weights.AsSpan();  
+        var betas = Biases.AsSpan();    
 
         var groups = Groups;
         if (channels % groups != 0)
@@ -145,25 +147,22 @@ public class GroupNorm2 : NormalizationLayer
             }
         }
 
-        return x.Squeeze(0..^originalRank);
+        return x.ReshapeShared(originalShape);
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)
     {
         var originalShape = x.Shape;
-        x = x.ReshapeShared(x.Shape.NormalizeRank(4));
-        dy = dy.ReshapeShared(dy.Shape.NormalizeRank(4));
+        x = x.ReshapeShared(x.Shape.NormalizeRank(NormalizedShape.Rank + 1));
+        dy = dy.ReshapeShared(dy.Shape.NormalizeRank(NormalizedShape.Rank + 1));
 
         int N = x.Shape.Length(0);
         int C = x.Shape.Length(1);
-        int H = x.Shape.Length(2);
-        int W = x.Shape.Length(3);
 
         int channelsPerGroup = C / Groups;
         int batchStride = x.Shape.Stride(0);
         int channelStride = x.Shape.Stride(1);
         int groupStride = channelsPerGroup * channelStride;
-        int spatialSize = H * W;
         int groupSize = groupStride; // Total elements per group: channelsPerGroup * H * W
 
         var gamma = Weights.AsSpan(); // [C, H, W]
