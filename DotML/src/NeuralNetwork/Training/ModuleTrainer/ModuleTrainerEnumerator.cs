@@ -95,7 +95,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         {
             // Forward step
             var context = new EvaluationContext(EvaluationMode.Training);
-            var outputs = Network.Forward(batch);
+            var outputs = Network.Forward(batch, context);
 
             // Compute loss/error/dy
             var batches = outputs.Shape.Length(0);
@@ -132,8 +132,8 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
     private void validate() {
         float loss_sum = 0;                 // sum of all losses
-        float loss_min = float.MinValue;    // min loss
-        float loss_max = float.MaxValue;    // max loss
+        float loss_min = float.MaxValue;    // min loss
+        float loss_max = float.MinValue;    // max loss
         int loss_count = 0;                 // number of losses computed
         int batch_count = 0;                // number of batches checked
 
@@ -156,8 +156,16 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
                 // Update metrics
                 loss_sum += loss;
-                loss_min = Math.Min(loss_min, loss);
-                loss_max = Math.Max(loss_max, loss);
+                if (loss_count == 0)
+                {
+                    loss_min = loss;
+                    loss_max = loss;
+                }
+                else
+                {
+                    loss_min = Math.Min(loss_min, loss);
+                    loss_max = Math.Max(loss_max, loss);
+                }
                 loss_count++;
             }
 

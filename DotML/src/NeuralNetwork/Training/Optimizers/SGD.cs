@@ -5,8 +5,8 @@ public class SgdOptimizer : IOptimizer
     public void ClearCaches() { /* no caches */ }
     public Tensor<float> GetParameterUpdate(INetworkModule module, string name, float learningRate, Tensor<float> parameter, Tensor<float> gradient)
     {
-        // Just subtract the gradient as is (base-class UpdateParameter handles the subtraction already)
-        return gradient;
+        // Just subtract the gradient multiplied with the learning rate
+        return learningRate * gradient;
     }
     public void UpdateParameter(INetworkModule module, string name, float learningRate, Tensor<float> parameter, Tensor<float> gradient)
     {

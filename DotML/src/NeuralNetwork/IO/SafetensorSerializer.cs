@@ -29,7 +29,11 @@ public class SafetensorSerializer : IBlockVisitor
     }
     private void EnterScope(object subspace)
     {
-        scopes.Push(Scope + "." + subspace.ToString());
+        String subspaceStr = subspace.ToString() ?? "?";
+        if (string.IsNullOrEmpty(Scope))
+            scopes.Push(subspaceStr);
+        else
+            scopes.Push(Scope + "." + subspaceStr);
     }
 
     private void ExitScope()
@@ -168,7 +172,11 @@ public class SafetensorDeserializer : IBlockVisitor<Safetensors, None>
 
     private void EnterScope(object subspace)
     {
-        scopes.Push(Scope + "." + subspace.ToString());
+        String subspaceStr = subspace.ToString() ?? "?";
+        if (string.IsNullOrEmpty(Scope))
+            scopes.Push(subspaceStr);
+        else
+            scopes.Push(Scope + "." + subspaceStr);
     }
 
     private void ExitScope()
@@ -181,7 +189,7 @@ public class SafetensorDeserializer : IBlockVisitor<Safetensors, None>
     {
         var scope = Scope;
         var id = string.IsNullOrEmpty(scope) ? name : scope + "." + name;
-        return st.GetTensor<TNum>(name);
+        return st.GetTensor<TNum>(id);
     }
 
     public None Visit(Activation activation, Safetensors arg) { /* No tensors */ return None.Value; }

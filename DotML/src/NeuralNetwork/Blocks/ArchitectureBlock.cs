@@ -6,7 +6,7 @@ namespace DotML.Network;
 /// <summary>
 /// A named architecture block that encapsulates a named sub-network as a single module
 /// </summary>
-public class ArchitectureBlock : INetworkModule
+public class ArchitectureBlock : INetworkModule, IBlockVisitable
 {
     /// <summary>
     /// Architecture name
@@ -58,4 +58,14 @@ public class ArchitectureBlock : INetworkModule
     {
         RootModule.Update(learningRate, gradients, optimizer, regularization);
     }
+
+    public TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg)
+    {
+        if (RootModule is IBlockVisitable visitable)
+        {
+            return visitable.Accept(visitor, arg);
+        }
+        throw new NotSupportedException();
+    }
+
 }

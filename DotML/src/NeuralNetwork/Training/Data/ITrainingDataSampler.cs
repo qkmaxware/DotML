@@ -1,3 +1,4 @@
+using System.Data;
 using System.Numerics;
 
 namespace DotML.Network.Training;
@@ -47,12 +48,14 @@ where TType:INumber<TType>
 
         while (startIndex < count) {
             // Compute "real" batch size
-            var length = Math.Min(batchSize, count - startIndex);
-            var endIndex = startIndex + length;
+            var batchLength = Math.Min(batchSize, count - startIndex);
+            var endIndex = startIndex + batchLength;
+            if (batchLength == 0)
+                break;
 
             // Create input shape. Prepend batch dimension
             var shape = new int[ishape.Rank + 1];
-            shape[0] = length;
+            shape[0] = batchLength;
             ishape.AsDimensionSpan().CopyTo(shape.AsSpan().Slice(1));
 
             var input = Tensor<TType>.Defaults(new TensorShape(shape));
@@ -60,24 +63,24 @@ where TType:INumber<TType>
 
             // Create output shape. Prepend batch dimension
             shape = new int[oshape.Rank + 1];
-            shape[0] = length;
+            shape[0] = batchLength;
             oshape.AsDimensionSpan().CopyTo(shape.AsSpan().Slice(1));
             
             var output = Tensor<TType>.Defaults(new TensorShape(shape));
             var ospan = output.AsSpan();
 
             // Populate batched tensors
-            for (var i = 0; i < length; i++) {
+            for (var i = 0; i < batchLength; i++) {
                 var pair = Next(startIndex + i);
                 // Populate input tensor. Copy elements from each input into single batched tensor
                 {
-                    var target = ispan.Slice(i * ishape.Stride(0), ishape.Stride(0));
+                    var target = ispan.Slice(i * input.Shape.Stride(0), input.Shape.Stride(0));
                     var src = pair.Input.AsSpan();
                     src.CopyTo(target);
                 }
                 // Populate output tensor. Copy elements from each output into single batched tensor
                 {
-                    var target = ospan.Slice(i * oshape.Stride(0), oshape.Stride(0));
+                    var target = ospan.Slice(i * output.Shape.Stride(0), output.Shape.Stride(0));
                     var src = pair.Ouput.AsSpan();
                     src.CopyTo(target);
                 }
@@ -85,7 +88,7 @@ where TType:INumber<TType>
 
             // Return batched tensors
             yield return (input, output);
-            startIndex += length;
+            startIndex += batchLength;
         }
     }
 }
@@ -132,37 +135,40 @@ where TType:INumber<TType>
 
         while (startIndex < count) {
             // Compute "real" batch size
-            var length = Math.Min(batchSize, count - startIndex);
-            var endIndex = startIndex + length;
+            var batchLength = Math.Max(0, Math.Min(batchSize, count - startIndex));
+            var endIndex = startIndex + batchLength;
+            if (batchLength == 0)
+                break;
 
             // Create input shape. Prepend batch dimension
             var shape = new int[ishape.Rank + 1];
-            shape[0] = length;
-            ishape.AsDimensionSpan().CopyTo(shape.AsSpan().Slice(1));
+            shape[0] = batchLength;
+            ishape.AsDimensionSpan().CopyTo(shape.AsSpan(1));
 
             var input = Tensor<TType>.Defaults(new TensorShape(shape));
             var ispan = input.AsSpan();
 
             // Create output shape. Prepend batch dimension
             shape = new int[oshape.Rank + 1];
-            shape[0] = length;
-            oshape.AsDimensionSpan().CopyTo(shape.AsSpan().Slice(1));
+            shape[0] = batchLength;
+            oshape.AsDimensionSpan().CopyTo(shape.AsSpan(1));
             
             var output = Tensor<TType>.Defaults(new TensorShape(shape));
             var ospan = output.AsSpan();
 
             // Populate batched tensors
-            for (var i = 0; i < length; i++) {
+            for (var i = 0; i < batchLength; i++)
+            {
                 var pair = Next(startIndex + i, working);
                 // Populate input tensor. Copy elements from each input into single batched tensor
                 {
-                    var target = ispan.Slice(i * ishape.Stride(0), ishape.Stride(0));
+                    var target = ispan.Slice(i * input.Shape.Stride(0), input.Shape.Stride(0));
                     var src = pair.Input.AsSpan();
                     src.CopyTo(target);
                 }
                 // Populate output tensor. Copy elements from each output into single batched tensor
                 {
-                    var target = ospan.Slice(i * oshape.Stride(0), oshape.Stride(0));
+                    var target = ospan.Slice(i * output.Shape.Stride(0), output.Shape.Stride(0));
                     var src = pair.Ouput.AsSpan();
                     src.CopyTo(target);
                 }
@@ -170,7 +176,7 @@ where TType:INumber<TType>
 
             // Return batched tensors
             yield return (input, output);
-            startIndex += length;
+            startIndex += batchLength;
         }
     }
 }
