@@ -11,17 +11,18 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
         public int OutputChannels { get; set; } = 3;     // RGB
         public int BaseFeatureCount { get; set; } = 64;  // Number of channels in first layer
         public int Depth { get; set; } = 4;              // Number of encoder/decoder stages
-        public int ImageWidth { get; set; } = 16;             // Optional, used for padding calc if needed must be power of 2 and larger than 2^depth for equal input and output image sizes
-        public int ImageHeight { get; set; } = 16;
+        public int ImageWidth { get; set; } = 32;             // Optional, used for padding calc if needed must be power of 2 and larger than 2^depth for equal input and output image sizes
+        public int ImageHeight { get; set; } = 32;
+        public ActivationFunction Activation { get; set; } = ActivationFunctions.ReLU;
     }
 
-    private static INetworkModule ConvBlock(int inChannels, int outChannels)
+    private static INetworkModule ConvBlock(int inChannels, int outChannels, ActivationFunction fn)
     {
         return new SequentialBlock([
             new Conv2D(outChannels, inChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
-            new Activation(ActivationFunctions.ReLU),
+            new Activation(fn),
             new Conv2D(outChannels, outChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
-            new Activation(ActivationFunctions.ReLU)
+            new Activation(fn)
         ]);
     }
 
@@ -30,7 +31,9 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
         int inChannels,
         int baseFeatures,
         int targetHeight,
-        int targetWidth)
+        int targetWidth,
+        ActivationFunction fn
+    )
     {
         int currentFeatures = baseFeatures * (1 << (depth - 1));
         int nextFeatures = baseFeatures * (1 << depth);
@@ -38,11 +41,11 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
         if (depth == 0)
         {
             // Bottleneck block: just a double conv
-            return ConvBlock(inChannels, baseFeatures);
+            return ConvBlock(inChannels, baseFeatures, fn);
         }
 
         // Encoder block
-        var encoder = ConvBlock(inChannels, currentFeatures);
+        var encoder = ConvBlock(inChannels, currentFeatures, fn);
 
         // Downsample
         var downsample = new MaxPool2D(size: 2, stride: 2, padding: 0);
@@ -57,7 +60,8 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
             inChannels: currentFeatures,
             baseFeatures: baseFeatures,
             targetHeight: downHeight,
-            targetWidth: downWidth
+            targetWidth: downWidth,
+            fn: fn
         );
 
         // Upsample
@@ -73,7 +77,7 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
         );
 
         // Decoder block (after concat, so channel count doubles)
-        var decoder = ConvBlock(currentFeatures * 2, currentFeatures);
+        var decoder = ConvBlock(currentFeatures * 2, currentFeatures, fn);
 
         // Compose main path
         var mainPath = new SequentialBlock([
@@ -104,7 +108,8 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
                     inChannels: Math.Max(1, settings.InputChannels),
                     baseFeatures: Math.Max(1, settings.BaseFeatureCount),
                     targetHeight: Math.Max(0, settings.ImageHeight),
-                    targetWidth: Math.Max(0, settings.ImageWidth)
+                    targetWidth: Math.Max(0, settings.ImageWidth),
+                    fn: settings.Activation
                 ),
                 // Final 1x1 conv to map features to output RGB image
                 new Conv2D(
