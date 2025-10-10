@@ -44,13 +44,12 @@ public class DenseLinear : NetworkLayer
     public override TensorShape ForwardShape(TensorShape input)
     {
         // See Forward
-        var x2 = Flatten.FlattenCHW2H(input);
+        var x2 = Flatten.FlattenNonBatch(input);
 
         // MatMul(Weights * X2) dimensions with batch dimensions kept as prefix
         int[] dims = new int[x2.Rank];
-        dims[dims.Length - 2] = Weights.Shape.Length(^2); // a_rows
-        dims[dims.Length - 1] = 1;                        // b_cols Its a column vector as a result of flattening
-        for (var i = 0; i < x2.Rank - 2; i++)
+        dims[dims.Length - 1] = Weights.Shape.Length(^2);                        // b_cols Its a column vector as a result of flattening
+        for (var i = 0; i < x2.Rank - 1; i++)
             dims[i] = x2.Length(i);
 
         return new TensorShape(dims);
@@ -58,29 +57,29 @@ public class DenseLinear : NetworkLayer
 
     public override Tensor<float> Forward(Tensor<float> x)
     {
-        // Flatten the input to column/height dimension :[N, C, H, W] -> [N, 1, F, 1]
-        x = Flatten.FlattenCHW2H(x);
+        // Flatten the input to column/height dimension :[N, C, H, W] -> [N, F]
+        x = Flatten.FlattenNonBatch(x);
 
-        // Matrix multiplication, do broadcasting for batch dimensions as needed: [O, F] x [..., F, 1]
-        // Use the column dimension (^2) as the vector dimension
-        var mul = Weights.MatMulEachVector(dimension: ^2, x, Biases.AsArray());
+        // Matrix multiplication, do broadcasting for batch dimensions as needed: [O, F] x [..., F]
+        // Use the row dimension (^1) as the vector dimension
+        var mul = Weights.MatMulEachVector(dimension: ^1, x, Biases.AsArray());
 
-        // Add bias (broadcasting for batch dimensions as needed): [..., O, 1] + [O, 1]
+        // Add bias (broadcasting for batch dimensions as needed): [..., O] + [O]
         // Already handled by the above method
 
-        // Convert back to column vector from row vector by unsqueezing to the right
-        return mul.ReshapeShared(mul.Shape.Append(1)); 
+        return mul; // Output is [..., O] (IE it has a batch dimension)
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)
     {
         // Flatten the input to column/height dimension: [...N, C, H, W] -> [N, 1, F, 1]
-        x = x.ReshapeShared(x.Shape.NormalizeRank(4));  // Collapse all leading batch dims into 1
-        x = Flatten.FlattenCHW2H(x);                    // Flatten the training CHW dims [N, 1, F, 1]
+        var originalShape = x.Shape;
+        x = x.ReshapeShared(x.Shape.EnsureRank(2));      // If input is [F] transform to [1, F]
+        x = Flatten.FlattenNonBatch(x);                  // Flatten the training CHW dims [N, F]
 
-        // Reshape x and dy for matmuls: [N, F, 1], [N, O, 1]
-        var xFlatT = x.ReshapeShared(new TensorShape(x.Shape.Length(0), InputSize));     // [N, F]
-        var dyFlat = dy.ReshapeShared(new TensorShape(dy.Shape.Length(0), OutputSize));  // [N, O]
+        // Reshape x and dy for matmuls: [N, F], [N, O]
+        var xFlatT = x;     // [N, F]
+        var dyFlat = dy;    // [N, O]
 
         // Compute dW = sum_over_batch( dy * x^T ) => [O, F]
         var dW = dyFlat.TransposedMatMul(xFlatT); // [O, N] * [N, F] = [O, F]
@@ -89,12 +88,12 @@ public class DenseLinear : NetworkLayer
         var dB = dy.ReshapeShared(new TensorShape(dy.Shape.Length(0), OutputSize, 1))
             .Sum(axis: 0, keepdim: false);                        // [O, 1]
 
-        // Compute dx = dy * W^T => [N, F, 1]
+        // Compute dx = dy * W^T => [N, F]
         // [N, O] * [O, F] = [N, F]
         var dx = dyFlat.MatMul(Weights);
 
         // Reshape dx back to original input shape from the flattened format
-        dx = dx.ReshapeShared(x.Shape);
+        dx = dx.ReshapeShared(originalShape);
 
         return new WeightAndBiasGradients(dx, dW, dB);
     }

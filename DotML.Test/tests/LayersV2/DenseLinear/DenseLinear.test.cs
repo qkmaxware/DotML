@@ -181,8 +181,8 @@ public class DenseLinearTest
             x: Tensor<double>.FromJaggedArray(x).ToFloat(),
             dx: Tensor<double>.FromJaggedArray(dx).ToFloat(),
 
-            y: Tensor<double>.FromJaggedArray(y).ToFloat(),
-            dy: Tensor<double>.FromJaggedArray(dy).ToFloat()
+            y: Tensor<double>.FromJaggedArray(y).ReshapeShared(new TensorShape(1, 3)).ToFloat(),
+            dy: Tensor<double>.FromJaggedArray(dy).ReshapeShared(new TensorShape(1, 3)).ToFloat()
         );
     }
     
@@ -464,8 +464,8 @@ public class DenseLinearTest
             x: Tensor<double>.FromJaggedArray(x).ToFloat(),
             dx: Tensor<double>.FromJaggedArray(dx).ToFloat(),
 
-            y: Tensor<double>.FromJaggedArray(y).ToFloat(),
-            dy: Tensor<double>.FromJaggedArray(dy).ToFloat()
+            y: Tensor<double>.FromJaggedArray(y).ReshapeShared(new TensorShape(3, 3)).ToFloat(),
+            dy: Tensor<double>.FromJaggedArray(dy).ReshapeShared(new TensorShape(3, 3)).ToFloat()
         );
     }
 }

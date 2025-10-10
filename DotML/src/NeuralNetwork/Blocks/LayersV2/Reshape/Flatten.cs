@@ -61,9 +61,28 @@ public class Flatten : Reshape
         return x.ReshapeShared(FlattenCHW2W(x.Shape));     // Flatten to column, reuse same data array
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TensorShape FlattenNonBatch(TensorShape x)
+    {
+        if (x.Rank < 2)
+            return x; // If only 1 dimension just return as is
+        
+        // If >= 2 dimensions first dimension is batch the rest get flattened
+        var ys = new int[2];
+        ys[0] = x[0];
+        ys[1] = x.Length(1..);
+
+        return new TensorShape(ys);
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Tensor<float> FlattenNonBatch(Tensor<float> x)
+    {
+        return x.ReshapeShared(FlattenNonBatch(x.Shape));     // Flatten to column, reuse same data array
+    }
+
     public enum FlatteningMode
     {
-        Height, Channel, Width
+        CHW2Height, CHW2Channel, CHW2Width, CollapseNonBatch
     }
 
     public FlatteningMode Mode { get; init; }
@@ -73,15 +92,16 @@ public class Flatten : Reshape
         this.Mode = mode;
     }
 
-    public Flatten() : this(FlatteningMode.Height) { }
+    public Flatten() : this(FlatteningMode.CollapseNonBatch) { }
 
     public override TensorShape ForwardShape(TensorShape input)
     {
         return Mode switch
         {
-            FlatteningMode.Height => FlattenCHW2H(input),
-            FlatteningMode.Channel => FlattenCHW2C(input),
-            FlatteningMode.Width => FlattenCHW2W(input),
+            FlatteningMode.CHW2Height => FlattenCHW2H(input),
+            FlatteningMode.CHW2Channel => FlattenCHW2C(input),
+            FlatteningMode.CHW2Width => FlattenCHW2W(input),
+            FlatteningMode.CollapseNonBatch => FlattenNonBatch(input),
             _ => throw new InvalidOperationException()
         };
     }
@@ -90,9 +110,10 @@ public class Flatten : Reshape
     {
         return Mode switch
         {
-            FlatteningMode.Height => FlattenCHW2H(x),
-            FlatteningMode.Channel => FlattenCHW2C(x),
-            FlatteningMode.Width => FlattenCHW2W(x),
+            FlatteningMode.CHW2Height => FlattenCHW2H(x),
+            FlatteningMode.CHW2Channel => FlattenCHW2C(x),
+            FlatteningMode.CHW2Width => FlattenCHW2W(x),
+            FlatteningMode.CollapseNonBatch => FlattenNonBatch(x),
             _ => throw new InvalidOperationException()
         };
     }

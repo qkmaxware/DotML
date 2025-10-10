@@ -13,7 +13,7 @@ public class SoftmaxOutput : NetworkLayer
 
     public Index ClassAxis { get; init; }
 
-    public SoftmaxOutput() : this(^2) { }
+    public SoftmaxOutput() : this(^1) { }
     public SoftmaxOutput(Index classesAxis)
     {
         this.ClassAxis = classesAxis;
