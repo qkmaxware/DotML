@@ -7,6 +7,8 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace DotML;
 
@@ -31,8 +33,8 @@ public static class TensorExport
     {
         writer.Write('{');
 
-        writer.Write("\"shape\": "); writer.Write(System.Text.Json.JsonSerializer.Serialize(self.Shape.AsDimensionEnumerable()));
-        writer.Write("\"dtype\": "); writer.Write(System.Text.Json.JsonSerializer.Serialize(typeof(TNum).Name));
+        writer.Write("\"shape\": "); writer.Write(System.Text.Json.JsonSerializer.Serialize(self.Shape.AsDimensionEnumerable())); writer.Write(',');
+        writer.Write("\"dtype\": "); writer.Write(System.Text.Json.JsonSerializer.Serialize(typeof(TNum).Name)); writer.Write(',');
         writer.Write("\"data\": "); 
         ToJaggedArray(
             self, 
@@ -47,17 +49,109 @@ public static class TensorExport
     }
 
     /// <summary>
+    /// Load a tensor from a JSON format such as those created via the <see cref="SaveJson"/> extension method.
+    /// </summary>
+    /// <param name="stream">stream containing json data</param>
+    /// <returns></returns>
+    /// <exception cref="NullReferenceException">thrown if mandatory fields are missing</exception>
+    /// <exception cref="FormatException">thrown if the json object is incorrectly formatted</exception>
+    public static Tensor<TNum> FromJson<TNum>(Stream stream)
+    where TNum : INumber<TNum>
+    {
+        var document = JsonDocument.Parse(stream);
+        var root = document.RootElement;
+
+        if (!root.TryGetProperty("shape", out var shapeElement) || shapeElement.ValueKind != JsonValueKind.Array)
+            throw new NullReferenceException(nameof(TensorShape));
+        var shape = new TensorShape(shapeElement.EnumerateArray().Select(e => e.GetInt32()).ToArray());
+
+        if (!root.TryGetProperty("data", out var dataElement) || dataElement.ValueKind != JsonValueKind.Array)
+            throw new FormatException("Missing or invalid 'data' field");
+
+        var tensor_elements = shape.LogicalElementCount();
+        List<TNum> flat = new List<TNum>(tensor_elements); FlattenJagged(dataElement, shape, 0, flat);
+        if (flat.Count != tensor_elements)
+            throw new FormatException($"Jagged array contained {flat.Count} values but tensor shape expected {tensor_elements} values");
+
+        return Tensor<TNum>.FromFlattenedArray(shape, flat.ToArray());
+    }
+    private static void FlattenJagged<TNum>(JsonElement? jagged, TensorShape shape, int dim_index, List<TNum> output)
+    where TNum:INumber<TNum>
+    {
+        if (!jagged.HasValue)
+            return;
+
+        if (jagged.Value.ValueKind == JsonValueKind.Array)
+        {
+            // Is an array, recurse down
+            var enumerator = jagged.Value.EnumerateArray();
+            // loop over elements (if the array is smaller than the required shape, pad with 0s aka recursive null; if larger ignore extra)
+            // if shape was computed properly array length should always be <= dimension length
+            for (var i = 0; i < shape.Length(dim_index); i++)
+            {
+                if (enumerator.MoveNext())
+                {
+                    FlattenJagged(enumerator.Current, shape, dim_index + 1, output);
+                }
+                else
+                {
+                    FlattenJagged(null, shape, dim_index + 1, output);
+                }
+            }
+        } else
+        {
+            // Is a value, try to convert to TNum
+            var str = jagged.Value.GetRawText();
+            try
+            {
+                TNum? val = (TNum?)Convert.ChangeType(str, typeof(TNum));
+                output.Add(val ?? TNum.Zero);
+            } catch
+            {
+                output.Add(TNum.Zero);
+            }
+        }
+    }
+
+    /*private static void ToBinary<TNum>(Tensor<TNum> self, BinaryWriter writer)
+    where TNum : INumber<TNum>
+    {
+        // Write shape
+        writer.Write(self.Rank);
+        foreach (var dim in self.Shape.AsDimensionSpan())
+        {
+            writer.Write(dim);
+        }
+
+        // Write data-type
+        if (typeof(TNum).IsAssignableTo(typeof(IConvertible)))
+        {
+            writer.Write((int) (((IConvertible?)default(TNum))?.GetTypeCode() ?? TypeCode.Object));
+        } else
+        {
+            writer.Write((int)(TypeCode.Object));
+        }
+
+        // Write elements (row-major)
+        writer.Write(self.ElementCount);
+        foreach (var elem in self.AsSpan())
+        {
+            writeAction(writer, elem);
+        }
+    }*/
+
+    /// <summary>
     /// Export tensor data to an Excel 2003 XML spreadsheet document. Tensor is reshaped to 3D for export.
     /// </summary>
     /// <param name="xml">xml text writer</param>
     public static void SaveSpreadsheetML<TNum>(this Tensor<TNum> self, TextWriter xml)
     where TNum : INumber<TNum>
     {
-        var shape = self.Shape.NormalizeRank(3);
+        var shape = self.Shape.EnsureRank(3);
         var tensor = self.ReshapeShared(shape);
-        var channels = shape.Length(0);
-        var rows = shape.Length(1);
-        var columns = shape.Length(2);
+        var spanLength = shape.Stride(^3);
+        var rows = shape.Length(^2);
+        var columns = shape.Length(^1);
 
         // Excel XML Header
         xml.WriteLine(@"<?xml version=""1.0""?>");
@@ -70,7 +164,7 @@ public static class TensorExport
 
         // Document Properties (optional)
         xml.WriteLine(@"  <DocumentProperties xmlns=""urn:schemas-microsoft-com:office:office"">");
-        xml.WriteLine(@"    <Author>DotML Netflow</Author>");
+        xml.WriteLine(@"    <Author>DotML</Author>");
         xml.WriteLine(@"    <Created>" + DateTime.UtcNow.ToString("s") + "Z</Created>");
         xml.WriteLine(@"  </DocumentProperties>");
 
@@ -82,15 +176,36 @@ public static class TensorExport
         //xml.WriteLine(@"    <ProtectWindows>False</ProtectWindows>");
         //xml.WriteLine(@"  </ExcelWorkbook>");
 
-        for (var sheetIndex = 0; sheetIndex < channels; sheetIndex++) {
-            xml.WriteLine(@$"  <Worksheet ss:Name=""Channel-{sheetIndex}"">");
+        var batchShape = shape.Slice(0..^3);
+
+        Span<int> indices = stackalloc int[shape.Rank - 2];
+        var sheets = self.ElementCount / spanLength;
+        StringBuilder sb = new StringBuilder();
+        for (var sheetIndex = 0; sheetIndex < sheets; sheetIndex++)
+        {
+            // Construct sheet name
+            sb.Clear();
+            for (var i = 0; i < indices.Length; i++)
+            {
+                if (i != 0)
+                    sb.Append(',');
+                sb.Append(indices[i]);
+            }
+
+            // Fetch submatrix
+            var matrix = self.AsSpan2D(sheetIndex * spanLength, rows, columns);
+
+            // Write submatrix
+            xml.WriteLine(@$"  <Worksheet ss:Name=""({sb},...)"">");
             xml.WriteLine(@"    <Table>");
-            for (var row = 0; row < rows; row++) {
+            for (var row = 0; row < rows; row++)
+            {
                 xml.WriteLine(@"      <Row>");
-                for (var col = 0; col < columns; col++) {
+                for (var col = 0; col < columns; col++)
+                {
                     xml.Write(@"<Cell>");
                     xml.Write(@"<Data ss:Type=""String"">");
-                    xml.Write(tensor[sheetIndex, row, col].ToString());
+                    xml.Write(matrix[row, col].ToString());
                     xml.Write("</Data>");
                     xml.Write(@"</Cell>");
                 }
@@ -98,10 +213,22 @@ public static class TensorExport
             }
             xml.WriteLine(@"    </Table>");
             xml.WriteLine(@"  </Worksheet>");
+
+            // Move the next index up
+            int dim = indices.Length - 1;
+            while (dim >= 0)
+            {
+                indices[dim]++;
+                if (indices[dim] < shape.Length(dim))
+                    break;
+
+                indices[dim] = 0;
+                dim--;
+            }
         }
 
         // Workbook footer
-        xml.WriteLine(@"</Workbook>");    
+        xml.WriteLine(@"</Workbook>");
     }
 
     /// <summary>
@@ -195,7 +322,6 @@ public static class TensorExport
             writer.Write((byte)(20));
         }
     }
-
 
     private static void ToJaggedArray<TNum>(Tensor<TNum> self, int dim, int offset, Action openRank, Action closeRank, Action separator, Action<TNum> writeElement)
     where TNum : INumber<TNum>

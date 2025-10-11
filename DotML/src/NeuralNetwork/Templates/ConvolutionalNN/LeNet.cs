@@ -181,7 +181,7 @@ public class LeNetFactory
                 ishape.LogicalElementCount(),
                 settings.OutputClasses
             ))
-            .Then(ishape => new SoftmaxOutput())
+            //.Then(ishape => new SoftmaxOutput()) // No longer required, just use the correct loss function to train logits
             .Finalize()
         );
     }

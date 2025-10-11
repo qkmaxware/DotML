@@ -66,6 +66,7 @@ public class FromStatement : Statement {
         INetworkModule? root = (Identifier?.ToLower()) switch
         {
             "alexnet" => new AlexNetFactory().MakeDefault(),
+            "lenet" => new LeNetFactory().MakeDefault(),
             "espcn" => ((INetworkModuleFactory)new ESPCNFactory()).MakeDefault(),
             "fsrcnn" => ((INetworkModuleFactory)new FSRCNNFactory()).MakeDefault(),
             // ...

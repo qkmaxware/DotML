@@ -211,7 +211,7 @@ public class CategoricalCrossEntropy : LossFunction {
         }
 
         // Predicted must be a softmax distribution
-        var predictedNormalized = IsLikelyAProbabilityDistribution(predicted) ? predicted : SoftmaxNormalized(predicted);
+        var predictedNormalized = SoftmaxNormalized(predicted);
 
         // -SUM(exp_i * log(actual_i))
         var sum = 0.0f;
@@ -236,17 +236,9 @@ public class CategoricalCrossEntropy : LossFunction {
         }
 
         // Predicted must be a softmax distribution
-        var predictedNormalized = IsLikelyAProbabilityDistribution(predicted) ? predicted : SoftmaxNormalized(predicted);
+        var predictedNormalized = SoftmaxNormalized(predicted);
 
         for (var i = 0; i < predicted.Length; i++)
             gradient[i] = predictedNormalized[i] - @true[i]; // Is it or isn't it what's written below?
-
-        // dL/dYhat_i = - Ytrue_i / Yhat_u
-        //var grad = new Vec<double>(predicted.Dimensionality);
-        //for (var i = 0; i < grad.Dimensionality; i++) {
-        //    var v = -(@true[i]/predictedNormalized[i]);
-        //    grad[i] = double.IsNaN(v) ? 0.0 : v; // NaN's are bad! Do everything I can to avoid them.
-        //}
-        //return grad;
     }
 }

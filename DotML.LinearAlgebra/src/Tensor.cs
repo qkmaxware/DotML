@@ -3131,7 +3131,7 @@ where TNum : INumber<TNum>
         // Slice
         return this.elements.AsSpan(offset, rowLength);
     }
-    
+
     /// <summary>
     /// Extract a submatrix of the tensor at the given matrix index
     /// </summary>
@@ -3139,6 +3139,34 @@ where TNum : INumber<TNum>
     /// <returns>span over the rows and columns of the submatrix</returns>
     /// <exception cref="ArgumentException">thrown when an index is invalid or the wrong number of indices are provided</exception>
     public Span2D<TNum> ViewSubmatrix(params ReadOnlySpan<Index> indices)
+    {
+        if (indices.Length != Rank - 2)
+            throw new ArgumentException("To extract a submatrix span you must provide indices for all dimensions except the last two");
+
+        // Compute the flat offset to the start of the span
+        int offset = 0;
+        var strides = Shape.AsStrideSpan();
+        for (int i = 0; i < indices.Length; i++)
+        {
+            offset += NormalizeAxis(indices[i]) * strides[i];
+        }
+
+        // Deterime the row length
+        var size = Shape.Stride(^2);
+        var rows = Shape.Length(^2);
+        var cols = Shape.Length(^1);
+
+        // Slice and wrap as a 2D span
+        return new Span2D<TNum>(this.elements.AsSpan(offset, size), rows, cols);
+    }
+    
+    /// <summary>
+    /// Extract a submatrix of the tensor at the given matrix index
+    /// </summary>
+    /// <param name="indices">index to the submatrix</param>
+    /// <returns>span over the rows and columns of the submatrix</returns>
+    /// <exception cref="ArgumentException">thrown when an index is invalid or the wrong number of indices are provided</exception>
+    public Span2D<TNum> ViewSubmatrix(params ReadOnlySpan<int> indices)
     {
         if (indices.Length != Rank - 2)
             throw new ArgumentException("To extract a submatrix span you must provide indices for all dimensions except the last two");

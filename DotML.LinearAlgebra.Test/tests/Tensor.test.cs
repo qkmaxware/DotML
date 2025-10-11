@@ -512,4 +512,42 @@ public class TestTensor
         Assert.AreEqual(true, inputTensor.Softmax(2).Equals(Tensor<double>.FromJaggedArray(o3), 0.001f));
     }
 
+    [TestMethod]
+    public void TestSerialization()
+    {
+        var random = Random.Shared;
+        Tensor<float> something = Tensor<float>.Generate(new TensorShape(3, 2, 4, 4), () => (float)random.NextDouble());
+
+        using (var writer = new StreamWriter("Tensor.Test.TestSerialization.json"))
+        {
+            something.SaveJson(writer);
+        }
+        using (var stream = File.Open("Tensor.Test.TestSerialization.json", FileMode.Open))
+        {
+            var read = TensorExport.FromJson<float>(stream);
+            if (!read.Shape.Equals(something.Shape))
+                Assert.Fail("Failed to obtain correct shape from read tensor");
+
+            var sarray = something.AsArray();
+            var rarray = read.AsArray();
+            if (sarray.Length != rarray.Length)
+                Assert.Fail("Internal arrays are of differing lengths");
+            
+            foreach (var pair in sarray.Zip(rarray))
+            {
+                Assert.AreEqual(pair.First, pair.Second, 0.001f);
+            }
+        }
+
+        using (var writer = new StreamWriter("Tensor.Test.TestSerialization.xml"))
+        {
+            something.SaveSpreadsheetML(writer);
+        }
+
+        using (var writer = new BinaryWriter(File.Open("Tensor.Test.TestSerialization.npy", FileMode.Create)))
+        {
+            something.SaveNpy(writer);
+        }
+    }
+
 }

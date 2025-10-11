@@ -1,11 +1,12 @@
 using System.Text;
+using DotML.Terminal;
 
 namespace DotML;
 
 /// <summary>
 /// Probability distribution for a series of categories. Useful when used with output vectors from neural networks.
 /// </summary>
-public struct ProbabilityDistribution
+public struct ProbabilityDistribution: ITerminalRenderer
 {
     private float[] values;
     private string[]? labels;
@@ -140,6 +141,7 @@ public struct ProbabilityDistribution
         StringBuilder sb = new StringBuilder();
         var index = 0;
         var label_width = 0;
+        var number_width = this.values.Length.ToString().Length;
         if (this.labels is not null)
         {
             foreach (var label in labels)
@@ -153,7 +155,7 @@ public struct ProbabilityDistribution
         foreach (var prob in this.values)
         {
             var label = this.GetCategoryLabel(index) ?? string.Empty;
-            sb.Append(index); sb.Append(":"); sb.Append(label.PadRight(label_width, ' ')); sb.Append(' ');
+            sb.Append(index.ToString().PadLeft(number_width, ' ')); sb.Append(":"); sb.Append(label.PadRight(label_width, ' ')); sb.Append(' ');
             sb.Append('|'); 
                 sb.Append(new String('-', (int)(max_width * prob)).PadRight(max_width, ' ')); 
             sb.Append('|'); 
@@ -166,4 +168,8 @@ public struct ProbabilityDistribution
         return sb.ToString();
     }
 
+    public void Draw(TextWriter terminal)
+    {
+        terminal.Write(this.ToString());
+    }
 }

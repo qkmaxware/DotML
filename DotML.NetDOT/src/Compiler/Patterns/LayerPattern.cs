@@ -97,6 +97,25 @@ where T:INetworkModule
             ActivationFunctionMapper.DecodeStatic(value, alpha);
         }
 
+        // If the target is a TensorShape handle that specially 
+        if (targetType == typeof(TensorShape))
+        {
+            var parts = value.Split(',');
+            var ints = new int[parts.Length];
+            for (var i = 0; i < ints.Length; i++)
+            {
+                if (int.TryParse(parts[i], out int integer))
+                {
+                    ints[i] = integer;
+                }
+                else
+                {
+                    ints[i] = 1;
+                }
+            }
+            return new TensorShape(ints);
+        }
+
         // If the target is a tuple handle that specifically
         if (targetType.IsAssignableTo(typeof(ValueTuple)))
         {

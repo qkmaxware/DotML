@@ -38,6 +38,12 @@ public class SoftmaxOutput : NetworkLayer
         return new Gradient(dy);
     }
 
+    public override Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null)
+    {
+        // Do nothing, just pass back the error. ASSUMING THIS IS HANDLED BY CROSS_ENTOPY LOSS
+        return new Gradient(dy);
+    }
+
     public override void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null) { /* Nothing to do here */ }
 
     public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
