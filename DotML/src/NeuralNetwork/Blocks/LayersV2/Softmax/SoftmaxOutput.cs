@@ -26,7 +26,7 @@ public class SoftmaxOutput : NetworkLayer
     public override Tensor<float> Forward(Tensor<float> channels) => channels.Softmax(this.ClassAxis); // Softmax during inference
     public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)
     {
-        if (ctx is not null && ctx.Mode == EvaluationMode.Training)
+        if (IsTraining(ctx))
             return channels; // Do nothing during training. ASSUME SOFTMAX IS DONE BY CROSS_ENTROPY LOSS
 
         return channels.Softmax(this.ClassAxis); // Softmax during inference

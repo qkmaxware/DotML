@@ -229,7 +229,7 @@ where TNum : INumber<TNum>
     public static Tensor<TNum> Mask(TensorShape shape, double dropoutRate)
     {
         var tensor = Tensor<TNum>.Defaults(shape);
-        var rng = Random.Shared;
+        var rng = System.Random.Shared;
         var zero = TNum.Zero;
         var one = TNum.One;
         tensor.ElementWiseInplace((_) => rng.NextDouble() < dropoutRate ? zero : one);
@@ -419,6 +419,15 @@ where TNum : INumber<TNum>
         }
         return new Tensor<TNum>(shape, elems);
     }
+
+    /// <summary>
+    /// Create a tensor of the given shape with all elements set to a value provided by sampling a probability distribution
+    /// </summary>
+    /// <param name="shape">tensor shape</param>
+    /// <param name="distribution">probability distribution</param>
+    /// <returns>tensor</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Tensor<TNum> Random(TensorShape shape, IProbabilityDistribution<TNum> distribution) => Generate(shape, distribution.Sample);
 
     /// <summary>
     /// Create a tensor of the given shape with elemements set to 0 except for the diagonal (same indices) set to 1
@@ -4262,7 +4271,7 @@ where TNum : INumber<TNum>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Shuffle(Span<TNum> span) {
         // Fisher-Yates shuffle
-        var rng = Random.Shared;
+        var rng = System.Random.Shared;
 
         for (var i = span.Length - 1; i >= 1; i--)
         {

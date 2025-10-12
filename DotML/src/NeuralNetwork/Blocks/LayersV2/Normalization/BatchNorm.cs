@@ -89,7 +89,9 @@ public class BatchNorm2 : NormalizationLayer
 
     public override TensorShape ForwardShape(TensorShape input) => input;
 
-    public override Tensor<float> Forward(Tensor<float> x)
+    public override Tensor<float> Forward(Tensor<float> x) => Forward(x, null); // Inference mode
+
+    public override Tensor<float> Forward(Tensor<float> x, EvaluationContext? ctx)
     {
         var originalRank = x.Shape.Rank;
         var shape = x.Shape.NormalizeRank(4); // Force to be [N, C, H, W]
@@ -114,7 +116,7 @@ public class BatchNorm2 : NormalizationLayer
 
             // Compute the mean and variance across the entire list of channels
             float mean; float variance;
-            if (IsInference)
+            if (!IsTraining(ctx))
             {
                 // During inference always use the computed mean and variances
                 mean = this.RunningMean[channel];
@@ -184,9 +186,14 @@ public class BatchNorm2 : NormalizationLayer
                 }
             }
         }
-        ;
 
-        return x.Squeeze(0..^originalRank);
+        var res = x.Squeeze(0..^originalRank);
+        
+        if (ctx is not null)
+        {
+            ctx.Save(this, new IOContext(x, res));
+        }
+        return res;
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)

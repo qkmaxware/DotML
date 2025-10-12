@@ -291,25 +291,38 @@ public static class TensorExport
         ToJaggedArray(self, 0, 0, () => {}, () => {}, () => {}, (item) => writer.Write(item));
     }
 
-    private static void SaveNumpyHeader(BinaryWriter writer, TensorShape Shape, string dtype) {
+    /// <summary>
+    /// Export tensor data to a NumPy compatible .npy file
+    /// </summary>
+    /// <param name="writer">npy binary writer</param>
+    public static void SaveNpy(this Tensor<BFloat16> self, BinaryWriter writer)
+    {
+        SaveNumpyHeader(writer, self.Shape, "'float32'");
+        ToJaggedArray(self, 0, 0, () => {}, () => {}, () => {}, (item) => writer.Write(item.FloatValue));
+    }
+
+
+    private static void SaveNumpyHeader(BinaryWriter writer, TensorShape Shape, string dtype)
+    {
         writer.Write((byte)(93));
-        writer.Write(new byte[]{ (byte)'N', (byte)'U', (byte)'M', (byte)'P', (byte)'Y' });
+        writer.Write(new byte[] { (byte)'N', (byte)'U', (byte)'M', (byte)'P', (byte)'Y' });
         writer.Write((byte)(1));
         writer.Write((byte)(0));
 
         StringBuilder sb = new StringBuilder();
         sb.Append('{');
         sb.Append("descr:");
-        sb.Append(dtype); 
+        sb.Append(dtype);
         sb.Append(',');
         sb.Append("fortran_order: False,");
-        sb.Append("shape: ("); 
-        for (var i = 0; i < Shape.Rank; i++) {
+        sb.Append("shape: (");
+        for (var i = 0; i < Shape.Rank; i++)
+        {
             if (i != 0)
                 sb.Append(',');
             sb.Append(Shape.Length(i));
         }
-        sb.Append(')'); 
+        sb.Append(')');
         sb.Append('}');
         sb.Append('\n');
         var str = sb.ToString();
@@ -318,7 +331,8 @@ public static class TensorExport
         writer.Write(size);
 
         writer.Write(bytes);
-        for (var i = 0; i < (size - bytes.Length); i++) {
+        for (var i = 0; i < (size - bytes.Length); i++)
+        {
             writer.Write((byte)(20));
         }
     }

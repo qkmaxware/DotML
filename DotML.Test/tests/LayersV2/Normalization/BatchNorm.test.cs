@@ -43,7 +43,7 @@ public class BatchNormTest
     public void TestBatch2Channel1()
     {
         var layer = new BatchNorm2(channels: 1);
-        layer.BeginTraining(); // Turn off inference mode (don't use running mean/var)
+        var ctx = new EvaluationContext(EvaluationMode.Training); // Use training mode
 
         // Forward pass        
         var X_true = Tensor<double>.FromJaggedArray(
@@ -128,7 +128,7 @@ public class BatchNormTest
                 ]
             ]
         ).ToFloat();
-        var Y_pred = layer.Forward(X_true);
+        var Y_pred = layer.Forward(X_true, ctx);
         var Y_true = Tensor<double>.FromJaggedArray(
             [
                 [
@@ -394,8 +394,8 @@ public class BatchNormTest
     [TestMethod]
     public void TestBatch2Channel2() {
         var layer = new BatchNorm2(channels: 2);
-        layer.BeginTraining(); // Turn off inference mode (don't use running mean/var)
-        
+        var ctx = new EvaluationContext(EvaluationMode.Training); // Use training mode
+  
         // Forward pass        
         var X_true = Tensor<double>.FromJaggedArray(
             [
@@ -553,7 +553,7 @@ public class BatchNormTest
                 ]
             ]
         ).ToFloat();
-        var Y_pred = layer.Forward(X_true);
+        var Y_pred = layer.Forward(X_true, ctx); // Use training mode
         var Y_true = Tensor<double>.FromJaggedArray(
             [
                 [

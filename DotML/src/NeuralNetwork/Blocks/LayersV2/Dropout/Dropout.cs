@@ -40,8 +40,7 @@ public class Dropout : NetworkLayer
     public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)
     {
         // Mask only used during training
-        var use_mask = ctx is not null && ctx.Mode == EvaluationMode.Training;
-        if (use_mask)
+        if (IsTraining(ctx))
         {
             var res = this.Forward(channels, out var mask);
             if (ctx is not null)

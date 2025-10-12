@@ -19,35 +19,10 @@ public abstract class NetworkLayer : INetworkModule, IBlockVisitable
         MaxDegreeOfParallelism = Tensor<float>.DegreesOfParallelism
     };
 
-    /// <summary>
-    /// Test if the layer is in training mode (defaults to false, inference mode)
-    /// </summary>
-    public bool IsTraining { get; private set; } = false;
-
-    /// <summary>
-    /// Test if the layer is in inference mode
-    /// </summary>
-    public bool IsInference => !IsTraining;
-
-    /// <summary>
-    /// Configure this layer for training
-    /// </summary>
-    public void BeginTraining()
+    protected bool IsTraining(EvaluationContext? ctx)
     {
-        IsTraining = true;
-        OnTrainingBegin();
+        return ctx is not null && ctx.Mode == EvaluationMode.Training;
     }
-
-    /// <summary>
-    /// Configure this layer for inference
-    /// </summary>
-    public void EndTraining()
-    {
-        IsTraining = false;
-        OnTrainingEnd();
-    }
-    protected virtual void OnTrainingBegin() { }
-    protected virtual void OnTrainingEnd() { }
 
     /// <summary>
     /// Initialize the layer with the given initialization strategy
