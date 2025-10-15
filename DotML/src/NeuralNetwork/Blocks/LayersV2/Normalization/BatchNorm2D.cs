@@ -9,7 +9,7 @@ namespace DotML.Network;
 /// Layer that performs batch normalization. Each channel is normalized across all batches.
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
-public class BatchNorm2 : NormalizationLayer
+public class BatchNorm2D : NormalizationLayer
 {
 
     private float running_mean_momentum = 0.9f;
@@ -61,7 +61,7 @@ public class BatchNorm2 : NormalizationLayer
     }
 
 
-    public BatchNorm2(int channels)
+    public BatchNorm2D(int channels)
     {
 
         _runningMean = Tensor<float>.Ones(new TensorShape(channels));

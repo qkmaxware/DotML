@@ -4,3 +4,5 @@ TestResults/
 DotML.Examples/
 DotML.Example.Old/
 DotML.Sandbox.Old/
+
+*.zip

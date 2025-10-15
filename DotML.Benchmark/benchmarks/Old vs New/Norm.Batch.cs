@@ -34,7 +34,7 @@ public class CompareBatchNorm
         var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
         old = new BatchNorm(new Shape3D(CHANNELS, ROWS, COLUMNS));
-        updated = new BatchNorm2(CHANNELS);
+        updated = new BatchNorm2D(CHANNELS);
 
         inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());

@@ -59,7 +59,7 @@ public class ParameterCounter : IBlockVisitor
         return None.Value;
     }
 
-    public None Visit(BatchNorm2 norm, None arg)
+    public None Visit(BatchNorm2D norm, None arg)
     {
         Trainable += norm.TrainableParameterCount();
         UnTrainable += norm.UnTrainableParameterCount();
@@ -102,6 +102,27 @@ public class ParameterCounter : IBlockVisitor
     }
 
     public None Visit(MinPool2D pool, None arg)
+    {
+        Trainable += pool.TrainableParameterCount();
+        UnTrainable += pool.UnTrainableParameterCount();
+        return None.Value;
+    }
+
+    public None Visit(GlobalAvgPool2D pool, None arg)
+    {
+        Trainable += pool.TrainableParameterCount();
+        UnTrainable += pool.UnTrainableParameterCount();
+        return None.Value;
+    }
+
+    public None Visit(GlobalMaxPool2D pool, None arg)
+    {
+        Trainable += pool.TrainableParameterCount();
+        UnTrainable += pool.UnTrainableParameterCount();
+        return None.Value;
+    }
+
+    public None Visit(GlobalMinPool2D pool, None arg)
     {
         Trainable += pool.TrainableParameterCount();
         UnTrainable += pool.UnTrainableParameterCount();

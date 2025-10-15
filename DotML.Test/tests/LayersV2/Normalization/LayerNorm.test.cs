@@ -17,12 +17,12 @@ public class LayerNormTest {
 
         // Assert that the correct tensors are stored
         Assert.AreEqual(2, tensors.Count);
-        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2.Weights)));
-        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2.Biases)));
+        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2D.Weights)));
+        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2D.Biases)));
 
         // Assert that the stored values in the safetensor set are in fact the same as configured in the layer
-        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Weights)), 0.0001f));
-        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Biases)), 0.0001f));
+        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2D.Weights)), 0.0001f));
+        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2D.Biases)), 0.0001f));
 
         // Store and load from file
         var path = "layernorm2_test.safetensors";
@@ -33,8 +33,8 @@ public class LayerNormTest {
         loader.Deserialize(layer, reloadedTensors);
 
         // See that the newly set tensors matched the original ones exactly
-        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Weights)), 0.0001f));
-        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Biases)), 0.0001f));
+        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2D.Weights)), 0.0001f));
+        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2D.Biases)), 0.0001f));
     
     }
 

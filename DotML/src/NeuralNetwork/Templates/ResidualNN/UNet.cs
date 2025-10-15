@@ -13,17 +13,32 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
         public int Depth { get; set; } = 3;              // Number of encoder/decoder stages
         public int ImageWidth { get; set; } = 32;             // Optional, used for padding calc if needed must be power of 2 and larger than 2^depth for equal input and output image sizes
         public int ImageHeight { get; set; } = 32;
+        public bool UseNormalization { get; set; } = true;
         public ActivationFunction Activation { get; set; } = ActivationFunctions.ReLU;
     }
 
-    private static SequentialBlock ConvBlock(int inChannels, int outChannels, ActivationFunction fn)
+    private static SequentialBlock ConvBlock(int inChannels, int outChannels, ActivationFunction fn, bool useNormalization)
     {
-        return new SequentialBlock([
-            new Conv2D(outChannels, inChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
+        if (useNormalization)
+        {
+            return new SequentialBlock([
+                new Conv2D(outChannels, inChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
+                new BatchNorm2D(outChannels),
+                new Activation(fn),
+                new Conv2D(outChannels, outChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
+                new BatchNorm2D(outChannels),
+                new Activation(fn)
+            ]);
+        }
+        else
+        {
+            return new SequentialBlock([
+                new Conv2D(outChannels, inChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
             new Activation(fn),
             new Conv2D(outChannels, outChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
             new Activation(fn)
-        ]);
+            ]);
+        }
     }
 
     private INetworkModule BuildRecursiveUNet(
@@ -33,7 +48,8 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
         int baseFeatures,
         int targetHeight,
         int targetWidth,
-        ActivationFunction fn
+        ActivationFunction fn,
+        bool useNormalization
     )
     {
         int level = maxDepth - depth;
@@ -46,11 +62,11 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
             // Bottleneck block: just a double conv 
             // (is this the issue? it outputs baseFeatures not nextFeatures)
             // (this results in the TransposeConv2D having the wrong number of inChannelsPerGroup)
-            return ConvBlock(inChannels, currentFeatures, fn);
+            return ConvBlock(inChannels, currentFeatures, fn, useNormalization);
         }
 
         // Encoder block
-        var encoder = ConvBlock(inChannels, currentFeatures, fn);
+        var encoder = ConvBlock(inChannels, currentFeatures, fn, useNormalization);
 
         // Downsample
         var downsample = new MaxPool2D(size: 2, stride: 2, padding: 0);
@@ -67,7 +83,8 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
             baseFeatures: baseFeatures,
             targetHeight: downHeight,
             targetWidth: downWidth,
-            fn: fn
+            fn: fn,
+            useNormalization
         );
 
         // Upsample
@@ -94,7 +111,7 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
         var concat = new ResidualConcat(axis: ^3, mainPath, skipPath); // Concat along the Channels axis
 
         // Decoder block (after concat, so channel count doubles)
-        var decoder = ConvBlock(currentFeatures * 2, currentFeatures, fn);
+        var decoder = ConvBlock(currentFeatures * 2, currentFeatures, fn, useNormalization);
 
         return new SequentialBlock([encoder, concat, decoder]);
     }
@@ -112,7 +129,8 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
                 baseFeatures: Math.Max(1, settings.BaseFeatureCount),
                 targetHeight: Math.Max(0, settings.ImageHeight),
                 targetWidth: Math.Max(0, settings.ImageWidth),
-                fn: settings.Activation
+                fn: settings.Activation,
+                useNormalization: settings.UseNormalization
             ),
             // Final 1x1 conv to map features to output RGB image
             new Conv2D(
@@ -133,120 +151,3 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
         );
     }
 }
-
-/*
-using System;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-
-public static class DatasetBuilder
-{
-    public static void GenerateTrainingDataset(
-        string imageDirectory,
-        int numNoiseLevels = 10,
-        float noiseStdDev = 1.0f)
-    {
-        string[] imageFiles = Directory.GetFiles(imageDirectory, "*.png"); // or *.jpg
-
-        Random rng = new Random();
-
-        foreach (string imagePath in imageFiles)
-        {
-            using var bmp = new Bitmap(imagePath);
-            var clean = bmp.ToTensor(normalize: true); // Shape: 3×H×W
-            var target = clean;
-
-            for (int step = 0; step < numNoiseLevels; step++)
-            {
-                float noiseLevel = 1.0f - (step / (float)(numNoiseLevels - 1));
-
-                var noisy = AddNoise(clean, noiseLevel * noiseStdDev, rng); // still 3×H×W
-                var noiseChannel = CreateNoiseLevelChannel(clean, noiseLevel); // 1×H×W
-
-                var input = ConcatChannels(noisy, noiseChannel); // 4×H×W
-
-                string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmssfff");
-
-                string baseName = Path.GetFileNameWithoutExtension(imagePath);
-                string inputPath = Path.Combine(imageDirectory, $"{baseName}_{timestamp}_step{step}.input.bin");
-                string targetPath = Path.Combine(imageDirectory, $"{baseName}_{timestamp}_step{step}.target.bin");
-
-                using (var inputStream = new BinaryWriter(File.OpenWrite(inputPath)))
-                    input.SaveBinary(inputStream);
-
-                using (var targetStream = new BinaryWriter(File.OpenWrite(targetPath)))
-                    target.SaveBinary(targetStream);
-
-                target = noisy; // So that the loop will work
-            }
-        }
-    }
-
-    private static Tensor<float> AddNoise(Tensor<float> image, float stdDev, Random rng)
-    {
-        var noisy = image.Clone();
-
-        for (int c = 0; c < noisy.Shape.Length(0); c++)
-        {
-            for (int h = 0; h < noisy.Shape.Length(1); h++)
-            {
-                for (int w = 0; w < noisy.Shape.Length(2); w++)
-                {
-                    // Gaussian noise using Box-Muller transform
-                    float u1 = 1.0f - (float)rng.NextDouble(); // avoid log(0)
-                    float u2 = 1.0f - (float)rng.NextDouble();
-                    float randStdNormal = (float)(Math.Sqrt(-2.0f * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2));
-
-                    float noise = randStdNormal * noiseStdDev;
-                    float value = noisy[c, h, w] + noise;
-
-                    // Clamp to 0–255
-                    noisy[c, h, w] = Math.Clamp(value, 0f, 255f);
-                }
-            }
-        }
-
-        return noisy;
-    }
-
-    private static Tensor<float> CreateNoiseLevelChannel(Tensor<float> reference, float value)
-    {
-        int height = reference.Shape.Length(1);
-        int width = reference.Shape.Length(2);
-
-        var channel = new Tensor<float>(new TensorShape(1, height, width));
-
-        for (int h = 0; h < height; h++)
-            for (int w = 0; w < width; w++)
-                channel[0, h, w] = value;
-
-        return channel;
-    }
-
-    private static Tensor<float> ConcatChannels(Tensor<float> a, Tensor<float> b)
-    {
-        // Assumes both are shaped as C×H×W
-        int channelsA = a.Shape.Length(0);
-        int channelsB = b.Shape.Length(0);
-        int height = a.Shape.Length(1);
-        int width = a.Shape.Length(2);
-
-        var result = new Tensor<float>(new TensorShape(channelsA + channelsB, height, width));
-
-        for (int c = 0; c < channelsA; c++)
-            for (int h = 0; h < height; h++)
-                for (int w = 0; w < width; w++)
-                    result[c, h, w] = a[c, h, w];
-
-        for (int c = 0; c < channelsB; c++)
-            for (int h = 0; h < height; h++)
-                for (int w = 0; w < width; w++)
-                    result[c + channelsA, h, w] = b[c, h, w];
-
-        return result;
-    }
-}
-
-DatasetBuilder.GenerateTrainingDataset(@"C:\training\images", numNoiseLevels: 10, noiseStdDev: 0.1f); // 0.02 = small, 0.1 = moderate, 0.2+ = heavy
-*/

@@ -67,21 +67,33 @@ namespace DotML.Network
 
         #region Standalone Layers
         public TResult Visit(Activation activation, TArg arg);
+        public TResult Visit(SoftmaxOutput softmax, TArg arg);
+        
         public TResult Visit(Conv2D conv, TArg arg);
         public TResult Visit(TransposeConv2D tconv, TArg arg);
+
         public TResult Visit(DenseLinear dense, TArg arg);
+
         public TResult Visit(Dropout dropout, TArg arg);
-        public TResult Visit(BatchNorm2 norm, TArg arg);
+
+        public TResult Visit(BatchNorm2D norm, TArg arg);
         public TResult Visit(GroupNorm2 norm, TArg arg);
         public TResult Visit(LayerNorm2 norm, TArg arg);
+
         public TResult Visit(PixelShuffler shuffle, TArg arg);
+
         public TResult Visit(AvgPool2D pool, TArg arg);
         public TResult Visit(MaxPool2D pool, TArg arg);
         public TResult Visit(MinPool2D pool, TArg arg);
+
+        public TResult Visit(GlobalAvgPool2D pool, TArg arg);
+        public TResult Visit(GlobalMaxPool2D pool, TArg arg);
+        public TResult Visit(GlobalMinPool2D pool, TArg arg);
+
         public TResult Visit(Reshape reshape, TArg arg);
         public TResult Visit(Flatten flatten, TArg arg);
+
         public TResult Visit(Center2D center, TArg arg);
-        public TResult Visit(SoftmaxOutput softmax, TArg arg);
         #endregion
 
         #region Structural Blocks

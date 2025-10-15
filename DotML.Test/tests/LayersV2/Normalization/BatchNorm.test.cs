@@ -13,18 +13,18 @@ public class BatchNormTest
         var saver = new SafetensorSerializer();
         var loader = new SafetensorDeserializer();
 
-        var layer = new BatchNorm2(channels: 1);
+        var layer = new BatchNorm2D(channels: 1);
 
         var tensors = saver.Serialize(layer);
 
         // Assert that the correct tensors are stored
         Assert.AreEqual(2, tensors.Count);
-        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2.Weights)));
-        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2.Biases)));
+        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2D.Weights)));
+        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2D.Biases)));
 
         // Assert that the stored values in the safetensor set are in fact the same as configured in the layer
-        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Weights)), 0.0001f));
-        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Biases)), 0.0001f));
+        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2D.Weights)), 0.0001f));
+        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2D.Biases)), 0.0001f));
 
         // Store and load from file
         var path = "batchnorm2_test.safetensors";
@@ -35,14 +35,14 @@ public class BatchNormTest
         loader.Deserialize(layer, reloadedTensors);
 
         // See that the newly set tensors matched the original ones exactly
-        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Weights)), 0.0001f));
-        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2.Biases)), 0.0001f));
+        Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2D.Weights)), 0.0001f));
+        Assert.AreEqual(true, layer.Biases.Equals(tensors.GetTensor<float>(nameof(BatchNorm2D.Biases)), 0.0001f));
     }
 
     [TestMethod]
     public void TestBatch2Channel1()
     {
-        var layer = new BatchNorm2(channels: 1);
+        var layer = new BatchNorm2D(channels: 1);
         var ctx = new EvaluationContext(EvaluationMode.Training); // Use training mode
 
         // Forward pass        
@@ -393,7 +393,7 @@ public class BatchNormTest
     
     [TestMethod]
     public void TestBatch2Channel2() {
-        var layer = new BatchNorm2(channels: 2);
+        var layer = new BatchNorm2D(channels: 2);
         var ctx = new EvaluationContext(EvaluationMode.Training); // Use training mode
   
         // Forward pass        

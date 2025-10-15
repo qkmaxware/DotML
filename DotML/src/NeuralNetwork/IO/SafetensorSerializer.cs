@@ -76,10 +76,12 @@ public class SafetensorSerializer : IBlockVisitor
 
     public None Visit(Center2D center, None arg) { /* No tensors */ return None.Value; }
 
-    public None Visit(BatchNorm2 norm, None arg)
+    public None Visit(BatchNorm2D norm, None arg)
     {
-        Push(nameof(BatchNorm2.Weights), norm.Weights);
-        Push(nameof(BatchNorm2.Biases), norm.Biases);
+        Push(nameof(BatchNorm2D.RunningMean), norm.RunningMean);
+        Push(nameof(BatchNorm2D.RunningVariance), norm.RunningVariance);
+        Push(nameof(BatchNorm2D.Weights), norm.Weights);
+        Push(nameof(BatchNorm2D.Biases), norm.Biases);
         return None.Value;
     }
 
@@ -104,6 +106,12 @@ public class SafetensorSerializer : IBlockVisitor
     public None Visit(MaxPool2D pool, None arg) { /* No tensors */ return None.Value; }
 
     public None Visit(MinPool2D pool, None arg) { /* No tensors */ return None.Value; }
+
+    public None Visit(GlobalAvgPool2D pool, None arg) { /* No tensors */ return None.Value; }
+
+    public None Visit(GlobalMaxPool2D pool, None arg) { /* No tensors */ return None.Value; }
+
+    public None Visit(GlobalMinPool2D pool, None arg) { /* No tensors */ return None.Value; }
 
     public None Visit(Reshape reshape, None arg) { /* No tensors */ return None.Value; }
 
@@ -196,22 +204,22 @@ public class SafetensorDeserializer : IBlockVisitor<Safetensors, None>
 
     public None Visit(Conv2D conv, Safetensors arg)
     {
-        conv.Weights = Load<float>(arg, nameof(BatchNorm2.Weights));
-        conv.Biases = Load<float>(arg, nameof(BatchNorm2.Biases));
+        conv.Weights = Load<float>(arg, nameof(BatchNorm2D.Weights));
+        conv.Biases = Load<float>(arg, nameof(BatchNorm2D.Biases));
         return None.Value;
     }
 
     public None Visit(TransposeConv2D tconv, Safetensors arg)
     {
-        tconv.Weights = Load<float>(arg, nameof(BatchNorm2.Weights));
-        tconv.Biases = Load<float>(arg, nameof(BatchNorm2.Biases));
+        tconv.Weights = Load<float>(arg, nameof(BatchNorm2D.Weights));
+        tconv.Biases = Load<float>(arg, nameof(BatchNorm2D.Biases));
         return None.Value;
     }
 
     public None Visit(DenseLinear dense, Safetensors arg)
     {
-        dense.Weights = Load<float>(arg, nameof(BatchNorm2.Weights));
-        dense.Biases = Load<float>(arg, nameof(BatchNorm2.Biases));
+        dense.Weights = Load<float>(arg, nameof(BatchNorm2D.Weights));
+        dense.Biases = Load<float>(arg, nameof(BatchNorm2D.Biases));
         return None.Value;
     }
 
@@ -219,24 +227,26 @@ public class SafetensorDeserializer : IBlockVisitor<Safetensors, None>
 
     public None Visit(Center2D center, Safetensors arg) { /* No tensors */ return None.Value; }
 
-    public None Visit(BatchNorm2 norm, Safetensors arg)
+    public None Visit(BatchNorm2D norm, Safetensors arg)
     {
-        norm.Weights = Load<float>(arg, nameof(BatchNorm2.Weights));
-        norm.Biases = Load<float>(arg, nameof(BatchNorm2.Biases));
+        norm.Weights = Load<float>(arg, nameof(BatchNorm2D.Weights));
+        norm.Biases = Load<float>(arg, nameof(BatchNorm2D.Biases));
+        norm.RunningMean = Load<float>(arg, nameof(BatchNorm2D.RunningMean));
+        norm.RunningVariance = Load<float>(arg, nameof(BatchNorm2D.RunningVariance));
         return None.Value;
     }
 
     public None Visit(GroupNorm2 norm, Safetensors arg)
     {
-        norm.Weights = Load<float>(arg, nameof(BatchNorm2.Weights));
-        norm.Biases = Load<float>(arg, nameof(BatchNorm2.Biases));
+        norm.Weights = Load<float>(arg, nameof(BatchNorm2D.Weights));
+        norm.Biases = Load<float>(arg, nameof(BatchNorm2D.Biases));
         return None.Value;
     }
 
     public None Visit(LayerNorm2 norm, Safetensors arg)
     {
-        norm.Weights = Load<float>(arg, nameof(BatchNorm2.Weights));
-        norm.Biases = Load<float>(arg, nameof(BatchNorm2.Biases));
+        norm.Weights = Load<float>(arg, nameof(BatchNorm2D.Weights));
+        norm.Biases = Load<float>(arg, nameof(BatchNorm2D.Biases));
         return None.Value;
     }
 
@@ -247,6 +257,12 @@ public class SafetensorDeserializer : IBlockVisitor<Safetensors, None>
     public None Visit(MaxPool2D pool, Safetensors arg) { /* No tensors */ return None.Value; }
 
     public None Visit(MinPool2D pool, Safetensors arg) { /* No tensors */ return None.Value; }
+
+    public None Visit(GlobalAvgPool2D pool, Safetensors arg) { /* No tensors */ return None.Value; }
+
+    public None Visit(GlobalMaxPool2D pool, Safetensors arg) { /* No tensors */ return None.Value; }
+
+    public None Visit(GlobalMinPool2D pool, Safetensors arg) { /* No tensors */ return None.Value; }
 
     public None Visit(Reshape reshape, Safetensors arg) { /* No tensors */ return None.Value; }
 
