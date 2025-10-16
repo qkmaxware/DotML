@@ -114,7 +114,7 @@ public class LeNetFactory
                 ishape.LogicalElementCount(),
                 settings.OutputClasses
             ))
-            .Then(ishape => new SoftmaxOutput())
+            //.Then(ishape => new SoftmaxOutput())
             .Finalize()
         );
     }

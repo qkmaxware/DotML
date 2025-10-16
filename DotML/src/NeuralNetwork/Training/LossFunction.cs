@@ -156,7 +156,8 @@ public class MeanAbsoluteError : LossFunction {
 /// <summary>
 /// Categorical cross-entropy loss function
 /// </summary>
-public class CategoricalCrossEntropy : LossFunction {
+public class CategoricalCrossEntropy : LossFunction
+{
 
     private const float epsilon = 1e-15f;
 
@@ -164,36 +165,42 @@ public class CategoricalCrossEntropy : LossFunction {
     /// Normalize the vector using the softmax function which converts the vector into a probability distribution with values between 0 and 1.
     /// </summary>
     /// <returns>normalized vector</returns>
-    public Span<T> SoftmaxNormalized<T>(ReadOnlySpan<T> vec) where T:INumber<T>, IExponentialFunctions<T>  {
+    public Span<T> SoftmaxNormalized<T>(ReadOnlySpan<T> vec) where T : INumber<T>, IExponentialFunctions<T>
+    {
         var sum = T.Zero;
         T[] values = new T[vec.Length];
-        for (var i = 0; i < vec.Length; i++) {
+        for (var i = 0; i < vec.Length; i++)
+        {
             var exp_i = T.Exp(vec[i]);
             values[i] = exp_i;
             sum += exp_i;
         }
-        for (var i = 0; i < vec.Length; i++) {
+        for (var i = 0; i < vec.Length; i++)
+        {
             values[i] = values[i] / sum;
         }
         return values;
-    } 
+    }
 
     /// <summary>
     /// Check if the vector likely represents a probability distribution or not
     /// </summary>
     /// <param name="vec">vector</param>
     /// <returns>true if the vector exhibits properties commonly associated with probability distributions</returns>
-    public bool IsLikelyAProbabilityDistribution<T>(ReadOnlySpan<T> vec)  where T:IFloatingPoint<T> {
+    public bool IsLikelyAProbabilityDistribution<T>(ReadOnlySpan<T> vec) where T : IFloatingPoint<T>
+    {
         const double epsilon = 1e-8;
-        
-        var sum = T.Zero; 
-        foreach (var p in vec) {
-            if (p < T.Zero || p > T.One) {
+
+        var sum = T.Zero;
+        foreach (var p in vec)
+        {
+            if (p < T.Zero || p > T.One)
+            {
                 return false;
             }
             sum += p;
         }
-        
+
         return Convert.ToDouble(T.Abs(sum - T.One)) < epsilon;
     }
 
@@ -223,15 +230,17 @@ public class CategoricalCrossEntropy : LossFunction {
         }
         return -(1.0f / M) * sum;
     }
-    
+
     /// <summary>
     /// Compute the gradient of the loss function with respect to the predicted output
     /// </summary>
     /// <param name="predicted">The predicted vector as output from forward-propagation</param>
     /// <param name="true">The true vector expected as output</param>
     /// <returns>Gradient for use in backpropagation</returns>
-    public override void Gradient(Span<float> gradient, ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true) {
-        if (predicted.Length != @true.Length) {
+    public override void Gradient(Span<float> gradient, ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true)
+    {
+        if (predicted.Length != @true.Length)
+        {
             throw new ArgumentException("Predicted and true vectors must have the same length.");
         }
 
@@ -240,5 +249,88 @@ public class CategoricalCrossEntropy : LossFunction {
 
         for (var i = 0; i < predicted.Length; i++)
             gradient[i] = predictedNormalized[i] - @true[i]; // Is it or isn't it what's written below?
+    }
+}
+
+public class StableCategoricalCrossEntropy: LossFunction
+{
+    /// <summary>
+    /// Computes the categorical cross-entropy loss for a set of predictions (logits).
+    /// </summary>
+    /// <param name="predicted">Predicted logits (raw network outputs)</param>
+    /// <param name="truth">True labels in one-hot encoding</param>
+    /// <returns>The computed cross-entropy loss.</returns>
+    public override float Invoke(ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth)
+    {
+        // Step 1: Apply softmax to the logits to get the probabilities
+        int numClasses = predicted.Length;
+        float maxLogit = predicted[0];
+        float sumExp = 0f;
+
+        // Find max logit to improve numerical stability
+        for (int i = 1; i < numClasses; i++)
+        {
+            if (predicted[i] > maxLogit) maxLogit = predicted[i];
+        }
+
+        // Compute the softmax values (numerically stable)
+        for (int i = 0; i < numClasses; i++)
+        {
+            sumExp += MathF.Exp(predicted[i] - maxLogit);
+        }
+
+        // Softmax and compute the log of probabilities
+        float logProb = 0f;
+        for (int i = 0; i < numClasses; i++)
+        {
+            float prob = MathF.Exp(predicted[i] - maxLogit) / sumExp;
+            if (truth[i] == 1f)
+            {
+                logProb = MathF.Log(prob); // Only compute log for the true class
+                break;
+            }
+        }
+
+        // Step 2: Return the negative log-likelihood for the true class
+        return -logProb;
+    }
+
+    /// <summary>
+    /// Computes the gradient of the Categorical Cross-Entropy loss w.r.t the logits.
+    /// </summary>
+    /// <param name="gradient">Gradient will be stored in this span</param>
+    /// <param name="predicted">Predicted logits (raw network outputs)</param>
+    /// <param name="truth">True labels in one-hot encoding</param>
+    public override void Gradient(Span<float> gradient, ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth)
+    {
+        int numClasses = predicted.Length;
+
+        // Step 1: Apply softmax to the logits to get the probabilities
+        float maxLogit = predicted[0];
+        float sumExp = 0f;
+
+        // Find max logit to improve numerical stability
+        for (int i = 1; i < numClasses; i++)
+        {
+            if (predicted[i] > maxLogit) maxLogit = predicted[i];
+        }
+
+        // Compute the softmax values (numerically stable)
+        for (int i = 0; i < numClasses; i++)
+        {
+            sumExp += MathF.Exp(predicted[i] - maxLogit);
+        }
+
+        // Compute softmax probabilities
+        for (int i = 0; i < numClasses; i++)
+        {
+            gradient[i] = MathF.Exp(predicted[i] - maxLogit) / sumExp;
+        }
+
+        // Step 2: Subtract the truth vector (one-hot encoded) from the probabilities
+        for (int i = 0; i < numClasses; i++)
+        {
+            gradient[i] -= truth[i];
+        }
     }
 }

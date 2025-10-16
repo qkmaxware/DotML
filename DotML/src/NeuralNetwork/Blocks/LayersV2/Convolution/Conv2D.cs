@@ -37,8 +37,15 @@ public class Conv2D : NetworkLayer
     public override void Initialize(IInitializer initializer)
     {
         var parameters = this.TrainableParameterCount();
-        Weights.FillGenerated(() => initializer.RandomWeight(parameters, parameters, parameters));
-        Biases.FillGenerated(() => initializer.RandomBias(parameters, parameters, parameters));
+
+        int kernelHeight = this.Weights.Shape.Length(^2);
+        int kernelWidth = this.Weights.Shape.Length(^1);
+        int inChannels = this.Weights.Shape.Length(^3);
+        int fan_in = inChannels * kernelHeight * kernelWidth;
+        int fan_out = (Biases.ElementCount / Groups) * kernelHeight * kernelWidth;
+
+        Weights.FillGenerated(() => initializer.RandomWeight(fan_in, fan_out, parameters));
+        Biases.FillGenerated(() => initializer.RandomBias(fan_in, fan_out, parameters));
     }
 
     public override TensorShape ForwardShape(TensorShape input)
