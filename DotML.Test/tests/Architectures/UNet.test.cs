@@ -8,7 +8,7 @@ namespace DotML.Test.Architectures;
 public class UNetTest
 {
     [TestMethod]
-    public void TestBuild()
+    public void Build()
     {
         UNetFactory factory = new UNetFactory();
 

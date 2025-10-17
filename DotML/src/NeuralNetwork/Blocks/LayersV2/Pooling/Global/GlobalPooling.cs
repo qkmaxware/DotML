@@ -46,7 +46,7 @@ public abstract class GlobalPooling2D : LocalPooling
                 float accumulator = default(float);
                 int count = 0;
 
-                var span = result.AsSpan(globalChannel * sliceLength, sliceLength);
+                var span = reshaped.AsSpan(globalChannel * sliceLength, sliceLength);
                 for (var i = 0; i < span.Length; i++)
                 {
                     accumulator = Accumulate(accumulator, span[i], ++count);

@@ -252,6 +252,10 @@ public class ResNetFactory
         builder.Add(new GlobalAvgPool2D());
         builder.Add(new DenseLinear(settings.Stages[^1].OutChannels, settings.NumClasses));
 
-        return new SequentialBlock(builder);
+        return new ArchitectureBlock(
+            name: "ResNet",
+            inputShape: new TensorShape(settings.InputChannels, settings.InputHeight, settings.InputWidth),
+            rootModule: new SequentialBlock(builder)
+        );
     }
 }

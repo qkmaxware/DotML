@@ -9,7 +9,7 @@ public class CategoricalCrossEntropyTest
     [TestMethod]
     public void TestInvoke()
     {
-        var cce = new StableCategoricalCrossEntropy();
+        var cce = new CategoricalCrossEntropy();
 
         float[] logits = [0.8448f, -0.2264f, 1.0283f, -0.4268f, 0.6123f];
         float[] label = [0f, 0f, 0f, 0f, 1f];
@@ -22,7 +22,7 @@ public class CategoricalCrossEntropyTest
     [TestMethod]
     public void TestGradient()
     {
-        var cce = new StableCategoricalCrossEntropy();
+        var cce = new CategoricalCrossEntropy();
         
         float[] logits = [0.8448f, -0.2264f, 1.0283f, -0.4268f, 0.6123f];
         float[] label = [0f, 0f, 0f, 0f, 1f];
