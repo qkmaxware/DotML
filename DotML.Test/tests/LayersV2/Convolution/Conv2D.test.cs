@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DotML.Network;
 using DotML.Network.IO;
 using DotML.Network.Training;
@@ -851,5 +852,51 @@ public class Conv2DTest
         Assert.AreEqual(true, gradients.dX.Equals(dx_truth, 0.001f));
     }
 
+    private class Conv2DTestTensorSet
+    {
+        public float[][][][]? X { get; set; }
+        public float[][][][]? dX { get; set; }
+        public float[][][][]? W { get; set; }
+        public float[][][][]? dW { get; set; }
+        public float[][][][]? Y { get; set; }
+        public float[][][][]? dY { get; set; }
+        public float[]? B { get; set; }
+        public float[]? db { get; set; }
+    }
 
+    [TestMethod]
+    public void TestChannels256Stride2Padding1Kernel3()
+    {
+        var layer = new Conv2D(
+            outChannels: 512,
+            inChannelsPerGroup: 256,
+            groups: 1,
+            kernel: (3, 3),
+            stride: (2, 2),
+            dilation: (1, 1),
+            padding: (1, 1, 1, 1) // SAME padding
+        );
+
+        var test_data = JsonSerializer.Deserialize<Conv2DTestTensorSet>(ResourceLoader.Find("Conv2D.test.0.json"));
+        if (test_data is null || test_data.X is null || test_data.W is null || test_data.B is null || test_data.Y is null || test_data.dY is null || test_data.dW is null || test_data.db is null || test_data.dX is null)
+        {
+            Assert.Fail("Missing test data");
+            return;
+        }
+
+        LayerTester.ForwardAndBack(
+            layer: layer,
+            x: Tensor<float>.FromJaggedArray(test_data.X),
+
+            w: Tensor<float>.FromJaggedArray(test_data.W),
+            b: Tensor<float>.FromJaggedArray(test_data.B),
+            y: Tensor<float>.FromJaggedArray(test_data.Y),
+
+            dy: Tensor<float>.FromJaggedArray(test_data.dY),
+            dw: Tensor<float>.FromJaggedArray(test_data.dW),
+            db: Tensor<float>.FromJaggedArray(test_data.db),
+
+            dx: Tensor<float>.FromJaggedArray(test_data.dX)
+        );
+    }
 }

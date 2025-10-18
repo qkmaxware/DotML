@@ -10,7 +10,7 @@ namespace DotML.Network;
 /// Layer that performs layer (non batch) normalization. Each channel is normalized across the entire normalized shape
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
-public class LayerNorm2 : NormalizationLayer
+public class LayerNorm2 : NormalizationLayer, IWeightsAndBiasNetworkModule
 {
 
     private Tensor<float> _weights;

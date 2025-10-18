@@ -8,15 +8,15 @@ namespace DotML.Network;
 /// Apply a convolution using the given kernel/filter
 /// <see href="https://en.wikipedia.org/wiki/Convolutional_layer"/>
 /// </summary>
-public class Conv2D : NetworkLayer
+public class Conv2D : NetworkLayer, IWeightsAndBiasNetworkModule
 {
 
     public int Groups { get; set; }
     public (int X, int Y) Stride { get; set; }
     public (int X, int Y) Dilation { get; set; }
     public (int Left, int Top, int Right, int Bottom) Padding { get; set; }
-    public Tensor<float> Weights;   // [outChannels, inChannelsPerGroup, kernelHeight, kernelWidth]
-    public Tensor<float> Biases;    // [outChannels]
+    public Tensor<float> Weights { get; set; }   // [outChannels, inChannelsPerGroup, kernelHeight, kernelWidth]
+    public Tensor<float> Biases { get; set; }    // [outChannels]
 
     public Conv2D(int outChannels, int inChannelsPerGroup, int groups, (int Width, int Height) kernel, (int X, int Y) stride, (int X, int Y) dilation, (int Left, int Top, int Right, int Bottom) padding)
     {
@@ -188,6 +188,10 @@ public class Conv2D : NetworkLayer
         });
 
         // Gradient w.r.t. input
+        // Approximate size of TransposeConvolve to see if we need output padding
+        var outHeight = (H_out - 1) * this.Stride.Y - this.Padding.Top - this.Padding.Bottom + this.Dilation.Y * (H_k - 1) + 1 + 0 + 0;
+        var outWidth = (W_out - 1) * this.Stride.X - this.Padding.Left - this.Padding.Right + this.Dilation.X * (W_k - 1) + 1 + 0 + 0;
+
         Tensor<float> dx = dy.TransposeConvolve2D(
             kernels: this.Weights,
             groups: this.Groups,
@@ -200,9 +204,9 @@ public class Conv2D : NetworkLayer
             inPadTop: this.Padding.Top,         // Cropping
             inPadBottom: this.Padding.Bottom,   // Cropping
             outPadLeft: 0,
-            outPadRight: 0,
+            outPadRight: W_in - outWidth, // Right hand padding in the case where there is a size mismatch
             outPadTop: 0,
-            outPadBottom: 0
+            outPadBottom: H_in - outHeight // Bottom padding in the case where there is a size mismatch
         );
 
         return new WeightAndBiasGradients(

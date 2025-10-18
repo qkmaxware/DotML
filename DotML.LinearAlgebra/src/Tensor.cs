@@ -194,6 +194,16 @@ where TNum : INumber<TNum>
     }
 
     /// <summary>
+    /// Create a tensor with the same shape of as another with all elements set to 0
+    /// </summary>
+    /// <param name="other">tensor whose shape to copy</param>
+    /// <returns>tensor</returns>
+    public static Tensor<TNum> ZerosLike<TNumOther>(Tensor<TNumOther> other) where TNumOther:INumber<TNumOther>
+    {
+        return Tensor<TNum>.Zeros(other.Shape);
+    }
+
+    /// <summary>
     /// Create a tensor of the given shape with all elements set to 1
     /// </summary>
     /// <param name="shape">tensor shape</param>
@@ -204,6 +214,16 @@ where TNum : INumber<TNum>
         TNum[] elems = new TNum[shape.LogicalElementCount()];
         Array.Fill(elems, TNum.One);
         return new Tensor<TNum>(shape, elems);
+    }
+
+    /// <summary>
+    /// Create a tensor with the same shape of as another with all elements set to 1
+    /// </summary>
+    /// <param name="other">tensor whose shape to copy</param>
+    /// <returns>tensor</returns>
+    public static Tensor<TNum> OnesLike<TNumOther>(Tensor<TNumOther> other) where TNumOther:INumber<TNumOther>
+    {
+        return Tensor<TNum>.Ones(other.Shape);
     }
 
     /// <summary>

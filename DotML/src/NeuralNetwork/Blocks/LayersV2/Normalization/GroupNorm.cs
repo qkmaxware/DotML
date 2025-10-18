@@ -9,7 +9,7 @@ namespace DotML.Network;
 /// Layer that performs group normalization. Each channel is put into groups and normalized across the group. 
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
-public class GroupNorm2 : NormalizationLayer
+public class GroupNorm2 : NormalizationLayer, IWeightsAndBiasNetworkModule
 {
     private Tensor<float> _weights;
     public Tensor<float> Weights

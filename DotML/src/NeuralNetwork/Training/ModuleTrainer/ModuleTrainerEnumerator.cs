@@ -293,13 +293,16 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             var batchStride = outputs.Shape.Stride(0);
 
             var dY = Tensor<float>.Defaults(outputs.Shape);
-            for (var batchIndex = 0; batchIndex < batches; batchIndex++) {
+            for (var batchIndex = 0; batchIndex < batches; batchIndex++)
+            {
                 Loss.Gradient(
                     gradient: dY.AsSpan(batchIndex * batchStride, batchStride),         // Subspan of dY to store the results of the gradient computation in
                     predicted: outputs.AsSpan(batchIndex * batchStride, batchStride),   // Treat subspan of output as a vector across non-batch dimensions
                     @true: truth.AsSpan(batchIndex * batchStride, batchStride)          // Treat subspan of truth as a vector across non-batch dimensions
                 );
             }
+            if (GradientClipping is not null)
+                dY.ElementWiseInplace(y => GradientClipping.ClipInput(y));              // Clip these gradients too in case they are too large
 
             // Backward step
             var gradients = Network.Backward(dY, ctx: context, clipping: this.GradientClipping);

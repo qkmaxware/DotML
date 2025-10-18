@@ -4,15 +4,15 @@ using DotML.Network.Training;
 
 namespace DotML.Network;
 
-public class TransposeConv2D : NetworkLayer
+public class TransposeConv2D : NetworkLayer, IWeightsAndBiasNetworkModule
 {
     public int Groups { get; set; }
     public (int X, int Y) Stride { get; set; }
     public (int X, int Y) Dilation { get; set; }
     public (int Left, int Top, int Right, int Bottom) InputPadding { get; set; }
     public (int Left, int Top, int Right, int Bottom) OutputPadding { get; set; }
-    public Tensor<float> Weights;   // [inChannelsPerGroup, outChannels, kernelHeight, kernelWidth]
-    public Tensor<float> Biases;    // [outChannels]
+    public Tensor<float> Weights { get; set; }   // [inChannelsPerGroup, outChannels, kernelHeight, kernelWidth]
+    public Tensor<float> Biases { get; set; }     // [outChannels]
 
     public TransposeConv2D(int outChannels, int inChannelsPerGroup, int groups, (int Width, int Height) kernel, (int X, int Y) stride, (int X, int Y) dilation, (int Left, int Top, int Right, int Bottom) inputPadding, (int Left, int Top, int Right, int Bottom) outputPadding)
     {

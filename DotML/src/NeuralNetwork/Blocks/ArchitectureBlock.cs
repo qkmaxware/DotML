@@ -13,6 +13,11 @@ public class ArchitectureBlock : INetworkModule, IBlockVisitable
     /// </summary>
     public string Name { get; init; }
     /// <summary>
+    /// Architecture description
+    /// </summary>
+    public string? Description { get; init; }
+    public Uri? ReferenceUrl { get; init; }
+    /// <summary>
     /// Architecture input shape if network only works with inputs of the given shape
     /// </summary>
     public TensorShape? RequiredInputShape { get; init; }
@@ -25,13 +30,15 @@ public class ArchitectureBlock : INetworkModule, IBlockVisitable
     /// </summary>
     private INetworkModule RootModule { get; init; }
 
-    public ArchitectureBlock(string name, TensorShape? inputShape, INetworkModule rootModule)
+    public ArchitectureBlock(string name, TensorShape? inputShape, INetworkModule rootModule, string? description = null, Uri? referenceUri = null)
     {
         Name = name;
         RequiredInputShape = inputShape;
         if (RequiredInputShape.HasValue)
             OutputShape = rootModule.ForwardShape(RequiredInputShape.Value);
         RootModule = rootModule;
+        this.Description = description;
+        this.ReferenceUrl = referenceUri;
     }
 
     public Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null)

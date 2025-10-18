@@ -47,3 +47,13 @@ public interface INetworkModule
     /// <param name="regularization">regularization strategy</param>
     public void Update(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null);
 }
+
+/// <summary>
+/// A network module that exposes it's weights and biases
+/// </summary>
+public interface IWeightsAndBiasNetworkModule
+: INetworkModule
+{
+    public Tensor<float> Weights { get; set; }
+    public Tensor<float> Biases { get; set; }
+}

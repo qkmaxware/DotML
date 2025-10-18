@@ -9,7 +9,7 @@ namespace DotML.Network;
 /// Layer that performs batch normalization. Each channel is normalized across all batches.
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
-public class BatchNorm2D : NormalizationLayer
+public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
 {
 
     private float running_mean_momentum = 0.9f;

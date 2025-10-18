@@ -7,7 +7,7 @@ namespace DotML.Network;
 /// Fully connected layer which flattens it's inputs before processing and returns a column vector from the output neurons
 /// <see href="https://en.wikipedia.org/wiki/Layer_(deep_learning)"/>
 /// </summary>
-public class DenseLinear : NetworkLayer
+public class DenseLinear : NetworkLayer, IWeightsAndBiasNetworkModule
 {
     public int InputSize { get; init; }
 
@@ -15,9 +15,9 @@ public class DenseLinear : NetworkLayer
 
     public int Neurons { get; init; }
 
-    public Tensor<float> Weights;
+    public Tensor<float> Weights { get; set; }
 
-    public Tensor<float> Biases;
+    public Tensor<float> Biases { get; set; }
 
     public DenseLinear(int input_size, int neurons)
     {

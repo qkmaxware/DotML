@@ -1,7 +1,7 @@
 using DotML.Network;
 using DotML.Network.Training;
 
-namespace DotML.Test;
+namespace DotML.Test.Loss;
 
 [TestClass]
 public class CategoricalCrossEntropyTest

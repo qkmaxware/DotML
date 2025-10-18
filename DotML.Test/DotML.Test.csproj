@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="data/**/*" />
+    <EmbeddedResource Include="tests/**/*.json" />
   </ItemGroup>
 
   <ItemGroup>
