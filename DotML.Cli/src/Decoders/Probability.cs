@@ -1,3 +1,7 @@
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+using Qkmaxware.Terminal.Layout;
+
 namespace DotML.Cli.Decodings;
 
 /// <summary>
@@ -11,10 +15,15 @@ public class Probability : IDecoder, IWithLabels {
             this.dists = vectors.Select(x => new ProbabilityDistribution(x, labels)).ToArray();
         }
 
-        public void ConsoleOutput() {
-            foreach (var dist in this.dists) {
-                Console.WriteLine(dist.ToString().ReplaceLineEndings());
+        public IElement ConsoleOutput() {
+            var box = new VBox();
+
+            foreach (var dist in this.dists)
+            {
+                box.Add(new FixedLikelihood(dist.GetProbabilities().ToArray(), dist.GetLabels()?.ToArray()));
             }
+
+            return box;
         }
 
         public IEnumerable<FileInfo> FileOutput(FileInfo file) {

@@ -29,9 +29,14 @@
 
   <ItemGroup>
     <None Include="Readme.md" Pack="true" PackagePath="\" />
-    <EmbeddedResource Include=".\src\Docs\*.md"/>
+    <EmbeddedResource Include=".\src\Docs\*.md" />
     <ProjectReference Include="..\DotML\DotML.csproj" />
     <ProjectReference Include="..\DotML.Netbuild\DotML.Netbuild.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Qkmaxware\Terminal\Qkmaxware.Terminal.csproj" />
+    <ProjectReference Include="..\DotML.NetDOT\DotML.NetDOT.csproj" />
   </ItemGroup>
 
 </Project>

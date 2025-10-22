@@ -1,3 +1,7 @@
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+using Qkmaxware.Terminal.Layout;
+
 namespace DotML.Cli.Decodings;
 
 /// <summary>
@@ -11,10 +15,13 @@ public class Vector : IDecoder {
             this.vectors = vectors;
         }
 
-        public void ConsoleOutput() {
-            foreach (var vector in vectors) {
-                Console.WriteLine(vector.ToString());
+        public IElement ConsoleOutput() {
+            var box = new VBox();
+            foreach (var vector in vectors)
+            {
+                box.Add(new Paragraph(vector.ToString()));
             }
+            return box;
         }
 
         public IEnumerable<FileInfo> FileOutput(FileInfo file) {

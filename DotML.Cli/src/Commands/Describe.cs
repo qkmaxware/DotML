@@ -1,6 +1,9 @@
 using System.Security.Cryptography.X509Certificates;
 using CommandLine;
 using DotML.Network;
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+using Qkmaxware.Terminal.Layout;
 
 namespace DotML.Cli.Commands;
 
@@ -11,118 +14,98 @@ public class Describe : BaseCommand {
     public string? ModelName {get; set;}
 
     public override void Action(AppData appData) {
-        var model = appData.GetModel(ModelName);
-        if (model is null) {
-            Console.WriteLine($"No model exists with name '{ModelName}'.");
+        ModelInfo? model = appData.GetModel(ModelName);
+        if (model is null)
+        {
+            WriteError($"No model exists with name '{ModelName}'.");
             return;
         }
 
-        if (!string.IsNullOrEmpty(model.Description)) {
-            Console.Write(model.Description);
-            Console.WriteLine();
+        var info_list = new VBox();
+        var info_panel = new Panel($"About {model.Guid ?? "Model"}", info_list).WithPadding(1);
+
+        if (!string.IsNullOrEmpty(model.Description))
+        {
+            info_list.Add(new Label("Description:"));
+            info_list.Add(new Paragraph(model.Description).WithMargin(left: 2, bottom: 1, right: 2));
         }
 
-        Console.WriteLine("IDENTIFIERS");
-        Console.WriteLine(" | " + (model.Guid ?? "?"));
-        foreach (var tag in model.Tags.Select((t, i) => (i, t))) {
-            Console.Write(" | ");
-            Console.Write('\''); Console.Write(tag.t); Console.Write('\'');
-            Console.WriteLine();
-        }
-        Console.WriteLine();
+        if (model.ProblemDescription is not null)
+        {
+            var problem = model.ProblemDescription;
+            info_list.Add(new Label("Problem:"));
 
-        if (model.ClassLabels.Any()) {
-        Console.WriteLine("OUTPUT-CLASSES");
-        foreach (var label in model.ClassLabels.Select((t, i) => (i, t))) {
-            Console.Write(" | ");
-            Console.Write('\''); Console.Write(label.t); Console.Write('\'');
-            Console.WriteLine();
-        }
-        Console.WriteLine();
+            if (problem.Classification is not null)
+            {
+                info_list.Add(new Label($"Type: {nameof(problem.Classification)}"));
+                info_list.Add(new Label($"Labels: {string.Join(", ", problem.Classification.ClassLabels)}"));
+            }
+
+            
+            info_list.Add(new Label(string.Empty));
         }
 
-        Console.WriteLine("BUILD-SCRIPT");
-        foreach (var line in model.GetBuildScript().Split('\n')) {
-            Console.Write(" | ");
-            Console.WriteLine(line);
+        if (model.Tags.Any())
+        {
+            var ul = new UnorderedList();
+            foreach (var tag in model.Tags.Select((t, i) => (i, t)))
+            {
+                ul.Add(new Label(tag.t));
+            }
+            info_list.Add(new Label("Also known as:"));
+            info_list.Add(ul);
         }
-        Console.WriteLine();
 
-        Console.WriteLine("TRAINING");
-        string[] train_columns = ["STATUS   ", "ACCURACY ", "PRECISION", "RECALL   ", "LOSS             ", "TRAINING-DURATION "];
-        int[] train_len = train_columns.Select(str => str.Length).ToArray();
-        Console.Write(" | ");
-        for (var col = 0; col < train_columns.Length; col++) {
-            var name = train_columns[col];
-            var len = train_len[col];
-            Console.Write(ColumnValue(name, len));
-            Console.Write(' ');
-        }
-        Console.WriteLine();
-        Console.Write(" | ");
-        Console.Write(ColumnValue(model.Status(), train_len[0])); Console.Write(' ');
-        ModelTrainingInfo? trainingMeta;
-        if (model.Status() == ModelTrainingStatus.Trained) {
-            if ((trainingMeta = model.TrainingMetadata) is not null) {
-                Console.Write(ColumnValue(trainingMeta.Accuracy, train_len[1])); Console.Write(' ');
-                Console.Write(ColumnValue(trainingMeta.Precision, train_len[2])); Console.Write(' ');
-                Console.Write(ColumnValue(trainingMeta.Recall, train_len[3])); Console.Write(' ');
-                Console.Write(ColumnValue($"{trainingMeta.AvgLoss:F3} ± {(trainingMeta.MaxLoss - trainingMeta.MinLoss):F3}", train_len[4])); Console.Write(' ');
-                Console.Write(ColumnValue(trainingMeta.TrainingDuration, train_len[5]));
+        var training_list = new VBox();
+        var training_panel = new Panel("Training", training_list).WithPadding(1);
+        if (model.Status() == ModelTrainingStatus.Untrained)
+        {
+            training_list.Add(new Paragraph("This model has not yet been trained."));
+        } else
+        {
+            var trainingMeta = model.TrainingMetadata;
+            if (trainingMeta is null)
+            {
+                training_list.Add(new Paragraph("This model is trained, but no information was recorded about the performance of the model. This model may have been trained outside of this program."));
+            }
+            else
+            {
+                string[] train_columns = ["Accuracy ", "Precision", "Recall", "Loss", "Duration"];
+                string?[] train_values = [
+                    trainingMeta?.Accuracy.ToString(),
+                trainingMeta?.Precision.ToString(),
+                trainingMeta?.Recall.ToString(),
+                $"{trainingMeta?.AvgLoss:F3} ± {(trainingMeta?.MaxLoss - trainingMeta?.MinLoss):F3}",
+                trainingMeta?.TrainingDuration?.ToString()
+                ];
+                var columns = new Columns();
+                for (var i = 0; i < train_values.Length; i++)
+                {
+                    columns.Add(new VBox(
+                        new Label(train_columns[i]),
+                        new Label(train_values[i])
+                    ));
+                }
+                training_list.Add(columns);
             }
         }
-        Console.WriteLine();
-        Console.WriteLine();
 
-        Console.WriteLine("ARCHITECTURE");
-        var network = model.Load();
-        string[] arch_columns = ["LAYER-TYPE       ", "INPUT-SHAPE", "OUTPUT-SHAPE", "TRAINABLE-PARAMS", "UNTRAINABLE-PARAMS", "DESCRIPTION"];
-        string[] summary_columns = ["LAYERS", "STORAGE-SIZE", "TRAINABLE-PARAMS", "UNTRAINABLE-PARAMS"];
-        int[] sum_length = [arch_columns[0].Length, 1 + arch_columns[1].Length + arch_columns[2].Length, arch_columns[3].Length, arch_columns[4].Length];
-        Console.Write(" | ");
-        for (var col = 0; col < summary_columns.Length; col++) {
-            var name = summary_columns[col];
-            var len = sum_length[col];
-            Console.Write(ColumnValue(name, len));
-            Console.Write(' ');
+        var script_list = new VBox();
+        var script_panel = new Panel("Architecture", script_list).WithPadding(1);
+        foreach (var line in model.GetBuildScript().Split('\n'))
+        {
+            var trimmed = line.TrimEnd();
+            if (!string.IsNullOrEmpty(trimmed))
+                script_list.Add(new Label(trimmed));
         }
-        Console.WriteLine();
-        Console.Write(" | ");
-        Console.Write(ColumnValue(network.LayerCount, sum_length[0])); Console.Write(' ');
-        Console.Write(ColumnValue(network.StorageSize(), sum_length[1])); Console.Write(' ');
-        Console.Write(ColumnValue(network.TrainableParameterCount(), sum_length[2])); Console.Write(' ');
-        Console.Write(ColumnValue(network.UnTrainableParameterCount(), sum_length[3])); Console.Write(' ');
-        Console.WriteLine();
 
-        Console.WriteLine(" | ");
-        int[] arch_len = arch_columns.Select(str => str.Length).ToArray();
-        Console.Write(" | ");
-        for (var col = 0; col < arch_columns.Length; col++) {
-            var name = arch_columns[col];
-            var len = arch_len[col];
-            Console.Write(ColumnValue(name, len));
-            Console.Write(' ');
-        }
-        Console.WriteLine();
-
-        var describer = new LayerDescriber();
-        for (var layerIndex = 0; layerIndex < network.LayerCount; layerIndex++) {
-            var layer = network.GetLayer(layerIndex);
-            Console.Write(" | ");
-            Console.Write(ColumnValue(TrimEnd(layer.GetType().Name, "Layer"), arch_len[0]));
-            Console.Write(' ');
-            Console.Write(ColumnValue(layer.InputShape, arch_len[1]));
-            Console.Write(' ');
-            Console.Write(ColumnValue(layer.OutputShape, arch_len[2]));
-            Console.Write(' ');
-            Console.Write(ColumnValue(layer.TrainableParameterCount(), arch_len[3]));
-            Console.Write(' ');
-            Console.Write(ColumnValue(layer.UnTrainableParameterCount(), arch_len[4]));
-            Console.Write(' ');
-            Console.Write(layer.Visit(describer), arch_len[5]);
-            Console.WriteLine();
-        }
-        Console.WriteLine();
+        var app = new RenderView(new VBox(
+            info_panel,
+            training_panel,
+            script_panel
+        ));
+        app.RenderOnce();
+        return;
     }
 
     private static string TrimEnd(string src, string postfix) {

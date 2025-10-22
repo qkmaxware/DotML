@@ -1,4 +1,7 @@
 using DotML.Network.Training;
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+using Qkmaxware.Terminal.Layout;
 using SkiaSharp;
 
 namespace DotML.Cli.Decodings;
@@ -18,11 +21,14 @@ public class Image : IDecoder, IFileOnlyDecoder {
             this.bitmaps = bitmaps;
         }
 
-        public void ConsoleOutput() {
+        public IElement ConsoleOutput() {
             int i = 1;
-            foreach (var bitmap in bitmaps) {
-                Console.WriteLine($"Image {i++}: A {channels}-channel {bitmap.Width}x{bitmap.Height} image.");
+            var box = new VBox();
+            foreach (var bitmap in bitmaps)
+            {
+                box.Add(new Label($"Image {i++}: A {channels}-channel {bitmap.Width}x{bitmap.Height} image."));
             }
+            return box;
         }
 
         public IEnumerable<FileInfo> FileOutput(FileInfo file) {

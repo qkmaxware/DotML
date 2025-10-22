@@ -95,10 +95,14 @@ public class Build : BaseCommand {
                     }
                 }
                 if (LabelsForClasses is not null) {
-                    info.ClassLabels = new List<string>();
-                    foreach (var label in LabelsForClasses) {
-                        info.ClassLabels.Add(label);
+                    info.ProblemDescription = info.ProblemDescription ?? new ModelProblemDescription();
+                    info.ProblemDescription.Classification = new ModelProblemDescription.ClassificationDescription();
+                    var classLabels = new List<string>();
+                    foreach (var label in LabelsForClasses)
+                    {
+                        classLabels.Add(label);
                     }
+                    info.ProblemDescription.Classification.ClassLabels = classLabels;
                 }
                 writer.Write(info.ToXml());
             }

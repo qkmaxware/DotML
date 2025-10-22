@@ -1,3 +1,5 @@
+using Qkmaxware.Terminal;
+
 namespace DotML.Cli;
 
 public interface IDecoder {
@@ -9,6 +11,6 @@ public interface IFileOnlyDecoder : IDecoder {
 }
 
 public interface IDecodedResult : IDisposable {
-    public void ConsoleOutput();
+    public IElement ConsoleOutput();
     public IEnumerable<FileInfo> FileOutput(FileInfo file);
 }

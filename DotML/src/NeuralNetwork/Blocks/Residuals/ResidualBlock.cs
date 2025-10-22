@@ -75,7 +75,7 @@ public abstract class ResidualBlock : INetworkModule, IBlockVisitable
     /// <returns>combined tensor</returns>
     protected abstract Tensor<float> Combine(Tensor<float> output, Tensor<float> residual);
 
-    public Gradients Backward(Tensor<float> dY, EvaluationContext ctx, IClippingStrategy? clipping = null)
+    public Gradients Backward(Tensor<float> dY, EvaluationContext ctx, ILocalClippingStrategy<float>? clipping = null)
     {
         // Fetch the cached shapes for proper splitting
         var context = ctx.Get<ResidualBlockContext>(this);
@@ -138,12 +138,20 @@ public class ResidualBlockGradients : Gradients
         Residual = residual;
     }
 
-    public override void Clip(IClippingStrategy clipping)
+    public override void Clip(ILocalClippingStrategy<float> clipping)
     {
-        this.dX.ElementWiseInplace((x) => clipping.ClipInput(x));
+        clipping.ClipInput(dX);
 
         this.Main.Clip(clipping);
         this.Residual.Clip(clipping);
     }
-    
+
+    public override IEnumerable<Tensor<float>> EnumerateParameterGradients()
+    {
+        foreach (var p in Main.EnumerateParameterGradients())
+            yield return p;
+        foreach (var p in Residual.EnumerateParameterGradients())
+            yield return p;
+    }
+
 }

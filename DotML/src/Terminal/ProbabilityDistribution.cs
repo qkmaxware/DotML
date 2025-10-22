@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text;
 using DotML.Terminal;
 
@@ -20,9 +21,14 @@ public struct ProbabilityDistribution: ITerminalRenderer
         this.values = (float[])vec;
     }
 
-    public ProbabilityDistribution(Vec<float> vec, string[]? labels) : this(vec) {
+    public ProbabilityDistribution(Vec<float> vec, string[]? labels) : this(vec)
+    {
         this.labels = labels;
     }
+
+    public ReadOnlyCollection<float> GetProbabilities() => Array.AsReadOnly(values);
+
+    public ReadOnlyCollection<string>? GetLabels() => labels is not null ? Array.AsReadOnly(labels) : null;
 
     /// <summary>
     /// Maximum recorded probability

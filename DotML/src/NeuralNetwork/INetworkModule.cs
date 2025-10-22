@@ -36,7 +36,7 @@ public interface INetworkModule
     /// <param name="ctx">evaluation context with cached intermediary tensors</param>
     /// <param name="clipping">optional gradient clipping strategy</param>
     /// <returns>gradient of loss w.r.t input and layer specific gradients if applicable</returns>
-    public Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null);
+    public Gradients Backward(Tensor<float> dy, EvaluationContext ctx, ILocalClippingStrategy<float>? clipping = null);
 
     /// <summary>
     /// Update this layer's weights and biases used the provided gradients usually computed via a call to <see cref="Backward"/>

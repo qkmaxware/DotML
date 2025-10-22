@@ -108,13 +108,19 @@ public class Modify : BaseCommand {
         }
 
         if (LabelsForClasses is not null && LabelsForClasses.Any()) {
-            if (model.ClassLabels is null)
-                model.ClassLabels = new List<string>();
+            model.ProblemDescription = model.ProblemDescription ?? new ModelProblemDescription();
 
-            foreach (var label in LabelsForClasses)
-                model.ClassLabels.Add(label);
-            
-            Console.WriteLine($"Successfully labeled classes [{string.Join(',', LabelsForClasses)}] on {model.Guid}");
+            if (model.ProblemDescription.Classification is not null)
+            {
+                var classes = model.ProblemDescription.Classification;
+                if (classes.ClassLabels is null)
+                    classes.ClassLabels = new List<string>();
+
+                foreach (var label in LabelsForClasses)
+                    classes.ClassLabels.Add(label);
+
+                Console.WriteLine($"Successfully labeled classes [{string.Join(',', LabelsForClasses)}] on {model.Guid}");
+            }
         }
 
         model.UpdateMetadata();

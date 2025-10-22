@@ -1,5 +1,8 @@
 using DotML.Cli.Logging;
 using DotML.Network.Training;
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+using Qkmaxware.Terminal.Layout;
 
 namespace DotML.Cli.Decodings;
 
@@ -20,12 +23,15 @@ public class Xml : IFileOnlyDecoder, IDecoder {
             this.values = values;
         }
 
-        public void ConsoleOutput() {
+        public IElement ConsoleOutput() {
             int i = 1;
-            foreach (var tensor in values) {
+            var box = new VBox();
+            foreach (var tensor in values)
+            {
                 var shape = tensor.Shape;
-                Console.WriteLine($"Batch {i++}: A {shape.Channels}x{shape.Rows}x{shape.Columns} tensor.");
+                box.Add(new Label($"Batch {i++}: A {shape.Channels}x{shape.Rows}x{shape.Columns} tensor."));
             }
+            return box;
         }
 
         public IEnumerable<FileInfo> FileOutput(FileInfo file) {

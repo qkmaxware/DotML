@@ -21,10 +21,25 @@ public abstract class Gradients
     }
 
     /// <summary>
-    /// Perform clipping on these gradients
+    /// Perform local clipping on these gradients
     /// </summary>
     /// <param name="clipping">clipping strategy</param>
-    public abstract void Clip(IClippingStrategy clipping);
+    public abstract void Clip(ILocalClippingStrategy<float> clipping);
+
+    /// <summary>
+    /// Perform global clipping over all gradients encapsulated by this object
+    /// </summary>
+    /// <param name="clipping">clipping strategy</param>
+    public void Clip(IGlobalClippingStrategy<float> clipping)
+    {
+        clipping.Clip(this.EnumerateParameterGradients());
+    }
+
+    /// <summary>
+    /// Enumerate over all parameter gradients represented by this tensor (non-dX)
+    /// </summary>
+    /// <returns>enumerable of tensors</returns>
+    public abstract IEnumerable<Tensor<float>> EnumerateParameterGradients();
 }
 
 /// <summary>
@@ -34,9 +49,12 @@ public class Gradient : Gradients
 {
     public Gradient(Tensor<float> dx) : base(dx) { }
 
-    public override void Clip(IClippingStrategy clipping) {
-        this.dX.ElementWiseInplace((x) => clipping.ClipInput(x));
+    public override void Clip(ILocalClippingStrategy<float> clipping)
+    {
+        clipping.ClipInput(dX);
     }
+
+    public override IEnumerable<Tensor<float>> EnumerateParameterGradients() => Enumerable.Empty<Tensor<float>>();
 }
 
 /// <summary>
@@ -60,11 +78,17 @@ public class WeightAndBiasGradients : Gradients
         this.dB = db;
     }
 
-    public override void Clip(IClippingStrategy clipping)
+    public override void Clip(ILocalClippingStrategy<float> clipping)
     {
-        this.dX.ElementWiseInplace((x) => clipping.ClipInput(x));
-        this.dW.ElementWiseInplace((w) => clipping.ClipWeight(w));
-        this.dB.ElementWiseInplace((b) => clipping.ClipBias(b));
+        clipping.ClipInput(dX);
+        clipping.ClipWeight(dW);
+        clipping.ClipBias(dX);
+    }
+
+    public override IEnumerable<Tensor<float>> EnumerateParameterGradients()
+    {
+        yield return dW;
+        yield return dB;
     }
 }
 
@@ -88,8 +112,15 @@ public class GradientList : Gradient
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Gradients dN(int n) => subgradients[n];
 
-    public override void Clip(IClippingStrategy clipping) {
-        this.dX.ElementWiseInplace((x) => clipping.ClipInput(x));
+    public override void Clip(ILocalClippingStrategy<float> clipping)
+    {
+        clipping.ClipInput(dX);
         // Don't clip subgradients as those should already be clipped by .Backward of other layers
+    }
+    
+    public override IEnumerable<Tensor<float>> EnumerateParameterGradients()
+    {
+        foreach (var p in this.subgradients.SelectMany(sub => sub.EnumerateParameterGradients()))
+            yield return p;
     }
 }

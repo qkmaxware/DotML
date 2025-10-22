@@ -1,3 +1,7 @@
+using System.Text;
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+
 namespace DotML.Cli.Decodings;
 
 /// <summary>
@@ -11,34 +15,39 @@ public class BooleanVector : IDecoder {
             this.vectors = vectors;
         }
 
-        public void ConsoleOutput() {
-            foreach (var vector in vectors) {
-                Console.Write('[');
+        public IElement ConsoleOutput() {
+            var builder = new StringBuilder();
+            foreach (var vector in vectors)
+            {
+                builder.Append('[');
                 var first = true;
-                foreach (var value in vector) {
-                    if (first == false) {
-                        Console.Write(',');
+                foreach (var value in vector)
+                {
+                    if (first == false)
+                    {
+                        builder.Append(',');
                     }
-                    Console.Write(value);
+                    builder.Append(value);
                     first = false;
                 }
-                Console.WriteLine(']');
+                builder.Append(']'); builder.AppendLine();
             }
+            return new Paragraph(builder.ToString());
         }
 
         public IEnumerable<FileInfo> FileOutput(FileInfo file) {
             using (var writer = new StreamWriter(file.OpenWrite())) {
                 foreach (var vector in vectors) {
-                    Console.Write('[');
+                    writer.Write('[');
                     var first = true;
                     foreach (var value in vector) {
                         if (first == false) {
-                            Console.Write(',');
+                            writer.Write(',');
                         }
-                        Console.Write(value);
+                        writer.Write(value);
                         first = false;
                     }
-                    Console.WriteLine(']');
+                    writer.WriteLine(']');
                 }
             }
             yield return file;

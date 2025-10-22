@@ -11,7 +11,8 @@ public class ModuleTrainer
 {
     public RegularizationFunction Regularization { get; set; } = new NoRegularization();
     public IOptimizer Optimizer { get; set; } = new SgdOptimizer();
-    public IClippingStrategy? GradientClipping { get; set; } = null;
+    public ILocalClippingStrategy<float>? LocalClipping { get; set; } = null;
+    public IGlobalClippingStrategy<float>? GlobalClipping { get; set; } = null;
     public IInitializer Initializer { get; set; } = new NormalXavierInitialization();
     public LossFunction Loss {get; set;} = LossFunctions.MeanSquaredError;
     public Predicate<ModuleTrainingEnumerator.Report>? StopCondition { get; set; } = StopOnAvgLossDefault;
@@ -43,7 +44,8 @@ public class ModuleTrainer
             testing: validation is null ? dataset : validation,
             regularization: this.Regularization,
             optimizer: this.Optimizer,
-            gradientClipping: this.GradientClipping,
+            localClipping: this.LocalClipping,
+            globalClipping: this.GlobalClipping,
             initializer: this.Initializer,
             loss: this.Loss,
             stopCondition: this.StopCondition,

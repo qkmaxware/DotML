@@ -215,7 +215,8 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
     public RegularizationFunction Regularization {get; init;}
     public IOptimizer Optimizer {get; init;}
-    public IClippingStrategy? GradientClipping {get; init;}
+    public ILocalClippingStrategy<float>? LocalClipping { get; init; }
+    public IGlobalClippingStrategy<float>? GlobalClipping {get; init;}
     public IInitializer Initializer {get; init;}
     public LossFunction Loss {get; init;}
     public Predicate<Report>? StopCondition {get; init;}
@@ -236,7 +237,8 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         ITrainingDataSampler<float> testing,
         RegularizationFunction regularization,
         IOptimizer optimizer,
-        IClippingStrategy? gradientClipping,
+        ILocalClippingStrategy<float>? localClipping,
+        IGlobalClippingStrategy<float>? globalClipping,
         IInitializer initializer,
         LossFunction loss,
         Predicate<Report>? stopCondition,
@@ -251,7 +253,8 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         this.TestingData = testing;
         this.Regularization = regularization;
         this.Optimizer = optimizer;
-        this.GradientClipping = gradientClipping;
+        this.LocalClipping = localClipping;
+        this.GlobalClipping = globalClipping;
         this.Initializer = initializer;
         this.Loss = loss;
         this.StopCondition = stopCondition;
@@ -301,11 +304,17 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
                     @true: truth.AsSpan(batchIndex * batchStride, batchStride)          // Treat subspan of truth as a vector across non-batch dimensions
                 );
             }
-            if (GradientClipping is not null)
-                dY.ElementWiseInplace(y => GradientClipping.ClipInput(y));              // Clip these gradients too in case they are too large
+            if (this.LocalClipping is not null)
+                this.LocalClipping.ClipInput(dY);                                       // Clip these gradients too in case they are too large
 
-            // Backward step
-            var gradients = Network.Backward(dY, ctx: context, clipping: this.GradientClipping);
+            // Backward step (with local clipping if provided)
+            var gradients = Network.Backward(dY, ctx: context, clipping: this.LocalClipping);
+
+            // Global clipping (if provided)
+            if (this.GlobalClipping is not null)
+            {
+                gradients.Clip(this.GlobalClipping);
+            }
 
             // Update step
             Network.Update(

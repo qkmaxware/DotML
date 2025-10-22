@@ -137,7 +137,7 @@ public class SequentialBlock : INetworkModule, IBlockVisitable
     /// <param name="dy">gradient of the output</param>
     /// <param name="ctx">the evaluation context to retrieve intermediary tensors from</param>
     /// <returns>gradient of the input as well as gradients for each layer in a list</returns>
-    public Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null)
+    public Gradients Backward(Tensor<float> dy, EvaluationContext ctx, ILocalClippingStrategy<float>? clipping = null)
     {
         var subGrad = new Gradients[layers.Count];
         for (var i = 0; i < subGrad.Length; i++)

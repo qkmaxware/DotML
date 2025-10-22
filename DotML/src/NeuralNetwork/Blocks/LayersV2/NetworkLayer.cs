@@ -75,7 +75,7 @@ public abstract class NetworkLayer : INetworkModule, IBlockVisitable
     /// <returns>gradient of loss w.r.t input and layer specific gradients if applicable</returns>
     public abstract Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy);
 
-    public virtual Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null)
+    public virtual Gradients Backward(Tensor<float> dy, EvaluationContext ctx, ILocalClippingStrategy<float>? clipping = null)
     {
         var io = ctx.Get<IOContext>(this);
         var grads = this.Backward(io.Input, io.Output, dy);

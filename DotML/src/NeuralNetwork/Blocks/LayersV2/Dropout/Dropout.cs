@@ -66,7 +66,7 @@ public class Dropout : NetworkLayer
         return new Gradient(dx);
     }
 
-    public override Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null)
+    public override Gradients Backward(Tensor<float> dy, EvaluationContext ctx, ILocalClippingStrategy<float>? clipping = null)
     {
         var io = ctx.Get<MaskContext>(this);
         var grads = this.Backward(io.Input, io.Output, dy, io.Mask);

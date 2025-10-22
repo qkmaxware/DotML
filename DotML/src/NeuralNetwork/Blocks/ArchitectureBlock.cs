@@ -41,7 +41,7 @@ public class ArchitectureBlock : INetworkModule, IBlockVisitable
         this.ReferenceUrl = referenceUri;
     }
 
-    public Gradients Backward(Tensor<float> dy, EvaluationContext ctx, IClippingStrategy? clipping = null)
+    public Gradients Backward(Tensor<float> dy, EvaluationContext ctx, ILocalClippingStrategy<float>? clipping = null)
     {
         return RootModule.Backward(dy, ctx, clipping);
     }

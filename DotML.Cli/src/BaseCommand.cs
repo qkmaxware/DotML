@@ -1,4 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+using Qkmaxware.Terminal.Layout;
 
 namespace DotML.Cli;
 
@@ -9,18 +12,22 @@ public abstract class BaseCommand {
 
     public abstract void Action(AppData appData);
 
-    public int TryDoAction(AppData appData) {
+    public int TryDoAction(AppData appData)
+    {
         Console.Title = "DotML.NetFlow";
-        try {
+        try
+        {
             Console.WriteLine();
             Action(appData);
             Console.WriteLine();
             return OKAY;
-        } 
-        catch (ErrorCodeException ex) {
+        }
+        catch (ErrorCodeException ex)
+        {
             return ex.ErrorCode;
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
             DrawDivider();
             Console.WriteLine("An unexpected error occurred:");
             Console.WriteLine(e);
@@ -41,12 +48,49 @@ public abstract class BaseCommand {
         "kyllä",
         // Japanese
         "はい", "hai",
-    ];  
-    protected static bool IsSet(string? value) {
-        return 
+    ];
+    protected static bool IsSet(string? value)
+    {
+        return
             !string.IsNullOrEmpty(value)    // Not empty
             && truthy.Where(v => v.Equals(value, StringComparison.CurrentCultureIgnoreCase)).Any() // And is a truth string
         ;
+    }
+
+    protected class ErrorApp : ConsoleApp
+    {
+        public ErrorApp(string msg)
+        {
+            this.Root = new Panel("Error", new Label(msg)).WithPadding(1);
+        }
+        public ErrorApp(string msg, string[] options)
+        {
+            this.Root = new Panel(
+                "Error",
+                new VBox(
+                    new Paragraph(msg),
+                    new Label(string.Empty),
+                    new Label("Options:"),
+                    new UnorderedList(options.Select(x => new Label(x)))
+                )
+            ).WithPadding(1);
+        }
+    }
+    protected class RenderView: ConsoleApp
+    {
+        public RenderView(IElement root) : base(root) {}
+    }
+
+    protected void WriteError(string message)
+    {
+        new ErrorApp(message).RenderOnce();
+        return;
+    }
+
+    protected void WriteError(string message, IEnumerable<string> options)
+    {
+        new ErrorApp(message, options.ToArray()).RenderOnce();
+        return;
     }
 
     protected void DrawDivider(int? size = null) {
@@ -95,11 +139,12 @@ public abstract class BaseCommand {
         }
     }
 }
-
-public class ErrorCodeException : System.Exception {
-    public int ErrorCode {get; private set;}
-    public ErrorCodeException(int error, string? message)  : base(message) {
+public class ErrorCodeException : System.Exception
+{
+    public int ErrorCode { get; private set; }
+    public ErrorCodeException(int error, string? message) : base(message)
+    {
         this.ErrorCode = error;
     }
-    public ErrorCodeException(int error, string? message, Exception? inner) : base(message, inner) {}
+    public ErrorCodeException(int error, string? message, Exception? inner) : base(message, inner) { }
 }
