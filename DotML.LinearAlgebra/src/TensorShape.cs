@@ -827,6 +827,19 @@ public readonly struct TensorShape : IShape
     /// </summary>
     /// <param name="index">dimension</param>
     /// <returns>length of dimension or 0</returns>
+    public int LengthOrDefault(Index index)
+    {
+        var off = index.GetOffset(dims.Length);
+        if (off >= 0 && off < dims.Length)
+            return dims[off];
+        return 0;
+    }
+
+    /// <summary>
+    /// Get the length of a dimension or return 0 if the dimension is out of range
+    /// </summary>
+    /// <param name="index">dimension</param>
+    /// <returns>length of dimension or 0</returns>
     public int LengthOrDefault(int index) => index < dims.Length ? dims[index] : 0;
 
     public override bool Equals([NotNullWhen(true)] object? obj)

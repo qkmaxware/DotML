@@ -58,8 +58,10 @@ public class TensorsOutputLogger : BaseOutputLogger {
 
     public TensorsOutputLogger(DirectoryInfo logDir) : base(logDir) { }
 
-    private void EmitTensors(string layerName, BatchedFeatureSet<float> args) {
-        for (var batch = 0; batch < args.Batches; batch++) {
+    private void EmitTensors(string layerName, BatchedFeatureSet<float> args)
+    {
+        for (var batch = 0; batch < args.Batches; batch++)
+        {
             var features = args[batch];
             var dir_path = Path.Combine(LogDirectory.FullName, $"Batch-{batch}");
             var dir = Directory.CreateDirectory(dir_path);
@@ -68,10 +70,20 @@ public class TensorsOutputLogger : BaseOutputLogger {
             var layer_dir = Directory.CreateDirectory(layer_dir_path);
 
             var file = Path.Combine(layer_dir_path, "output.tensor" + Excel2003.Extension);
-            using (var writer = new StreamWriter(file)) {
+            using (var writer = new StreamWriter(file))
+            {
                 Excel2003.Write(writer, features);
             }
         }
+    }
+
+    public override void Log(string identifier, Tensor<float> output)
+    {
+        var dir_path = Path.Combine(LogDirectory.FullName, identifier);
+        var dir = Directory.CreateDirectory(dir_path);
+
+        using var writer = new StreamWriter(Path.Combine(dir.FullName, "output.tensor.xml"));
+        output.SaveSpreadsheetML(writer);
     }
 
     public override void Visit(ConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {

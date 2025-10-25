@@ -12,8 +12,10 @@ public abstract class BaseOutputLogger : IOutputLogger {
         this.LogDirectory.Create();
     }
 
+    public virtual void Log(string identifier, Tensor<float> output) {}
 
-    public virtual void Visit(ConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args) {
+    public virtual void Visit(ConvolutionLayer layer, (int LayerIndex, BatchedFeatureSet<float> Output) args)
+    {
         return;
     }
 

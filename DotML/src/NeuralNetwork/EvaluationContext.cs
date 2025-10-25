@@ -44,12 +44,12 @@ public class EvaluationContext
         this.Mode = mode;
     }
 
-    public void Save(object module, IModuleContext context)
+    public virtual void Save(object module, IModuleContext context)
     {
         _storage[module] = context;
     }
 
-    public TCtx Get<TCtx>(object module)
+    public virtual TCtx Get<TCtx>(object module)
     where TCtx : IModuleContext
     {
         if (_storage.TryGetValue(module, out var ctx)

@@ -31,7 +31,9 @@ public abstract class ImageEmbedding : FileOnlyEmbedding {
     public virtual SKBitmap PreprocessImage(INetworkModule @for, SKBitmap original) {
         // Crop image to match aspect ratio
         var aspect = (double)original.Width / (double)original.Height;
-        var ishape = @for.InputShape;
+        var ishape = @for is ArchitectureBlock arch && arch.RequiredInputShape.HasValue 
+            ? new Shape3D(arch.RequiredInputShape.Value.LengthOrDefault(^3), arch.RequiredInputShape.Value.LengthOrDefault(^2), arch.RequiredInputShape.Value.LengthOrDefault(^1)) 
+            : new Shape3D(3, original.Height, original.Width);
 
         var desired_aspect = ishape.Columns / ishape.Rows;
         var cropWidth = original.Width;

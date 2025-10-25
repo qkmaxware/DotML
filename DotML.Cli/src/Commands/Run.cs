@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using CommandLine;
 using DotML.Cli.Logging;
+using DotML.Network;
 using Qkmaxware.Terminal;
 using Qkmaxware.Terminal.Elements;
 using Qkmaxware.Terminal.Layout;
@@ -92,7 +93,7 @@ public class Run : BaseCommand {
         var decodingTaskUi = MakeTaskView(() => decodingTaskState, "Decoding Output");
         process_list.Add(decodingTaskUi);
 
-        var output_content_area = new Padding(null, 1, 1, 1, 1);
+        var output_content_area = new Qkmaxware.Terminal.Layout.Padding(null, 1, 1, 1, 1);
         var output_panel = new Panel("Output", output_content_area);
         success_view.Add(new Conditional(() => output_content_area.ChildComponent is not null, output_panel));
 
@@ -112,8 +113,8 @@ public class Run : BaseCommand {
         Console.SetCursorPosition(left, top);
         view.RenderOnce();
     }
-    
-    private void DoTasks(AppData appData, ref string? error, ref List<IElement> error_options, ref TaskState loadModelTaskState, ref TaskState vectorizingTaskState, ref TaskState predictingTaskState, ref TaskState decodingTaskState, ref Padding outputContentArea)
+
+    private void DoTasks(AppData appData, ref string? error, ref List<IElement> error_options, ref TaskState loadModelTaskState, ref TaskState vectorizingTaskState, ref TaskState predictingTaskState, ref TaskState decodingTaskState, ref Qkmaxware.Terminal.Layout.Padding outputContentArea)
     {
         // Verify options
         var assembly = typeof(Run).Assembly;
@@ -172,7 +173,7 @@ public class Run : BaseCommand {
         loadModelTaskState = TaskState.Done;
 
         vectorizingTaskState = TaskState.Running;
-        BatchedFeatureSet<float> input_vector;
+        Tensor<float> input_vector;
         if (string.IsNullOrEmpty(InputFile))
         {
             using var reader = new StreamReader(Console.OpenStandardInput(), Console.InputEncoding);
@@ -187,24 +188,15 @@ public class Run : BaseCommand {
                 error = $"No file exists with name '{InputFile}'.";
                 return;
             }
-            input_vector = embedder.CreateEmbedding(network, new FileInfo[] { input });
+            input_vector = embedder.CreateEmbedding(network, input);
         }
         vectorizingTaskState = TaskState.Done;
 
         predictingTaskState = TaskState.Running;
-        var layer_index = 0;
-        var output_vector = network.PredictSync(
-            values: input_vector,
-            before_layer: (layer, input) => { },
-            after_layer: (layer, output) =>
-            {
-                foreach (var output_logger in output_loggers)
-                {
-                    if (output_logger is not null)
-                        layer.Visit(output_logger, (layer_index, output));
-                }
-                layer_index++;
-            }
+        var loggingContext = new LoggedEvaluationContext(output_loggers);
+        var output_vector = network.Forward(
+            input_vector,
+            ctx: loggingContext
         );
         predictingTaskState = TaskState.Done;
 
@@ -249,6 +241,30 @@ public class Run : BaseCommand {
             }
 
             outputContentArea.ChildComponent = output_stack;
+        }
+    }
+    
+    public class LoggedEvaluationContext : EvaluationContext
+    {
+        private IOutputLogger?[]? loggers;
+        public LoggedEvaluationContext(IOutputLogger?[]? loggers) : base(EvaluationMode.Inference)
+        {
+            this.loggers = loggers;
+        }
+
+        public override void Save(object module, IModuleContext context)
+        {
+            if (loggers is null)
+                return;
+            
+            foreach (var logger in loggers)
+            {
+                if (logger is null)
+                    continue;
+
+                // TODO make this better for organizing modules in logs
+                logger.Log(module.GetType().Name + "-#" + module.GetHashCode(), context.Output);
+            }
         }
     }
 }
