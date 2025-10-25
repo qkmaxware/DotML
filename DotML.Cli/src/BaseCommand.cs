@@ -76,9 +76,54 @@ public abstract class BaseCommand {
             ).WithPadding(1);
         }
     }
-    protected class RenderView: ConsoleApp
+    protected class RenderView : ConsoleApp
     {
-        public RenderView(IElement root) : base(root) {}
+        public RenderView(IElement root) : base(root) { }
+    }
+    
+    protected enum TaskState
+    {
+        Waiting, Running, Done
+    }
+
+    protected IElement MakeTaskView(Func<TaskState> condition, string name)
+    {
+        return new VBox(
+            new Conditional(
+                () => condition() == TaskState.Waiting,
+                new Label(name)
+            ),
+            new Conditional(
+                () => condition() == TaskState.Running,
+                new Spinner(CharacterAnimation.TravellingDots, name)
+            ),
+            new Conditional(
+                () => condition() == TaskState.Done,
+                new Label("✓" + name)
+            )
+        );
+    }
+
+    protected IElement MakeTaskView(Func<TaskState> condition, Func<float> progress, string name)
+    {
+        return new VBox(
+            new Conditional(
+                () => condition() == TaskState.Waiting,
+                new Label(name)
+            ),
+            new Conditional(
+                () => condition() == TaskState.Running,
+                new VSplitContainer( 
+                    name.Length + 1, // First component takes up this much space, second component the rest
+                    new Spinner(CharacterAnimation.TravellingDots, name),
+                    new DynamicProgressBar(progress)
+                )
+            ),
+            new Conditional(
+                () => condition() == TaskState.Done,
+                new Label("✓" + name)
+            )
+        );
     }
 
     protected void WriteError(string message)

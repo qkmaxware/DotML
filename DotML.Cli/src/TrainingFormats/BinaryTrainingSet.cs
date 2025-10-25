@@ -1,4 +1,5 @@
 using DotML.Network.Training;
+using DotML.Network.Training.Formats;
 
 namespace DotML.Cli.TrainingData;
 
@@ -9,12 +10,8 @@ public class BinaryTrainingSet : ITrainingDataFormat {
     public bool IsInFormat(FileInfo file) {
         return TrainingSet<float>.IsBinaryTrainingSet(file);
     }
-    public TrainingSet<float> Read(FileInfo file) {
-        TrainingSet<float> set = new TrainingSet<float>();
-
-        using var reader = new BinaryReader(file.OpenRead());
-        set.AddFrom(reader);
-
-        return set;
+    public ITrainingDataSource<float> Read(FileInfo file) {
+        BinaryTensorLoader<float> loader = new BinaryTensorLoader<float>();
+        return loader.Load(file.FullName);
     }
 }

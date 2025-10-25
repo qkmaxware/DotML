@@ -16,7 +16,7 @@ public class ClassifiedCsv : ITrainingDataFormat {
         return line.Contains("class", StringComparison.CurrentCultureIgnoreCase) || line.Contains("label", StringComparison.CurrentCultureIgnoreCase);
     }
 
-    public TrainingSet<float> Read(FileInfo file) {
+    public ITrainingDataSource<float> Read(FileInfo file) {
         List<(Vec<float>, int)> items = new List<(Vec<float>, int)>();
         var max_count = 1;
         using var reader = new StreamReader(file.OpenRead());
@@ -40,7 +40,16 @@ public class ClassifiedCsv : ITrainingDataFormat {
             first_row = false;
         }
 
-        return new TrainingSet<float>(items.Select(item=> new TrainingPair<float> { Input=item.Item1, Output=vector_from_label_index(item.Item2, max_count, 0, 1) }));
+        return new ListTrainingDataSource<float>(
+            new TensorShape(),
+            new TensorShape(max_count),
+            items.Select(item =>
+                (
+                    Tensor<float>.Vec(item.Item1.AsArray()),
+                    Tensor<float>.Vec(vector_from_label_index(item.Item2, max_count, 0, 1).AsArray())
+                )
+            )
+        );
     }
 
     private static Vec<float> vector_from_label_index(int index, int classes, float off = -1, float on = 1) {

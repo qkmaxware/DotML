@@ -61,22 +61,24 @@ public class Image : IDecoder, IFileOnlyDecoder {
         }
     }
 
-    public IDecodedResult Decode(BatchedFeatureSet<float> output) {
-        var images = new SKBitmap[output.Batches];
-        var channels = Math.Max(output.Channels, 3);
+    public IDecodedResult Decode(Tensor<float> output) {
+        output = output.ReshapeShared(output.Shape.NormalizeRank(4));
+        var batches = output.Shape[0];
+        var channels = Math.Max(output.Shape[1], 3);
+        var rows = output.Shape[2];
+        var columns = output.Shape[3];
+
+        var images = new SKBitmap[batches];
         for (var batch = 0; batch < images.Length; batch++) {
-            var features = output[batch];
-            var output_shape = features.Shape;
-            var width = output_shape.Columns;
-            var height = output_shape.Rows;
-            var size = width * height;
+            var width = columns;
+            var height = rows;
             var bitmap = new SKBitmap(width,height, isOpaque: true);  
             for (var y = 0; y < height; y++) {
                 for (var x = 0; x < width; x++) {
                     var offset = y * width + x;
-                    var r = channels >= 1 ? (byte)Math.Clamp(features[0, y, x] * 255, 0, 255) : (byte)0;
-                    var g = channels >= 2 ? (byte)Math.Clamp(features[1, y, x] * 255, 0, 255) : (byte)0;
-                    var b = channels >= 3 ? (byte)Math.Clamp(features[2, y, x] * 255, 0, 255) : (byte)0;
+                    var r = channels >= 1 ? (byte)Math.Clamp(output[batch, 0, y, x] * 255, 0, 255) : (byte)0;
+                    var g = channels >= 2 ? (byte)Math.Clamp(output[batch, 1, y, x] * 255, 0, 255) : (byte)0;
+                    var b = channels >= 3 ? (byte)Math.Clamp(output[batch, 2, y, x] * 255, 0, 255) : (byte)0;
                     if (channels == 1) {
                         g = r; b = r; // For mono-images use the same colour for all 3 components
                     }

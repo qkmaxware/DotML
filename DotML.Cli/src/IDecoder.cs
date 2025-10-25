@@ -3,7 +3,7 @@ using Qkmaxware.Terminal;
 namespace DotML.Cli;
 
 public interface IDecoder {
-    public IDecodedResult Decode(BatchedFeatureSet<float> output_values);
+    public IDecodedResult Decode(Tensor<float> output_values);
 }
 
 public interface IFileOnlyDecoder : IDecoder {

@@ -8,15 +8,15 @@ namespace DotML.Cli.Embeddings;
 /// Treat the input as an image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
 public class Image : ImageEmbedding {
-    public override FeatureSet<float> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
+    public override Tensor<float> CreateEmbedding(INetworkModule network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
-        var samples     = network.InputShape.Channels;
+        var samples     = bitmap.ColorType == SKColorType.Gray8 ? 1 : 3;
 
         const int R = 0;
         const int G = 1;
         const int B = 2;
-        var features = new FeatureSet<float>(new Shape3D(samples, rows, cols));
+        var features = Tensor<float>.Defaults(new TensorShape(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {
@@ -40,7 +40,7 @@ public class Image : ImageEmbedding {
 /// Treat the input as an RGB image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
 public class RgbImage : ImageEmbedding {
-    public override FeatureSet<float> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
+    public override Tensor<float> CreateEmbedding(INetworkModule network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
         var samples     = 3;
@@ -48,7 +48,7 @@ public class RgbImage : ImageEmbedding {
         const int R = 0;
         const int G = 1;
         const int B = 2;
-        var features = new FeatureSet<float>(new Shape3D(samples, rows, cols));
+        var features = Tensor<float>.Defaults(new TensorShape(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {
@@ -70,13 +70,13 @@ public class RgbImage : ImageEmbedding {
 /// Treat the input as a Mono image whose pixel values are representable by bytes between 0 and 255
 /// </summary>
 public class MonoImage : ImageEmbedding {
-    public override FeatureSet<float> CreateEmbedding(FeedforwardNetwork network, SKBitmap bitmap) {
+    public override Tensor<float> CreateEmbedding(INetworkModule network, SKBitmap bitmap) {
         var rows        = bitmap.Height;
         var cols        = bitmap.Width;
         var samples     = 1;
 
         const int GREY = 0;
-        var features = new FeatureSet<float>(new Shape3D(samples, rows, cols));
+        var features = Tensor<float>.Defaults(new Shape3D(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {

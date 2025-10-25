@@ -61,6 +61,11 @@ public static class TensorExport
         var document = JsonDocument.Parse(stream);
         var root = document.RootElement;
 
+        return FromJson<TNum>(root);
+    }
+    public static Tensor<TNum> FromJson<TNum>(JsonElement root)
+    where TNum : INumber<TNum>
+    {
         if (!root.TryGetProperty("shape", out var shapeElement) || shapeElement.ValueKind != JsonValueKind.Array)
             throw new NullReferenceException(nameof(TensorShape));
         var shape = new TensorShape(shapeElement.EnumerateArray().Select(e => e.GetInt32()).ToArray());

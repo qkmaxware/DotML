@@ -284,7 +284,7 @@ public class Safetensors {
             throw new KeyNotFoundException(key);
         }
         var shape = Enumerable.Range(0, result.Rank).Select(x => result.GetDimension(x)).ToArray();
-        if (!tensor.shape.Equals(shape)) {
+        if (!tensor.shape.AsDimensionEnumerable().SequenceEqual(shape)) {
             throw new IndexOutOfRangeException($"Resulting shape {string.Join('x', shape)} doesn't match shape of tensor {key} {string.Join('x', tensor.shape.AsDimensionEnumerable())}.");
         }
 

@@ -15,10 +15,6 @@ public class BinaryClassifiedVectors : ITrainingDataFormat {
         return file.Extension == ".bin" && !TrainingSet<float>.IsBinaryTrainingSet(file);
     }
 
-    public TrainingSet<float> Read(FileInfo file) {
-        return read_classified_binary_vectors(file, ZeroValue, OneValue, x => x.ReadByte());
-    }
-
     private static Vec<float> vector_from_label_index(int index, int classes, float off = -1, float on = 1) {
         float[] values = new float[classes];
         Array.Fill(values, off);
@@ -50,5 +46,16 @@ public class BinaryClassifiedVectors : ITrainingDataFormat {
         }
         
         return new TrainingSet<float>(items.Select(item => new TrainingPair<float> { Input=item.Item1, Output=vector_from_label_index(item.Item2, category_count, category_off, category_on) }));
+    }
+
+    ITrainingDataSource<float> ITrainingDataFormat.Read(FileInfo file)
+    {
+        var set = read_classified_binary_vectors(file, ZeroValue, OneValue, x => x.ReadByte());
+        
+        var src = new ListTrainingDataSource<float>(new TensorShape(set.First().Input.Dimensionality), new TensorShape(set.First().Output.Dimensionality));
+        src.AddRange(
+            set.Select(pair => (Tensor<float>.Vec(pair.Input.AsArray()), Tensor<float>.Vec(pair.Output.AsArray())))
+        );
+        return src;
     }
 }

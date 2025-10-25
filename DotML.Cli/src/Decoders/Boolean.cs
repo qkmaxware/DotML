@@ -56,11 +56,19 @@ public class BooleanVector : IDecoder {
         public void Dispose() { }
     }
 
-    public IDecodedResult Decode(BatchedFeatureSet<float> output) {
+    public IDecodedResult Decode(Tensor<float> output) {
+        var batches = 1;
+        for (var i = 0; i < output.Shape.Rank - 1; i++)
+            batches *= output.Shape.Length(i);
+
+        var size = output.Shape.Length(^1);
+
+        List<bool[]> floats = new List<bool[]>();
+        for (var i = 0; i < batches; i++)
+            floats.Add(output.AsSpan(i * size, size).ToArray().Select(x => x >= 0.5f ? true : false).ToArray());
+
         return new Result(
-            output.Select(
-                b => b.SelectMany(f => f.FlattenRows()).Select(x => x >= 0.5f ? true : false).ToArray()
-            ).ToArray()
+            floats.ToArray()
         );
     }
 }

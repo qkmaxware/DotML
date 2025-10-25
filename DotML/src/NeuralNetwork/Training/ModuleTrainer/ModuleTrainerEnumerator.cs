@@ -222,7 +222,8 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
     public Predicate<Report>? StopCondition {get; init;}
     public int Epoch {get; private set;}
     public int MaxEpochs {get; init;}
-    public float LearningRate {get; init;}
+    public float LearningRate { get; init; }
+    public ILearningRateScheduler? LearningRateScheduler { get; init; }
 
     public int BatchSize = 8;
 
@@ -244,6 +245,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         Predicate<Report>? stopCondition,
         int maxEpochs,
         float learningRate,
+        ILearningRateScheduler? scheduler,
         int batchSize,
         int patience
     )
@@ -260,6 +262,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         this.StopCondition = stopCondition;
         this.MaxEpochs = maxEpochs;
         this.LearningRate = learningRate;
+        this.LearningRateScheduler = scheduler;
         this.BatchSize = batchSize;
         this.Patience = patience;
 
@@ -317,8 +320,9 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             }
 
             // Update step
+            var lr = this.LearningRateScheduler?.RateForEpoch(this.LearningRate, Epoch) ?? this.LearningRate;
             Network.Update(
-                this.LearningRate,
+                lr,
                 gradients,
                 optimizer: this.Optimizer,
                 regularization: this.Regularization

@@ -13,24 +13,21 @@ public class Xml : IFileOnlyDecoder, IDecoder {
 
     public bool FileRequired() => false; // We have console output but it isn't preferred
 
-    public IDecodedResult Decode(BatchedFeatureSet<float> output_values) {
+    public IDecodedResult Decode(Tensor<float> output_values) {
         return new Result(output_values);
     }
 
     public class Result : IDecodedResult {
-        private BatchedFeatureSet<float> values;
-        public Result(BatchedFeatureSet<float> values) {
+        private Tensor<float> values;
+        public Result(Tensor<float> values) {
             this.values = values;
         }
 
         public IElement ConsoleOutput() {
-            int i = 1;
             var box = new VBox();
-            foreach (var tensor in values)
-            {
-                var shape = tensor.Shape;
-                box.Add(new Label($"Batch {i++}: A {shape.Channels}x{shape.Rows}x{shape.Columns} tensor."));
-            }
+            var shape = values.Shape;
+            box.Add(new Label($" A {shape} tensor."));
+        
             return box;
         }
 
@@ -40,19 +37,10 @@ public class Xml : IFileOnlyDecoder, IDecoder {
             }
             var path = file.FullName;
 
-            if (this.values.Batches == 1) {
-                using var writer = new StreamWriter(path);
-                Excel2003.Write(writer, this.values[0]);
-                yield return file;
-            } else {
-                var batch_id = 0;
-                foreach (var features in this.values) {
-                    var name = Path.ChangeExtension(path, $".{batch_id}{Excel2003.Extension}");
-                    using var writer = new StreamWriter(path);
-                    Excel2003.Write(writer, features);
-                    yield return new FileInfo(name);
-                }
-            }
+            using var writer = new StreamWriter(path);
+            this.values.SaveSpreadsheetML(writer);
+
+            yield return file;
         }
 
         public void Dispose() { }

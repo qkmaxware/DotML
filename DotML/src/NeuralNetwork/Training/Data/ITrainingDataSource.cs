@@ -56,6 +56,11 @@ where TType : INumber<TType>
     {
         this.InputShape = ishape;
         this.OutputShape = oshape;
+    }
 
+    public ListTrainingDataSource(TensorShape ishape, TensorShape oshape, IEnumerable<(Tensor<TType> Input, Tensor<TType> Output)> data)
+    : this(ishape, oshape)
+    {
+        this.AddRange(data);
     }
 }

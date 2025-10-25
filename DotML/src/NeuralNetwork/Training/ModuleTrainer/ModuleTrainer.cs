@@ -18,6 +18,7 @@ public class ModuleTrainer
     public Predicate<ModuleTrainingEnumerator.Report>? StopCondition { get; set; } = StopOnAvgLossDefault;
     public int MaxEpochs { get; set; } = 500;
     public float LearningRate { get; set; } = 0.01f;
+    public ILearningRateScheduler? LearningRateScheduler { get; set; }
     public int BatchSize { get; set; } = 1;
     public int Patience { get; set; } = 1;
 
@@ -51,6 +52,7 @@ public class ModuleTrainer
             stopCondition: this.StopCondition,
             maxEpochs: Math.Max(1, this.MaxEpochs),
             learningRate: Math.Max(0, this.LearningRate),
+            scheduler: LearningRateScheduler,
             batchSize: Math.Max(1, this.BatchSize),
             patience: Math.Max(1, this.Patience)
         );
