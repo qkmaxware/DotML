@@ -27,24 +27,4 @@ public class ZeroInitialization: ConstantInitialization {
     
     public ZeroInitialization(): base(0) { }
 
-    public void InitializeBiases(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
-        network.ForeachLayer(layer => {
-            layer.ForeachNeuron(neuron => {
-                var weights = neuron.Weights;
-                var weightc = weights.Length;
-
-                for (var w = 0; w < weightc; w++) {
-                    weights[w] = 0;
-                }
-            });
-        });
-    }
-
-    public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
-        network.ForeachLayer(layer => {
-            layer.ForeachNeuron(neuron => {
-                neuron.Bias = 0; 
-            });
-        });
-    }
 }

@@ -7,12 +7,6 @@ public class NameStatement : Statement {
     public NameStatement(string name) {
         this.name = name;
     }
-
-    public override void Action(BuildEnvironment env) {
-        var net = env.Network;
-        if (net is not null)
-            net.Name = name;
-    }
     
     public override void ModuleAction(BuildEnvironment env) {
         var net = env.NetworkBlock;

@@ -21,8 +21,6 @@ public class CompareActivation
     #endregion
 
     private TensorShape ishape;
-    private BatchedFeatureSet<float> inputMatrix;
-    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -33,12 +31,9 @@ public class CompareActivation
         ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
         var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
-        old = new ActivationLayer(shape4.Shape3D, ActivationFunctions.Sigmoid);
         updated = new Activation(ActivationFunctions.Sigmoid);
 
-        inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Defaults(ishape);
-        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
         outputTensor = Tensor<float>.Defaults(updated.ForwardShape(ishape));
     }
 
@@ -48,31 +43,12 @@ public class CompareActivation
         // No need to do anything
     }
 
-    ActivationLayer old;
     Activation updated;
-
-    [Benchmark()]
-    public void ForwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-    }
     
     [Benchmark()]
     public void ForwardUpdated()
     {
         var output = updated.Forward(inputTensor);
-    }
-
-    [Benchmark()]
-    public void BackwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-        old.Backpropagate(new Network.Training.BackpropagationArgs(
-            layer: -1,
-            input: (inputMatrix),
-            output: (output),
-            error: (outputMatrix)
-        ));
     }
 
     [Benchmark()]

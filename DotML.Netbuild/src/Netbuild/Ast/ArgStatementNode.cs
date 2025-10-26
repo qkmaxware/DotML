@@ -9,12 +9,6 @@ public class ArgStatement : Statement {
     public void Set(Token<string> key, Literal value) {
         this.values[key.Value] = value;
     }
-
-    public override void Action(BuildEnvironment env) {
-        foreach (var arg in values) {
-            env.Arguments[arg.Key] = arg.Value.ValueOf();
-        }
-    }
     
     public override void ModuleAction(BuildEnvironment env) {
         foreach (var arg in values) {

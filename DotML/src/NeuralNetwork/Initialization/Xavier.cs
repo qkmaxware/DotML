@@ -23,30 +23,6 @@ public class NormalXavierInitialization
     public float RandomBias(int input_count, int output_count, int parameterCount) {
         return 0.01f;
     }
-
-    public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
-        network.ForeachLayer(layer => {
-            layer.ForeachNeuron(neuron => {
-                double stddev = Math.Sqrt(2.0 / (layer.InputShape.Count + layer.OutputShape.Count));
-                var weights = neuron.Weights;
-                var weightc = weights.Length;
-
-                for (var w = 0; w < weightc; w++) {
-                    weights[w] = NormalRandom(0, stddev);
-                }
-            });
-        });
-    }
-
-    public void InitializeBiases(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
-        network.ForeachLayer(layer => {
-            layer.ForeachNeuron(neuron => {
-                //double stddev = Math.Sqrt(2.0 / (layer.InputCount + layer.OutputCount));
-                //neuron.Bias = NormalRandom(0, stddev);
-                neuron.Bias = 0.01f;
-            });
-        });
-    }
 }
 
 public class UniformXavierInitialization
@@ -66,29 +42,5 @@ public class UniformXavierInitialization
 
     public float RandomBias(int input_count, int output_count, int parameterCount) {
         return 0.01f;
-    }
-
-    public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
-        network.ForeachLayer(layer => {
-            layer.ForeachNeuron(neuron => {
-                double limit = Math.Sqrt(6.0 / (layer.InputShape.Count + layer.OutputShape.Count));
-                var weights = neuron.Weights;
-                var weightc = weights.Length;
-
-                for (var w = 0; w < weightc; w++) {
-                    weights[w] = UniformRandom(limit);
-                }
-            });
-        });
-    }
-
-    public void InitializeBiases(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
-        network.ForeachLayer(layer => {
-            layer.ForeachNeuron(neuron => {
-                //double limit = Math.Sqrt(6.0 / (layer.InputCount + layer.OutputCount));
-                //neuron.Bias = UniformRandom(limit);
-                neuron.Bias = 0.01f;
-            });
-        });
     }
 }

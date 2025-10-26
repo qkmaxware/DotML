@@ -13,10 +13,10 @@ public interface ILearningRateScheduler
     public float RateForEpoch(float baseRate, int epochFor);
 }
 
-/*public class ConstantRate : ILearningRateScheduler
+public class ConstantRate : ILearningRateScheduler
 {
     public float RateForEpoch(float baseRate, int epochFor) => baseRate;
-}*/
+}
 
 public class ExponentialDecay : ILearningRateScheduler
 {

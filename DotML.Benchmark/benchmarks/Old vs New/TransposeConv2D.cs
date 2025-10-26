@@ -23,8 +23,6 @@ public class CompareTransposeConv2D
     #endregion
 
     private TensorShape ishape;
-    private BatchedFeatureSet<float> inputMatrix;
-    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -46,21 +44,8 @@ public class CompareTransposeConv2D
             outputPadding: (0, 0, 0, 0)
         );
         this.updated = updated_layer;
-        var old_layer = new TransposeConvolutionLayer(
-            shape4.Shape3D,
-            Padding.Valid,
-            Expansion.Same,
-            1, 1,
-            ConvolutionFilter.Make(filters: OUT_CHANNELS, kernels_per_filter: CHANNELS, kernel_size: 3)
-        );
-        this.old = old_layer;
 
-        if (!updated_layer.ForwardShape(ishape).Slice(1..).Equals((TensorShape)old.OutputShape))
-            throw new Exception($"These are not equivalent layers {ishape} -> {updated_layer.ForwardShape(ishape)} vs {old_layer.InputShape} -> {old_layer.OutputShape}");
-
-        inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
-        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
         outputTensor = Tensor<float>.Generate(updated.ForwardShape(ishape), () => (float)generator.NextDouble());
     }
 
@@ -70,14 +55,7 @@ public class CompareTransposeConv2D
         // No need to do anything
     }
 
-    FeedforwardNetworkLayer old;
     INetworkModule updated;
-
-    [Benchmark()]
-    public void ForwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-    }
     
     [Benchmark()]
     public void ForwardUpdated()
@@ -85,17 +63,6 @@ public class CompareTransposeConv2D
         var output = updated.Forward(inputTensor);
     }
 
-    [Benchmark()]
-    public void BackwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-        old.Backpropagate(new Network.Training.BackpropagationArgs(
-            layer: -1,
-            input: (inputMatrix),
-            output: (output),
-            error: (outputMatrix)
-        ));
-    }
 
     [Benchmark()]
     public void BackwardUpdated()

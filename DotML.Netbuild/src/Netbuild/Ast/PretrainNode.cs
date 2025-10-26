@@ -8,15 +8,6 @@ public class PretrainStatement : Statement {
         this.path = path;
     }
 
-    public override void Action(BuildEnvironment env) {
-        var net = env.Network;
-        if (net is null)
-            return;
-
-        var safe = Safetensors.ReadFromFile(this.path);
-        net.FromSafetensor(safe);
-    }
-
     public override void ModuleAction(BuildEnvironment env)
     {
         var net = env.NetworkBlock;

@@ -5,14 +5,6 @@ public class RemoveStatement : Statement {
     public RemoveStatement(LayerReference reference) {
         this.reference = reference;
     }
-
-    public override void Action(BuildEnvironment env) {
-        var network = env.Network;
-        if (network is null)
-            return;
-        
-        network.RemoveLayer(reference.IndexOf(env.LayerAliases));
-    }
     
     public override void ModuleAction(BuildEnvironment env) {
         var network = env.NetworkBlock;

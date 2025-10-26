@@ -47,31 +47,6 @@ public class NetbuildSerializer {
     /// </summary>
     /// <param name="reader">reader</param>
     /// <returns>neural network</returns>
-    public FeedforwardNetwork Deserialize(TextReader reader) => Deserialize(reader.ReadToEnd());
-
-    /// <summary>
-    /// Deserialize the contents of a string as a netbuild script
-    /// </summary>
-    /// <param name="text">script contents</param>
-    /// <returns>neural network</returns>
-    public FeedforwardNetwork Deserialize(string text) {
-        var tokens = tokenizer.GetTokens(text);
-        var ast = parser.ParseFile(tokens);
-
-        return ast.Make(
-            env: new BuildEnvironment {
-                Serializer = this,
-                ScopedNetworks = imports // TODO other files that can be imported in a FROM statement
-            },
-            stmt_action: null
-        );
-    }
-
-    /// <summary>
-    /// Deserialize the given reader's contents as a netbuild script
-    /// </summary>
-    /// <param name="reader">reader</param>
-    /// <returns>neural network</returns>
     public INetworkModule DeserializeModule(TextReader reader) => DeserializeModule(reader.ReadToEnd());
 
     /// <summary>
@@ -90,28 +65,5 @@ public class NetbuildSerializer {
             },
             stmt_action: null
         );
-    }
-
-    /// <summary>
-    /// Serialize a network as a netbuild script
-    /// </summary>
-    /// <param name="network">network to serialize</param>
-    /// <param name="writer">writer to serialize script to</param>
-    public void Serialize(FeedforwardNetwork network, TextWriter writer)
-    {
-        var encoder = new NetbuildLayerEncoder(writer);
-        encoder.Encode(network);
-    }
-
-    /// <summary>
-    /// Serialize a network as a netbuild script
-    /// </summary>
-    /// <param name="network">network to serialize</param>
-    /// <returns>serialized script</returns>
-    public string Serialize(FeedforwardNetwork network) {
-        using var writer = new StringWriter();
-        var encoder = new NetbuildLayerEncoder(writer);
-        encoder.Encode(network);
-        return writer.ToString();
     }
 }

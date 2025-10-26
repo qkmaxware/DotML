@@ -241,7 +241,7 @@ public class Fit : BaseCommand
                     items.Add(LabeledText("Output Shape", trainingData.OutputShape.ToString()));
                     items.Add(LabeledText("Training Pairs", trainingData.Count.ToString()));
                     items.Add(LabeledText("Validation Pairs", validationData.Count.ToString()));
-                    items.Add(LabeledText("Testing Pairs", TestingData.Count.ToString()));
+                    items.Add(LabeledText("Testing Pairs", (TestingData?.Count ?? 0).ToString()));
                 }
             }
 
@@ -294,7 +294,6 @@ public class Fit : BaseCommand
         validation_writer.WriteLine("Epoch, Tests-Passed, Tests-Failed, Loss-Average, Loss-Max, Loss-Min, Accuracy, Precision, Recall, F1-Score, Time-Taken");
         validation_writer.Flush();
     
-        var testReport = session.Test(TestingData.CreateSequentialSampler());
         using var testing_writer = new StreamWriter(Path.Combine(dir.FullName, "testing.csv"));
         testing_writer.WriteLine("Epoch, Tests-Passed, Tests-Failed, Loss-Average, Loss-Max, Loss-Min, Accuracy, Precision, Recall, F1-Score, Time-Taken");
         testing_writer.Flush();

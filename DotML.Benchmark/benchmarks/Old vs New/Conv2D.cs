@@ -23,8 +23,6 @@ public class CompareConv2D
     #endregion
 
     private TensorShape ishape;
-    private BatchedFeatureSet<float> inputMatrix;
-    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -45,19 +43,8 @@ public class CompareConv2D
             padding: Padding.Same.ToTuple(kernel: (3, 3), stride: (1, 1), dilation: (1, 1))
         );
         this.updated = updated_layer;
-        var old_layer = new ConvolutionLayer(
-            new Shape3D(ishape.Length(1), ishape.Length(2), ishape.Length(3)),
-            Padding.Same,
-            ConvolutionFilter.Make(filters: OUT_CHANNELS, kernels_per_filter: CHANNELS, kernel_size: 3)
-        );
-        this.old = old_layer;
 
-        if (!updated.ForwardShape(ishape).Slice(1..).Equals((TensorShape)old_layer.OutputShape))
-            throw new Exception($"These are not equivalent layers {ishape} -> {updated.ForwardShape(ishape)} vs {old_layer.InputShape} -> {old_layer.OutputShape}");
-
-        inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
-        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
         outputTensor = Tensor<float>.Generate(updated.ForwardShape(ishape), () => (float)generator.NextDouble());
     }
 
@@ -67,31 +54,13 @@ public class CompareConv2D
         // No need to do anything
     }
 
-    FeedforwardNetworkLayer old;
     INetworkModule updated;
 
-    [Benchmark()]
-    public void ForwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-    }
     
     [Benchmark()]
     public void ForwardUpdated()
     {
         var output = updated.Forward(inputTensor);
-    }
-
-    [Benchmark()]
-    public void BackwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-        old.Backpropagate(new Network.Training.BackpropagationArgs(
-            layer: -1,
-            input: (inputMatrix),
-            output: (output),
-            error: (outputMatrix)
-        ));
     }
 
     [Benchmark()]

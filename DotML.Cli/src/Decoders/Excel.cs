@@ -32,8 +32,8 @@ public class Xml : IFileOnlyDecoder, IDecoder {
         }
 
         public IEnumerable<FileInfo> FileOutput(FileInfo file) {
-            if (file.Extension != Excel2003.Extension) {
-                file = new FileInfo(file.FullName + Excel2003.Extension);
+            if (file.Extension != ".xml") {
+                file = new FileInfo(file.FullName +  ".xml");
             }
             var path = file.FullName;
 

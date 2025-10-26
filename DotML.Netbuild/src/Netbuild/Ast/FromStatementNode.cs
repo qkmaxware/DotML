@@ -34,30 +34,6 @@ public class FromStatement : Statement {
         return @default;
     }
 
-    public override void Action(BuildEnvironment env) {
-        env.Network = (Identifier?.ToLower()) switch {
-            // Named networks!
-            "alexnet"   => AlexNet.Make(make_enum<AlexNet.Version>(Version, AlexNet.Version.Latest), output_classes: AlexNet.OUT_CLASSES),
-            "espcn"     => ESPCN.Make(make_enum<ESPCN.Version>(Version, ESPCN.Version.Latest)),
-            "fsrcnn"    => FSRCNN.Make(make_enum<FSRCNN.Version>(Version, FSRCNN.Version.Latest)),
-            "lenet"     => LeNet.Make(make_enum<LeNet.Version>(Version, LeNet.Version.Latest), output_classes: LeNet.OUT_CLASSES),
-            "mobilenet" => MobileNet.Make(make_enum<MobileNet.Version>(Version, MobileNet.Version.Latest), output_classes: MobileNet.OUT_CLASSES),
-            "resnet"    => ResNet.Make(make_enum<ResNet.Version>(Version, ResNet.Version.Latest)),
-            "vgg"       => VGGNet.Make(make_enum<VGGNet.Version>(Version, VGGNet.Version.Latest), output_classes: VGGNet.OUT_CLASSES),
-
-            // Scratch
-            null           => new FeedforwardNetwork(),
-
-            // Other networks in the environment
-            _              => key is not null && env.Serializer is not null && env.ScopedNetworks is not null && env.ScopedNetworks.ContainsKey(key) ? env.Serializer.Deserialize(env.ScopedNetworks[key]()) : new FeedforwardNetwork(),
-        };
-        if (env.Network.LayerCount < 1) {
-            env.InputShape = manualInputShape ?? new Shape3D(1,1,1);
-        } else {
-            env.InputShape = env.Network.InputShape;
-        }
-    }
-
     public override void ModuleAction(BuildEnvironment env)
     {
         env.NetworkBlock = new SequentialBlock();

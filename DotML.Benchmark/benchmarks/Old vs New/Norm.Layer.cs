@@ -21,8 +21,6 @@ public class CompareLayerNorm
     #endregion
 
     private TensorShape ishape;
-    private BatchedFeatureSet<float> inputMatrix;
-    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -33,12 +31,9 @@ public class CompareLayerNorm
         ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
         var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
-        old = new LayerNorm(new Shape3D(CHANNELS, ROWS, COLUMNS));
         updated = new LayerNorm2(CHANNELS, ROWS, COLUMNS);
 
-        inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
-        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
         outputTensor = Tensor<float>.Generate(updated.ForwardShape(ishape), () => (float)generator.NextDouble());
     }
 
@@ -48,31 +43,12 @@ public class CompareLayerNorm
         // No need to do anything
     }
 
-    FeedforwardNetworkLayer old;
     INetworkModule updated;
 
-    [Benchmark()]
-    public void ForwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-    }
-    
     [Benchmark()]
     public void ForwardUpdated()
     {
         var output = updated.Forward(inputTensor);
-    }
-
-    [Benchmark()]
-    public void BackwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-        old.Backpropagate(new Network.Training.BackpropagationArgs(
-            layer: -1,
-            input: (inputMatrix),
-            output: (output),
-            error: (outputMatrix)
-        ));
     }
 
     [Benchmark()]

@@ -1,13 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Text;
-using DotML.Terminal;
 
 namespace DotML;
 
 /// <summary>
 /// Probability distribution for a series of categories. Useful when used with output vectors from neural networks.
 /// </summary>
-public struct ProbabilityDistribution: ITerminalRenderer
+public struct ProbabilityDistribution
 {
     private float[] values;
     private string[]? labels;
@@ -172,10 +171,5 @@ public struct ProbabilityDistribution: ITerminalRenderer
         }
 
         return sb.ToString();
-    }
-
-    public void Draw(TextWriter terminal)
-    {
-        terminal.Write(this.ToString());
     }
 }

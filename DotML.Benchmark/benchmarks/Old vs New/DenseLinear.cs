@@ -23,8 +23,6 @@ public class CompareDenseLinear
     #endregion
 
     private TensorShape ishape;
-    private BatchedFeatureSet<float> inputMatrix;
-    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -35,12 +33,9 @@ public class CompareDenseLinear
         ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
         var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
-        old = new DotML.Network.DenseLinearLayer(ROWS, OUTPUT_CLASSES);
         updated = new DenseLinear(ROWS, OUTPUT_CLASSES);
 
-        inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
-        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
         outputTensor = Tensor<float>.Defaults(updated.ForwardShape(ishape));
     }
 
@@ -50,32 +45,13 @@ public class CompareDenseLinear
         // No need to do anything
     }
 
-    DenseLinearLayer old;
     DenseLinear updated;
-
-    [Benchmark()]
-    public void ForwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-    }
 
     [Benchmark()]
     public void ForwardUpdated()
     {
         var ctx = new EvaluationContext();
         var output = updated.Forward(inputTensor, ctx);
-    }
-
-    [Benchmark()]
-    public void BackwardOld()
-    {
-        var output = old.EvaluateSync(inputMatrix);
-        old.Backpropagate(new Network.Training.BackpropagationArgs(
-            layer: -1,
-            input: (inputMatrix),
-            output: (output),
-            error: (outputMatrix)
-        ));
     }
 
     [Benchmark()]

@@ -21,8 +21,6 @@ public class CompareDropout
     #endregion
 
     private TensorShape ishape;
-    private BatchedFeatureSet<float> inputMatrix;
-    private BatchedFeatureSet<float> outputMatrix;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -33,12 +31,9 @@ public class CompareDropout
         ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
         var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
-        old = new DropoutLayer(new Shape3D(CHANNELS, ROWS, COLUMNS), 0.5f);
         updated = new Dropout(0.5f);
 
-        inputMatrix = new BatchedFeatureSet<float>(shape4);
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
-        outputMatrix = new BatchedFeatureSet<float>(new Shape4D(BATCHES, old.OutputShape.Channels, old.OutputShape.Rows, old.OutputShape.Columns));
         outputTensor = Tensor<float>.Defaults(updated.ForwardShape(ishape));
     }
 
@@ -48,33 +43,13 @@ public class CompareDropout
         // No need to do anything
     }
 
-    FeedforwardNetworkLayer old;
     INetworkModule updated;
 
-    [Benchmark()]
-    public void ForwardOld()
-    {
-        old.BeginTraining(); // Regenerate dropout mask
-        var output = old.EvaluateSync(inputMatrix);
-    }
     
     [Benchmark()]
     public void ForwardUpdated()
     {
         var output = updated.Forward(inputTensor);
-    }
-
-    [Benchmark()]
-    public void BackwardOld()
-    {
-        old.BeginTraining(); // Regenerate dropout mask
-        var output = old.EvaluateSync(inputMatrix);
-        old.Backpropagate(new Network.Training.BackpropagationArgs(
-            layer: -1,
-            input: (inputMatrix),
-            output: (output),
-            error: (outputMatrix)
-        ));
     }
 
     [Benchmark()]

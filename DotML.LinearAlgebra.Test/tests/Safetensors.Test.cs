@@ -1,5 +1,7 @@
 using DotML.Network;
 using DotML.Network.Initialization;
+using DotML.Network.IO;
+using DotML.Network.Templates;
 
 namespace DotML.Test;
 
@@ -68,11 +70,15 @@ public class TestSafetensors {
     [TestMethod]
     public void TestWholeModel() {
         var filename = "lenet.safetensors";
-        var lenet = LeNet.Make(LeNet.Version.V5, 10);
+
+        var factory = new LeNetFactory();
+        var lenet = (ArchitectureBlock)factory.Make(new LeNetFactory.BuildSettingsV5 { OutputClasses = 10 });
         var initializer = new NormalXavierInitialization();
         lenet.Initialize(initializer);
 
-        var saved = lenet.ToSafetensor();
+        var writer = new SafetensorSerializer();
+        lenet.Accept(writer);
+        var saved = writer.ToSafetensors();
         saved.WriteToFile(filename);
 
         var loaded = Safetensors.ReadFromFile(filename);

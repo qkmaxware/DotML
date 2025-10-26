@@ -11,26 +11,6 @@ public class File : AstNode
     {
         this.Preamble = preamble;
     }
-
-    public FeedforwardNetwork Make(NetbuildStatementHandler? stmt_action = null) => Make(new BuildEnvironment(), stmt_action);
-
-    public FeedforwardNetwork Make(BuildEnvironment env, NetbuildStatementHandler? stmt_action = null)
-    {
-        var statment_count = 1 + Statements.Count;
-        stmt_action?.Invoke(0, statment_count, Preamble.From);
-        Preamble.From?.Action(env);
-        if (env.Network is null)
-            return new FeedforwardNetwork();
-
-        var stmt_index = 1;
-        foreach (var command in Statements)
-        {
-            stmt_action?.Invoke(stmt_index++, statment_count, command);
-            command.Action(env);
-        }
-
-        return env.Network;
-    }
     
     public INetworkModule MakeModule(BuildEnvironment env, NetbuildStatementHandler? stmt_action = null)
     {

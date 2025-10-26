@@ -3,27 +3,14 @@ namespace DotML.Network.IO.Netbuild;
 public class ReplaceStatement : Statement {
     LayerReference reference;
     private string layer_name;
-    Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory;
     public Dictionary<string, Literal> arguments = new Dictionary<string, Literal>();
 
-    public ReplaceStatement(LayerReference reference, string layer_name, Func<Shape3D, ArgumentMap, IFeedforwardNetworkLayer> factory, List<(Token<string>, Literal)> args) {
-        this.factory = factory;
+    public ReplaceStatement(LayerReference reference, string layer_name, List<(Token<string>, Literal)> args) {
         foreach (var pair in args) {
             arguments[pair.Item1.Value] = pair.Item2;
         } 
         this.layer_name = layer_name;
         this.reference = reference;
-    }
-
-    public override void Action(BuildEnvironment env) {
-        var network = env.Network;
-        if (network is null)
-            return;
-        
-        var replacement_index = reference.IndexOf(env.LayerAliases);
-        var input_shape = network.GetLayer(replacement_index).InputShape;
-        IFeedforwardNetworkLayer layer = factory(input_shape, new ArgumentMap(env, arguments));
-        network.ReplaceLayer(replacement_index, layer);
     }
     
     public override void ModuleAction(BuildEnvironment env) {

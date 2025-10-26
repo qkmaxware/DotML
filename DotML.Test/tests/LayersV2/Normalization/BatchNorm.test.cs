@@ -18,9 +18,11 @@ public class BatchNormTest
         var tensors = saver.Serialize(layer);
 
         // Assert that the correct tensors are stored
-        Assert.AreEqual(2, tensors.Count);
+        Assert.AreEqual(4, tensors.Count);
         Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2D.Weights)));
         Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2D.Biases)));
+        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2D.RunningMean)));
+        Assert.AreEqual(true, tensors.ContainsKey(nameof(BatchNorm2D.RunningVariance)));
 
         // Assert that the stored values in the safetensor set are in fact the same as configured in the layer
         Assert.AreEqual(true, layer.Weights.Equals(tensors.GetTensor<float>(nameof(BatchNorm2D.Weights)), 0.0001f));
