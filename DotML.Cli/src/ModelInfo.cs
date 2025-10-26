@@ -246,11 +246,18 @@ public class ModelInfo
             throw new FileNotFoundException();
 
         var module = ModuleParser.Parse(this.architecture_file.ReadAllText(), this.architecture_file.Extension);
-        
+
         // Name the module by wrapping it with a architecture block
         module = new ArchitectureBlock(this.Guid ?? "Network", null, module);
 
         // Load weights
+        ReloadWeights(module);
+
+        return module;
+    }
+    
+    public void ReloadWeights(INetworkModule module)
+    {
         var loader = new SafetensorDeserializer();
         if (weights_file is not null && weights_file.Exists)
         {
@@ -287,8 +294,6 @@ public class ModelInfo
             if (module is IBlockVisitable visitableModule)
                 visitableModule.Accept(loader, st);
         }
-        
-        return module;
     }
 
     private IQuantization<float, byte>? decode_quantizer(string method_name)

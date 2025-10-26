@@ -7,6 +7,10 @@ public interface ITrainingDataSampler<TType>
 where TType:INumber<TType>
 {
     /// <summary>
+    /// Number of samples
+    /// </summary>
+    public int Count { get; }
+    /// <summary>
     /// The shape of the input tensors
     /// </summary>
     public TensorShape InputShape { get; }
@@ -27,6 +31,7 @@ where TType:INumber<TType>
 {
     private ITrainingDataSource<TType> src;
 
+    public int Count => src.Count;
     public TensorShape InputShape => src.InputShape;
     public TensorShape OutputShape => src.OutputShape;
 
@@ -100,6 +105,7 @@ where TType:INumber<TType>
     private bool allowDuplicates;
     private Random random;
 
+    public int Count => src.Count;
     public TensorShape InputShape => src.InputShape;
     public TensorShape OutputShape => src.OutputShape;
 

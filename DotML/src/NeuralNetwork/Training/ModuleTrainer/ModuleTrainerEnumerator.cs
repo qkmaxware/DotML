@@ -6,24 +6,28 @@ using DotML.Network.Initialization;
 namespace DotML.Network.Training;
 
 public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Report> {
-    
+
     /// <summary>
     /// Training report
     /// </summary>
-    public class Report
+    public class Report : IValidationReport
     {
+        /// <summary>
+        /// Current epoch this report is about
+        /// </summary>
+        public int Epoch;
         /// <summary>
         /// Number of samples tested
         /// </summary>
-        public int SampleCount;
+        public int SampleCount { get; set; }
         /// <summary>
         /// Maximum value of the loss function
         /// </summary>
-        public float MaxLoss;
+        public float MaxLoss { get; set; }
         /// <summary>
         /// Minimum value of the loss function
         /// </summary>
-        public float MinLoss;
+        public float MinLoss { get; set; }
         /// <summary>
         /// Sum of all loss function values across all samples tested
         /// </summary>
@@ -35,7 +39,11 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         /// <summary>
         /// Number of samples with the correct labels
         /// </summary>
-        public int CorrectSamples;
+        public int TestsPassedCount { get; set; }
+        /// <summary>
+        /// Number of samples with the incorrect labels
+        /// </summary>
+        public int TestsFailedCount => SampleCount - TestsPassedCount;
         /// <summary>
         /// Number of class labels
         /// </summary>
@@ -43,7 +51,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         /// <summary>
         /// Accuracy of the training iteration based on the number of correct samples
         /// </summary>
-        public float Accuracy => SampleCount > 0 ? (float)CorrectSamples / SampleCount : 0f;
+        public float Accuracy => SampleCount > 0 ? (float)TestsPassedCount / SampleCount : 0f;
         /// <summary>
         /// Precision of the training iteration based on the number of true positives and false positives
         /// </summary>
@@ -130,7 +138,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             }
         }
 
-        private int[,] confusionMatrix = new int[0,0];
+        private int[,] confusionMatrix = new int[0, 0];
 
         /// <summary>
         /// Reset the statistics of the training report
@@ -142,7 +150,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             MinLoss = 0;
             SumLoss = 0;
 
-            CorrectSamples = 0;
+            TestsPassedCount = 0;
             NumberOfClasses = 0;
 
             for (var i = 0; i < confusionMatrix.GetLength(0); i++)
@@ -188,7 +196,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             int predictedClass = ArgMaxSoftmax(predictedSpan);
             int trueClass = ArgMax(truthSpan);
             if (predictedClass == trueClass)
-                CorrectSamples++;
+                TestsPassedCount++;
 
             var numClasses = truthSpan.Length; // Assumes one-hot encoding and no multi-classes
             NumberOfClasses = numClasses;
@@ -204,6 +212,21 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         {
             return this.confusionMatrix;
         }
+    }
+
+    /// <summary>
+    /// Progress along a single epoch
+    /// </summary>
+    public struct EpochProgress
+    {
+        public int Epoch;
+        public int TrainingIndex;
+        public int TrainingSampleCount;
+
+        public int ValidationIndex;
+        public int ValidationSampleCount;
+
+        public float Completed => (TrainingIndex + ValidationIndex) / (TrainingSampleCount + ValidationSampleCount - 2);
     }
 
     public Report Current { get; private set; }
@@ -283,11 +306,25 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         this.target_reached = false;
     }
 
-    public bool MoveNext() {
+    public bool MoveNext(IProgress<EpochProgress>? progress)
+    {
         if (Epoch >= MaxEpochs || target_reached)
+        {
             return false;
+        }
 
-        // Training loop
+        // Report batch started
+        int trainingIndex = 0;
+        progress?.Report(new EpochProgress
+        {
+            Epoch = this.Epoch,
+            TrainingIndex = trainingIndex,
+            TrainingSampleCount = TrainingData.Count,
+            ValidationIndex = 0,
+            ValidationSampleCount = TestingData.Count
+        });
+
+        // Training loop 
         foreach ((Tensor<float> batch, Tensor<float> truth) in TrainingData.Sample(batchSize: BatchSize))
         {
             // Forward step
@@ -327,21 +364,79 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
                 optimizer: this.Optimizer,
                 regularization: this.Regularization
             );
+
+            // Report batch completed
+            trainingIndex += batch.Shape.Length(0); // Batch size
+            progress?.Report(new EpochProgress
+            {
+                Epoch = this.Epoch,
+                TrainingIndex = trainingIndex,
+                TrainingSampleCount = TrainingData.Count,
+                ValidationIndex = 0,
+                ValidationSampleCount = TestingData.Count
+            });
         }
 
         // Validate model accuracy
-        validate();
+        validate(progress);
 
         // Move onto next epoch
         this.Epoch++;
         return true;
     }
 
-    private void validate() {
-        // Reset the training iteration report (or create a new one, but reusing is fine)
-        Current.Reset();
+    public bool MoveNext()
+    {
+        return MoveNext(null);
+    }
+    
+    public static Report Test(ITrainingDataSampler<float> TestingData, INetworkModule Network, LossFunction Loss, int BatchSize = 1)
+    {
+        var report = new Report();
+        report.Reset();
+        report.Epoch = -1;
 
         // Testing loop
+        foreach ((Tensor<float> batch, Tensor<float> truth) in TestingData.Sample(batchSize: BatchSize))
+        {
+            // Feedforward step
+            var result = Network.Forward(batch);
+
+            // Compute loss (should this be broken up by batch size?)
+            var batches = result.Shape.Length(0);
+            var batchStride = result.Shape.Stride(0);
+
+            for (var batchIndex = 0; batchIndex < batches; batchIndex++)
+            {
+                var predictedSpan = result.AsSpan(batchIndex * batchStride, batchStride);
+                var truthSpan = truth.AsSpan(batchIndex * batchStride, batchStride);
+                var loss = Loss.Invoke(
+                    predicted: predictedSpan,    // Treat subspan of output as a vector across non-batch dimensions
+                    @true: truthSpan          // Treat subspan of truth as a vector across non-batch dimensions
+                );
+
+                // Record statistics to the report
+                report.AddSample(loss, predictedSpan, truthSpan);
+            }
+
+        }
+
+        return report;
+    }
+
+    public Report Test(ITrainingDataSampler<float> TestingData)
+    {
+        return Test(TrainingData, Network, Loss, BatchSize);
+    }
+
+    private void validate(IProgress<EpochProgress>? progress)
+    {
+        // Reset the training iteration report (or create a new one, but reusing is fine)
+        Current.Reset();
+        Current.Epoch = this.Epoch;
+
+        // Testing loop
+        int validationIndex = 0;
         foreach ((Tensor<float> batch, Tensor<float> truth) in TestingData.Sample(batchSize: BatchSize))
         {
             // Feedforward step
@@ -364,15 +459,28 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
                 Current.AddSample(loss, predictedSpan, truthSpan);
             }
 
+            // Report batch completed progress
+            validationIndex += batch.Shape.Length(0);
+            progress?.Report(new EpochProgress
+            {
+                Epoch = this.Epoch,
+                TrainingIndex = TrainingData.Count - 1,
+                TrainingSampleCount = TrainingData.Count,
+                ValidationIndex = validationIndex,
+                ValidationSampleCount = TestingData.Count
+            });
         }
 
         // Check stop condition based on the report
-        if (StopCondition is not null && StopCondition.Invoke(this.Current)) {
+        if (StopCondition is not null && StopCondition.Invoke(this.Current))
+        {
             // Decrement patience and stop if patience reached
             _patienceCounter--;
             if (_patienceCounter <= 0)
                 this.target_reached = true;
-        } else {
+        }
+        else
+        {
             // Reset patience count
             _patienceCounter = this.Patience;
         }

@@ -57,6 +57,22 @@ public abstract class BaseCommand {
         ;
     }
 
+    protected static bool IsPathValid(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+        
+        char[] invalidPathChars = Path.GetInvalidPathChars();
+        if (path.Any(c => invalidPathChars.Contains(c)))
+            return false;
+
+        char[] invalidFileNameChars = Path.GetInvalidFileNameChars();
+        if (Path.GetFileName(path).Any(c => invalidFileNameChars.Contains(c)))
+            return false;
+
+        return File.Exists(path) || Directory.Exists(path);
+    }
+
     protected class ErrorApp : ConsoleApp
     {
         public ErrorApp(string msg)

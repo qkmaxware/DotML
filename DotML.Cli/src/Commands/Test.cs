@@ -95,10 +95,9 @@ public class Test : BaseCommand {
             error_string = ($"No model exists with name '{ModelName}'.");
             return;
         }
-        FileInfo testing_file = new FileInfo(TestingDataPath ?? string.Empty);
-        if (!testing_file.Exists)
+        if (string.IsNullOrEmpty(TestingDataPath) || !IsPathValid(TestingDataPath))
         {
-            error_string = ($"The testing data file '{TestingDataPath}' doesn't exist.");
+            Console.WriteLine($"The testing data path '{TestingDataPath}' is invalid or the file doesn't exist.");
             return;
         }
 
@@ -107,26 +106,19 @@ public class Test : BaseCommand {
         loadModel = TaskState.Done;
 
         loadData = TaskState.Running;
-        var data = Fit.ReadData(testing_file);
+        var data = Fit.ReadTrainingData(TestingDataPath);
         loadData = TaskState.Done;
 
         loadData = TaskState.Running;
-        var report = new DefaultValidationReportWithBreakdown();
-        LossFunction loss = network.GetOutputLayer() is SoftmaxLayer
-            ? LossFunctions.CategoricalCrossEntropy
-            : LossFunctions.MeanSquaredError
-        ;
+        LossFunction loss = Fit.SmartPickLoss(model);
         var watch = Stopwatch.StartNew();
         var (console_left, console_top) = Console.GetCursorPosition();
-        var progress_len = 0;
-        Fit.Test(network, data, report, Math.Max(1, Environment.ProcessorCount), 0.1, loss, on_progress: (current, max) =>
-        {
-            Console.SetCursorPosition(console_left, console_top);
-            var str = $"{current + 1}/{max}";
-            //TODO trainingProgress = (current + 1.0f) / max;
-            progress_len = Math.Max(progress_len, str.Length);
-            Console.Write(str);
-        });
+        var report = ModuleTrainingEnumerator.Test(
+            data.CreateSequentialSampler(),
+            network,
+            loss,
+            Environment.ProcessorCount
+        );
         watch.Stop();
         var elapsed = watch.Elapsed;
         Console.SetCursorPosition(console_left, console_top);
@@ -141,8 +133,8 @@ public class Test : BaseCommand {
             Accuracy = (float)report.Accuracy,
             Precision = (float)report.Precision,
             Recall = (float)report.Recall,
-            AvgLoss = (float)report.AverageLoss,
-            Validation = report.TestsPassedCount + "/" + report.TestCount,
+            AvgLoss = (float)report.AvgLoss,
+            Validation = report.TestsPassedCount + "/" + report.SampleCount,
             TimeTaken = elapsed
         });
 
@@ -159,25 +151,14 @@ public class Test : BaseCommand {
         using (var writer = new StreamWriter(Path.Combine(report_dir.FullName, $"summary.csv")))
         {
             writer.WriteLine("LOSS-AVERAGE, LOSS-MIN, LOSS-MAX, ACCURACY, PRECISION, RECALL, F1-SCORE, TIME-TAKEN");
-            writer.Write(report.AverageLoss); writer.Write(',');
+            writer.Write(report.AvgLoss); writer.Write(',');
             writer.Write(report.MinLoss); writer.Write(',');
             writer.Write(report.MaxLoss); writer.Write(',');
             writer.Write(report.Accuracy); writer.Write(',');
             writer.Write(report.Precision); writer.Write(',');
             writer.Write(report.Recall); writer.Write(',');
-            writer.Write(report.F1Score); writer.Write(',');
+            writer.Write(report.F1); writer.Write(',');
             writer.Write($" \"{elapsed}\""); writer.WriteLine();
-        }
-        using (var writer = new StreamWriter(Path.Combine(report_dir.FullName, $"details.csv")))
-        {
-            writer.WriteLine("TEST-INDEX, STATUS, LOSS");
-            foreach (var breakdown in report.TestBreakdown)
-            {
-                writer.Write(breakdown.Index); writer.Write(',');
-                writer.Write(breakdown.Passed ? "PASSED" : "FAILED"); writer.Write(',');
-                writer.Write(breakdown.Loss); writer.WriteLine();
-                writer.Flush();
-            }
         }
         if (TryGetEmbeddedDoc("src/Docs/TestingReports.md", out string? documentation))
         {

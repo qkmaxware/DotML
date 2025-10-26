@@ -5,13 +5,13 @@ namespace DotML.Cli.TrainingData;
 /// <summary>
 /// Treat the training data as a binary classified vector. THIS NEEDS CHANGES EACH TIME TO WORK PROPERLY. TODO CUSTOMIZE FROM CLI ARGS
 /// </summary>
-public class BinaryClassifiedVectors : ITrainingDataFormat {
+public class BinaryClassifiedVectors : FileTrainingDataFormat {
 
     public int OutputClasses = 10;
     public float ZeroValue = 0.0f;
     public float OneValue = 1.0f;
 
-    public bool IsInFormat(FileInfo file) {
+    public override bool IsInFormat(FileInfo file) {
         return file.Extension == ".bin" && !TrainingSet<float>.IsBinaryTrainingSet(file);
     }
 
@@ -48,7 +48,7 @@ public class BinaryClassifiedVectors : ITrainingDataFormat {
         return new TrainingSet<float>(items.Select(item => new TrainingPair<float> { Input=item.Item1, Output=vector_from_label_index(item.Item2, category_count, category_off, category_on) }));
     }
 
-    ITrainingDataSource<float> ITrainingDataFormat.Read(FileInfo file)
+    public override ITrainingDataSource<float> Read(FileInfo file)
     {
         var set = read_classified_binary_vectors(file, ZeroValue, OneValue, x => x.ReadByte());
         

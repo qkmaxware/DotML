@@ -7,13 +7,13 @@ namespace DotML.Cli.TrainingData;
 /// Treat the training data as a JSON array of Input/Output vector pairs.
 /// Json data should look like [{"input": tensor, "output": tensor}]
 /// </summary>
-public class JsonVectorPairs : ITrainingDataFormat {
+public class JsonVectorPairs : FileTrainingDataFormat {
 
-    public bool IsInFormat(FileInfo file) {
+    public override bool IsInFormat(FileInfo file) {
         return file.Extension == ".json";
     }
 
-    public ITrainingDataSource<float> Read(FileInfo file) {
+    public override ITrainingDataSource<float> Read(FileInfo file) {
         using var stream = file.OpenRead();
         var document = JsonDocument.Parse(stream);
         var root = document.RootElement;

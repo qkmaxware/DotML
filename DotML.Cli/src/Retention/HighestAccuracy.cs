@@ -17,7 +17,7 @@ public class HighestAccuracy  : IRetentionPolicy<Safetensors> {
 
     public void Backup(string name, Safetensors backup) {
         if (
-            report is not DefaultValidationReport validation 
+            report is not ModuleTrainingEnumerator.Report validation 
             || (
                 last_weights_accuracy.HasValue 
                 && validation.Accuracy <= last_weights_accuracy.Value

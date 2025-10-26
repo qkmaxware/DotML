@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Text;
 
 namespace Qkmaxware.Terminal.Elements;
 
@@ -40,6 +41,28 @@ public abstract class ProgressBar : IElement
         }
 
         return new LayoutSize(graphics.DrawingRegion.Width, 1);
+    }
+
+    public static string ToString(float percent, int width)
+    {
+        if (width < 3)
+        {
+            return string.Empty;
+        }
+
+        percent = Math.Clamp(percent, 0f, 1f);
+        var innerWidth = width - 2;
+        var filledInt = Math.Round(percent * innerWidth);
+
+        StringBuilder sb = new StringBuilder();
+        sb.Append(DefaultStartCharacter);
+        for (var i = 0; i < innerWidth; i++)
+        {
+            sb.Append(i < filledInt ? DefaultFilledCharacter : DefaultEmptyCharacter);
+        }
+        sb.Append(DefaultEndCharacter);
+
+        return sb.ToString();
     }
 }
 

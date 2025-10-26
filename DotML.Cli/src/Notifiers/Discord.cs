@@ -30,8 +30,8 @@ public class Discord : INotifier {
 @$"Training update for network {network.Name()}. 
 
 > **Epoch {epoch}/{epochs}**
-> Tests: {status.TestsPassedCount}/{status.TestCount}
-> Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AverageLoss})"
+> Tests: {status.TestsPassedCount}/{status.SampleCount}
+> Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AvgLoss})"
 );
     }
     public void NotifyNewBest(INetworkModule network, int epoch, int epochs, IValidationReport status) {
@@ -39,8 +39,8 @@ public class Discord : INotifier {
 @$"New best weights found for network {network.Name()}. 
 
 > **Epoch {epoch}/{epochs}**
-> Tests: {status.TestsPassedCount}/{status.TestCount}
-> Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AverageLoss})"
+> Tests: {status.TestsPassedCount}/{status.SampleCount}
+> Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AvgLoss})"
 );
     }
     public void NotifyTrainingDone(INetworkModule network, int epochs, IValidationReport final_status) {
@@ -48,8 +48,8 @@ public class Discord : INotifier {
 @$"Training completed for network {network.Name()}. 
 
 > **Epoch epochs**
-> Tests: {final_status.TestsPassedCount}/{final_status.TestCount}
-> Loss: {final_status.MinLoss}-{final_status.MaxLoss} (avg: {final_status.AverageLoss})"
+> Tests: {final_status.TestsPassedCount}/{final_status.SampleCount}
+> Loss: {final_status.MinLoss}-{final_status.MaxLoss} (avg: {final_status.AvgLoss})"
 );
     }
 

@@ -6,9 +6,9 @@ namespace DotML.Cli.TrainingData;
 /// <summary>
 /// Treat the training data as a classified CSV in the format of [class_number, vector0, ..., vectorN]
 /// </summary>
-public class ClassifiedCsv : ITrainingDataFormat {
+public class ClassifiedCsv : FileTrainingDataFormat {
 
-    public bool IsInFormat(FileInfo file) {
+    public override bool IsInFormat(FileInfo file) {
         return file.Extension == ".csv";
     }
 
@@ -16,7 +16,7 @@ public class ClassifiedCsv : ITrainingDataFormat {
         return line.Contains("class", StringComparison.CurrentCultureIgnoreCase) || line.Contains("label", StringComparison.CurrentCultureIgnoreCase);
     }
 
-    public ITrainingDataSource<float> Read(FileInfo file) {
+    public override ITrainingDataSource<float> Read(FileInfo file) {
         List<(Vec<float>, int)> items = new List<(Vec<float>, int)>();
         var max_count = 1;
         using var reader = new StreamReader(file.OpenRead());
