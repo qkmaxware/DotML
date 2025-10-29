@@ -32,8 +32,8 @@ The following creates a 2-2-1 network. The first line indicates that we are maki
 FROM SCRATCH INPUT 1 2 1
 LABEL "XOR-221-Network"
 
-ADD dense neurons=2
-ADD dense neurons=1 AS output
+ADD DenseLinear input_size=1 neurons=2
+ADD DenseLinear input_size=2 neurons=1 AS output
 ```
 
 ### Building a network from an existing template
@@ -45,5 +45,5 @@ LABEL "My Custom AlexNet"
 # Remove layer 2
 REMOVE 2
 # Replace the 1st layer with a new dense layer of 3 neurons
-REPLACE 1 WITH dense neurons=3
+REPLACE 1 WITH DenseLinear ...
 ```

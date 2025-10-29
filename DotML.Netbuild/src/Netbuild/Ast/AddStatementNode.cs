@@ -120,6 +120,8 @@ public class AddStatement : Statement {
             ActivationFunctionMapper.DecodeStatic(value, alpha);
         }
 
+        // TODO handle Index types
+
         // Get the type converter
         var converter = TypeDescriptor.GetConverter(targetType);
         if (converter is null || !converter.CanConvertFrom(typeof(string)))

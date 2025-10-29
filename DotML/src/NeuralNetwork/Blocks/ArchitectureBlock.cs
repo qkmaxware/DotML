@@ -28,7 +28,7 @@ public class ArchitectureBlock : INetworkModule, IBlockVisitable
     /// <summary>
     /// The underlying network module that constitutes the network architecture
     /// </summary>
-    private INetworkModule RootModule { get; init; }
+    public INetworkModule RootModule { get; init; }
 
     public ArchitectureBlock(string name, TensorShape? inputShape, INetworkModule rootModule, string? description = null, Uri? referenceUri = null)
     {

@@ -16,7 +16,7 @@ public abstract class GlobalPooling : Pooling
 /// Apply pooling to reduce the size of the image data across the last 2 dimensions of the input (Height and Width)
 /// <see href="https://en.wikipedia.org/wiki/Pooling_layer"/>
 /// </summary>
-public abstract class GlobalPooling2D : LocalPooling
+public abstract class GlobalPooling2D : GlobalPooling
 {
     public override void Initialize(IInitializer initializer) { }
 
