@@ -73,9 +73,14 @@ public static class LossFunctions {
     public static LossFunction MeanSquaredError {get; private set;} = new Training.MeanSquaredError();
 
     /// <summary>
+    /// Mean squared error (MSE) loss function
+    /// </summary>
+    public static LossFunction L2 { get; private set; } = MeanSquaredError;
+
+    /// <summary>
     /// Mean squared error (RMSE) loss function
     /// </summary>
-    public static LossFunction RootMeanSquaredError {get; private set;} = new Training.RootMeanSquaredError();
+    public static LossFunction RootMeanSquaredError { get; private set; } = new Training.RootMeanSquaredError();
 
     /// <summary>
     /// Mean absolute error (MAE) loss function
@@ -83,9 +88,14 @@ public static class LossFunctions {
     public static LossFunction MeanAbsoluteError {get; private set;} = new Training.MeanAbsoluteError();
 
     /// <summary>
+    /// Mean absolute error (MAE) loss function
+    /// </summary>
+    public static LossFunction L1 {get; private set;} = MeanAbsoluteError;
+
+    /// <summary>
     /// Categorical cross-entropy loss function
     /// </summary>
-    public static LossFunction CategoricalCrossEntropy {get; private set;} = new Training.CategoricalCrossEntropy();
+    public static LossFunction CategoricalCrossEntropy { get; private set; } = new Training.CategoricalCrossEntropy();
 }
 
 /// <summary>
@@ -148,8 +158,14 @@ public class MeanAbsoluteError : LossFunction {
     }
     
     public override void Gradient(Span<float> gradient, ReadOnlySpan<float> predicted, ReadOnlySpan<float> @true) {
-         for (var i = 0; i < predicted.Length; i++)
-            gradient[i] = Math.Sign(predicted[i] - @true[i]);
+        var N = Math.Min(predicted.Length, @true.Length);
+
+        for (var i = 0; i < predicted.Length; i++)
+        {
+            var diff = predicted[i] - @true[i];
+            //gradient[i] = Math.Sign(predicted[i] - @true[i]);
+            gradient[i] = diff / (MathF.Abs(diff) + 1e-8f) / N;
+        }
     }
 }
 

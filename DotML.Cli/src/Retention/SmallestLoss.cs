@@ -16,7 +16,7 @@ public class SmallestLoss  : IRetentionPolicy<Safetensors> {
     }
 
     public void Backup(string name, Safetensors backup) {
-        if (last_weights_loss.HasValue && report.AvgLoss >= last_weights_loss.Value)
+        if (last_weights_loss.HasValue && report.Loss.Average >= last_weights_loss.Value)
             return; // Not better than the last option
 
         if (!string.IsNullOrEmpty(last_weights) && File.Exists(last_weights)) {
@@ -25,6 +25,6 @@ public class SmallestLoss  : IRetentionPolicy<Safetensors> {
         var next_weights = Path.Combine(root_dir, GetType().Name + "." + name);
         backup.WriteToFile(next_weights);
         this.last_weights = next_weights;
-        this.last_weights_loss = report.AvgLoss;
+        this.last_weights_loss = report.Loss.Average;
     }
 }

@@ -34,7 +34,7 @@ public class FileNotifier : INotifier {
 
 > **Epoch {epoch}/{epochs}**
 > Tests: {status.TestsPassedCount}/{status.SampleCount}
-> Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AvgLoss})"
+> Loss: {status.Loss.Min}-{status.Loss.Max} (avg: {status.Loss.Average})"
 );
     }
     public void NotifyNewBest(INetworkModule network, int epoch, int epochs, IValidationReport status) {
@@ -43,7 +43,7 @@ public class FileNotifier : INotifier {
 
 > **Epoch {epoch}/{epochs}**
 > Tests: {status.TestsPassedCount}/{status.SampleCount}
-> Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AvgLoss})"
+> Loss: {status.Loss.Min}-{status.Loss.Max} (avg: {status.Loss.Average})"
 );
     }
     public void NotifyTrainingDone(INetworkModule network, int epochs, IValidationReport final_status) {
@@ -52,7 +52,7 @@ public class FileNotifier : INotifier {
 
 > **Epoch epochs**
 > Tests: {final_status.TestsPassedCount}/{final_status.SampleCount}
-> Loss: {final_status.MinLoss}-{final_status.MaxLoss} (avg: {final_status.AvgLoss})"
+> Loss: {final_status.Loss.Min}-{final_status.Loss.Max} (avg: {final_status.Loss.Average})"
 );
     }
 

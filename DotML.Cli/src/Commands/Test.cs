@@ -133,7 +133,7 @@ public class Test : BaseCommand {
             Accuracy = (float)report.Accuracy,
             Precision = (float)report.Precision,
             Recall = (float)report.Recall,
-            AvgLoss = (float)report.AvgLoss,
+            AvgLoss = (float)report.Loss.Average,
             Validation = report.TestsPassedCount + "/" + report.SampleCount,
             TimeTaken = elapsed
         });
@@ -151,9 +151,9 @@ public class Test : BaseCommand {
         using (var writer = new StreamWriter(Path.Combine(report_dir.FullName, $"summary.csv")))
         {
             writer.WriteLine("LOSS-AVERAGE, LOSS-MIN, LOSS-MAX, ACCURACY, PRECISION, RECALL, F1-SCORE, TIME-TAKEN");
-            writer.Write(report.AvgLoss); writer.Write(',');
-            writer.Write(report.MinLoss); writer.Write(',');
-            writer.Write(report.MaxLoss); writer.Write(',');
+            writer.Write(report.Loss.Average); writer.Write(',');
+            writer.Write(report.Loss.Min); writer.Write(',');
+            writer.Write(report.Loss.Max); writer.Write(',');
             writer.Write(report.Accuracy); writer.Write(',');
             writer.Write(report.Precision); writer.Write(',');
             writer.Write(report.Recall); writer.Write(',');

@@ -5,7 +5,5 @@ public interface IValidationReport {
     public int TestsPassedCount {get;}
     public int TestsFailedCount {get;}
 
-    public float MaxLoss {get;}
-    public float MinLoss {get;}
-    public float AvgLoss {get;}
+    public Metric<float> Loss {get;}
 }

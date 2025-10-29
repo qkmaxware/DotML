@@ -181,7 +181,7 @@ public class Fit : BaseCommand
         trainer.LearningRate = MathF.Max(0, (float)LearningRate);
         trainer.LearningRateScheduler = null;
         trainer.Optimizer = new Adam();
-        trainer.StopCondition = (report) => report.MaxLoss < Accuracy;
+        trainer.StopCondition = (report) => report.Loss.Max < Accuracy;
         trainer.Patience = Math.Max(1, Patience);
         trainer.Regularization = new NoRegularization();
         trainer.LocalClipping = null;
@@ -305,7 +305,7 @@ public class Fit : BaseCommand
         {
             var testTimer = Stopwatch.StartNew();
             var report = session.Test(TestingData.CreateSequentialSampler());
-            testing_writer.WriteSeparated(", ", "Beginning", report.TestsPassedCount, report.TestsFailedCount, report.AvgLoss, report.MaxLoss, report.MinLoss, report.Accuracy, report.Precision, report.Recall, report.F1, testTimer.Elapsed.TotalSeconds);
+            testing_writer.WriteSeparated(", ", "Beginning", report.TestsPassedCount, report.TestsFailedCount, report.Loss.Average, report.Loss.Max, report.Loss.Min, report.Accuracy, report.Precision, report.Recall, report.F1, testTimer.Elapsed.TotalSeconds);
             testTimer.Stop();
         }
 
@@ -335,11 +335,11 @@ public class Fit : BaseCommand
 
             // Write to terminal
             Console.SetCursorPosition(lineStart.Left, lineStart.Top);
-            WriteRow(report.Epoch, report.AvgLoss, report.Accuracy, report.Precision, report.Recall, time);
+            WriteRow(report.Epoch, report.Loss.Average, report.Accuracy, report.Precision, report.Recall, time);
             lineStart = Console.GetCursorPosition();
 
             // Write validation report
-            validation_writer.WriteSeparated(", ", report.Epoch, report.TestsPassedCount, report.TestsFailedCount, report.AvgLoss, report.MaxLoss, report.MinLoss, report.Accuracy, report.Precision, report.Recall, report.F1, time);
+            validation_writer.WriteSeparated(", ", report.Epoch, report.TestsPassedCount, report.TestsFailedCount, report.Loss.Average, report.Loss.Max, report.Loss.Min, report.Accuracy, report.Precision, report.Recall, report.F1, time);
 
             // TODO performance metrics? not currently being used anymore
 
@@ -369,7 +369,7 @@ public class Fit : BaseCommand
         {
             var testTimer = Stopwatch.StartNew();
             var report = session.Test(TestingData.CreateSequentialSampler());
-            testing_writer.WriteSeparated(", ", "End", report.TestsPassedCount, report.TestsFailedCount, report.AvgLoss, report.MaxLoss, report.MinLoss, report.Accuracy, report.Precision, report.Recall, report.F1, testTimer.Elapsed.TotalSeconds);
+            testing_writer.WriteSeparated(", ", "End", report.TestsPassedCount, report.TestsFailedCount, report.Loss.Average, report.Loss.Max, report.Loss.Min, report.Accuracy, report.Precision, report.Recall, report.F1, testTimer.Elapsed.TotalSeconds);
             testTimer.Stop();
         }
 

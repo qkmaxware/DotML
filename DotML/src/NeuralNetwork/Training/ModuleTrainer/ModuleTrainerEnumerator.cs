@@ -21,21 +21,9 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         /// </summary>
         public int SampleCount { get; set; }
         /// <summary>
-        /// Maximum value of the loss function
+        /// Computed loss
         /// </summary>
-        public float MaxLoss { get; set; }
-        /// <summary>
-        /// Minimum value of the loss function
-        /// </summary>
-        public float MinLoss { get; set; }
-        /// <summary>
-        /// Sum of all loss function values across all samples tested
-        /// </summary>
-        public float SumLoss;
-        /// <summary>
-        /// Average value of the loss function across all samples tested
-        /// </summary>
-        public float AvgLoss => SampleCount > 0 ? SumLoss / SampleCount : 0f;
+        public Metric<float> Loss { get; set; }
         /// <summary>
         /// Number of samples with the correct labels
         /// </summary>
@@ -146,9 +134,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         public void Reset()
         {
             SampleCount = 0;
-            MaxLoss = 0;
-            MinLoss = 0;
-            SumLoss = 0;
+            this.Loss.Reset();
 
             TestsPassedCount = 0;
             NumberOfClasses = 0;
@@ -176,19 +162,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
         protected void UpdateLosses(float loss, ReadOnlySpan<float> logits, ReadOnlySpan<float> truth)
         {
-            SumLoss += loss;
-            if (SampleCount == 0)
-            {
-                // First sample to be added
-                MaxLoss = loss;
-                MinLoss = loss;
-            }
-            else
-            {
-                // Subsequent samples added
-                MinLoss = Math.Min(MinLoss, loss);
-                MaxLoss = Math.Max(MaxLoss, loss);
-            }
+            Loss.Add(loss);
         }
 
         protected void TestCorrectness(float loss, ReadOnlySpan<float> predictedSpan, ReadOnlySpan<float> truthSpan)
@@ -357,7 +331,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             }
 
             // Update step
-            var lr = this.LearningRateScheduler?.RateForEpoch(this.LearningRate, Epoch) ?? this.LearningRate;
+            var lr = this.LearningRateScheduler?.RateForEpoch(Epoch, this.LearningRate) ?? this.LearningRate;
             Network.Update(
                 lr,
                 gradients,
@@ -379,6 +353,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
         // Validate model accuracy
         validate(progress);
+        this.LearningRateScheduler?.Step(Epoch, Current.Loss);
 
         // Move onto next epoch
         this.Epoch++;

@@ -26,15 +26,15 @@ public class ModuleTrainer
 
     public static bool StopOnAvgLossDefault(ModuleTrainingEnumerator.Report report)
     {
-        return report.AvgLoss < DefaultLossThreshold;
+        return report.Loss.Average < DefaultLossThreshold;
     }
     
     public static bool StopOnMaxLossDefault(ModuleTrainingEnumerator.Report report) {
-        return report.MaxLoss < DefaultLossThreshold;
+        return report.Loss.Max < DefaultLossThreshold;
     }
 
     public static bool StopOnMinLossDefault(ModuleTrainingEnumerator.Report report) {
-        return report.MinLoss < DefaultLossThreshold;
+        return report.Loss.Min < DefaultLossThreshold;
     }
 
     public IEnumerator<ModuleTrainingEnumerator.Report> EnumerateTraining(INetworkModule network, ITrainingDataSampler<float> dataset, ITrainingDataSampler<float>? validation)
