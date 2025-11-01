@@ -158,6 +158,10 @@ public readonly struct TensorShape : IShape
     public static Index Batches = ^4;
     #endregion
 
+    #region Predefined Shapes
+    public static readonly TensorShape Scalar = new TensorShape();
+    #endregion
+
     private readonly int[] dims;
     private readonly int[] strides;
 

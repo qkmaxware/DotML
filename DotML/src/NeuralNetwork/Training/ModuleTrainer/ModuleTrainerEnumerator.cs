@@ -23,7 +23,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         /// <summary>
         /// Computed loss
         /// </summary>
-        public Metric<float> Loss { get; set; }
+        public Metric<float> Loss { get; set; } = new Metric<float>();
         /// <summary>
         /// Number of samples with the correct labels
         /// </summary>

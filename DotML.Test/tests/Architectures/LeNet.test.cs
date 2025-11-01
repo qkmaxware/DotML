@@ -26,4 +26,18 @@ public class LeNetTest
         var gradient = Tensor<float>.Random(result.Shape, Distributions.Uniform<float>(0f, 1f));
         var grads = network.Backward(gradient, ctx);
     }
+
+    [TestMethod]
+    public void Svg()
+    {
+        var factory = new LeNetFactory();
+
+        // Test building
+        var settings = new LeNetFactory.BuildSettingsV5();
+        var network = (ArchitectureBlock)factory.Make(settings);
+
+        var renderer = new DotML.Network.IO.SvgRenderer();
+        using var stream = new StreamWriter("LeNetTest.Svg.svg");
+        renderer.RenderToStream(network, stream);
+    }
 }

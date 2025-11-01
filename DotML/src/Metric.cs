@@ -6,7 +6,7 @@ namespace DotML;
 /// A simple metric that records statistical information about the metric collected over time
 /// </summary>
 /// <typeparam name="T">metric type</typeparam>
-public struct Metric<T>
+public class Metric<T>
 where T : INumber<T>
 {
     /// <summary>
