@@ -73,7 +73,7 @@ public class AlexNetFactory
                 padding: (0, 0, 0, 0)
             ))
             .Then(ishape => new Activation(activation))
-            .ThenIf(settings.NormalizeLayers, (ishape) => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, (ishape) => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new MaxPool2D(
                 size: 3,
                 stride: 2,
@@ -90,7 +90,7 @@ public class AlexNetFactory
                 padding: (2, 2, 2, 2) // 'Same' padding for 5x5
             ))
             .Then(ishape => new Activation(activation))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new MaxPool2D(
                 size: 3,
                 stride: 2,
@@ -127,7 +127,7 @@ public class AlexNetFactory
                 padding: (1, 1, 1, 1)
             ))
             .Then(ishape => new Activation(activation))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new MaxPool2D(
                 size: 3,
                 stride: 2,
@@ -138,13 +138,13 @@ public class AlexNetFactory
                 ishape.LogicalElementCount(),
                 neurons
             ))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new Activation(activation))
             .Then(ishape => new DenseLinear(
                 ishape.LogicalElementCount(),
                 neurons
             ))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm2(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new Activation(activation))
             .Then(ishape => new DenseLinear(
                 ishape.LogicalElementCount(),

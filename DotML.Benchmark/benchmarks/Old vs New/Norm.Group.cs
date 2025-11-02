@@ -31,7 +31,7 @@ public class CompareGroupNorm
         ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
         var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
-        updated = new GroupNorm2(num_groups: 4, new TensorShape(CHANNELS, ROWS, COLUMNS));
+        updated = new GroupNorm(num_groups: 4, new TensorShape(CHANNELS, ROWS, COLUMNS));
 
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
         outputTensor = Tensor<float>.Generate(updated.ForwardShape(ishape), () => (float)generator.NextDouble());

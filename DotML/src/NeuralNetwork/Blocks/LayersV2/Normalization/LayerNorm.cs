@@ -10,7 +10,7 @@ namespace DotML.Network;
 /// Layer that performs layer (non batch) normalization. Each channel is normalized across the entire normalized shape
 /// <see href="https://en.wikipedia.org/wiki/Normalization_(machine_learning)"/>>
 /// </summary>
-public class LayerNorm2 : NormalizationLayer, IWeightsAndBiasNetworkModule
+public class LayerNorm : NormalizationLayer, IWeightsAndBiasNetworkModule
 {
 
     private Tensor<float> _weights;
@@ -38,9 +38,9 @@ public class LayerNorm2 : NormalizationLayer, IWeightsAndBiasNetworkModule
 
     public TensorShape NormalizedShape { get; init; }
 
-    public LayerNorm2(params int[] normalizedShape) : this(new TensorShape(normalizedShape)) {}
+    public LayerNorm(params int[] normalizedShape) : this(new TensorShape(normalizedShape)) {}
 
-    public LayerNorm2(TensorShape normalizedShape)
+    public LayerNorm(TensorShape normalizedShape)
     {
         this.NormalizedShape = normalizedShape;
         _weights = Tensor<float>.Ones(normalizedShape);
@@ -231,7 +231,7 @@ public class LayerNorm2 : NormalizationLayer, IWeightsAndBiasNetworkModule
 /// <summary>
 /// Layer that performs layer (non batch) normalization for CNNs. Input is assumed to be in NCHW format and layer normalization is performed across the entire CHW sample.
 /// </summary>
-public class SampleNorm : LayerNorm2
+public class SampleNorm : LayerNorm
 {
     public SampleNorm(int channels, int height, int width) : base(new TensorShape(channels, height, width)) { }
 }
@@ -239,7 +239,7 @@ public class SampleNorm : LayerNorm2
 /// <summary>
 /// Layer that performs layer (non batch) normalization for CNNs. Input is assumed to be in NCHW format and layer normalization is performed across each HW instance.
 /// </summary>
-public class InstanceNorm : LayerNorm2
+public class InstanceNorm : LayerNorm
 {
     public InstanceNorm(int height, int width) : base(new TensorShape(height, width)) { }
 }

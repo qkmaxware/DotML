@@ -50,16 +50,16 @@ internal class NetbuildLayerDescriber : IBlockVisitor<string>
         return $"{nameof(BatchNorm2D)} channels={norm.Biases.ElementCount}";
     }
 
-    public string Visit(GroupNorm2 norm, None arg)
+    public string Visit(GroupNorm norm, None arg)
     {
         // public GroupNorm2(int num_groups, TensorShape normalizedShape)
-        return $"{nameof(GroupNorm2)} num_groups={norm.Groups} normalizedShape=\"{string.Join(',', norm.NormalizedShape.AsDimensionEnumerable())}\"";
+        return $"{nameof(GroupNorm)} num_groups={norm.Groups} normalizedShape=\"{string.Join(',', norm.NormalizedShape.AsDimensionEnumerable())}\"";
     }
 
-    public string Visit(LayerNorm2 norm, None arg)
+    public string Visit(LayerNorm norm, None arg)
     {
         // public LayerNorm2(TensorShape normalizedShape)
-        return $"{nameof(LayerNorm2)} normalizedShape=\"{string.Join(',', norm.NormalizedShape.AsDimensionEnumerable())}\"";
+        return $"{nameof(LayerNorm)} normalizedShape=\"{string.Join(',', norm.NormalizedShape.AsDimensionEnumerable())}\"";
     }
 
     public string Visit(PixelShuffler shuffle, None arg)

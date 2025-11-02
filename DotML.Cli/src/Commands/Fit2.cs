@@ -61,6 +61,9 @@ public class Fit : BaseCommand
     public string? ContinueStr { get; set; }
     public bool ContinueFromExisting => IsSet(ContinueStr);
 
+    [Option("diagram", HelpText = "Flag to indicate if the network should be rendered as a diagram", Required = false, Default = "false")]
+    public string? DiagramStr { get; set; }
+
     public enum UpdateModeType
     {
         none, overwrite, duplicate
@@ -165,11 +168,22 @@ public class Fit : BaseCommand
             }
         }
 
-        if (network is IDiagrammable svg)
+        if (IsSet(DiagramStr))
         {
-            using (var writer = new StreamWriter(Path.Combine(dir.FullName, "network.svg")))
+            if (network is IDiagrammable svg)
             {
-                svg.ToSvg(writer);
+                using (var writer = new StreamWriter(Path.Combine(dir.FullName, "network.svg")))
+                {
+                    svg.ToSvg(writer);
+                }
+            }
+            else if (network is IBlockVisitable visitable)
+            {
+                var renderer = new SvgRenderer();
+                using (var writer = new StreamWriter(Path.Combine(dir.FullName, "network.svg")))
+                {
+                    renderer.RenderToStream(network, writer);
+                }
             }
         }
         #endregion
@@ -247,7 +261,7 @@ public class Fit : BaseCommand
 
             // Row 1 Trainer
             {
-                var grid = new GridContainer(3);
+                var grid = new GridBox(3);
                 var panel = new Panel("Trainer", grid);
                 viewStack.Add(panel);
 

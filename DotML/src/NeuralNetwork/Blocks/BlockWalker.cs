@@ -58,13 +58,13 @@ public abstract class BlockWalker : IBlockVisitor
         return None.Value;
     }
 
-    public None Visit(GroupNorm2 norm, None arg)
+    public None Visit(GroupNorm norm, None arg)
     {
         VisitModule(norm);
         return None.Value;
     }
 
-    public None Visit(LayerNorm2 norm, None arg)
+    public None Visit(LayerNorm norm, None arg)
     {
         VisitModule(norm);
         return None.Value;

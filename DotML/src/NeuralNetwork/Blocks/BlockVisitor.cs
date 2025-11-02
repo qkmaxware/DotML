@@ -77,8 +77,8 @@ namespace DotML.Network
         public TResult Visit(Dropout dropout, TArg arg);
 
         public TResult Visit(BatchNorm2D norm, TArg arg);
-        public TResult Visit(GroupNorm2 norm, TArg arg);
-        public TResult Visit(LayerNorm2 norm, TArg arg);
+        public TResult Visit(GroupNorm norm, TArg arg);
+        public TResult Visit(LayerNorm norm, TArg arg);
 
         public TResult Visit(PixelShuffler shuffle, TArg arg);
 

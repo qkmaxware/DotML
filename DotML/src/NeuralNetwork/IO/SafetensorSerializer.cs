@@ -85,17 +85,17 @@ public class SafetensorSerializer : IBlockVisitor
         return None.Value;
     }
 
-    public None Visit(GroupNorm2 norm, None arg)
+    public None Visit(GroupNorm norm, None arg)
     {
-        Push(nameof(GroupNorm2.Weights), norm.Weights);
-        Push(nameof(GroupNorm2.Biases), norm.Biases);
+        Push(nameof(GroupNorm.Weights), norm.Weights);
+        Push(nameof(GroupNorm.Biases), norm.Biases);
         return None.Value;
     }
 
-    public None Visit(LayerNorm2 norm, None arg)
+    public None Visit(LayerNorm norm, None arg)
     {
-        Push(nameof(LayerNorm2.Weights), norm.Weights);
-        Push(nameof(LayerNorm2.Biases), norm.Biases);
+        Push(nameof(LayerNorm.Weights), norm.Weights);
+        Push(nameof(LayerNorm.Biases), norm.Biases);
         return None.Value;
     }
 
@@ -236,14 +236,14 @@ public class SafetensorDeserializer : IBlockVisitor<Safetensors, None>
         return None.Value;
     }
 
-    public None Visit(GroupNorm2 norm, Safetensors arg)
+    public None Visit(GroupNorm norm, Safetensors arg)
     {
         norm.Weights = Load<float>(arg, nameof(BatchNorm2D.Weights));
         norm.Biases = Load<float>(arg, nameof(BatchNorm2D.Biases));
         return None.Value;
     }
 
-    public None Visit(LayerNorm2 norm, Safetensors arg)
+    public None Visit(LayerNorm norm, Safetensors arg)
     {
         norm.Weights = Load<float>(arg, nameof(BatchNorm2D.Weights));
         norm.Biases = Load<float>(arg, nameof(BatchNorm2D.Biases));

@@ -7,6 +7,8 @@ public struct Graphics
     private readonly CharBuffer buffer;
     public readonly LayoutRect DrawingRegion;
 
+    public int Width => DrawingRegion.Width;
+
     public Graphics(CharBuffer buffer, LayoutRect region)
     {
         this.buffer = buffer;

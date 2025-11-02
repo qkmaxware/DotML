@@ -48,7 +48,7 @@ public class SvgRenderer
 
     private static string GetSvgTemplate(string? name, params object[] args)
     {
-        const string defaultTemplate = "DotML.src.NeuralNetwork.IO.SvgTemplates.";
+        const string defaultTemplate = "DotML.src.NeuralNetwork.IO.SvgTemplates.ActivationLayer.svg.part";
         Stream? stream;
         if (string.IsNullOrEmpty(name))
         {
@@ -328,13 +328,13 @@ public class SvgRenderer
             return new LayoutPosition { TrackIndex = arg.TrackIndex, PositionIndex = arg.PositionIndex + 1 };
         }
 
-        public LayoutPosition Visit(GroupNorm2 norm, LayoutPosition arg)
+        public LayoutPosition Visit(GroupNorm norm, LayoutPosition arg)
         {
             Layout.SetModule(arg.TrackIndex, arg.PositionIndex, norm);
             return new LayoutPosition { TrackIndex = arg.TrackIndex, PositionIndex = arg.PositionIndex + 1 };
         }
 
-        public LayoutPosition Visit(LayerNorm2 norm, LayoutPosition arg)
+        public LayoutPosition Visit(LayerNorm norm, LayoutPosition arg)
         {
             Layout.SetModule(arg.TrackIndex, arg.PositionIndex, norm);
             return new LayoutPosition { TrackIndex = arg.TrackIndex, PositionIndex = arg.PositionIndex + 1 };
@@ -464,7 +464,7 @@ public class SvgRenderer
     {
         public string Visit(object? obj, None args)
         {
-            return GetSvgTemplate(null);
+            return GetSvgTemplate(null, obj?.GetType()?.Name ?? "Unknown");
         }
 
         public string Visit(Activation activation, None arg)
@@ -502,14 +502,14 @@ public class SvgRenderer
             return GetSvgTemplate("Normalize.svg.part", nameof(BatchNorm2D));
         }
 
-        public string Visit(GroupNorm2 norm, None arg)
+        public string Visit(GroupNorm norm, None arg)
         {
-            return GetSvgTemplate("Normalize.svg.part", nameof(GroupNorm2));
+            return GetSvgTemplate("Normalize.svg.part", nameof(GroupNorm));
         }
 
-        public string Visit(LayerNorm2 norm, None arg)
+        public string Visit(LayerNorm norm, None arg)
         {
-            return GetSvgTemplate("Normalize.svg.part", nameof(LayerNorm2));
+            return GetSvgTemplate("Normalize.svg.part", nameof(LayerNorm));
         }
 
         public string Visit(PixelShuffler shuffle, None arg)

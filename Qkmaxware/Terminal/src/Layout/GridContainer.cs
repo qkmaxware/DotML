@@ -1,16 +1,16 @@
 namespace Qkmaxware.Terminal.Layout;
 
-public class GridContainer : IElement
+public class GridBox : IElement
 {
     public int Columns { get; init; }
     private List<IElement> elements = new();
 
-    public GridContainer(int columns)
+    public GridBox(int columns)
     {
         this.Columns = Math.Max(1, columns);
     }
 
-    public GridContainer(int columns, params IEnumerable<IElement> elements)
+    public GridBox(int columns, params IEnumerable<IElement> elements)
     {
         this.Columns = Math.Max(1, columns);
         this.elements.AddRange(elements);

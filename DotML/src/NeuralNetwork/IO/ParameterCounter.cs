@@ -66,14 +66,14 @@ public class ParameterCounter : IBlockVisitor
         return None.Value;
     }
 
-    public None Visit(GroupNorm2 norm, None arg)
+    public None Visit(GroupNorm norm, None arg)
     {
         Trainable += norm.TrainableParameterCount();
         UnTrainable += norm.UnTrainableParameterCount();
         return None.Value;
     }
 
-    public None Visit(LayerNorm2 norm, None arg)
+    public None Visit(LayerNorm norm, None arg)
     {
         Trainable += norm.TrainableParameterCount();
         UnTrainable += norm.UnTrainableParameterCount();

@@ -31,7 +31,7 @@ public class CompareLayerNorm
         ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
         var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
-        updated = new LayerNorm2(CHANNELS, ROWS, COLUMNS);
+        updated = new LayerNorm(CHANNELS, ROWS, COLUMNS);
 
         inputTensor = Tensor<float>.Generate(ishape, () => (float)generator.NextDouble());
         outputTensor = Tensor<float>.Generate(updated.ForwardShape(ishape), () => (float)generator.NextDouble());
