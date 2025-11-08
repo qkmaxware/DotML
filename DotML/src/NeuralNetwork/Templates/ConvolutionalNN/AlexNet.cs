@@ -72,8 +72,8 @@ public class AlexNetFactory
                 dilation: (1, 1),
                 padding: (0, 0, 0, 0)
             ))
+            .ThenIf(settings.NormalizeLayers, (ishape) => new BatchNorm2D(ishape.Length(^3)))
             .Then(ishape => new Activation(activation))
-            .ThenIf(settings.NormalizeLayers, (ishape) => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new MaxPool2D(
                 size: 3,
                 stride: 2,
@@ -89,8 +89,8 @@ public class AlexNetFactory
                 dilation: (1, 1),
                 padding: (2, 2, 2, 2) // 'Same' padding for 5x5
             ))
+            .ThenIf(settings.NormalizeLayers, ishape => new BatchNorm2D(ishape.Length(^3)))
             .Then(ishape => new Activation(activation))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new MaxPool2D(
                 size: 3,
                 stride: 2,
@@ -106,6 +106,7 @@ public class AlexNetFactory
                 dilation: (1, 1),
                 padding: (1, 1, 1, 1) // 'Same' padding for 3x3
             ))
+            .ThenIf(settings.NormalizeLayers, ishape => new BatchNorm2D(ishape.Length(^3)))
             .Then(ishape => new Activation(activation))
             .Then(ishape => new Conv2D(
                 outChannels: 384,
@@ -116,6 +117,7 @@ public class AlexNetFactory
                 dilation: (1, 1),
                 padding: (1, 1, 1, 1)
             ))
+            .ThenIf(settings.NormalizeLayers, ishape => new BatchNorm2D(ishape.Length(^3)))
             .Then(ishape => new Activation(activation))
             .Then(ishape => new Conv2D(
                 outChannels: 256,
@@ -126,8 +128,8 @@ public class AlexNetFactory
                 dilation: (1, 1),
                 padding: (1, 1, 1, 1)
             ))
+            .ThenIf(settings.NormalizeLayers, ishape => new BatchNorm2D(ishape.Length(^3)))
             .Then(ishape => new Activation(activation))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
             .Then(ishape => new MaxPool2D(
                 size: 3,
                 stride: 2,
@@ -135,22 +137,21 @@ public class AlexNetFactory
             ))
             // Flattening and Dense layers
             .Then(ishape => new DenseLinear(
-                ishape.LogicalElementCount(),
+                ishape.LogicalElementCount(), // All elements flattened
                 neurons
             ))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^1)))
             .Then(ishape => new Activation(activation))
             .Then(ishape => new DenseLinear(
                 ishape.LogicalElementCount(),
                 neurons
             ))
-            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^3), ishape.Length(^2), ishape.Length(^1)))
+            .ThenIf(settings.NormalizeLayers, ishape => new LayerNorm(ishape.Length(^1)))
             .Then(ishape => new Activation(activation))
             .Then(ishape => new DenseLinear(
                 ishape.LogicalElementCount(),
                 settings.OutputClasses
             ))
-            //.Then(ishape => new SoftmaxOutput()) // No longer required, just use the correct loss function to train logits
             .Finalize()
         );
     }

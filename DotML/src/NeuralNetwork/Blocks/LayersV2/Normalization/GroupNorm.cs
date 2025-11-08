@@ -61,11 +61,8 @@ public class GroupNorm : NormalizationLayer, IWeightsAndBiasNetworkModule
 
     public override void Initialize(IInitializer initializer)
     {
-        var parameters = this.TrainableParameterCount();
-
-        var neurons = Weights.ElementCount;
-        Weights.FillGenerated(() => initializer.RandomWeight(neurons, neurons, parameters));
-        Biases.FillGenerated(() => initializer.RandomWeight(neurons, neurons, parameters));
+        Weights.FillConstant(1);
+        Biases.FillConstant(0);
     }
 
     public override TensorShape ForwardShape(TensorShape input) => input;

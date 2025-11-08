@@ -63,7 +63,6 @@ public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
 
     public BatchNorm2D(int channels)
     {
-
         _runningMean = Tensor<float>.Ones(new TensorShape(channels));
         _runningVariance = Tensor<float>.Zeros(new TensorShape(channels));
 
@@ -80,11 +79,8 @@ public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
 
     public override void Initialize(IInitializer initializer)
     {
-        var parameters = this.TrainableParameterCount();
-
-        var neurons = Weights.ElementCount;
-        Weights.FillGenerated(() => initializer.RandomWeight(neurons, neurons, parameters));
-        Biases.FillGenerated(() => initializer.RandomWeight(neurons, neurons, parameters));
+        Weights.FillConstant(1);
+        Biases.FillConstant(0);
     }
 
     public override TensorShape ForwardShape(TensorShape input) => input;
@@ -93,7 +89,7 @@ public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
 
     public override Tensor<float> Forward(Tensor<float> x, EvaluationContext? ctx)
     {
-        var originalRank = x.Shape.Rank;
+        var originalShape = x.Shape;
         var shape = x.Shape.NormalizeRank(4); // Force to be [N, C, H, W]
         x = x.Clone();
         var batches = shape.Length(0); var batchStride = shape.Stride(0);
@@ -130,10 +126,14 @@ public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
             var sqrt = 1.0f / MathF.Sqrt(variance + epsilon);
 
             // Update running means and variances which are typically used in Inference or when batch size is too small
-            if (batches > 1)
+            if (IsTraining(ctx) && batches > 1)
             {
-                this.RunningMean[channel] = running_mean_momentum * mean + (1 - running_mean_momentum) * RunningMean[channel];
-                this.RunningVariance[channel] = running_variance_momentum * variance + (1 - running_variance_momentum) * RunningVariance[channel];
+                this.RunningMean[channel] =
+                    (1 - running_mean_momentum) * this.RunningMean[channel] 
+                    + running_mean_momentum * mean;
+                this.RunningVariance[channel] =
+                    (1 - running_variance_momentum) * this.RunningVariance[channel] 
+                    + running_variance_momentum * variance;
             }
 
             var gamma = Weights[channel];
@@ -187,7 +187,8 @@ public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
             }
         }
 
-        var res = x.Squeeze(0..^originalRank);
+        // Attempt to preserve the original rank by squeezing back any added dimensions (ie CHW gets expanded to NCHW and returned to CHW here)
+        var res = x.ReshapeShared(originalShape);
         
         if (ctx is not null)
         {

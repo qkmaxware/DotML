@@ -51,8 +51,8 @@ public class SequentialBlockPattern : IModulePattern
 
         while (current is not null)
         {
-            incoming = incoming = graph.IncomingEdges(current).ToList();
-            outgoing = outgoing = graph.OutgoingEdges(current).ToList();
+            incoming = graph.IncomingEdges(current).ToList();
+            outgoing = graph.OutgoingEdges(current).ToList();
             // Checks:
             // 1. Node can't be an input or output node (these don't have a concept in the module system, inputs are just whatever you pass to the forward method)
             // 2. Sequence middle node has exactly 1 input edge.
