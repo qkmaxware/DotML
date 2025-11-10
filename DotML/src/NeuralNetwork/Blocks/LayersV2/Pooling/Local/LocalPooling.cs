@@ -19,24 +19,14 @@ public abstract class LocalPooling : Pooling
 public abstract class LocalPooling2D : LocalPooling
 {
     /// <summary>
-    /// Size of the filter horizontally
+    /// Size of the filter
     /// </summary>
-    public int FilterWidth { get; private set; }
+    public Size2D FilterSize { get; private set; }
 
     /// <summary>
-    /// Size of the filter vertically
+    /// Stride of the filter 
     /// </summary>
-    public int FilterHeight { get; private set; }
-
-    /// <summary>
-    /// Horizontal movement stride (minimum 1)
-    /// </summary>
-    public int StrideX { get; private set; }
-
-    /// <summary>
-    /// Vertical movement stride (minimum 1)
-    /// </summary>
-    public int StrideY { get; private set; }
+    public Stride2D Stride { get; private set; }
 
     /// <summary>
     /// Horizontal padding of the input (min 0)
@@ -67,10 +57,8 @@ public abstract class LocalPooling2D : LocalPooling
     /// <param name="paddingY">vertical input stride</param>
     public LocalPooling2D(int width, int height, int strideX, int strideY, int paddingX, int paddingY)
     {
-        this.FilterWidth = width;
-        this.FilterHeight = height;
-        this.StrideX = strideX;
-        this.StrideY = strideY;
+        this.FilterSize = new Size2D(width, height);
+        this.Stride = new Stride2D(strideX, strideY);
         this.PaddingX = paddingX;
         this.PaddingY = paddingY;
     }
@@ -89,8 +77,8 @@ public abstract class LocalPooling2D : LocalPooling
 
         var padded_input_width = inputWidth + 2 * PaddingX;
         var padded_input_height = inputHeight + 2 * PaddingY;
-        var outputWidth = ((padded_input_width - this.FilterWidth) / this.StrideX) + 1;
-        var outputHeight = ((padded_input_height - this.FilterHeight) / this.StrideY) + 1;
+        var outputWidth = ((padded_input_width - this.FilterSize.Width) / this.Stride.X) + 1;
+        var outputHeight = ((padded_input_height - this.FilterSize.Height) / this.Stride.Y) + 1;
 
         var outDimensions = input.AsDimensionSpan().ToArray();
         outDimensions[^2] = outputHeight;
@@ -104,11 +92,11 @@ public abstract class LocalPooling2D : LocalPooling
         var originalRank = inputs.Shape.Rank;
         inputs = inputs.ReshapeShared(inputs.Shape.EnsureRank(2)); // Minimum of [N,C,H,W], but can have more batch dims [D1, D2, ..., C, H, W]
 
-        var filterWidth = this.FilterWidth;
-        var filterHeight = this.FilterHeight;
+        var filterWidth = this.FilterSize.Width;
+        var filterHeight = this.FilterSize.Height;
 
-        var stridex = this.StrideX;
-        var stridey = this.StrideY;
+        var stridex = this.Stride.X;
+        var stridey = this.Stride.Y;
 
         var inputWidth = inputs.Shape.Length(^1);
         var inputHeight = inputs.Shape.Length(^2);
@@ -116,8 +104,8 @@ public abstract class LocalPooling2D : LocalPooling
 
         var padded_input_width = inputWidth + 2 * PaddingX;
         var padded_input_height = inputHeight + 2 * PaddingY;
-        var outputWidth = ((padded_input_width - this.FilterWidth) / this.StrideX) + 1;
-        var outputHeight = ((padded_input_height - this.FilterHeight) / this.StrideY) + 1;
+        var outputWidth = ((padded_input_width - this.FilterSize.Width) / this.Stride.X) + 1;
+        var outputHeight = ((padded_input_height - this.FilterSize.Height) / this.Stride.Y) + 1;
         var outputSliceLength = outputWidth * outputHeight;
 
         var outDimensions = inputs.Shape.AsDimensionSpan().ToArray();
@@ -188,8 +176,8 @@ public abstract class LocalPooling2D : LocalPooling
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)
     {
-        var filterWidth = FilterWidth;
-        var filterHeight = FilterHeight;
+        var filterWidth = FilterSize.Width;
+        var filterHeight = FilterSize.Height;
         var filterElementCount = filterWidth * filterHeight;
 
         var errShape = dy.Shape.EnsureRank(2);
@@ -220,12 +208,12 @@ public abstract class LocalPooling2D : LocalPooling
             // Loop over output
             for (int row = 0; row < errRows; row++)
             {
-                var StartY = row * StrideY;
-                var EndY = row * StrideY + filterHeight;
+                var StartY = row * Stride.Y;
+                var EndY = row * Stride.Y + filterHeight;
                 for (int col = 0; col < errColumns; col++)
                 {
-                    var StartX = col * StrideX;
-                    var EndX = col * StrideX + filterWidth;
+                    var StartX = col * Stride.X;
+                    var EndX = col * Stride.X + filterWidth;
 
                     // Loop over input values where the filter is applied
                     Backpropagate(

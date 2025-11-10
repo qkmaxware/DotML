@@ -1,6 +1,9 @@
-namespace DotML.Network.IO.Netbuild;
+using DotML.Network;
 
-public class ActivationFunctionMapper {
+namespace DotML.Serialization.Xml;
+
+internal class ActivationFunctionMapper
+{
 
     private static Type[] Empty = [];
     private static object[] NoArgs = new object[0];

@@ -10,15 +10,32 @@ namespace DotML.Network;
 /// </summary>
 public class Conv2D : NetworkLayer, IWeightsAndBiasNetworkModule
 {
-
+    /// <summary>
+    /// Number of groups for grouped convolution
+    /// </summary>
     public int Groups { get; set; }
-    public (int X, int Y) Stride { get; set; }
-    public (int X, int Y) Dilation { get; set; }
-    public (int Left, int Top, int Right, int Bottom) Padding { get; set; }
+    /// <summary>
+    /// Stride of the convolution
+    /// </summary>
+    public Stride2D Stride { get; set; }
+    /// <summary>
+    /// Dilation of the convolution
+    /// </summary>
+    public Dilation2D Dilation { get; set; }
+    /// <summary>
+    /// Padding of the convolution
+    /// </summary>
+    public Padding2D Padding { get; set; }
+    /// <summary>
+    /// Weights of the convolutional kernel
+    /// </summary>
     public Tensor<float> Weights { get; set; }   // [outChannels, inChannelsPerGroup, kernelHeight, kernelWidth]
+    /// <summary>
+    /// Biases of the convolution
+    /// </summary>
     public Tensor<float> Biases { get; set; }    // [outChannels]
 
-    public Conv2D(int outChannels, int inChannelsPerGroup, int groups, (int Width, int Height) kernel, (int X, int Y) stride, (int X, int Y) dilation, (int Left, int Top, int Right, int Bottom) padding)
+    public Conv2D(int outChannels, int inChannelsPerGroup, int groups, Size2D kernel, Stride2D stride, Dilation2D dilation, Padding2D padding)
     {
         this.Weights = Tensor<float>.Ones(new TensorShape(outChannels, inChannelsPerGroup, kernel.Height, kernel.Width));
         this.Biases = Tensor<float>.Zeros(new TensorShape(outChannels));

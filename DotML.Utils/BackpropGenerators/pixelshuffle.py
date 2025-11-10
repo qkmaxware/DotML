@@ -3,10 +3,11 @@ import torch.nn as nn
 import json
 
 # Step 1: Make layer
-layer = nn.PixelShuffle(2)
+upscale = 4
+layer = nn.PixelShuffle(upscale)
 
 # Step 2: Create random input tensor
-input = torch.randn(1, 4, 5, 5, requires_grad=True) # 1 batch, 4 channel, 5x5 feature
+input = torch.randn(2, upscale**2, 5, 5, requires_grad=True) # 2 batch, r^2 channel, 5x5 feature
 
 # Step 3: Forward pass
 output = layer(input)
@@ -39,7 +40,7 @@ output = {
 }
 
 # Step 7: Save
-filename = 'pixelshuffle.tensors.json'
+filename = f'pixelshuffle.{list(input.shape)}.tensors.json'
 with open(filename, 'w') as file:
-    json.dump(output, file, indent=4)
+    json.dump(output, file)
 print(f"Tensors and gradients saved to '{filename}'.")

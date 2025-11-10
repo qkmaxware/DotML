@@ -137,7 +137,8 @@ public readonly struct RowMajorIndexSpanEnumerator
 /// <summary>
 /// Shape of a tensor
 /// </summary>
-public readonly struct TensorShape : IShape
+public readonly struct TensorShape
+: IShape, IParsable<TensorShape>
 {
     #region Dimension Shortcuts
     /// <summary>
@@ -214,7 +215,7 @@ public readonly struct TensorShape : IShape
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => dims[dim];
-    }   
+    }
 
     /// <summary>
     /// Length of the given dimension of the shape
@@ -888,5 +889,37 @@ public readonly struct TensorShape : IShape
         }
         sb.Append(')');
         return sb.ToString();
+    }
+
+    public static TensorShape Parse(string s, IFormatProvider? provider)
+    {
+        var parts = s.Split(',');
+        var dims = new int[parts.Length];
+        for (var i = 0; i < parts.Length; i++)
+        {
+            dims[i] = int.Parse(parts[i], provider);
+        }
+        return new TensorShape(dims);
+    }
+
+    public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TensorShape result)
+    {
+        var parts = s?.Split(',');
+        if (parts is null)
+        {
+            result = default;
+            return false;
+        }
+        var dims = new int[parts.Length];
+        for (var i = 0; i < parts.Length; i++)
+        {
+            if (!int.TryParse(parts[i], System.Globalization.NumberStyles.Integer, provider, out dims[i]))
+            {
+                result = default;
+                return false;
+            }
+        }
+        result = new TensorShape(dims);
+        return true;
     }
 }

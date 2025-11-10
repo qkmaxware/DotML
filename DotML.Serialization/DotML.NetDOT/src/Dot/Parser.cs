@@ -273,8 +273,8 @@ public class Parser
     public DotGraph Parse(string text)
     {
         var result = this.graph_file(new InputString(text));
-        if (!result.TryGetValue(out DotGraph graph))
-            throw result.Error;
+        if (!result.TryGetValue(out DotGraph? graph))
+            throw result.Error ?? new Exception("Unknown parsing error");
         return graph;
     }
 

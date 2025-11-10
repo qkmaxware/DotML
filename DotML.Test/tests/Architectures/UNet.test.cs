@@ -23,9 +23,13 @@ public class UNetTest
         build.BaseFeatureCount = 64;
 
         build.Activation = ActivationFunctions.ReLU;
-        
+
         // Test we can create the network and that it has the expected input/output shape
         var network = (ArchitectureBlock)factory.Make(build);
+        if (!network.RequiredInputShape.HasValue || !network.OutputShape.HasValue)
+        {
+            Assert.Fail("Network does not have defined input/output shape.");
+        }
         var ishape = new TensorShape(build.InputChannels, build.ImageHeight, build.ImageWidth);
         Assert.AreEqual(ishape, network.RequiredInputShape.Value);
         var oshape = new TensorShape(build.OutputChannels, build.ImageHeight, build.ImageWidth); 

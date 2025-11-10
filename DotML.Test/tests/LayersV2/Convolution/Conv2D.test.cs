@@ -899,4 +899,40 @@ public class Conv2DTest
             dx: Tensor<float>.FromJaggedArray(test_data.dX)
         );
     }
+
+    [TestMethod]
+    public void TestBatch2Channels4Stride2Padding0Kernel3()
+    {
+        var layer = new Conv2D(
+            outChannels: 6,
+            inChannelsPerGroup: 4,
+            groups: 1,
+            kernel: (3, 3),
+            stride: (2, 2),
+            dilation: (1, 1),
+            padding: (0, 0, 0, 0) // VALID padding
+        );
+
+        var test_data = JsonSerializer.Deserialize<Conv2DTestTensorSet>(ResourceLoader.Find("conv2d.[2, 4, 8, 8].tensors.json"));
+        if (test_data is null || test_data.X is null || test_data.W is null || test_data.B is null || test_data.Y is null || test_data.dY is null || test_data.dW is null || test_data.db is null || test_data.dX is null)
+        {
+            Assert.Fail("Missing test data");
+            return;
+        }
+
+        LayerTester.ForwardAndBack(
+            layer: layer,
+            x: Tensor<float>.FromJaggedArray(test_data.X),
+
+            w: Tensor<float>.FromJaggedArray(test_data.W),
+            b: Tensor<float>.FromJaggedArray(test_data.B),
+            y: Tensor<float>.FromJaggedArray(test_data.Y),
+
+            dy: Tensor<float>.FromJaggedArray(test_data.dY),
+            dw: Tensor<float>.FromJaggedArray(test_data.dW),
+            db: Tensor<float>.FromJaggedArray(test_data.db),
+
+            dx: Tensor<float>.FromJaggedArray(test_data.dX)
+        );
+    }
 }

@@ -10,5 +10,5 @@ namespace DotML.Network;
 /// </summary>
 public abstract class Pooling : NetworkLayer
 {
-    // TODO maybe soem shared functionality at some point
+    // TODO maybe some shared functionality at some point
 }

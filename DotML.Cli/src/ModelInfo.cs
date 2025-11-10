@@ -104,7 +104,7 @@ public class ArchitectureFile
     {
         get
         {
-            return potentialFiles.Select(file => file.CreationTime).Min();
+            return potentialFiles.Where(file => file.Exists).Select(file => file.CreationTime).Min();
         }
     }
 
@@ -112,7 +112,7 @@ public class ArchitectureFile
     {
         get
         {
-            return potentialFiles.Select(file => file.LastWriteTime).Max();
+            return potentialFiles.Where(file => file.Exists).Select(file => file.LastWriteTime).Max();
         }
     }
 
@@ -120,7 +120,8 @@ public class ArchitectureFile
     {
         foreach (var file in potentialFiles)
         {
-            file.Delete();
+            if (file.Exists)
+                file.Delete();
         }
     }
 

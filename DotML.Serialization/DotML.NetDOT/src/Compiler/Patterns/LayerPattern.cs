@@ -97,6 +97,20 @@ where T:INetworkModule
             ActivationFunctionMapper.DecodeStatic(value, alpha);
         }
 
+        // If the target type implements IParsable<T>, use that
+        if (targetType.IsAssignableTo(typeof(IParsable<>)))
+        {
+            var parseMethod = targetType.GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(string), typeof(IFormatProvider) }, null);
+            if (parseMethod is not null)
+            {
+                var obj = parseMethod.Invoke(null, new object?[] { value, null });
+                if (obj is not null && obj.GetType().IsAssignableTo(targetType))
+                {
+                    return obj;
+                }
+            }
+        }
+
         // If the target is a TensorShape handle that specially 
         if (targetType == typeof(TensorShape))
         {

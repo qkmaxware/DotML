@@ -30,13 +30,14 @@
   <ItemGroup>
     <None Include="Readme.md" Pack="true" PackagePath="\" />
     <EmbeddedResource Include=".\src\Docs\*.md" />
-    <ProjectReference Include="..\DotML\DotML.csproj" />
-    <ProjectReference Include="..\DotML.Netbuild\DotML.Netbuild.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DotML\DotML.csproj" />
     <ProjectReference Include="..\Qkmaxware\Terminal\Qkmaxware.Terminal.csproj" />
-    <ProjectReference Include="..\DotML.NetDOT\DotML.NetDOT.csproj" />
+    <ProjectReference Include="..\DotML.Serialization\DotML.Netbuild\DotML.Netbuild.csproj" />
+    <ProjectReference Include="..\DotML.Serialization\DotML.NetDOT\DotML.NetDOT.csproj" />
+    <ProjectReference Include="..\DotML.Serialization\DotML.NetXML\DotML.NetXML.csproj" />
   </ItemGroup>
 
 </Project>

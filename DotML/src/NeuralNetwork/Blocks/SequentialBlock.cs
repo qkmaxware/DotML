@@ -5,6 +5,11 @@ namespace DotML.Network;
 
 /// <summary>
 /// A simple network composed of sequential layers with no skip connections, residuals, or branches
+/// <para>
+/// <code>
+/// --> 1st --> 2nd --> ... --> Nth -->
+/// </code>
+/// </para>
 /// </summary>
 public class SequentialBlock : INetworkModule, IBlockVisitable
 {

@@ -256,7 +256,7 @@ public static class Combinators {
     public static Parser<List<T>> Repeat<T>(this Parser<T> parser, int n) {
         return input => {
             var many = new List<T>();
-            Result<T> last = null;
+            Result<T>? last = null;
             for (int i = 0; i < n; i++) {
                 var next = parser(input);
                 if (!next.HasValue) 

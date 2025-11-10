@@ -8,7 +8,9 @@ namespace System.Numerics;
 /// This version uses floats to represent x and y as opposed to Complex which uses doubles.
 /// </summary>
 [Serializable]
-public readonly struct ComplexF : IEquatable<ComplexF> {
+public readonly struct ComplexF
+: IEquatable<ComplexF>
+{
 
     private readonly float m_real; // Do not rename (binary serialization)
     private readonly float m_imaginary; // Do not rename (binary serialization)
@@ -25,12 +27,14 @@ public readonly struct ComplexF : IEquatable<ComplexF> {
     public float Magnitude { get { return MathF.Sqrt(m_real * m_real + m_imaginary * m_imaginary); } }
     public float Phase { get { return MathF.Atan2(m_imaginary, m_real); } }
 
-    public ComplexF(float real, float imaginary) {
+    public ComplexF(float real, float imaginary)
+    {
         m_real = real;
         m_imaginary = imaginary;
     }
 
-    public static ComplexF FromPolarCoordinates(float magnitude, float phase) {
+    public static ComplexF FromPolarCoordinates(float magnitude, float phase)
+    {
         return new ComplexF(magnitude * MathF.Cos(phase), magnitude * MathF.Sin(phase));
     }
 
@@ -261,7 +265,8 @@ public readonly struct ComplexF : IEquatable<ComplexF> {
 
     public override string ToString() => $"{m_real} {(m_imaginary >= 0 ? '+' : '-')} {MathF.Abs(m_imaginary)}i";
 
-    public static explicit operator Complex (ComplexF value) {
+    public static explicit operator Complex(ComplexF value)
+    {
         return new Complex(value.m_real, value.m_imaginary);
     }
 }

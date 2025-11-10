@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DotML;
 using DotML.Network;
 using DotML.Network.Training;
@@ -583,6 +584,36 @@ public class PixelShuffleTest
             ]
         ).ToFloat();
         Assert.AreEqual(true, grad.dX.Equals(dX_true, 0.0001f));
+    }
+
+    private class PixelShuffleTestTensorSet
+    {
+        public float[][][][]? X { get; set; }
+        public float[][][][]? Y { get; set; }
+        public float[][][][]? dY { get; set; }
+        public float[][][][]? dX { get; set; }
+    }
+
+    [TestMethod]
+    public void Test4xBatched()
+    {
+        var layer = new PixelShuffler(upscale: 4);
+
+        var test_data = JsonSerializer.Deserialize<PixelShuffleTestTensorSet>(ResourceLoader.Find("pixelshuffle.[2, 16, 5, 5].tensors.json"));
+        if (test_data is null || test_data.X is null || test_data.Y is null || test_data.dY is null || test_data.dX is null)
+        {
+            Assert.Fail("Missing test data");
+            return;
+        }
+
+        LayerTester.ForwardAndBack(
+            layer: layer,
+            x: Tensor<float>.FromJaggedArray(test_data.X),
+            y: Tensor<float>.FromJaggedArray(test_data.Y),
+
+            dy: Tensor<float>.FromJaggedArray(test_data.dY),
+            dx: Tensor<float>.FromJaggedArray(test_data.dX)
+        );
     }
 
 }

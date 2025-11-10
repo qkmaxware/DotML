@@ -20,6 +20,21 @@ public static class LayerTester
         Assert.AreEqual(true, y_projected.Equals(y, 0.0001f));
     }
 
+    public static void ForwardAndBack(INetworkModule layer, Tensor<float> x, Tensor<float> y, Tensor<float> dy, Tensor<float> dx)
+    {
+        // Init
+
+        // Forward
+        var context = new EvaluationContext(EvaluationMode.Training);
+        var y_projected = layer.Forward(x, context);
+        Assert.AreEqual(true, y_projected.Equals(y, 0.0001f));
+
+        // Backwards
+        var gradients = layer.Backward(dy, context);
+
+        Assert.AreEqual(true, gradients.dX.Equals(dx, 0.001f));
+    }
+
     public static void ForwardAndBack(IWeightsAndBiasNetworkModule layer, Tensor<float> w, Tensor<float> b, Tensor<float> x, Tensor<float> y, Tensor<float> dy, Tensor<float> dx, Tensor<float> dw, Tensor<float> db)
     {
         // Init

@@ -1,8 +1,6 @@
-using DotML.Network;
+namespace DotML.Network.IO.Netbuild;
 
-namespace DotML.NetDot;
-
-public class ActivationFunctionMapper {
+internal class ActivationFunctionMapper {
 
     private static Type[] Empty = [];
     private static object[] NoArgs = new object[0];

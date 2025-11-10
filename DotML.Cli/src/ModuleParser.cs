@@ -1,13 +1,15 @@
+using System.Xml;
 using DotML.Network;
 using DotML.Network.IO;
 using DotML.Network.IO.Netbuild;
+using DotML.Serialization.Xml;
 
 namespace DotML.Cli;
 
 public static class ModuleParser
 {
     public static readonly string PreferredExtension = ".netdot";
-    public static readonly string[] AllowedExtensions = [".netdot", ".netbuild"];
+    public static readonly string[] AllowedExtensions = [".netdot", ".netxml", ".netbuild"];
 
     public static INetworkModule Parse(string contents, string format)
     {
@@ -15,6 +17,7 @@ public static class ModuleParser
         {
             ".netbuild" => ParseNetBuild(contents),
             ".netdot" => ParseNetDot(contents),
+            ".netxml" => ParseNetXml(contents),
             _ => throw new FormatException("format not supported")
         };
     }
@@ -26,6 +29,14 @@ public static class ModuleParser
 
         var compiler = new NetDot.ModuleCompiler();
         return compiler.Compile(nodeGraph);
+    }
+
+    private static INetworkModule ParseNetXml(string contents)
+    {
+        var parser = new NetworkXmlSerializer();
+        var doc = new XmlDocument();
+        doc.InnerXml = contents;
+        return parser.Deserialize(doc);
     }
 
     private static INetworkModule ParseNetBuild(string contents)

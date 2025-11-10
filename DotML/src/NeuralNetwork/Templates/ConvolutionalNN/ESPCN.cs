@@ -7,9 +7,9 @@ public class ESPCNFactory
 : INetworkModuleFactory<ESPCNFactory.BuildSettings>
 {
     /// <summary>
-    /// Typical number of channels per image processed by ESPCN (typically three, RGB)
+    /// Typical number of channels per image processed by ESPCN (typically 1, Y/Luminance)
     /// </summary>
-    public const int IMG_CHANNELS = 3;
+    public const int IMG_CHANNELS = 1;
     /// <summary>
     /// Typical width (in pixels) for an image processed by ESPCN (typically 32 pixels)
     /// </summary>
@@ -45,7 +45,7 @@ public class ESPCNFactory
     public INetworkModule Make(BuildSettings settings)
     {
         var scaling = Math.Max(1, settings.UpscalingFactor);
-        var activation = settings.Activation ?? ReLU.Instance;
+        var activation = settings.Activation ?? HyperbolicTangent.Instance;
 
         var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
 
@@ -75,7 +75,7 @@ public class ESPCNFactory
             ))
             .WithActivation(activation)
             .Then((ishape) => new Conv2D(
-                outChannels: settings.ImgChannels * scaling * scaling,
+                outChannels: settings.ImgChannels * (int)Math.Pow(scaling, 2),
                 inChannelsPerGroup: ishape.Length(^3), // [C, H, W]
                 groups: 1,
                 kernel: (3, 3),

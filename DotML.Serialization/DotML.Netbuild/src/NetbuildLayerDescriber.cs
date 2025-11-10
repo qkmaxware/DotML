@@ -32,7 +32,7 @@ internal class NetbuildLayerDescriber : IBlockVisitor<string>
     public string Visit(TransposeConv2D conv, None arg)
     {
         //public TransposeConv2D(int outChannels, int inChannelsPerGroup, int groups, (int Width, int Height) kernel, (int X, int Y) stride, (int X, int Y) dilation, (int Left, int Top, int Right, int Bottom) inputPadding, (int Left, int Top, int Right, int Bottom) outputPadding)
-        return $"{nameof(Conv2D)} outChannels={conv.Biases.Shape[0]} inChannelsPerGroup={conv.Weights.Shape[0]} groups={conv.Groups} kernel=\"{conv.Weights.Shape[3]},{conv.Weights.Shape[2]}\" stride=\"{conv.Stride.X},{conv.Stride.Y}\" dilation=\"{conv.Dilation.X},{conv.Dilation.Y}\" inputPadding=\"{conv.InputPadding.Left},{conv.InputPadding.Top},{conv.InputPadding.Right},{conv.InputPadding.Bottom}\" outputPadding=\"{conv.OutputPadding.Left},{conv.OutputPadding.Top},{conv.OutputPadding.Right},{conv.OutputPadding.Bottom}\"";
+        return $"{nameof(TransposeConv2D)} outChannels={conv.Biases.Shape[0]} inChannelsPerGroup={conv.Weights.Shape[0]} groups={conv.Groups} kernel=\"{conv.Weights.Shape[3]},{conv.Weights.Shape[2]}\" stride=\"{conv.Stride.X},{conv.Stride.Y}\" dilation=\"{conv.Dilation.X},{conv.Dilation.Y}\" inputPadding=\"{conv.InputPadding.Left},{conv.InputPadding.Top},{conv.InputPadding.Right},{conv.InputPadding.Bottom}\" outputPadding=\"{conv.OutputPadding.Left},{conv.OutputPadding.Top},{conv.OutputPadding.Right},{conv.OutputPadding.Bottom}\"";
     }
 
     public string Visit(DenseLinear dense, None arg)
@@ -69,17 +69,17 @@ internal class NetbuildLayerDescriber : IBlockVisitor<string>
 
     public string Visit(AvgPool2D pool, None arg)
     {
-        return $"{nameof(AvgPool2D)} width={pool.FilterWidth} height={pool.FilterHeight} strideX={pool.StrideX} strideY={pool.StrideY} paddingX={pool.PaddingX} paddingY={pool.PaddingY}";
+        return $"{nameof(AvgPool2D)} width={pool.FilterSize.Width} height={pool.FilterSize.Height} strideX={pool.Stride.X} strideY={pool.Stride.Y} paddingX={pool.PaddingX} paddingY={pool.PaddingY}";
     }
 
     public string Visit(MaxPool2D pool, None arg)
     {
-        return $"{nameof(MaxPool2D)} width={pool.FilterWidth} height={pool.FilterHeight} strideX={pool.StrideX} strideY={pool.StrideY} paddingX={pool.PaddingX} paddingY={pool.PaddingY}";
+        return $"{nameof(MaxPool2D)} width={pool.FilterSize.Width} height={pool.FilterSize.Height} strideX={pool.Stride.X} strideY={pool.Stride.Y} paddingX={pool.PaddingX} paddingY={pool.PaddingY}";
     }
 
     public string Visit(MinPool2D pool, None arg)
     {
-        return $"{nameof(MinPool2D)} width={pool.FilterWidth} height={pool.FilterHeight} strideX={pool.StrideX} strideY={pool.StrideY} paddingX={pool.PaddingX} paddingY={pool.PaddingY}";
+        return $"{nameof(MinPool2D)} width={pool.FilterSize.Width} height={pool.FilterSize.Height} strideX={pool.Stride.X} strideY={pool.Stride.Y} paddingX={pool.PaddingX} paddingY={pool.PaddingY}";
     }
 
     public string Visit(GlobalAvgPool2D pool, None arg)
