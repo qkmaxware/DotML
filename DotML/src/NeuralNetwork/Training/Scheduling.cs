@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Reflection.Metadata;
 
 namespace DotML.Network.Training;
 
@@ -10,7 +11,7 @@ public interface ILearningRateScheduler
     /// <param name="baseRate">starting learning rate</param>
     /// <param name="epochFor">current epoch (o-index)</param>
     /// <returns>learning rate for this given epoch</returns>
-    public float RateForEpoch(int epochFor, float baseRate);
+    public float RateForEpoch(int epochFor);
 
     /// <summary>
     /// Step the scheduler at the end of the epoch
@@ -22,7 +23,14 @@ public interface ILearningRateScheduler
 
 public class ConstantRate : ILearningRateScheduler
 {
-    public float RateForEpoch(int epochFor, float baseRate) => baseRate;
+    public float BaseRate {get; private set;}
+
+    public ConstantRate(float baseRate)
+    {
+        this.BaseRate = baseRate;
+    }
+
+    public float RateForEpoch(int epochFor) => BaseRate;
 }
 
 public class ExponentialDecay : ILearningRateScheduler
@@ -30,71 +38,108 @@ public class ExponentialDecay : ILearningRateScheduler
     public float Decay { get; private set; }
     public int StepInterval { get; private set; }
     public float MinRate { get; private set; }
+    public float BaseRate {get; private set;}
 
-    public ExponentialDecay(float decay, int every = 1, float minRate = 1e-6f)
+    public ExponentialDecay(float baseRate, float decay, int every = 1, float minRate = 1e-6f)
     {
+        this.BaseRate = baseRate;
         this.Decay = Math.Abs(decay);
         this.StepInterval = Math.Max(1, every);
         this.MinRate = Math.Abs(minRate);
     }
 
-    public static ExponentialDecay HalfEvery(int epochs) => new ExponentialDecay(MathF.Log(2) / epochs);
+    public static ExponentialDecay HalfEvery(float baseRate, int epochs) => new ExponentialDecay(baseRate, MathF.Log(2) / epochs);
 
-    public float RateForEpoch(int epochFor, float baseRate)
+    public float RateForEpoch(int epochFor)
     {
         var steps = epochFor / StepInterval;
-        var rate = baseRate * MathF.Exp(-Decay * steps);
+        var rate = BaseRate * MathF.Exp(-Decay * steps);
         return MathF.Max(rate, this.MinRate);
     }
 }
 
 public class StepDecay : ILearningRateScheduler
 {
-
+    public float BaseRate {get; private set;}
     public float Gamma { get; private set; }
     public int StepInterval { get; private set; }
 
-    public StepDecay(float gamma, int step)
+    public StepDecay(float baseRate, float gamma, int step)
     {
+        this.BaseRate = baseRate;
         this.Gamma = Math.Abs(gamma);
         this.StepInterval = Math.Max(1, step);
     }
 
-    public float RateForEpoch(int epochFor, float baseRate)
+    public float RateForEpoch(int epochFor)
     {
-        return baseRate * MathF.Pow(Gamma, epochFor / StepInterval);
+        return BaseRate * MathF.Pow(Gamma, epochFor / StepInterval);
     }
 }
 
 public class PolynomialDecay : ILearningRateScheduler
 {
+    public float BaseRate {get; private set;}
     public float Power { get; private set; }
     public int MaxEpochs { get; private set; }
 
-    public PolynomialDecay(float power, int epochs)
+    public PolynomialDecay(float baseRate, float power, int epochs)
     {
+        this.BaseRate = baseRate;
         this.Power = Math.Abs(power);
         this.MaxEpochs = Math.Max(1, epochs);
     }
 
-    public float RateForEpoch(int epochFor, float baseRate)
+    public float RateForEpoch(int epochFor)
     {
-        return baseRate * MathF.Pow(1 - MathF.Min(epochFor, MaxEpochs) / MaxEpochs, Power);
+        return BaseRate * MathF.Pow(1 - MathF.Min(epochFor, MaxEpochs) / MaxEpochs, Power);
     }
 }
 
 public class CosineAnnealing : ILearningRateScheduler
 {
+    public float BaseRate {get; private set;}
     public int MaxEpochs { get; private set; }
 
-    public CosineAnnealing(int epochs)
+    public CosineAnnealing(float baseRate, int epochs)
     {
+        this.BaseRate = baseRate;
         this.MaxEpochs = Math.Max(1, epochs);
     }
 
-    public float RateForEpoch(int epochFor, float baseRate)
+    public float RateForEpoch(int epochFor)
     {
-        return baseRate * 0.5f * (1 + MathF.Cos(MathF.PI * Math.Min(epochFor, MaxEpochs) / MaxEpochs));
+        return BaseRate * 0.5f * (1 + MathF.Cos(MathF.PI * Math.Min(epochFor, MaxEpochs) / MaxEpochs));
+    }
+}
+
+public class MilestoneRates : ILearningRateScheduler
+{
+    private (int Milestone, float Rate)[] steps;
+
+    public MilestoneRates(params ReadOnlySpan<(int Milestone, float Rate)> steps)
+    {
+        this.steps = steps.ToArray();
+        Array.Sort(this.steps, (a,b) => a.Milestone.CompareTo(b.Milestone));
+
+        if (steps.Length == 0)
+            throw new InvalidOperationException("MultiStepDecay must have at least one step.");
+    }
+
+    public float RateForEpoch(int epochFor)
+    {
+        epochFor = Math.Max(0, epochFor);
+
+        // Find closest epoch
+        int closest = 0; 
+        for (var i = 0; i < steps.Length; i++)
+        {
+            if (steps[i].Milestone <= epochFor)
+                closest = i;
+            else 
+                break;
+        }
+        return steps[closest].Rate;
     }
 }
 
@@ -103,20 +148,22 @@ public class CosineAnnealing : ILearningRateScheduler
 /// </summary>
 public class ConstantRateWarmup : ILearningRateScheduler
 {
+    public float WarmupRate {get; set;}
     public int WarmupEpochs { get; init; }
     public ILearningRateScheduler Scheduler { get; init; }
 
-    public ConstantRateWarmup(int warmupEpochs, ILearningRateScheduler scheduler)
+    public ConstantRateWarmup(float warmupRate, int warmupEpochs, ILearningRateScheduler scheduler)
     {
+        this.WarmupRate = warmupRate;
         this.WarmupEpochs = Math.Max(1, warmupEpochs);
         this.Scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
     }
 
-    public float RateForEpoch(int epochFor, float baseRate)
+    public float RateForEpoch(int epochFor)
     {
         if (epochFor < WarmupEpochs)
-            return baseRate;                                                // We are in warmup, do nothing
-        return Scheduler.RateForEpoch(epochFor - WarmupEpochs, baseRate);   // Out of warmup, delegate to scheduler
+            return WarmupRate;                                    // We are in warmup, do nothing
+        return Scheduler.RateForEpoch(epochFor - WarmupEpochs);   // Out of warmup, delegate to scheduler
     }
 
     public void Step(int epoch, Metric<float> loss) => Scheduler.Step(epoch, loss);
@@ -127,20 +174,22 @@ public class ConstantRateWarmup : ILearningRateScheduler
 /// </summary>
 public class RampUpWarmup : ILearningRateScheduler
 {
+    public float MaxWarmupRate {get; set;}
     public int WarmupEpochs { get; init; }
     public ILearningRateScheduler Scheduler { get; init; }
 
-    public RampUpWarmup(int warmupEpochs, ILearningRateScheduler scheduler)
+    public RampUpWarmup(float maxWarmupRate, int warmupEpochs, ILearningRateScheduler scheduler)
     {
+        this.MaxWarmupRate = maxWarmupRate;
         this.WarmupEpochs = Math.Max(1, warmupEpochs);
         this.Scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
     }
 
-    public float RateForEpoch(int epochFor, float baseRate)
+    public float RateForEpoch(int epochFor)
     {
         if (epochFor < WarmupEpochs)
-            return MathF.Min(baseRate, baseRate * (epochFor + 1) / WarmupEpochs); // We are in warmup, ramp up
-        return Scheduler.RateForEpoch(epochFor - WarmupEpochs, baseRate);   // Out of warmup, delegate to scheduler
+            return MathF.Min(MaxWarmupRate, MaxWarmupRate * (epochFor + 1) / WarmupEpochs); // We are in warmup, ramp up
+        return Scheduler.RateForEpoch(epochFor - WarmupEpochs);   // Out of warmup, delegate to scheduler
     }
 
     public void Step(int epoch, Metric<float> loss) => Scheduler.Step(epoch, loss);
@@ -222,9 +271,9 @@ public class ReduceLROnPlateau : ILearningRateScheduler
         Scheduler.Step(epoch, loss);
     }
 
-    public float RateForEpoch(int epochFor, float baseRate)
+    public float RateForEpoch(int epochFor)
     {
-        float baseLr = Scheduler.RateForEpoch(epochFor, baseRate);
+        float baseLr = Scheduler.RateForEpoch(epochFor);
         return Math.Max(baseLr * _currentMultiplier, MinimumLearningRate);
     }
 }

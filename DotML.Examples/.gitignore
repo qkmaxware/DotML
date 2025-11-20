@@ -1,0 +1,14 @@
+raws/
+tensors/
+test/
+
+*.safetensors
+*.csv
+
+*.png
+*.jpeg
+*.jpg
+*.bmp
+
+# Don't ignore these
+!raws/[Rr]eadme.md

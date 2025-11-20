@@ -17,12 +17,13 @@ public class ModuleTrainer
     public LossFunction Loss {get; set;} = LossFunctions.MeanSquaredError;
     public Predicate<ModuleTrainingEnumerator.Report>? StopCondition { get; set; } = StopOnAvgLossDefault;
     public int MaxEpochs { get; set; } = 500;
-    public float LearningRate { get; set; } = 0.01f;
-    public ILearningRateScheduler? LearningRateScheduler { get; set; }
+    public ILearningRateScheduler LearningRateScheduler { get; set; } = new ConstantRate(0.01f);
     public int BatchSize { get; set; } = 1;
     public int Patience { get; set; } = 1;
 
     public const float DefaultLossThreshold = 0.01f;
+
+    public List<IMetricsProvider> Metrics {get; private set;} = new List<IMetricsProvider>();
 
     public static bool StopOnAvgLossDefault(ModuleTrainingEnumerator.Report report)
     {
@@ -39,7 +40,7 @@ public class ModuleTrainer
 
     public IEnumerator<ModuleTrainingEnumerator.Report> EnumerateTraining(INetworkModule network, ITrainingDataSampler<float> dataset, ITrainingDataSampler<float>? validation)
     {
-        return new ModuleTrainingEnumerator(
+        var trainer = new ModuleTrainingEnumerator(
             module: network,
             training: dataset,
             testing: validation is null ? dataset : validation,
@@ -51,11 +52,13 @@ public class ModuleTrainer
             loss: this.Loss,
             stopCondition: this.StopCondition,
             maxEpochs: Math.Max(1, this.MaxEpochs),
-            learningRate: Math.Max(0, this.LearningRate),
             scheduler: LearningRateScheduler,
             batchSize: Math.Max(1, this.BatchSize),
-            patience: Math.Max(1, this.Patience)
+            patience: Math.Max(1, this.Patience),
+            metricsProviders: this.Metrics
         );
+
+        return trainer;
     }
 
     public void Train(INetworkModule network, ITrainingDataSampler<float> dataset, ITrainingDataSampler<float>? validation)

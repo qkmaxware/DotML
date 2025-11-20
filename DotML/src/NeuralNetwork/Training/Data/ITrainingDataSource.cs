@@ -1,3 +1,5 @@
+using System.Collections;
+using System.ComponentModel.DataAnnotations;
 using System.Numerics;
 
 namespace DotML.Network.Training;
@@ -30,6 +32,21 @@ where TType : INumber<TType>
     /// <returns>IO pair</returns>
     public (Tensor<TType> Input, Tensor<TType> Output) this[int index] { get; }
 
+    public SubsetTrainingDataSource<TType> Subset(Range range)
+    {
+        var (offset, length) = range.GetOffsetAndLength(Count);
+        return new SubsetTrainingDataSource<TType>(offset, length, this);
+    }
+
+    public SubsetTrainingDataSource<TType> RandomSubset(int length)
+    {
+        length = Math.Clamp(length, 0, this.Count);
+        var max_cap = this.Count - length;
+        var random = Random.Shared;
+        var offset = random.Next(0, max_cap);
+        return new SubsetTrainingDataSource<TType>(offset, length, this);
+    }
+
     public ITrainingDataSampler<TType> CreateSequentialSampler()
     {
         return new SequentialSampler<TType>(this);
@@ -37,7 +54,12 @@ where TType : INumber<TType>
 
     public ITrainingDataSampler<TType> CreateRandomSampler(bool allowDuplicates = true)
     {
-        return new RandomSampler<TType>(this, allowDuplicates);
+        return new RandomSampler<TType>(this, allowDuplicates: allowDuplicates);
+    }
+
+    public ITrainingDataSampler<TType> CreateRandomSampler(int count, bool allowDuplicates = true)
+    {
+        return new RandomSampler<TType>(this, allowDuplicates: allowDuplicates, sampleSize: count);
     }
 }
 
@@ -63,4 +85,126 @@ where TType : INumber<TType>
     {
         this.AddRange(data);
     }
+}
+
+public class CombinationTrainingDataSource<TType>
+: ITrainingDataSource<TType>
+where TType : INumber<TType>
+{
+    private List<ITrainingDataSource<TType>> srcs = new List<ITrainingDataSource<TType>>();
+
+    public CombinationTrainingDataSource() { }
+
+    public CombinationTrainingDataSource(params IEnumerable<ITrainingDataSource<TType>> values)
+    {
+        AddRange(values);
+    }
+
+    public void Add(ITrainingDataSource<TType> src)
+    {
+        if (srcs.Count == 0 || (src.InputShape.Equals(this.InputShape) && src.OutputShape.Equals(this.OutputShape)))
+        {
+            srcs.Add(src);
+            return;
+        }
+        throw new ArgumentException("Cannot add to combined source. The incoming source has an incompatible shape with the combined shape.");
+    }
+
+    public void AddRange(IEnumerable<ITrainingDataSource<TType>> values)
+    {
+        foreach (var i in values)
+            Add(i);
+    }
+
+    public (Tensor<TType> Input, Tensor<TType> Output) this[int index]
+    {
+        get
+        {
+            if (index < 0)
+                throw new IndexOutOfRangeException();
+
+            // Determine which source we fall in
+            var offset = index;
+            ITrainingDataSource<TType>? selected = null;
+            foreach (var src in srcs)
+            {
+                if (offset < src.Count)
+                {
+                    selected = src;
+                    break;
+                }
+                else
+                {
+                    offset -= src.Count;
+                    continue;
+                }
+            }
+            if (selected is null)
+            {
+                throw new IndexOutOfRangeException();
+            }
+
+            // Get the element from that source
+            return selected[offset];
+        }
+    }
+
+    public int Count => srcs.Sum(src => src.Count);
+
+    public TensorShape InputShape => srcs.FirstOrDefault()?.InputShape ?? TensorShape.Scalar;
+
+    public TensorShape OutputShape => srcs.FirstOrDefault()?.OutputShape ?? TensorShape.Scalar;
+
+    public IEnumerator<(Tensor<TType> Input, Tensor<TType> Output)> GetEnumerator()
+    {
+        foreach (var src in srcs)
+        {
+            foreach (var io in src)
+                yield return io;
+        }
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+}
+
+public class SubsetTrainingDataSource<TType>
+: ITrainingDataSource<TType>
+where TType : INumber<TType>
+{
+    private int offset;
+    private int length;
+    ITrainingDataSource<TType> data;
+
+    public SubsetTrainingDataSource(int offset, int length, ITrainingDataSource<TType> underlying)
+    {
+        this.offset = offset;
+        this.length = length;
+        this.data = underlying;
+    }
+
+    public (Tensor<TType> Input, Tensor<TType> Output) this[int index] => data[offset + index];
+
+    public int Count => length;
+
+    public TensorShape InputShape => data.InputShape;
+
+    public TensorShape OutputShape => data.OutputShape;
+
+    public IEnumerator<(Tensor<TType> Input, Tensor<TType> Output)> GetEnumerator()
+    {
+        for (var i = 0; i < length; i++)
+        {
+            yield return data[offset + i];
+        }
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
 }

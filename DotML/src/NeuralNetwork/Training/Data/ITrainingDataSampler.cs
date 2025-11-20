@@ -105,15 +105,20 @@ where TType:INumber<TType>
     private bool allowDuplicates;
     private Random random;
 
-    public int Count => src.Count;
+    private int? sampleSize;
+    public int Count => sampleSize.HasValue ? sampleSize.Value : src.Count;
     public TensorShape InputShape => src.InputShape;
     public TensorShape OutputShape => src.OutputShape;
 
-    public RandomSampler(ITrainingDataSource<TType> src, bool allowDuplicates = true)
+    public RandomSampler(ITrainingDataSource<TType> src, bool allowDuplicates = true, int? sampleSize = null)
     {
         this.src = src;
+        this.sampleSize = sampleSize;
         this.allowDuplicates = allowDuplicates;
         this.random = new Random();
+
+        if (!allowDuplicates && this.sampleSize > src.Count)
+            throw new ArgumentException("Sample size cannot be larger than dataset when duplicates are not allowed.");
     }
 
     private (Tensor<TType> Input, Tensor<TType> Ouput) Next(int index, List<int>? working) {
@@ -137,7 +142,7 @@ where TType:INumber<TType>
         var ishape = src.InputShape;
         var oshape = src.OutputShape;
 
-        List<int>? working = allowDuplicates ? null : new List<int>(Enumerable.Range(0, count).ToArray());
+        List<int>? working = allowDuplicates ? null : new List<int>(Enumerable.Range(0, src.Count).OrderBy(_ => random.Next()).Take(count).ToArray());
 
         while (startIndex < count) {
             // Compute "real" batch size

@@ -3722,6 +3722,7 @@ where TNum : INumber<TNum>
 
         return mirrored;
     }
+    
     /// <summary>
     /// Mirror all axes of this tensor
     /// </summary>
@@ -3735,6 +3736,26 @@ where TNum : INumber<TNum>
             axes[i] = i;
         return Mirror(axes);
     }
+    
+    /// <summary>
+    /// Perform a mirroring along the last 2 axes of this tensor 
+    /// </summary>
+    /// <param name="x">true if mirroring should occur along the last dimension (width)</param>
+    /// <param name="y">true if mirroring should occur along the end last dimension (height)</param>
+    /// <returns>mirrored tensor or self if no mirroring took place</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Tensor<TNum> Mirror(bool x, bool y)
+    {
+        if (x && y)
+            return Mirror(^2, ^1);
+        else if (x)
+            return Mirror(^1);
+        else if (y)
+            return Mirror(^2);
+        else
+            return this;
+    }
+    
     /// <summary>
     /// Transpose a tensor (reverse its dimensions)
     /// </summary>

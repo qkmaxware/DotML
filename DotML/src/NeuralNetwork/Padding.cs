@@ -29,15 +29,15 @@ public static class PaddingExtensions
     /// <param name="dilation">kernel dilation</param>
     /// <returns>left, top, right, bottom padding tuple</returns>
     /// <exception cref="ArgumentOutOfRangeException">when an invalid padding is provided</exception>
-    public static (int Left, int Top, int Right, int Bottom) ToTuple(this Padding padding, (int height, int width) kernel, Stride2D stride, Dilation2D dilation)
+    public static (int Left, int Top, int Right, int Bottom) ToTuple(this Padding padding, Size2D kernel, Stride2D stride, Dilation2D dilation)
     {
         return padding switch
         {
             Padding.Same => (
-                ((stride.X - 1) + dilation.X * (kernel.width - 1)) / 2,
-                ((stride.Y - 1) + dilation.Y * (kernel.height - 1)) / 2,
-                ((stride.X - 1) + dilation.X * (kernel.width - 1)) - ((stride.X - 1) + dilation.X * (kernel.width - 1)) / 2,
-                ((stride.Y - 1) + dilation.Y * (kernel.height - 1)) - ((stride.Y - 1) + dilation.Y * (kernel.height - 1)) / 2
+                ((stride.X - 1) + dilation.X * (kernel.Width - 1)) / 2,
+                ((stride.Y - 1) + dilation.Y * (kernel.Height - 1)) / 2,
+                ((stride.X - 1) + dilation.X * (kernel.Width - 1)) - ((stride.X - 1) + dilation.X * (kernel.Width - 1)) / 2,
+                ((stride.Y - 1) + dilation.Y * (kernel.Height - 1)) - ((stride.Y - 1) + dilation.Y * (kernel.Height - 1)) / 2
             ),
             Padding.Valid => (0, 0, 0, 0),
             _ => throw new ArgumentOutOfRangeException(nameof(padding), padding, null)
@@ -53,7 +53,7 @@ public static class PaddingExtensions
     /// <param name="dilation">kernel dilation</param>
     /// <returns>left, top, right, bottom padding tuple</returns>
     /// <exception cref="ArgumentOutOfRangeException">when an invalid padding is provided</exception>
-    public static Padding2D ToPadding(this Padding padding, (int height, int width) kernel, Stride2D stride, Dilation2D dilation)
+    public static Padding2D ToPadding(this Padding padding, Size2D kernel, Stride2D stride, Dilation2D dilation)
     {
         return padding.ToTuple(kernel, stride, dilation);
     }

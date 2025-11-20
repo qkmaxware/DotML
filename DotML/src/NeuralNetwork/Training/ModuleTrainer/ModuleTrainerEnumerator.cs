@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using DotML.Network.Initialization;
@@ -12,6 +13,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
     /// </summary>
     public class Report : IValidationReport
     {
+        #region Basic Metrics
         /// <summary>
         /// Current epoch this report is about
         /// </summary>
@@ -24,109 +26,63 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         /// Computed loss
         /// </summary>
         public Metric<float> Loss { get; set; } = new Metric<float>();
-        /// <summary>
-        /// Number of samples with the correct labels
-        /// </summary>
-        public int TestsPassedCount { get; set; }
-        /// <summary>
-        /// Number of samples with the incorrect labels
-        /// </summary>
-        public int TestsFailedCount => SampleCount - TestsPassedCount;
-        /// <summary>
-        /// Number of class labels
-        /// </summary>
-        public int NumberOfClasses;
-        /// <summary>
-        /// Accuracy of the training iteration based on the number of correct samples
-        /// </summary>
-        public float Accuracy => SampleCount > 0 ? (float)TestsPassedCount / SampleCount : 0f;
-        /// <summary>
-        /// Precision of the training iteration based on the number of true positives and false positives
-        /// </summary>
-        public float Precision
+        #endregion
+    
+        private Dictionary<Type, IMetricsProvider> providers;
+
+        public Report()
         {
-            get
-            {
-                int classes = confusionMatrix.GetLength(0);
-                float totalPrecision = 0f;
-                int validClasses = 0;
-
-                for (int k = 0; k < classes; k++)
-                {
-                    int tp = confusionMatrix[k, k];
-                    int fp = 0;
-
-                    for (int i = 0; i < classes; i++)
-                    {
-                        if (i == k)
-                            continue;
-
-                        fp += confusionMatrix[i, k];
-                    }
-
-                    int denominator = tp + fp;
-                    if (denominator > 0)
-                    {
-                        totalPrecision += (float)tp / denominator;
-                        validClasses++;
-                    }
-                }
-
-                return validClasses > 0 ? totalPrecision / validClasses : 0f;
-            }
+            this.providers = new Dictionary<Type, IMetricsProvider>();
         }
-        /// <summary>
-        /// Recall of the training iteration based on the number of true positives and false negatives 
-        /// </summary>
-        public float Recall
+        public Report(IEnumerable<IMetricsProvider> providers)
         {
-            get
-            {
-                int classes = confusionMatrix.GetLength(0);
-                float totalRecall = 0f;
-                int validClasses = 0;
-
-                for (int k = 0; k < classes; k++)
-                {
-                    int tp = confusionMatrix[k, k];
-                    int fn = 0;
-
-                    for (int j = 0; j < classes; j++)
-                    {
-                        if (j == k)
-                            continue;
-
-                        fn += confusionMatrix[k, j];
-                    }
-
-                    int denominator = tp + fn;
-                    if (denominator > 0)
-                    {
-                        totalRecall += (float)tp / denominator;
-                        validClasses++;
-                    }
-                }
-
-                return validClasses > 0 ? totalRecall / validClasses : 0f;
-            }
+            this.providers = providers.ToDictionary((v) => v.GetType());
         }
-        /// <summary>
-        /// F1 score of the training iteration based on precision and recall
-        /// </summary>
-        public float F1
-        {
-            get
-            {
-                var precision = this.Precision;
-                var recall = this.Recall;
-                if (precision + recall <= 0)
-                    return 0.0f;
 
-                return 2f * precision * recall / (precision + recall);
+        /// <summary>
+        /// Get a particular metric provider by type
+        /// </summary>
+        /// <typeparam name="TMetric">metric provider type</typeparam>
+        /// <returns>metric provider or throws</returns>
+        public TMetric Metrics<TMetric>() where TMetric:IMetricsProvider
+        {
+            return (TMetric)providers[typeof(TMetric)];
+        }
+
+        /// <summary>
+        /// Get a particular metric provider by type
+        /// </summary>
+        /// <typeparam name="TMetric">metric provider type</typeparam>
+        /// <param name="metric">metric or null if it doesn't exist</param>
+        /// <returns>true if metric provider exists</returns>
+        public bool TryGetMetrics<TMetric>([NotNullWhen(true)] out TMetric? metric) where TMetric:IMetricsProvider
+        {
+            if (providers.TryGetValue(typeof(TMetric), out var m)){
+                metric = (TMetric)m;
+                return true;
+            } else {
+                metric = default;
+                return false;
             }
         }
 
-        private int[,] confusionMatrix = new int[0, 0];
+        /// <summary>
+        /// Get a particular metric provider by type
+        /// </summary>
+        /// <typeparam name="TMetric">metric provider type</typeparam>
+        /// <returns>metric provider or null if it doesn't exist</returns>
+        public TMetric? MetricsOrNull<TMetric>() where TMetric:IMetricsProvider
+        {
+            return providers.TryGetValue(typeof(TMetric), out var p)
+                ? (TMetric)p
+                : default;
+        }
+
+        /// <summary>
+        /// Enumerate over all metric providers
+        /// </summary>
+        /// <returns>enumerable of metric providers</returns>
+        public IEnumerable<IMetricsProvider> AllMetrics() => this.providers.Values;
 
         /// <summary>
         /// Reset the statistics of the training report
@@ -136,12 +92,8 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             SampleCount = 0;
             this.Loss.Reset();
 
-            TestsPassedCount = 0;
-            NumberOfClasses = 0;
-
-            for (var i = 0; i < confusionMatrix.GetLength(0); i++)
-                for (var j = 0; j < confusionMatrix.GetLength(0); j++)
-                    confusionMatrix[i, j] = 0;
+            foreach (var provider in providers.Values)
+                provider.Reset();
         }
 
         /// <summary>
@@ -154,7 +106,9 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         {
             // Update loss stats
             UpdateLosses(loss, logits, truth);
-            TestCorrectness(loss, logits, truth);
+
+            foreach (var provider in providers.Values)
+                provider.AddSample(loss, logits, truth);
 
             // Increase sample count
             SampleCount++;
@@ -165,27 +119,6 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             Loss.Add(loss);
         }
 
-        protected void TestCorrectness(float loss, ReadOnlySpan<float> predictedSpan, ReadOnlySpan<float> truthSpan)
-        {
-            int predictedClass = ArgMaxSoftmax(predictedSpan);
-            int trueClass = ArgMax(truthSpan);
-            if (predictedClass == trueClass)
-                TestsPassedCount++;
-
-            var numClasses = truthSpan.Length; // Assumes one-hot encoding and no multi-classes
-            NumberOfClasses = numClasses;
-
-            // Populate the confusion matrix (make a new matrix if required)
-            if (confusionMatrix is null || confusionMatrix.GetLength(0) < numClasses)
-                confusionMatrix = new int[numClasses, numClasses];
-
-            confusionMatrix[trueClass, predictedClass]++;
-        }
-
-        public int[,] GetConfusionMatrix()
-        {
-            return this.confusionMatrix;
-        }
     }
 
     /// <summary>
@@ -219,8 +152,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
     public Predicate<Report>? StopCondition {get; init;}
     public int Epoch {get; private set;}
     public int MaxEpochs {get; init;}
-    public float LearningRate { get; init; }
-    public ILearningRateScheduler? LearningRateScheduler { get; init; }
+    public ILearningRateScheduler LearningRateScheduler { get; init; }
 
     public int BatchSize = 8;
 
@@ -241,10 +173,10 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         LossFunction loss,
         Predicate<Report>? stopCondition,
         int maxEpochs,
-        float learningRate,
-        ILearningRateScheduler? scheduler,
+        ILearningRateScheduler scheduler,
         int batchSize,
-        int patience
+        int patience,
+        List<IMetricsProvider>? metricsProviders = null
     )
     {
         this.Network = module;
@@ -258,12 +190,11 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         this.Loss = loss;
         this.StopCondition = stopCondition;
         this.MaxEpochs = maxEpochs;
-        this.LearningRate = learningRate;
         this.LearningRateScheduler = scheduler;
         this.BatchSize = batchSize;
         this.Patience = patience;
 
-        this.Current = new Report();
+        this.Current = metricsProviders is not null ? new Report(metricsProviders) : new Report();
 
         Reset();
     }
@@ -331,7 +262,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             }
 
             // Update step
-            var lr = this.LearningRateScheduler?.RateForEpoch(Epoch, this.LearningRate) ?? this.LearningRate;
+            var lr = this.LearningRateScheduler.RateForEpoch(Epoch);
             Network.Update(
                 lr,
                 gradients,
@@ -365,9 +296,9 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         return MoveNext(null);
     }
     
-    public static Report Test(ITrainingDataSampler<float> TestingData, INetworkModule Network, LossFunction Loss, int BatchSize = 1)
+    public static Report Test(ITrainingDataSampler<float> TestingData, INetworkModule Network, LossFunction Loss, int BatchSize, params IEnumerable<IMetricsProvider> metrics)
     {
-        var report = new Report();
+        var report = new Report(metrics);
         report.Reset();
         report.Epoch = -1;
 

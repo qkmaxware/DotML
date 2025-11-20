@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 
 namespace DotML.Network;
 
@@ -56,6 +57,7 @@ public readonly struct Size2D
     }
 
     public static implicit operator Size2D((int Width, int Height) tuple) => new Size2D(tuple.Width, tuple.Height);
+    public static implicit operator Size2D(int size) => new Size2D(size, size);
 }
 
 /// <summary>
@@ -112,6 +114,7 @@ public readonly struct Stride2D
     }
 
     public static implicit operator Stride2D((int X, int Y) tuple) => new Stride2D(tuple.X, tuple.Y);
+    public static implicit operator Stride2D(int stride) => new Stride2D(stride, stride);
 }
 
 /// <summary>
@@ -168,6 +171,7 @@ public readonly struct Dilation2D
     }
 
     public static implicit operator Dilation2D((int X, int Y) tuple) => new Dilation2D(tuple.X, tuple.Y);
+    public static implicit operator Dilation2D(int dilation) => new Dilation2D(dilation, dilation);
 }
 
 /// <summary>
@@ -243,4 +247,5 @@ public readonly struct Padding2D
     }
 
     public static implicit operator Padding2D((int Left, int Top, int Right, int Bottom) tuple) => new Padding2D(tuple.Left, tuple.Top, tuple.Right, tuple.Bottom);
+    public static implicit operator Padding2D(int pad) => new Padding2D(pad, pad, pad, pad);
 }

@@ -140,25 +140,6 @@ public readonly struct RowMajorIndexSpanEnumerator
 public readonly struct TensorShape
 : IShape, IParsable<TensorShape>
 {
-    #region Dimension Shortcuts
-    /// <summary>
-    /// Reference to the column dimension in NCHW format
-    /// </summary>
-    public static Index Columns = ^1;
-    /// <summary>
-    /// Reference to the row dimension in NCHW format
-    /// </summary>
-    public static Index Rows = ^2;
-    /// <summary>
-    /// Reference to the channel dimension in NCHW format
-    /// </summary>
-    public static Index Channels = ^3;
-    /// <summary>
-    /// Reference to the batch dimension in NCHW format
-    /// </summary>
-    public static Index Batches = ^4;
-    #endregion
-
     #region Predefined Shapes
     public static readonly TensorShape Scalar = new TensorShape();
     #endregion

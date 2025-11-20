@@ -92,6 +92,50 @@ public class TestTensor
     }
 
     [TestMethod]
+    public void TestMirror()
+    {
+        var tensor = Tensor<float>.FromRectangularArray(new float[,]
+        {
+            {1, 2, 3, 4},
+            {4, 5, 6, 7},
+            {8, 9, 10, 11}
+        });
+        var tensorXMirror = Tensor<float>.FromRectangularArray(new float[,]
+        {
+            {4, 3, 2, 1},
+            {7, 6, 5, 4},
+            {11, 10, 9, 8}
+        });
+        var tensorYMirror = Tensor<float>.FromRectangularArray(new float[,]
+        {
+            {8, 9, 10, 11},
+            {4, 5, 6, 7},
+            {1, 2, 3, 4},
+        });
+        var tensorXYMirror = Tensor<float>.FromRectangularArray(new float[,]
+        {
+            {11, 10, 9, 8},
+            {7, 6, 5, 4},
+            {4, 3, 2, 1},
+        });
+
+        var mirrorX = tensor.Mirror(^1); // Last axis is width
+        Assert.AreEqual(tensor.Shape, mirrorX.Shape);
+        Assert.AreEqual(true, mirrorX.Equals(tensorXMirror));
+        Assert.AreEqual(true, tensor.Mirror(x: true, y: false).Equals(tensorXMirror));
+
+        var mirrorY = tensor.Mirror(^2); // 2nd last axis is height
+        Assert.AreEqual(tensor.Shape, mirrorY.Shape);
+        Assert.AreEqual(true, mirrorY.Equals(tensorYMirror));
+        Assert.AreEqual(true, tensor.Mirror(x: false, y: true).Equals(tensorYMirror));
+
+        var mirrorXY = tensor.Mirror(^2, ^1); // Mirror both X and Y
+        Assert.AreEqual(tensor.Shape, mirrorXY.Shape);
+        Assert.AreEqual(true, mirrorXY.Equals(tensorXYMirror));
+        Assert.AreEqual(true, tensor.Mirror(x: true, y: true).Equals(tensorXYMirror));
+    }
+
+    [TestMethod]
     public void TestElementWise()
     {
         {

@@ -142,4 +142,9 @@ where T : INumber<T>
             M2 += delta * delta2;
         }
     }
+
+    public override string ToString()
+    {
+        return Average?.ToString() ?? "null";
+    }
 }
