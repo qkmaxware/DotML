@@ -7,7 +7,7 @@ using SkiaSharp;
 
 namespace DotML.Examples.Letters;
 
-public class Letters : Example
+public class Letters : BackpropExample
 {
     private const int ImgWidth = 32;
     private const int ImgHeight = 32;
@@ -79,7 +79,7 @@ public class Letters : Example
             bitmap.ScalePixels(scaled, SKSamplingOptions.Default);
 
             // Get all digits
-            using var digits = bitmap.Slice(rows: 4, columns: 7);
+            using var digits = scaled.Slice(rows: 4, columns: 7);
 
             for (var digitIndex = 0; digitIndex < Classes.Length; digitIndex++)
             {
@@ -165,7 +165,7 @@ public class Letters : Example
         trainer.LearningRateScheduler = new ReduceLROnPlateau(
             new RampUpWarmup(
                 maxWarmupRate: 1e-4f,
-                warmupEpochs: 10,
+                warmupEpochs: 5,
                 scheduler: new ConstantRate(1e-4f)
             ),
             patience: 5,

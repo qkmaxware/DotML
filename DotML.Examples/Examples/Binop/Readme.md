@@ -11,7 +11,7 @@ This network can be used with any of the 3 big boolean binary operators AND, OR,
 If no config is provided as a command line argument, it defaults to XOR.
 
 ## Training
-No training data is required, all training data is generated dynmically when using the "train" command. The train command generates tensors where True is any value between 0.25 and 1 and False is any value between -1 and -0.25. A total of 100 training pairs are generated, 25 per each truth table entry. 
+No training data is required, all training data is generated dynamically when using the `train` command. The train command generates tensors where True is any value between 0.25 and 1 and False is any value between -1 and -0.25. A total of 100 training pairs are generated, 25 per each truth table entry. 
 
 Be sure to select the correct boolean operator as defined in the [Configuration](#configuration) section.
 

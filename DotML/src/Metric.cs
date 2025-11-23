@@ -103,7 +103,7 @@ where T : INumber<T>
     /// Add a new sample to this metric
     /// </summary>
     /// <param name="sample">sample value</param>
-    public void Add(T sample)
+    public void AddSample(T sample)
     {
         if (Count == 0)
         {

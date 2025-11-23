@@ -16,24 +16,6 @@ public class Run : Command
 
     public override void Exec(IExample example)
     {
-        // Load network
-        var network = example.GetArchitecture();
-
-        // Load weights (required)
-        RestoreWeights(example, network, throws: true);
-
-        // Parse user input
-        if (InputStrings is null)
-            return;
-
-        using TextWriter pipe = !string.IsNullOrEmpty(OutputPath) ? CreateLogger("output.txt") : System.Console.Out;
-        foreach (var str in InputStrings)
-        {
-            pipe.Write("> "); pipe.WriteLine(str);
-            var input = example.ParseUserInput(str);
-            var output = network.Forward(input);
-            pipe.WriteLine(example.FormatOutput(str, input, output));
-            pipe.WriteLine(); // Extra line between inputs
-        }
+        example.Run(InputStrings ?? Enumerable.Empty<string>(), OutputPath);
     }
 }

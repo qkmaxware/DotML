@@ -7,7 +7,7 @@ using SkiaSharp;
 
 namespace DotML.Examples.Digits;
 
-public class Digits : Example
+public class Digits : BackpropExample
 {
     private const int ImgWidth = 32;
     private const int ImgHeight = 32;
@@ -79,7 +79,7 @@ public class Digits : Example
             bitmap.ScalePixels(scaled, SKSamplingOptions.Default);
 
             // Get all digits
-            using var digits = bitmap.Slice(rows: 1, columns: Classes.Length);
+            using var digits = scaled.Slice(rows: 1, columns: Classes.Length);
 
             for (var digitIndex = 0; digitIndex < Classes.Length; digitIndex++)
             {
@@ -165,7 +165,7 @@ public class Digits : Example
         trainer.LearningRateScheduler = new ReduceLROnPlateau(
             new RampUpWarmup(
                 maxWarmupRate: 1e-4f,
-                warmupEpochs: 10,
+                warmupEpochs: 5,
                 scheduler: new ConstantRate(1e-4f)
             ),
             patience: 5,

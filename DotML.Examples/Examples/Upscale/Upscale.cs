@@ -10,7 +10,7 @@ using SkiaSharp;
 
 namespace DotML.Examples.Binop;
 
-public class Upscale : Example
+public class Upscale : BackpropExample
 {
     public int UpscaleFactor = 2;
     const float Coverage  = 0.4f;
@@ -285,7 +285,7 @@ public override void ProcessRawData()
         // Save tensor (debug)
         Metric<float> f = new Metric<float>();
         foreach (var e in output.EnumerateElements())
-            f.Add(e);
+            f.AddSample(e);
         Console.WriteLine($"min: {f.Min}, max: {f.Max}, avg: {f.Average}, std: {f.StandardDeviation}, var: {f.Variance}");
         using var tensorWriter = new StreamWriter(tensorName);
         output.SaveJson(tensorWriter);

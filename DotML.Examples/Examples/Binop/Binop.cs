@@ -9,7 +9,7 @@ using DotML.Network.Training;
 
 namespace DotML.Examples.Binop;
 
-public class Binop : Example
+public class Binop : BackpropExample
 {
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum OperationType

@@ -4143,6 +4143,29 @@ where TNum : INumber<TNum>
     public Span<TNum> AsSpan() => elements.AsSpan();
 
     /// <summary>
+    /// Retrieve the span associated with the given subtensor leading indices
+    /// </summary>
+    /// <param name="indices">leading dimension indices pointing to the start of the subtensor</param>
+    /// <returns>span over subtensor elements</returns>
+    public Span<TNum> SubtensorSpan(params ReadOnlySpan<int> indices)
+    {
+        if (indices.Length == 0)
+            return elements.AsSpan();
+
+        // Compute the flat offset to the start of the span
+        int offset = 0;
+        var strides = Shape.AsStrideSpan();
+        for (int i = 0; i < indices.Length; i++)
+        {
+            offset += indices[i] * strides[i];
+        }
+
+        // Deterime the span length
+        var size = strides[indices.Length - 1];
+        return elements.AsSpan(offset, size);
+    }
+
+    /// <summary>
     /// Access the tensor elements as a span
     /// </summary>
     /// <returns>span of elements in row-major order</returns>

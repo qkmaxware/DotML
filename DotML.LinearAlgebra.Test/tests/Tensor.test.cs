@@ -594,4 +594,65 @@ public class TestTensor
         }
     }
 
+    [TestMethod]
+    public void TestSubtensorSpan()
+    {
+        var tensor = Tensor<float>.Defaults(new TensorShape(2, 4, 3));
+        for (var i = 0; i < 4; i++)
+        {
+            for (var j = 0; j < 3; j++)
+            {
+                tensor[0, i, j] = 1 + i * 3 + j;
+                tensor[1, i, j] = 1 + 3 * 4 + i * 3 + j;
+            }
+        }
+
+        // Entire span
+        var span = tensor.SubtensorSpan();
+        Assert.AreEqual(tensor.Shape.LogicalElementCount(), span.Length);
+
+        // First 2d slice 
+        span = tensor.SubtensorSpan(0);
+        Assert.AreEqual(3 * 4, span.Length);
+        Assert.IsTrue(span.SequenceEqual([1, 2, 3,/**/ 4, 5, 6,/**/ 7, 8, 9,/**/ 10, 11, 12]));
+
+        // Second 2d slice
+        span = tensor.SubtensorSpan(1);
+        Assert.AreEqual(3 * 4, span.Length);
+        Assert.IsTrue(span.SequenceEqual([13, 14, 15,/**/ 16, 17, 18,/**/ 19, 20, 21,/**/ 22, 23, 24]));
+
+        // Rows in the first 2d slice
+        span = tensor.SubtensorSpan(0, 0);
+        Assert.AreEqual(3, span.Length);
+        Assert.IsTrue(span.SequenceEqual([1, 2, 3]));
+
+        span = tensor.SubtensorSpan(0, 1);
+        Assert.AreEqual(3, span.Length);
+        Assert.IsTrue(span.SequenceEqual([4, 5, 6]));
+
+        span = tensor.SubtensorSpan(0, 2);
+        Assert.AreEqual(3, span.Length);
+        Assert.IsTrue(span.SequenceEqual([7, 8, 9]));
+
+        span = tensor.SubtensorSpan(0, 3);
+        Assert.AreEqual(3, span.Length);
+        Assert.IsTrue(span.SequenceEqual([10, 11, 12]));
+
+        // Rows in the second 2d slice
+        span = tensor.SubtensorSpan(1, 0);
+        Assert.AreEqual(3, span.Length);
+        Assert.IsTrue(span.SequenceEqual([13, 14, 15]));
+
+        span = tensor.SubtensorSpan(1, 1);
+        Assert.AreEqual(3, span.Length);
+        Assert.IsTrue(span.SequenceEqual([16, 17, 18]));
+
+        span = tensor.SubtensorSpan(1, 2);
+        Assert.AreEqual(3, span.Length);
+        Assert.IsTrue(span.SequenceEqual([19, 20, 21]));
+
+        span = tensor.SubtensorSpan(1, 3);
+        Assert.AreEqual(3, span.Length);
+        Assert.IsTrue(span.SequenceEqual([22, 23, 24]));
+    }
 }

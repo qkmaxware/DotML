@@ -89,6 +89,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         /// </summary>
         public void Reset()
         {
+            Epoch = 0;
             SampleCount = 0;
             this.Loss.Reset();
 
@@ -105,7 +106,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         public void AddSample(float loss, ReadOnlySpan<float> logits, ReadOnlySpan<float> truth)
         {
             // Update loss stats
-            UpdateLosses(loss, logits, truth);
+            Loss.AddSample(loss);
 
             foreach (var provider in providers.Values)
                 provider.AddSample(loss, logits, truth);
@@ -113,12 +114,6 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
             // Increase sample count
             SampleCount++;
         }
-
-        protected void UpdateLosses(float loss, ReadOnlySpan<float> logits, ReadOnlySpan<float> truth)
-        {
-            Loss.Add(loss);
-        }
-
     }
 
     /// <summary>
@@ -238,15 +233,14 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
             // Compute loss/error/dy
             var batches = outputs.Shape.Length(0);
-            var batchStride = outputs.Shape.Stride(0);
 
             var dY = Tensor<float>.Defaults(outputs.Shape);
             for (var batchIndex = 0; batchIndex < batches; batchIndex++)
             {
                 Loss.Gradient(
-                    gradient: dY.AsSpan(batchIndex * batchStride, batchStride),         // Subspan of dY to store the results of the gradient computation in
-                    predicted: outputs.AsSpan(batchIndex * batchStride, batchStride),   // Treat subspan of output as a vector across non-batch dimensions
-                    @true: truth.AsSpan(batchIndex * batchStride, batchStride)          // Treat subspan of truth as a vector across non-batch dimensions
+                    gradient: dY.SubtensorSpan(batchIndex),         // Subspan of dY to store the results of the gradient computation in
+                    predicted: outputs.SubtensorSpan(batchIndex),   // Treat subspan of output as a vector across non-batch dimensions
+                    @true: truth.SubtensorSpan(batchIndex)          // Treat subspan of truth as a vector across non-batch dimensions
                 );
             }
             if (this.LocalClipping is not null)
@@ -283,7 +277,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         }
 
         // Validate model accuracy
-        validate(progress);
+        validate(progress, batchSize: 1);
         this.LearningRateScheduler?.Step(Epoch, Current.Loss);
 
         // Move onto next epoch
@@ -296,27 +290,26 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         return MoveNext(null);
     }
     
-    public static Report Test(ITrainingDataSampler<float> TestingData, INetworkModule Network, LossFunction Loss, int BatchSize, params IEnumerable<IMetricsProvider> metrics)
+    public static Report Test(ITrainingDataSampler<float> data, INetworkModule network, LossFunction lossFunction, int batchSize, params IEnumerable<IMetricsProvider> metrics)
     {
         var report = new Report(metrics);
         report.Reset();
         report.Epoch = -1;
 
         // Testing loop
-        foreach ((Tensor<float> batch, Tensor<float> truth) in TestingData.Sample(batchSize: BatchSize))
+        foreach ((Tensor<float> batch, Tensor<float> truth) in data.Sample(batchSize: batchSize))
         {
             // Feedforward step
-            var result = Network.Forward(batch);
+            var result = network.Forward(batch);
 
             // Compute loss (should this be broken up by batch size?)
             var batches = result.Shape.Length(0);
-            var batchStride = result.Shape.Stride(0);
 
             for (var batchIndex = 0; batchIndex < batches; batchIndex++)
             {
-                var predictedSpan = result.AsSpan(batchIndex * batchStride, batchStride);
-                var truthSpan = truth.AsSpan(batchIndex * batchStride, batchStride);
-                var loss = Loss.Invoke(
+                var predictedSpan = result.SubtensorSpan(batchIndex);
+                var truthSpan = truth.SubtensorSpan(batchIndex);
+                var loss = lossFunction.Invoke(
                     predicted: predictedSpan,    // Treat subspan of output as a vector across non-batch dimensions
                     @true: truthSpan          // Treat subspan of truth as a vector across non-batch dimensions
                 );
@@ -332,10 +325,10 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
     public Report Test(ITrainingDataSampler<float> TestingData)
     {
-        return Test(TrainingData, Network, Loss, BatchSize);
+        return Test(TestingData, Network, Loss, BatchSize);
     }
 
-    private void validate(IProgress<EpochProgress>? progress)
+    private void validate(IProgress<EpochProgress>? progress, int batchSize)
     {
         // Reset the training iteration report (or create a new one, but reusing is fine)
         Current.Reset();
@@ -343,7 +336,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
         // Testing loop
         int validationIndex = 0;
-        foreach ((Tensor<float> batch, Tensor<float> truth) in TestingData.Sample(batchSize: BatchSize))
+        foreach ((Tensor<float> batch, Tensor<float> truth) in TestingData.Sample(batchSize: batchSize))
         {
             // Feedforward step
             var result = Network.Forward(batch);
@@ -354,8 +347,8 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
             for (var batchIndex = 0; batchIndex < batches; batchIndex++)
             {
-                var predictedSpan = result.AsSpan(batchIndex * batchStride, batchStride);
-                var truthSpan = truth.AsSpan(batchIndex * batchStride, batchStride);
+                var predictedSpan = result.SubtensorSpan(batchIndex);
+                var truthSpan = truth.SubtensorSpan(batchIndex);
                 var loss = Loss.Invoke(
                     predicted: predictedSpan,    // Treat subspan of output as a vector across non-batch dimensions
                     @true: truthSpan          // Treat subspan of truth as a vector across non-batch dimensions

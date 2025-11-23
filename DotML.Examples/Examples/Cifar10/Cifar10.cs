@@ -7,7 +7,7 @@ using SkiaSharp;
 
 namespace DotML.Examples.Cifar10;
 
-public class Cifar10 : Example
+public class Cifar10 : BackpropExample
 {
     private const int ImgWidth = 32;
     private const int ImgHeight = 32;
@@ -155,24 +155,20 @@ public class Cifar10 : Example
 
     public override void ConfigureTrainer(ModuleTrainer trainer)
     {
-        trainer.MaxEpochs = 250;
-        trainer.LearningRateScheduler = new ReduceLROnPlateau(
-            new RampUpWarmup(
-                maxWarmupRate: 1e-3f,
-                warmupEpochs: 5,
-                scheduler: new ConstantRate(1e-3f)
-            ),
-            patience: 10,
-            tolerance: 0.001f
+        trainer.MaxEpochs = 11;
+        trainer.LearningRateScheduler = new RampUpWarmup(
+            maxWarmupRate: 1e-3f,
+            warmupEpochs: 5,
+            scheduler: new CosineAnnealing(1e-3f, 250)
         );
         trainer.BatchSize = 128;
         trainer.Initializer = new HeInitialization();
         trainer.Loss = LossFunctions.CategoricalCrossEntropy;
-        trainer.Optimizer = new Adam();
-        trainer.Patience = 3; // Patience represents how many times the StopCondition must be met in a row
-        trainer.GlobalClipping = new GlobalMagnitudeClipping<float>(10);
+        trainer.Optimizer = new AdamW(weightDecay: 0.00025f);
+        trainer.GlobalClipping = null;
         trainer.LocalClipping = null;
-        trainer.Regularization = new NoRegularization(); //new L2Regularization(5e-4f);
+        trainer.Regularization = new NoRegularization(); // L1/L2 regularization
+        trainer.Patience = 3; // Patience represents how many times the StopCondition must be met in a row
         trainer.StopCondition = static (report) => report.Metrics<AccuracyMetricsProvider>().Accuracy > 0.6f;
         trainer.Metrics.Add(new AccuracyMetricsProvider());
     }

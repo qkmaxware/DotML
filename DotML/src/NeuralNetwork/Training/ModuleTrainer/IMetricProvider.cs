@@ -145,7 +145,7 @@ public class AccuracyMetricsProvider : IMetricsProvider
         NumberOfClasses = 0;
 
         for (var i = 0; i < confusionMatrix.GetLength(0); i++)
-            for (var j = 0; j < confusionMatrix.GetLength(0); j++)
+            for (var j = 0; j < confusionMatrix.GetLength(1); j++)
                 confusionMatrix[i, j] = 0;
     }
 
@@ -162,7 +162,7 @@ public class AccuracyMetricsProvider : IMetricsProvider
         NumberOfClasses = numClasses;
 
         // Populate the confusion matrix (make a new matrix if required)
-        if (confusionMatrix is null || confusionMatrix.GetLength(0) < numClasses)
+        if (confusionMatrix is null || confusionMatrix.GetLength(0) != numClasses || confusionMatrix.GetLength(1) != numClasses)
             confusionMatrix = new int[numClasses, numClasses];
 
         confusionMatrix[trueClass, predictedClass]++;
@@ -277,8 +277,8 @@ public class SignalToNoiseProvider : IMetricsProvider
 
         if (noise == 0)
         {
-            PerSampleSNR.Add(double.PositiveInfinity);
-            PerSamplePSNR.Add(double.PositiveInfinity);
+            PerSampleSNR.AddSample(double.PositiveInfinity);
+            PerSamplePSNR.AddSample(double.PositiveInfinity);
         }
         else
         {
@@ -286,8 +286,8 @@ public class SignalToNoiseProvider : IMetricsProvider
             double mse  = noise / localCount;
             double psnr = 10.0 * Math.Log10((localMax * localMax) / mse);
 
-            PerSampleSNR.Add(snr);
-            PerSamplePSNR.Add(psnr);
+            PerSampleSNR.AddSample(snr);
+            PerSamplePSNR.AddSample(psnr);
         }
     }
 }
@@ -341,7 +341,7 @@ public class StructuralSimilarityIndexProvider : IMetricsProvider
         var ssim = ComputeSsim(predicted.Slice(0, len), truth.Slice(0, len));
 
         // Track per-sample SSIM
-        SSIM.Add(ssim);
+        SSIM.AddSample(ssim);
 
         // Update global SSIM as running mean
         //GlobalSSIM = (GlobalSSIM * totalCount + ssim) / (totalCount + 1);
