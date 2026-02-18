@@ -1,0 +1,5 @@
+[x] Gradient-based embeddings
+    [x] Sobel filters (edge)
+    [x] Prewitt filters (shape)
+    [x] Scharr filters (orientation)
+[ ] Histogram-based embeddings

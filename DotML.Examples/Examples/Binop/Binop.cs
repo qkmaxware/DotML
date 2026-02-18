@@ -14,7 +14,7 @@ public class Binop : BackpropExample
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum OperationType
     {
-        And, Or, Xor
+        And, Or, Xor, Contradiction, Tautology, IdentityX, IdentityY, NotX, NotY, Nand, Nor, Xnor, Implication, ConverseImplication, MaterialNonImplication, ConverseNonImplication
     }
 
     public OperationType Operation = OperationType.Xor; // default to XOR
@@ -28,18 +28,14 @@ public class Binop : BackpropExample
     }
     public override void Configure(string json)
     {
-        try
+        if (!TryParseConfigString<ExtraArguments>(json, out var args))
         {
-            var args = JsonSerializer.Deserialize<ExtraArguments>(json);
-            if (args is null)
-                return;
-
-            this.Operation = args.op;
-        } catch (Exception e)
-        {
-            throw new FormatException("Failed to parse configuration json", e);
+            throw new FormatException("Failed to parse configuration json");
         }
+        this.Operation = args!.op;
     }
+
+    public override string? GetDescription() => "Binary operation evaluator using a neural network.";
 
     public override INetworkModule GetArchitecture()
     {
@@ -124,6 +120,18 @@ public class Binop : BackpropExample
         throw new FormatException("Unable to convert provided input to tensor");
     }
 
+    private bool[,] GenerateEvaluationMatrix(Func<bool, bool, bool> op)
+    {
+        // 0 is false, 1 is true for indices
+        return new bool[,]
+        {   
+            // False&False, False&True
+            { op(false, false), op(false, true) },
+            // True&False, True&True
+            { op(true, false), op(true, true) },
+        };
+    }
+ 
     public override void LoadTrainingData(out ITrainingDataSource<float> training, out ITrainingDataSource<float> validation)
     {
         const int TrueIndex = 1;
@@ -131,27 +139,22 @@ public class Binop : BackpropExample
         // Create truth table for binary operations
         bool[,] truthTable = Operation switch
         {
-            OperationType.And => new bool[,]
-            {   
-                // False&False, False&True
-                { false, false },
-                // True&False, True&True
-                { false, true },
-            },
-            OperationType.Or => new bool[,]
-            {   
-                // False|False, False|True
-                { false, true },
-                // True|False, True|True
-                { true, true },
-            },
-            OperationType.Xor => new bool[,]
-            {   
-                // False^False, False^True
-                { false, true },
-                // True^False, True^True
-                { true, false },
-            },
+            OperationType.And => GenerateEvaluationMatrix((x, y) => x && y),
+            OperationType.Or => GenerateEvaluationMatrix((x, y) => x || y),
+            OperationType.Xor => GenerateEvaluationMatrix((x, y) => x ^ y),
+            OperationType.Contradiction => GenerateEvaluationMatrix((x, y) => false), 
+            OperationType.Tautology => GenerateEvaluationMatrix((x, y) => true),
+            OperationType.IdentityX => GenerateEvaluationMatrix((x, y) => x), 
+            OperationType.IdentityY => GenerateEvaluationMatrix((x, y) => y), 
+            OperationType.NotX => GenerateEvaluationMatrix((x, y) => !x), 
+            OperationType.NotY => GenerateEvaluationMatrix((x, y) => !y), 
+            OperationType.Nand => GenerateEvaluationMatrix((x, y) => !(x && y)),
+            OperationType.Nor => GenerateEvaluationMatrix((x, y) => !(x || y)),
+            OperationType.Xnor => GenerateEvaluationMatrix((x, y) => x == y),
+            OperationType.Implication => GenerateEvaluationMatrix((x, y) => (!x)||y), 
+            OperationType.ConverseImplication => GenerateEvaluationMatrix((x, y) => x||(!y)),
+            OperationType.MaterialNonImplication => GenerateEvaluationMatrix((x, y) => x&&(!y)),
+            OperationType.ConverseNonImplication => GenerateEvaluationMatrix((x, y) => (!x)&&y),
             _ => throw new NotSupportedException(Operation.ToString())
         };
 

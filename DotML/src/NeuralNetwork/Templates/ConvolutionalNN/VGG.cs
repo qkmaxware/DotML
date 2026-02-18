@@ -60,6 +60,11 @@ public class VGGFactory
         public bool UseBatchNorm {get; set;} = false;
 
         /// <summary>
+        /// Amount of dropout to use between 0 and 1
+        /// </summary>
+        public float DropoutPercent {get; set;} = 0.0f;
+
+        /// <summary>
         /// VGG-6 settings for lightweight small VGG
         /// </summary>
         public static BuildSettings VGG6() => new BuildSettings()
@@ -119,6 +124,8 @@ public class VGGFactory
     {
         var ishape = new TensorShape(settings.ImageChannels, settings.ImageHeight, settings.ImageWidth); // CHW
         var activation = settings.ActivationFunction ?? ActivationFunctions.ReLU;
+        var dropout = Math.Clamp(settings.DropoutPercent, 0.0f, 1.0f);
+        var useDropout = dropout > 0.0f;
 
         var builder = SequentialBlock.Begin(ishape);
 
@@ -160,7 +167,8 @@ public class VGGFactory
                 input_size: shape.LogicalElementCount(), // C * H * W
                 neurons: neurons
             ))
-            .WithActivation(activation);
+            .WithActivation(activation)
+            .ThenIf(useDropout, new Dropout(dropout));
         };
         builder = builder.Then((shape) => new DenseLinear(
             input_size: shape.LogicalElementCount(), // C * H * W

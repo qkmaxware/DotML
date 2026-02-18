@@ -60,7 +60,7 @@ public static class ActivationFunctions {
     /// <summary>
     /// f(x) = x
     /// </summary>
-    public static ActivationFunction Identity => Network.Identity.Instance;
+    public static ActivationFunction Identity => Network.IdentityFunction.Instance;
 
     /// <summary>
     /// f(x) =  1 if x > 0 else 0

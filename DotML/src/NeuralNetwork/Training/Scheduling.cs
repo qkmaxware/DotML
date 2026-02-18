@@ -3,6 +3,9 @@ using System.Reflection.Metadata;
 
 namespace DotML.Network.Training;
 
+/// <summary>
+/// Scheduler for adjusting learning rate over epochs
+/// </summary>
 public interface ILearningRateScheduler
 {
     /// <summary>
@@ -21,6 +24,9 @@ public interface ILearningRateScheduler
     public void Step(int epochFor, Metric<float> loss) {}
 }
 
+/// <summary>
+/// Constant learning rate over all epochs
+/// </summary>
 public class ConstantRate : ILearningRateScheduler
 {
     public float BaseRate {get; private set;}
@@ -33,6 +39,9 @@ public class ConstantRate : ILearningRateScheduler
     public float RateForEpoch(int epochFor) => BaseRate;
 }
 
+/// <summary>
+/// Exponential decay of learning rate over epochs
+/// </summary>
 public class ExponentialDecay : ILearningRateScheduler
 {
     public float Decay { get; private set; }
@@ -58,6 +67,9 @@ public class ExponentialDecay : ILearningRateScheduler
     }
 }
 
+/// <summary>
+/// Incrementally step down the learning each interval of epochs
+/// </summary>
 public class StepDecay : ILearningRateScheduler
 {
     public float BaseRate {get; private set;}
@@ -77,6 +89,9 @@ public class StepDecay : ILearningRateScheduler
     }
 }
 
+/// <summary>
+/// Reduce the learning rate using polynomial decay
+/// </summary>
 public class PolynomialDecay : ILearningRateScheduler
 {
     public float BaseRate {get; private set;}
@@ -96,6 +111,9 @@ public class PolynomialDecay : ILearningRateScheduler
     }
 }
 
+/// <summary>
+/// Cosine annealing learning rate decay over a given number of epochs
+/// </summary>
 public class CosineAnnealing : ILearningRateScheduler
 {
     public float BaseRate {get; private set;}
@@ -113,6 +131,9 @@ public class CosineAnnealing : ILearningRateScheduler
     }
 }
 
+/// <summary>
+/// A series of fixed rates that apply to different sections of epochs
+/// </summary>
 public class MilestoneRates : ILearningRateScheduler
 {
     private (int Milestone, float Rate)[] steps;
@@ -141,6 +162,29 @@ public class MilestoneRates : ILearningRateScheduler
         }
         return steps[closest].Rate;
     }
+}
+
+/// <summary>
+/// A schedule that repeats after a given number of epochs
+/// </summary>
+public class CyclicSchedule : ILearningRateScheduler
+{
+    public int CycleLength {get; init;}
+    public ILearningRateScheduler Scheduler {get; init;}
+
+    public CyclicSchedule(int cycleLength, ILearningRateScheduler scheduler)
+    {
+        this.CycleLength = Math.Max(1, cycleLength);
+        this.Scheduler = scheduler;
+    }
+
+    public float RateForEpoch(int epochFor)
+    {
+        // The epoch simply cycles in a loop of length cycleLength ie for length 4: [0, 1, 2, 3] [0, 1, 2, 3] ...
+        var remainder = epochFor % CycleLength;
+        return Scheduler.RateForEpoch(remainder);
+    }
+
 }
 
 /// <summary>

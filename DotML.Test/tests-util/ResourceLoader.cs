@@ -1,5 +1,6 @@
 using System.Reflection;
 using DotML.Network;
+using DotML.Network.Embedding;
 using DotML.Network.Training;
 
 namespace DotML.Test;
@@ -40,7 +41,7 @@ public static class ResourceLoader {
         throw new FileNotFoundException(namePart + " did you mean: " + string.Join(',', resources));
     }
 
-    public static TrainingSet<float> LoadTrainingVectors(IFeatureExtractor<string, float> vectorizor, DataLabeller labeller, IEnumerable<string> resources) {
+    public static TrainingSet<float> LoadTrainingVectors(IEmbedding<string, float> vectorizor, DataLabeller labeller, IEnumerable<string> resources) {
         TrainingSet<float> set = new TrainingSet<float>(
             resources.Select(
                 res => {

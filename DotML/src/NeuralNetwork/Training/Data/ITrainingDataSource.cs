@@ -208,3 +208,53 @@ where TType : INumber<TType>
     }
 
 }
+
+/// <summary>
+/// Data source which returns both the original training pairs and dynamically generate variations of each of its training pairs. Useful when wanting to provide many different variations to augment training. 
+/// </summary>
+/// <typeparam name="TType">underlying tensor type</typeparam>
+public abstract class GenerativeVariationDataSource<TType>
+: ITrainingDataSource<TType>
+where TType : INumber<TType>
+{
+    private ITrainingDataSource<TType> underlying;
+    private int variations;
+    public GenerativeVariationDataSource(ITrainingDataSource<TType> underlying, int variations)
+    {
+        this.underlying = underlying;
+        this.variations = Math.Max(0, variations);
+    }
+
+    public (Tensor<TType> Input, Tensor<TType> Output) this[int index]
+    {
+        get
+        {
+            var baseIndex = index / (variations + 1);
+            var variationIndex = index % (variations + 1);
+            var baseTensors = underlying[baseIndex];
+            return variationIndex == 0 
+                ? baseTensors // For the false variation index of 0, we use the original tensors unmodified 
+                : Vary(baseTensors.Input, baseTensors.Output, variationIndex - 1); // Variation index here is from [0..variations)
+        }
+    }
+
+    public abstract (Tensor<TType> Input, Tensor<TType> Output) Vary(Tensor<TType> input, Tensor<TType> output, int variationIndex);
+
+    public int Count => underlying.Count + underlying.Count * variations;
+
+    public TensorShape InputShape => underlying.InputShape;
+    public TensorShape OutputShape => underlying.OutputShape;
+
+    public IEnumerator<(Tensor<TType> Input, Tensor<TType> Output)> GetEnumerator()
+    {
+        var count = this.Count;
+        for (var i = 0; i < count; i++)
+            yield return this[i];
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+}

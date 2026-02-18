@@ -4125,6 +4125,26 @@ where TNum : INumber<TNum>
     }
 
     /// <summary>
+    /// Test if this tensor has any elements that match the provided predicate
+    /// </summary>
+    /// <param name="predicate">element test condition</param>
+    /// <returns>true if any elements match the condition</returns>
+    public bool Any(Func<TNum, bool> predicate)
+    {
+        return this.elements.Any(predicate);
+    }
+
+    /// <summary>
+    /// Test if this tensor has all elements matching the provided predicate
+    /// </summary>
+    /// <param name="predicate">element test condition</param>
+    /// <returns>true if all elements match the condition</returns>
+    public bool All(Func<TNum, bool> predicate)
+    {
+        return this.elements.All(predicate);
+    }
+
+    /// <summary>
     /// Create an exact duplicate of this tensor
     /// </summary>
     /// <returns>tensor</returns>

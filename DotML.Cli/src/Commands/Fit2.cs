@@ -340,7 +340,7 @@ public class Fit : BaseCommand
                 var str = progress.Epoch.ToString();
                 var width = Math.Max(0, Console.BufferWidth - str.Length);
                 Console.Write(str);
-                Console.Write(Qkmaxware.Terminal.Elements.ProgressBar.ToString(progress.Completed, width));
+                Console.Write(Qkmaxware.Terminal.Elements.ProgressBar.ToString(progress.CompletedPercent, width));
             }
         );
         while (session.MoveNext(progress))

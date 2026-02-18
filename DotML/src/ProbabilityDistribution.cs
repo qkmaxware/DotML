@@ -94,7 +94,7 @@ public struct ProbabilityDistribution
         return index;
     }
 
-    private static readonly Random random = new Random();
+    private static Random random => Random.Shared;
 
     /// <summary>
     /// Select a category randomly taking into account the probability of selection for each category.
@@ -118,12 +118,120 @@ public struct ProbabilityDistribution
     }
 
     /// <summary>
+    /// Select a category randomly limiting selection to the top N categories
+    /// </summary>
+    /// <param name="top">number of categories to include</param>
+    /// <returns>index of the selected category</returns>
+    public int SelectRandomly(int top)
+    {
+        top = Math.Clamp(top, 1, this.Categories);
+        // Create a temporary array with only the top N categories
+        (int Index, float Probability)[] topValues = this.values.Select((prob, i) => (i, prob)).OrderByDescending(x => x.prob).Take(top).ToArray();
+        top = topValues.Length;
+
+        // Normalize the top values
+        double sum = 0;
+        for (var i = 0; i < top; i++)
+        {
+            sum += topValues[i].Probability;
+        }
+        for (var i = 0; i < top; i++)
+        {
+            var x = topValues[i];
+            x.Probability = (float)(x.Probability / sum);
+            topValues[i] = x;
+        }
+
+        // Select randomly using the top values
+        double selection = random.NextDouble();
+        double cumulativeSum = 0d;
+        for (var i = 0; i < top; i++)
+        {
+            var pair = topValues[i];
+            cumulativeSum += pair.Probability;
+            if (selection < cumulativeSum)
+            {
+                return pair.Index;
+            }
+        }
+
+        // Return last element of the top N if all else fails
+        return topValues[top - 1].Index;
+    }
+
+    /// <summary>
+    /// Select a category randomly taking into account the probability of selection for each category.
+    /// </summary>
+    /// <param name="temperature">temperature control for dictating the randomness of the selection; 0 being selecting most probably, 1 normal random, >1 more randomness</param>
+    /// <returns>index of the selected category</returns>
+    public int SelectRandomly(float temperature)
+    {
+        if (temperature <= 0)
+            return SelectMostProbable();
+        else
+        {
+            // Adjust distribution by temperature
+            var adjustedValues = new float[this.Categories];
+            double sum = 0;
+            for (var i = 0; i < this.Categories; i++)
+            {
+                adjustedValues[i] = MathF.Pow(this.values[i], 1f / temperature);
+                sum += adjustedValues[i];
+            }
+            // Normalize
+            for (var i = 0; i < this.Categories; i++)
+            {
+                adjustedValues[i] = (float)(adjustedValues[i] / sum);
+            }
+
+            // Select randomly using the adjusted values
+            double selection = random.NextDouble();
+            double cumulativeSum = 0d;
+            for (var i = 0; i < this.Categories; i++)
+            {
+                cumulativeSum += adjustedValues[i];
+                if (selection < cumulativeSum)
+                {
+                    return i;
+                }
+            }
+
+            // Return last element if all else fails
+            return this.Categories - 1;
+        }
+    }
+
+    /// <summary>
     /// Select a category randomly taking into account the probability of selection for each category.
     /// </summary>
     /// <returns>index of the selected category</returns>
     public int SelectRandomly(out string? label)
     {
         var index = SelectRandomly();
+        label = GetCategoryLabel(index);
+        return index;
+    }
+
+    /// <summary>
+    /// Select a category randomly limiting selection to the top N categories
+    /// </summary>
+    /// <param name="top">number of categories to include</param>
+    /// <returns>index of the selected category</returns>
+    public int SelectRandomly(int top, out string? label)
+    {
+        var index = SelectRandomly(top);
+        label = GetCategoryLabel(index);
+        return index;
+    }
+
+    /// <summary>
+    /// Select a category randomly taking into account the probability of selection for each category.
+    /// </summary>
+    /// <param name="temperature">temperature control for dictating the randomness of the selection; 0 being selecting most probably, 1 being fully random</param>
+    /// <returns>index of the selected category</returns>
+    public int SelectRandomly(float temperature, out string? label)
+    {
+        var index = SelectRandomly(temperature);
         label = GetCategoryLabel(index);
         return index;
     }

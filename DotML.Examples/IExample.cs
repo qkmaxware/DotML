@@ -1,19 +1,44 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Text.Json;
 using DotML.Network;
 using DotML.Network.IO;
 using DotML.Network.Training;
 
 namespace DotML.Examples;
 
+public enum ExampleKind
+{
+    Classification, // Predict a category
+    Regression, // Predict a continuous value
+    Clustering, // Group data point
+    AnomalyDetection, // Detect outliers
+    Generative, // Generate new data samples
+}
+
+public enum TrainingMethod
+{
+    Backpropagation,
+    Evolutionary,
+    Reinforcement,
+    Adversarial
+}
+
 public interface IExample
 {
     public string Name { get; }
     public void Configure(string json);
 
+    public ExampleKind Kind {get;}
+    public TrainingMethod TrainingMethod {get;}
+
+    public bool HasBeenTrained();
+    public string? GetDescription();
     public void Run(IEnumerable<string> inputs, string? outputPath);
     public void ProcessRawData();
     public void Train(bool useExistingWeights, bool useLogging, int? saveInterval);
+    public void Validate();
     public void Clean();
 }
 
@@ -25,23 +50,52 @@ public abstract class Example : IExample
     protected virtual string ProcessedDataPath => Path.Combine(ExamplePath, "tensors");
     protected virtual string RawDataPath => Path.Combine(ExamplePath, "raws");
 
+    public abstract ExampleKind Kind {get;}
+    public abstract TrainingMethod TrainingMethod {get;}
+
+    public virtual string? GetDescription() => null;
+
+    protected bool TryParseConfigString<TData>(string dataOrPath, [NotNullWhen(true)] out TData? data) where TData:class
+    {
+        data = null;
+        var trimmed = MemoryExtensions.Trim(dataOrPath);
+        try
+        {
+            if (trimmed.StartsWith("{") && trimmed.EndsWith("}"))
+            {
+                data = JsonSerializer.Deserialize<TData>(trimmed);
+                return data is not null;
+            } else
+            {
+                using var stream = File.OpenRead(dataOrPath);
+                data = JsonSerializer.Deserialize<TData>(stream);
+                return data is not null;
+            }
+        } catch
+        {
+            return false;
+        }
+    }
+
     public abstract void Clean();
 
     public abstract void Configure(string json);
 
     public virtual void ProcessRawData() {}
 
+    public virtual bool HasBeenTrained() => false;
     public abstract void Run(IEnumerable<string> inputs, string? outputPath);
 
     public abstract void Train(bool useExistingWeights, bool useLogging, int? saveInterval);
+    public abstract void Validate();
 
     private DateTime startTime = DateTime.Now;
 
     protected StreamWriter CreateLogger(string name)
     {
-        return new StreamWriter(startTime.ToString("yyyy-dd-M--HH-mm-ss") + "." + name);
+        return new StreamWriter(startTime.ToString("yyyy-MM-dd--HH-mm-ss") + "." + name);
     }
-
+    
     protected void WriteRow(params ReadOnlySpan<object?> values)
     {
         var columnWidth = Console.BufferWidth / values.Length;
@@ -108,6 +162,9 @@ public abstract class BackpropExample : Example
         }
     }
 
+    public override ExampleKind Kind => ExampleKind.Classification;
+    public override TrainingMethod TrainingMethod => TrainingMethod.Backpropagation;
+
     public override void Run(IEnumerable<string> InputStrings, string? OutputPath)
     {
         // Load network
@@ -120,7 +177,9 @@ public abstract class BackpropExample : Example
         if (InputStrings is null)
             return;
 
-        using TextWriter pipe = !string.IsNullOrEmpty(OutputPath) ? CreateLogger("output.txt") : System.Console.Out;
+        using TextWriter pipe = !string.IsNullOrEmpty(OutputPath) 
+            ? new StreamWriter(Path.ChangeExtension(OutputPath, EnforceExtension(Path.GetExtension(OutputPath))))
+            : System.Console.Out;
         foreach (var str in InputStrings)
         {
             pipe.Write("> "); pipe.WriteLine(str);
@@ -131,14 +190,21 @@ public abstract class BackpropExample : Example
         }
     }
 
+    protected string EnforceExtension(string ext) => ".txt"; // Always enforce txt unless an example requires something unique
+
     public override void Train(bool useExistingWeights, bool useLogging, int? saveInterval)
     {
         var exampleName = this.GetType().Name;
 
-        // Load network
-        var network = this.GetArchitecture();
-
         // Load tensors (ensure that we have enough data)
+        if (!Directory.Exists(ProcessedDataPath) == false)
+        {
+            Directory.CreateDirectory(ProcessedDataPath);
+        }
+        if (!Directory.Exists(RawDataPath) == false)
+        {
+            Directory.CreateDirectory(RawDataPath);
+        }
         this.LoadTrainingData(out var training, out var validation);
         if (training.Count == 0)
         {
@@ -149,13 +215,16 @@ public abstract class BackpropExample : Example
             validation = training;
         }
 
+        // Load network
+        var network = this.GetArchitecture();
+
         // Setup trainer (sensible defaults)
         var trainer = new ModuleTrainer();
 
         this.ConfigureTrainer(trainer); // Example specific configs
 
         // Do training loop
-        var session = trainer.EnumerateTraining(
+        ModuleTrainingEnumerator session = (ModuleTrainingEnumerator)trainer.EnumerateTraining(
             network: network,
             dataset: this.GetTrainingSampler(training),
             validation: this.GetValidationSampler(validation)
@@ -169,7 +238,8 @@ public abstract class BackpropExample : Example
 
         Console.WriteLine("Info:");
         var networkName = network is ArchitectureBlock nameArch ? nameArch.Name : network.GetType().Name;
-        Console.WriteLine($"  Name: {networkName}");
+        Console.WriteLine($"  Example: {this.Name}");
+        Console.WriteLine($"  Network: {networkName}");
         Console.WriteLine($"  Training size: {training.InputShape} x {training.Count}");
         Console.WriteLine($"  Validation size: {validation.InputShape} x {validation.Count}");
         Console.WriteLine();
@@ -211,9 +281,12 @@ public abstract class BackpropExample : Example
         }
 
         WriteRow(row);
-        var accuracy = session.Current.MetricsOrNull<AccuracyMetricsProvider>();
         stopwatch.Restart();
-        while (session.MoveNext())
+        IProgress<ModuleTrainingEnumerator.EpochProgress> progress = new Progress<ModuleTrainingEnumerator.EpochProgress>(report =>
+        {
+            Console.Title = $"DotML Train - Epoch {report.Epoch + 1} {report.CompletedPercent * 100:F2}% - {report.ProcessIndex}/{report.ProcessSteps} {(report.IsTraining ? "training" : "validating")}";
+        });
+        while (session.MoveNext(progress))
         {
             stopwatch.Stop();
             var time = stopwatch.Elapsed;
@@ -273,6 +346,82 @@ public abstract class BackpropExample : Example
         SaveWeights(network);
     }
 
+    public override void Validate()
+    {
+         var exampleName = this.GetType().Name;
+
+        // Load network
+        var network = this.GetArchitecture();
+        RestoreWeights(network);
+
+        // Load tensors (ensure that we have enough data)
+        this.LoadTrainingData(out var training, out var validation);
+        if (training.Count == 0)
+        {
+            throw new InvalidOperationException("Training data is not provided");
+        }
+        if (validation.Count == 0)
+        {
+            validation = training;
+        }
+
+        // Setup trainer (sensible defaults)
+        var trainer = new ModuleTrainer();
+
+        this.ConfigureTrainer(trainer); // Example specific configs
+
+        Console.WriteLine("Info:");
+        var networkName = network is ArchitectureBlock nameArch ? nameArch.Name : network.GetType().Name;
+        Console.WriteLine($"  Example: {this.Name}");
+        Console.WriteLine($"  Network: {networkName}");
+        Console.WriteLine($"  Validation size: {validation.InputShape} x {validation.Count}");
+        Console.WriteLine();
+
+        Console.WriteLine("Validating...");
+        var metrics = trainer.Metrics.SelectMany(
+            provider => provider
+                .GetType()
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(prop => prop.CanRead)
+                .Select<PropertyInfo, (string Name, Func<object?> Getter)>(prop => (Name: prop.Name, Getter: () => prop.GetValue(provider)) ) )
+            .ToList();
+        Stopwatch stopwatch = Stopwatch.StartNew(); stopwatch.Stop();
+        (string, Func<ModuleTrainingEnumerator.Report, object>)[] defaultFields = [
+            ("Epoch", (r) => r.Epoch + 1), 
+            ("Time", (r) => stopwatch.Elapsed.TotalMinutes.ToString("F4") + "min"), 
+            ("AvgLoss", (r) => r.Loss.Average), 
+            ("MinLoss", (r) => r.Loss.Min), 
+            ("MaxLoss", (r) => r.Loss.Max)
+        ];
+        object?[] row = new object?[defaultFields.Length + metrics.Count];
+        for (var i = 0; i < defaultFields.Length; i++)
+        {
+            row[i] = defaultFields[i].Item1;
+        }
+        for (var i = 0; i < metrics.Count; i++)
+        {
+            row[defaultFields.Length + i] = metrics[i].Name;
+        }
+        WriteRow(row);
+
+        stopwatch.Restart();
+        var report = ModuleTrainingEnumerator.Test(validation.CreateSequentialSampler(), network, trainer.Loss, 1, trainer.Metrics);
+        stopwatch.Stop();
+
+        for (var i = 0; i < defaultFields.Length; i++)
+        {
+            row[i] = defaultFields[i].Item2(report);
+        }
+
+        // Write the "user defined" metrics
+        for (var i = 0; i < metrics.Count; i++)
+        {
+            var value = metrics[i].Getter();
+            row[defaultFields.Length + i] = value;
+        }
+        WriteRow(row);
+    }
+
     public override void Clean()
     {
         if (Directory.Exists(ProcessedDataPath))
@@ -287,12 +436,33 @@ public abstract class BackpropExample : Example
     protected virtual void OnTrainingIteration(INetworkModule network, ITrainingDataSource<float> training, ITrainingDataSource<float> validation, ModuleTrainingEnumerator.Report report) {}
 
     public abstract INetworkModule GetArchitecture();
+    public override bool HasBeenTrained() => File.Exists(Path.Combine(ExamplePath, DefaultWeightsFilename));
     public virtual Safetensors LoadWeights()
     {
         return Safetensors.ReadFromFile(Path.Combine(ExamplePath, DefaultWeightsFilename));
     }
     public virtual void SaveWeights(Safetensors tensors)
     {
+        // Ensure none of the weights are NaN or invalid values
+        static double value2Double(object? obj)
+        {
+            if (obj is null)
+                return double.NaN;
+
+            return Convert.ToDouble(obj);
+        }
+        static bool isInvalid(double val)
+        {
+            return double.IsNaN(val);
+        }
+        foreach (var key in tensors.Keys())
+        {
+            if (tensors.AnyIn(key, (v) => { double val = value2Double(v); return isInvalid(val); }))
+            {
+                throw new ArgumentException(key, "NaN values found in model weights");
+            }
+        }
+        // Save the weights
         tensors.WriteToFile(Path.Combine(ExamplePath, DefaultWeightsFilename));
     }
 

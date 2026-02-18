@@ -2,7 +2,7 @@
 A generic example which is used to show a neural network capable of learning boolean binary operators. 
 
 ## Configuration
-This network can be used with any of the 3 big boolean binary operators AND, OR, and XOR. Choosing the desired operator can be done with the --config and a json dictionary with the "op" key set.
+This network can be used with any of the 3 big boolean binary operators such as AND, OR, and XOR. A full list of boolean binary operators can be found in Binop.cs line 17 (the OperationType enum). Choosing the desired operator can be done with the --config argument. This can be raw json, or a path to a json file. The contents of which needs to be an dictionary with the "op" key set.
 ```sh
 --config '{\"op\": \"And\"}'
 --config '{\"op\": \"Or\"}'

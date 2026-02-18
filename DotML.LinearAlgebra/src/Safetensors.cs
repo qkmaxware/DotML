@@ -71,6 +71,25 @@ public class Safetensors {
     }
 
     /// <summary>
+    /// Test a tensor in the safetensor file for to see if nay of its elements match the given predicate condition
+    /// </summary>
+    /// <param name="key">tensor key</param>
+    /// <param name="predicate">condition to run on each element</param>
+    /// <returns>true if the tensor exists and any element matches the condition</returns>
+    public bool AnyIn(string key, Func<object?, bool> predicate)
+    {
+        if (tensors.TryGetValue(key, out var tensor)) {
+            Array arr = (Array)tensor.data;
+            for (var i = 0; i < arr.Length; i++)
+            {
+                if (predicate(arr.GetValue(i)))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Gets the metadata associated with the given tensor
     /// </summary>
     /// <param name="key">Tensor metadata</param>
@@ -362,7 +381,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Vec<float> vector) {
-        this.tensors.Add(name, new UnknownObjectTensor (shape: new TensorShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new TensorShape(new int[]{ vector.Dimensionality }), data: vector.AsArray() ));
     }
 
     /// <summary>

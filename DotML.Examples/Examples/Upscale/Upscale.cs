@@ -14,10 +14,10 @@ public class Upscale : BackpropExample
 {
     public int UpscaleFactor = 2;
     const float Coverage  = 0.4f;
-    const int HighResTileWidth = 34;
-    int LowResTileWidth => HighResTileWidth / UpscaleFactor;
-    const int HighResTileHeight = 34;
-    int LowResTileHeight => HighResTileHeight / UpscaleFactor;
+    const int LowResTileWidth = 17;
+    const int LowResTileHeight = 17;
+    int HighResTileWidth => LowResTileWidth * UpscaleFactor;
+    int HighResTileHeight => LowResTileHeight * UpscaleFactor;
 
     public class ExtraArguments
     {
@@ -26,43 +26,39 @@ public class Upscale : BackpropExample
     }
     public override void Configure(string json)
     {
-        try
+        if (!TryParseConfigString<ExtraArguments>(json, out var args))
         {
-            var args = JsonSerializer.Deserialize<ExtraArguments>(json);
-            if (args is null)
-                return;
-
-            // Ensure its divisible by 2
-            if (args.Factor % 2 != 0)
-                args.Factor = args.Factor - 1;
-
-            // Set the upscale factor (min 2)
-            this.UpscaleFactor = Math.Clamp(args.Factor, 2, 34);
-        } catch (Exception e)
-        {
-            throw new FormatException("Failed to parse configuration json", e);
+            throw new FormatException("Failed to parse configuration json");
         }
+
+        // Ensure its divisible by 2
+        if (args.Factor % 2 != 0)
+            args.Factor = args.Factor - 1; 
+
+        this.UpscaleFactor = Math.Clamp(args.Factor, 2, 8);
     }
+
+    public override string? GetDescription() => $"Upscaling of images by a configurable factor (at least 2x).";
 
     public override INetworkModule GetArchitecture()
     {
-        /*var factory = new ESPCNFactory();
+        var factory = new ESPCNFactory();
 
         var settings = new ESPCNFactory.BuildSettings();
         settings.ImgChannels = 1;
         settings.ImgWidth = LowResTileWidth;
         settings.ImgHeight = LowResTileHeight;
         settings.Activation = ActivationFunctions.Tanh;
-        settings.UpscalingFactor = this.UpscaleFactor;*/
+        settings.UpscalingFactor = this.UpscaleFactor;
 
-        var factory = new FSRCNNFactory();
+        /*var factory = new FSRCNNFactory();
 
         var settings = new FSRCNNFactory.BuildSettings();
         settings.ImgChannels = 1;
         settings.ImgWidth = LowResTileWidth;
         settings.ImgHeight = LowResTileHeight;
         settings.Activation = ActivationFunctions.LeakyReLU;
-        settings.UpscalingFactor = this.UpscaleFactor;
+        settings.UpscalingFactor = this.UpscaleFactor;*/
 
         return factory.Make(settings);
     }
@@ -113,6 +109,9 @@ public override void ProcessRawData()
     var rng = Random.Shared;
 
     // Foreach img file
+    using var iWriter = new BinaryWriter(File.Open(Path.Combine(ProcessedDataPath, "inputs.bin"), FileMode.Create));
+    using var oWriter = new BinaryWriter(File.Open(Path.Combine(ProcessedDataPath, "outputs.bin"), FileMode.Create));
+
     int fileIndex = 0;
     foreach (var file in files)
     {
@@ -151,44 +150,58 @@ public override void ProcessRawData()
             using var tileBitmap = new SKBitmap(tileW, tileH);
             bitmap.ExtractSubset(tileBitmap, rect);
 
-            CreateHrLrPair(baseName, fileIndex, i, 0, tileBitmap);
+            CreateHrLrPair(baseName, fileIndex, i, 0, tileBitmap, iWriter, oWriter);
         }
 
         fileIndex++;
     }
 }
-    private void CreateHrLrPair(string baseName, int fileIndex, int sliceIndex, int augmentIndex, SKBitmap tileBitmap)
+    private void CreateHrLrPair(string baseName, int fileIndex, int sliceIndex, int augmentIndex, SKBitmap tileBitmap, BinaryWriter iWriter, BinaryWriter oWriter)
     {
         // HR
         {
             var luminance = tileBitmap.ToYCrCb();
-            var tensor = luminance.ToTensor((y) => y.Y);
 
             // PNG for debugging
             if (fileIndex == 0 && sliceIndex < 10) {
+                var tensor = luminance.ToTensor((y) => y.Y);
                 var pngName = Path.Combine(ProcessedDataPath, baseName + ".slice" + sliceIndex + ".augment" + augmentIndex + ".HR.png");
                 WriteLuminancePng(pngName, tensor);
             }
 
-            var tensorName = Path.Combine(ProcessedDataPath, baseName + ".slice" + sliceIndex+ ".augment" + augmentIndex + ".HR.json");
-            using var writer = new StreamWriter(tensorName);
-            tensor.SaveJson(writer);
+            //var tensorName = Path.Combine(ProcessedDataPath, baseName + ".slice" + sliceIndex+ ".augment" + augmentIndex + ".HR.json");
+            //using var writer = new StreamWriter(tensorName);
+            //tensor.SaveJson(writer);
+            for (var r = 0; r < luminance.GetLength(0); r++)
+            {
+                for (var c = 0; c < luminance.GetLength(1); c++)
+                {
+                    oWriter.Write(luminance[r, c].Y);
+                }
+            }
         }
         // LR
         {
             using var scaledTileBitmap = tileBitmap.Resize(new SKSizeI(tileBitmap.Width / UpscaleFactor, tileBitmap.Height / UpscaleFactor), SKSamplingOptions.Default);
             var luminance = scaledTileBitmap.ToYCrCb();
-            var tensor = luminance.ToTensor((y) => y.Y);
 
             // PNG for debugging
             if (fileIndex == 0 && sliceIndex < 10) {
+                var tensor = luminance.ToTensor((y) => y.Y);
                 var pngName = Path.Combine(ProcessedDataPath, baseName + ".slice" + sliceIndex + ".augment" + augmentIndex + ".LR.png");
                 WriteLuminancePng(pngName, tensor);
             }
 
-            var tensorName = Path.Combine(ProcessedDataPath, baseName + ".slice" + sliceIndex + ".augment" + augmentIndex + ".LR.json");
-            using var writer = new StreamWriter(tensorName);
-            tensor.SaveJson(writer);
+            //var tensorName = Path.Combine(ProcessedDataPath, baseName + ".slice" + sliceIndex + ".augment" + augmentIndex + ".LR.json");
+            //using var writer = new StreamWriter(tensorName);
+            //tensor.SaveJson(writer);
+            for (var r = 0; r < luminance.GetLength(0); r++)
+            {
+                for (var c = 0; c < luminance.GetLength(1); c++)
+                {
+                    iWriter.Write(luminance[r, c].Y);
+                }
+            }
         }
     }
     private static void WriteLuminancePng(string name, Tensor<float> tensor)
@@ -213,37 +226,38 @@ public override void ProcessRawData()
         var rng = Random.Shared;
 
         var ishape = new TensorShape(1, LowResTileHeight, LowResTileWidth);
+        var iElements = ishape.LogicalElementCount();
         var oshape = new TensorShape(1, HighResTileHeight, HighResTileWidth);
+        var oElements = oshape.LogicalElementCount();
         ListTrainingDataSource<float> trn = new ListTrainingDataSource<float>(ishape, oshape);
         ListTrainingDataSource<float> val = new ListTrainingDataSource<float>(ishape, oshape);
 
-        foreach (var lrFile in Directory.GetFiles(ProcessedDataPath, "*.LR.json", SearchOption.TopDirectoryOnly))
+        using var iReader = new BinaryReader(File.Open(Path.Combine(ProcessedDataPath, "inputs.bin"), FileMode.Open));
+        using var oReader = new BinaryReader(File.Open(Path.Combine(ProcessedDataPath, "outputs.bin"), FileMode.Open));
+
+        while (iReader.BaseStream.Position != iReader.BaseStream.Length)
         {
-            var hrFile = lrFile.Replace(".LR.json", ".HR.json");
-            if (!File.Exists(hrFile))
-                continue;
-            
-            using var lrStream = File.Open(lrFile, FileMode.Open);
-            Tensor<float> lrY = TensorExport.FromJson<float>(lrStream);
-            if (!lrY.Shape.Equals(ishape))
-                continue;
+            Tensor<float> i = Tensor<float>.Defaults(ishape);
+            var ispan = i.AsSpan();
+            for (var j = 0; j < ispan.Length; j++)
+            {
+                ispan[j] = iReader.ReadByte() / 255.0f;
+            }
 
-            using var hrStream = File.Open(hrFile, FileMode.Open);
-            Tensor<float> hrY = TensorExport.FromJson<float>(hrStream);
-            if (!hrY.Shape.Equals(oshape))
-                continue;
+            Tensor<float> o = Tensor<float>.Defaults(oshape);
+            var ospan = o.AsSpan();
+            for (var j = 0; j < ospan.Length; j++)
+            {
+                ospan[j] = oReader.ReadByte() / 255.0f;
+            }
 
-            lrY.ElementWiseInplace((x) => x / 255.0f); // Scale from 0-255 to 0-1 scale
-            hrY.ElementWiseInplace((x) => x / 255.0f); // Scale from 0-255 to 0-1 scale
-
-            // Plaec in one of the two training sets
             if (rng.NextDouble() > 0.25)
             {
-                trn.Add((lrY, hrY));
+                trn.Add((i, o));
             }
             else
             {
-                val.Add((lrY, hrY));
+                val.Add((i, o));
             }
         }
 
@@ -253,25 +267,21 @@ public override void ProcessRawData()
 
     public override void ConfigureTrainer(ModuleTrainer trainer)
     {
-        trainer.MaxEpochs = 500;
+        trainer.MaxEpochs = 250;
         trainer.LearningRateScheduler = new RampUpWarmup(
             maxWarmupRate: 1e-3f,
             warmupEpochs: 5,
-            scheduler: new MilestoneRates(
-                (0, 1e-3f),
-                ((int)Math.Floor(0.5 * trainer.MaxEpochs), 1e-4f),
-                ((int)Math.Floor(0.75 * trainer.MaxEpochs), 1e-5f)
-            )
+            scheduler: new CosineAnnealing(1e-3f, trainer.MaxEpochs - 5)
         );
         trainer.BatchSize = 16;
-        trainer.Initializer = new HeInitialization();
+        trainer.Initializer = new NormalXavierInitialization();
         trainer.Loss = LossFunctions.MeanSquaredError;
         trainer.Optimizer = new Adam();
         trainer.GlobalClipping = new GlobalMagnitudeClipping<float>(10);// Not required, but safe
         trainer.LocalClipping = null;
         trainer.Regularization = new NoRegularization(); //new L2Regularization(1e-4f);
         trainer.Patience = 3; // Patience here relates only to the stop condition below
-        trainer.StopCondition = static (report) => report.Epoch > 20 && report.Loss.Max < 0.06f;
+        trainer.StopCondition = static (report) => report.Epoch > 20 && report.Metrics<SignalToNoiseProvider>().DecibelSNR.Min > 30;
         trainer.Metrics.Add(new SignalToNoiseProvider(1.0f));
         trainer.Metrics.Add(new StructuralSimilarityIndexProvider(1.0f));
     }

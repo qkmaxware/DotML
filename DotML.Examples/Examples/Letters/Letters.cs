@@ -13,6 +13,8 @@ public class Letters : BackpropExample
     private const int ImgHeight = 32;
     private static string[] Classes = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "Exclamation", "Question"];
 
+    public override string? GetDescription() => $"Classification of {ImgWidth}x{ImgHeight} images as capital letters A-Z.";
+
     public override INetworkModule GetArchitecture()
     {
         var factory = new LeNetFactory();

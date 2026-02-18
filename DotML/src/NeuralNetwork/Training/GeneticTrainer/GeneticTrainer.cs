@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections;
 
 namespace DotML.Network.Training;
@@ -9,11 +10,65 @@ namespace DotML.Network.Training;
 public delegate IGenome GenomeFactory();
 
 /// <summary>
-/// Fitness test function to determine the fitness of a given genome
+/// Fitness testing and scheduling for multiple genomes
 /// </summary>
-/// <param name="genome">genome to test</param>
-/// <returns>fitness value</returns>
-public delegate float FitnessTest(IGenome genome);
+public interface IFitnessTestScheduler {
+    /// <summary>
+    /// Schedule and test each genome putting their computed fitness scores in the equivalent spot
+    /// </summary>
+    /// <param name="genomes">genomes to test</param>
+    /// <param name="fitnesses">fitness scores to populate</param>
+    public void Test(ReadOnlyMemory<IGenome> genomes, Memory<float> fitnesses);
+}
+
+/// <summary>
+/// A fitness testing system when tests each genome individually, one after another
+/// </summary>
+public abstract class SequentialTestScheduler : IFitnessTestScheduler
+{
+    public void Test(ReadOnlyMemory<IGenome> genomes, Memory<float> fitnesses)
+    {
+        var genome_span = genomes.Span;
+        var fitness_span = fitnesses.Span;
+
+        for (var i = 0; i < genomes.Length; i++)
+        {
+            var genome = genome_span[i];
+            var fitness = Test(genome);
+            fitness_span[i] = fitness;
+        }
+    }
+
+    /// <summary>
+    /// Fitness test function to determine the fitness of a given genome
+    /// </summary>
+    /// <param name="genome">genome to test</param>
+    /// <returns>fitness value</returns>
+    public abstract float Test(IGenome genome);
+}
+
+/// <summary>
+/// A fitness testing system where all genomes are tested in parallel
+/// </summary>
+public abstract class ParallelTestScheduler : IFitnessTestScheduler
+{
+    public void Test(ReadOnlyMemory<IGenome> genomes, Memory<float> fitnesses)
+    {
+        Parallel.For(0, genomes.Length, (i) =>
+        {
+            var genome = genomes.Span[i];
+            var fitness = Test(genome);
+            fitnesses.Span[i] = fitness;
+        });
+    }
+
+    /// <summary>
+    /// Fitness test function to determine the fitness of a given genome
+    /// </summary>
+    /// <param name="genome">genome to test</param>
+    /// <returns>fitness value</returns>
+    public abstract float Test(IGenome genome);
+}
 
 /// <summary>
 /// A stop condition for evolution using a genetic trainer
@@ -42,9 +97,13 @@ public class GeneticTrainer
     /// </summary>
     public GenomeFactory? Factory {get; set;}
     /// <summary>
+    /// Batch size used for fitness testing
+    /// </summary>
+    public int BatchSize { get; set; }
+    /// <summary>
     /// Test to check the fitness of each genome
     /// </summary>
-    public FitnessTest? FitnessTest {get; set;}
+    public IFitnessTestScheduler? FitnessTest {get; set;}
     /// <summary>
     /// Max number of generations to evolve the population over
     /// </summary>
@@ -80,7 +139,7 @@ public class GeneticTrainer
         if (this.FitnessTest is null)
             throw new NullReferenceException(nameof(this.FitnessTest));
 
-        return new GeneticTrainerEnumerator(this.PopulationSize, this.Proportions, this.Factory, this.FitnessTest, StopCondition, this.MaxGenerations, MutationRate, FitnessWeighting, DiversityWeighting);
+        return new GeneticTrainerEnumerator(this.PopulationSize, this.Proportions, this.Factory, this.BatchSize, this.FitnessTest, StopCondition, this.MaxGenerations, MutationRate, FitnessWeighting, DiversityWeighting);
     }
     
     /// <summary>
@@ -138,7 +197,15 @@ public class GeneticTrainerEnumerator
     public int PopulationSize {get; init;}
     public PopulationProportion Proportions {get; init;}
     public GenomeFactory Factory {get; init;}
-    public FitnessTest FitnessTest {get; init;}
+    private int _batchSize = 1;
+    /// <summary>
+    /// Batch size used for fitness testing
+    /// </summary>
+    public int BatchSize {
+        get => _batchSize;
+        set => _batchSize = Math.Max(1, value);
+    }
+    public IFitnessTestScheduler FitnessTest {get; init;}
     public float MutationRate {get; init;} = 0.01f;
     public int? MaxGenerations {get; init;}
 
@@ -149,10 +216,11 @@ public class GeneticTrainerEnumerator
     private bool bestFound = false;
     private Random rng;
 
-    public GeneticTrainerEnumerator(int size, PopulationProportion proportion, GenomeFactory factory, FitnessTest test, EvolutionStopCondition? stop, int? maxGenerations, float mutationRate, float fitnessWeight, float diversityWeight, Random? rng = null)
+    public GeneticTrainerEnumerator(int size, PopulationProportion proportion, GenomeFactory factory, int batch, IFitnessTestScheduler test, EvolutionStopCondition? stop, int? maxGenerations, float mutationRate, float fitnessWeight, float diversityWeight, Random? rng = null)
     {
         this.PopulationSize = Math.Max(1, size);
         this.Proportions = proportion;
+        this.BatchSize = batch;
         this.Factory = factory;
         this.FitnessTest = test;
         this.MaxGenerations = maxGenerations.HasValue ? Math.Max(0, maxGenerations.Value) : null; // Ensure maxGenerations is positive
@@ -254,10 +322,35 @@ public class GeneticTrainerEnumerator
 
         // Test fitness
         var invCount = 1.0f / (this.population.Count - 1);
-        for (var i = 0; i < this.population.Count; i++) {
-            GenomeFitness row = this.population[i];
-            row.Fitness = FitnessTest(row.Genome);
-            this.population[i] = row;
+        var genomes = ArrayPool<IGenome>.Shared.Rent(BatchSize);
+        var fitnesses = ArrayPool<float>.Shared.Rent(BatchSize);
+        try {
+            for (var i = 0; i < this.population.Count; i += BatchSize) {
+                // Copy genomes to buffer and reset the fitness scores
+                var batchSize = Math.Min(BatchSize, this.population.Count - i);
+                for (var j = 0; j < batchSize; j++)
+                {
+                    GenomeFitness row = this.population[i + j];
+                    genomes[j] = row.Genome;
+                    fitnesses[j] = 0.0f;
+                }
+
+                // Experiment (allows for parallel testing in the regimen)
+                FitnessTest.Test(genomes.AsMemory(0, batchSize), fitnesses.AsMemory(0, batchSize));
+
+                // Copy back fitnesses into population
+                for (var j = 0; j < batchSize; j++)
+                {
+                    GenomeFitness row = this.population[i + j];
+                    row.Fitness = fitnesses[j];
+                    this.population[i + j] = row;
+                }
+            }
+        } 
+        finally
+        {
+            ArrayPool<IGenome>.Shared.Return(genomes);
+            ArrayPool<float>.Shared.Return(fitnesses);
         }
 
         // Compute fitness rank for selection

@@ -4,3 +4,6 @@ TestResults/
 DotML.Sandbox.Old/
 
 *.zip
+
+# WIP projects that aren't ready to move up into the repo yet
+Qkmaxware/Game2D

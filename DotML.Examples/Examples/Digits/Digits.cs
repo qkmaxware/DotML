@@ -13,6 +13,8 @@ public class Digits : BackpropExample
     private const int ImgHeight = 32;
     private static string[] Classes = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
+    public override string? GetDescription() => $"Classification of {ImgWidth}x{ImgHeight} images as single digits 0-9.";
+
     public override INetworkModule GetArchitecture()
     {
         var factory = new LeNetFactory();

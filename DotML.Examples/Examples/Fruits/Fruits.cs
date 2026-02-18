@@ -25,19 +25,22 @@ public class Fruits : BackpropExample
         "Watermelon"
     ];
 
+    public override string? GetDescription() => $"Classification of {ImgWidth}x{ImgHeight} images into 10 classes of fruits.";
+
     public override INetworkModule GetArchitecture()
     {
         var factory = new VGGFactory();
 
-        // Create a network which operates on 32x32 pixel colour images
+        // Create a network which operates on 224x224 pixel colour images
 
         var settings = VGGFactory.BuildSettings.VGG7();
         settings.ActivationFunction = ActivationFunctions.LeakyReLU;
         settings.ImageHeight = ImgHeight;
         settings.ImageWidth = ImgWidth;
-        settings.ImageChannels = ImgChannels;
+        settings.ImageChannels = ImgChannels;   
         settings.OutputClasses = Classes.Length;
         settings.UseBatchNorm = false;
+        settings.DropoutPercent = 0.10f;
 
         return factory.Make(settings);
     }
@@ -47,14 +50,19 @@ public class Fruits : BackpropExample
         // Load image
         using var bitmap = SKBitmap.Decode(input);
 
-        // Scale to desired size
-        using var scaled = new SKBitmap(width: ImgWidth, height: ImgHeight, isOpaque: true);
-        bitmap.ScalePixels(scaled, SKSamplingOptions.Default);
+        // Crop to desired aspect ratio (center-crop, like CSS "cover") then scale
+        using var scaled = bitmap.ScaleToCover(ImgWidth, ImgHeight);
+        using (var stream = File.Open(Path.Combine(ProcessedDataPath, "input.scaled.png"), FileMode.Create)) {
+            scaled.Encode(stream, SKEncodedImageFormat.Png, 100);
+        }
 
         // Convert to tensor
         var tensor = scaled.ToColourTensor();
         tensor.ElementWiseInplace((x) => x / 255.0f);
-        return tensor;
+        if (tensor.Any((v) => float.IsNaN(v) || float.IsInfinity(v))) {
+            throw new ArgumentException(nameof(input), "Image contains values which were not able to be converted to a valid tensor");
+        }
+        return tensor.ReshapeShared(tensor.Shape.NormalizeRank(4)); // Add a batch of 1 dimension
     }
 
     public override void ProcessRawData()
@@ -83,8 +91,12 @@ public class Fruits : BackpropExample
         augmentor.AllowVerticalFlip = false;
         augmentor.AllowInverting = false;
 
+        using var iWriter = new BinaryWriter(File.Open(Path.Combine(ProcessedDataPath, "inputs.bin"), FileMode.Create));
+        using var oWriter = new BinaryWriter(File.Open(Path.Combine(ProcessedDataPath, "outputs.bin"), FileMode.Create));
+
         // Foreach img file
-        bool firstFile = true;
+        const int tensorsToDumpPerClass = 5;
+        HashSet<int> classesDumped = new HashSet<int>();
         foreach (var file in files)
         {
             // Load image
@@ -109,21 +121,22 @@ public class Fruits : BackpropExample
             int augmentIndex = 0;
             foreach (var augment in augments)
             {
-                if (firstFile) {
+                if (!classesDumped.Contains(classIndex) && augmentIndex < tensorsToDumpPerClass) {
                     var pngName = Path.Combine(ProcessedDataPath, baseName + "." + augmentIndex + ".class" + classIndex + ".png");
                     using var pngStream = File.Open(pngName, FileMode.Create);
                     augment.Encode(pngStream, SKEncodedImageFormat.Png, 100);
                 }
 
                 var tensor = augment.ToColourTensor();
-                var tensorName = Path.Combine(ProcessedDataPath, baseName + "." + augmentIndex + ".class" + classIndex + ".json");
-                using var writer = new StreamWriter(tensorName);
-                tensor.SaveJson(writer);
+
+                oWriter.Write((byte)classIndex);    // 0 - Classes.Length-1
+                foreach (var val in tensor.AsSpan())
+                    iWriter.Write((byte)val);       // 0 - 255
 
                 augmentIndex++;
             }
 
-            firstFile = false;
+            classesDumped.Add(classIndex);
         }
     }
 
@@ -146,26 +159,32 @@ public class Fruits : BackpropExample
 
         var classExtract = new Regex(@"\.class(?<class>[0-9]+)", RegexOptions.Compiled);
 
-        foreach (var file in Directory.GetFiles(ProcessedDataPath, "*.json", SearchOption.TopDirectoryOnly))
-        {
-            // Fetch one-hot coded ouput vector (saved in filename)
-            var match = classExtract.Match(file);
-            if (!match.Success) {
-                continue;
-            }
+        using var iReader = new BinaryReader(File.Open(Path.Combine(ProcessedDataPath, "inputs.bin"), FileMode.Open));
+        using var oReader = new BinaryReader(File.Open(Path.Combine(ProcessedDataPath, "outputs.bin"), FileMode.Open));
 
-            var classIndex = int.Parse(match.Groups["class"].Value);
+        while (oReader.BaseStream.Position < oReader.BaseStream.Length)
+        {
+            // Read output tensor
+            var classIndex = oReader.ReadByte();
             var output = oneHot[classIndex];
 
-            // Read tensor values (0-255)
-            using var reader = File.Open(file, FileMode.Open);
-            var input = TensorExport.FromJson<float>(reader);
-            input.ElementWiseInplace((x) => x / 255.0f); // Scale from 0-255 to 0-1 scale
+            // Read input tensor
+            var input = Tensor<float>.Zeros(ishape);
+            var span = input.AsSpan();
+            for (var i = 0; i < span.Length; i++)
+            {
+                span[i] = iReader.ReadByte() / 255.0f; // Scale from 0-255 to 0-1 scale
+            }
 
-            if (!input.Shape.Equals(ishape))
-                continue;
+            // DEBUG
+            //using var images = input.ToColourBitmaps();
+            //foreach (var img in images) {
+            //    using var stream = File.Open(Path.Combine(ProcessedDataPath, "inputs.decoded.png"), FileMode.Create);
+            //    img.Encode(stream, SKEncodedImageFormat.Png, 100);
+            //}
+            //throw new Exception();
 
-            // Plaec in one of the two training sets
+            // Place in one of the two training sets
             if (rng.NextDouble() > 0.25)
             {
                 trn.Add((input, output));
@@ -183,28 +202,28 @@ public class Fruits : BackpropExample
 
     public override void ConfigureTrainer(ModuleTrainer trainer)
     {
-        trainer.MaxEpochs = 50;
+        trainer.MaxEpochs = 250;
         trainer.LearningRateScheduler = new RampUpWarmup(
-            maxWarmupRate: 1e-3f,
+            maxWarmupRate: 5e-4f,
             warmupEpochs: 5,
-            scheduler: new CosineAnnealing(1e-3f, 250)
+            scheduler: new CosineAnnealing(5e-4f, trainer.MaxEpochs - 5)
         );
         trainer.BatchSize = 16;
         trainer.Initializer = new HeInitialization();
         trainer.Loss = LossFunctions.CategoricalCrossEntropy;
-        trainer.Optimizer = new AdamW(weightDecay: 0.00025f);
-        trainer.GlobalClipping = null;
+        trainer.Optimizer = new AdamW(weightDecay: 1e-3f);
+        trainer.GlobalClipping = new GlobalNormClipping<float>(5.0f);
         trainer.LocalClipping = null;
-        trainer.Regularization = new NoRegularization(); // L1/L2 regularization
-        trainer.Patience = 3; // Patience represents how many times the StopCondition must be met in a row
-        trainer.StopCondition = static (report) => report.Metrics<AccuracyMetricsProvider>().Accuracy > 0.6f;
-        trainer.Metrics.Add(new AccuracyMetricsProvider());
+        trainer.Regularization = new NoRegularization(); 
+        trainer.Patience = 3;                                                                                   // Patience represents how many times the StopCondition must be met in a row
+        trainer.StopCondition = static (report) => report.Metrics<AccuracyMetricsProvider>().Accuracy > 0.6f;   // Stop if accuracy > 60%
+        trainer.Metrics.Add(new AccuracyMetricsProvider());                                                     // Additional metrics to record each epoch
     }
 
     protected override void OnTrainingIteration(INetworkModule network, ITrainingDataSource<float> training, ITrainingDataSource<float> validation, ModuleTrainingEnumerator.Report report)
     {
         // For debugging
-        var reportA = new ConfusionMatrixReport("validation-confusion", Classes, report.Metrics<AccuracyMetricsProvider>().GetConfusionMatrix());
+        /*var reportA = new ConfusionMatrixReport("validation-confusion", Classes, report.Metrics<AccuracyMetricsProvider>().GetConfusionMatrix());
         using (var writer = new StreamWriter(report.Epoch + "validation-confusion.shared.csv"))
             reportA.Emit(writer);
         
@@ -216,7 +235,7 @@ public class Fruits : BackpropExample
         var trainingDataReport = ModuleTrainingEnumerator.Test(training.CreateSequentialSampler(), network, LossFunctions.CategoricalCrossEntropy, 1, new AccuracyMetricsProvider());
         var reportB = new ConfusionMatrixReport("training-confusion", Classes, trainingDataReport.Metrics<AccuracyMetricsProvider>().GetConfusionMatrix());
         using (var writer = new StreamWriter(report.Epoch + "training-confusion.csv"))
-            reportB.Emit(writer);
+            reportB.Emit(writer);*/
     }
 
     public override IEnumerable<IReport> GenerateTrainingReports(INetworkModule network, ITrainingDataSource<float> training, ITrainingDataSource<float> validation, ModuleTrainingEnumerator.Report report)

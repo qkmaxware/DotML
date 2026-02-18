@@ -244,4 +244,38 @@ public static class SKBitmapExtensions
 
         return set;
     }
+
+    public static SKBitmap ScaleToCover(this SKBitmap bitmap, int width, int height)
+    {
+        var targetAspect = width / (float)height;
+        var srcW = bitmap.Width;
+        var srcH = bitmap.Height;
+        SKRectI srcRect;
+        var srcAspect = srcW / (float)srcH;
+        if (srcAspect > targetAspect)
+        {
+            // image is wider than target -> crop width
+            var newW = Math.Max(1, (int)Math.Round(targetAspect * srcH));
+            var x = (srcW - newW) / 2;
+            srcRect = new SKRectI(x, 0, x + newW, srcH);
+        }
+        else
+        {
+            // image is taller than target -> crop height
+            var newH = Math.Max(1, (int)Math.Round(srcW / targetAspect));
+            var y = (srcH - newH) / 2;
+            srcRect = new SKRectI(0, y, srcW, y + newH);
+        }
+
+        using var cropped = new SKBitmap(srcRect.Width, srcRect.Height, isOpaque: true);
+        using (var canvas = new SKCanvas(cropped))
+        {
+            canvas.Clear(SKColors.Transparent);
+            canvas.DrawBitmap(bitmap, srcRect, new SKRect(0, 0, srcRect.Width, srcRect.Height));
+        }
+
+        var scaled = new SKBitmap(width: width, height: height, isOpaque: true);
+        cropped.ScalePixels(scaled, SKSamplingOptions.Default);
+        return scaled;
+    }
 }

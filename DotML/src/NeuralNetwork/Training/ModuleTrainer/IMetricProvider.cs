@@ -189,42 +189,11 @@ public class AccuracyMetricsProvider : IMetricsProvider
 /// </summary>
 public class SignalToNoiseProvider : IMetricsProvider
 {
-    private double sumSignalSquared;     // Sum truth[i]^2 over all samples
-    private double sumNoiseSquared;      // Sum (truth[i]-pred[i])^2 over all samples
-    private double maxSignalValue;       // Max truth value seen in total (for PSNR)
-    private int totalCount;
-
-    public double GlobalSNR
-    {
-        get
-        {
-            if (sumNoiseSquared == 0)
-                return float.PositiveInfinity;
-
-            return 10.0 * Math.Log10(sumSignalSquared / sumNoiseSquared);
-        }
-    }
-
-    public double GlobalPSNR
-    {
-        get
-        {
-            if (totalCount == 0) 
-                return double.NaN;
-
-            double mse = sumNoiseSquared / totalCount;
-
-            if (mse == 0)
-                return double.PositiveInfinity;
-
-            return 10.0 * Math.Log10((maxSignalValue * maxSignalValue) / mse);
-        }
-    }
-
     private double? maxSampleSignal = 0;
-    public Metric<double> PerSampleSNR {get; private set;} = new Metric<double>();
 
-    public Metric<double> PerSamplePSNR {get; private set;} = new Metric<double>();
+    public Metric<double> LinearSNR {get; private set;} = new Metric<double>();
+    public Metric<double> DecibelSNR {get; private set;} = new Metric<double>();
+    public Metric<double> DecibelPSNR { get; private set; } = new Metric<double>();
 
     public SignalToNoiseProvider(double? maxSampleSignal)
     {
@@ -233,64 +202,59 @@ public class SignalToNoiseProvider : IMetricsProvider
 
     public void Reset()
     {
-        sumSignalSquared = 0;
-        sumNoiseSquared = 0;
-        maxSignalValue = 0;
-        totalCount = 0;
-
-        this.PerSampleSNR.Reset();
-        this.PerSamplePSNR.Reset();
+        LinearSNR.Reset();
+        DecibelSNR.Reset();
+        DecibelPSNR.Reset();
     }
 
-    public void AddSample(float loss, ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth)
+    public void AddSample(float loss, ReadOnlySpan<float> experimental, ReadOnlySpan<float> truth)
     {
-        double signal = 0;
-        double noise = 0;
-        double localMax = maxSampleSignal.HasValue ? maxSampleSignal.Value : 0;
-        int localCount = 0;
-
-        var len = Math.Min(predicted.Length, truth.Length);
-        if (len == 0)
+        var N = Math.Min(experimental.Length, truth.Length);
+        if (N == 0)
             return;
 
-        for (int i = 0; i < len; i++)
+        double Pnoise = 0.0;    // 1/N * SUM(ni^2){1 -> N} where ni = xi - si
+        double Psignal = 0.0;   // 1/N * SUM(si^2){1 -> N}
+        double maxAbsSignal = 0.0;
+        for (var i = 0; i < N; i++)
         {
-            double t = truth[i];
-            double p = predicted[i];
-            double diff = t - p;
+            var xi = experimental[i];
+            var si = truth[i];
+            var ni = xi - si;
 
-            double tt = t * t;
-            sumSignalSquared += tt;
-            signal += tt;
-            double diffdiff = diff * diff;
-            noise += diffdiff;
-            sumNoiseSquared  += diffdiff;
-
-            if (t > maxSignalValue)
-                maxSignalValue = t;
-            if (!maxSampleSignal.HasValue && t > localMax)
-                localMax = t;
-
-            totalCount++;
-            localCount++;
+            Pnoise += ni * ni;
+            Psignal += si * si;
+            var absSi = Math.Abs(si);
+            if (absSi > maxAbsSignal) maxAbsSignal = absSi;
         }
+        Pnoise /= N;
+        Psignal /= N;
 
-        if (noise == 0)
+        double linearSNR = Psignal / Pnoise;
+        double DecibelSNR = 10 * Math.Log10(linearSNR);
+        this.LinearSNR.AddSample(linearSNR);
+        this.DecibelSNR.AddSample(DecibelSNR);
+
+        // Compute PSNR
+        double DecibelPSNR;
+        if (Pnoise < 0.0)
         {
-            PerSampleSNR.AddSample(double.PositiveInfinity);
-            PerSamplePSNR.AddSample(double.PositiveInfinity);
-        }
-        else
+            DecibelPSNR = double.PositiveInfinity;
+        } else
         {
-            double snr  = 10.0 * Math.Log10(signal / noise);
-            double mse  = noise / localCount;
-            double psnr = 10.0 * Math.Log10((localMax * localMax) / mse);
-
-            PerSampleSNR.AddSample(snr);
-            PerSamplePSNR.AddSample(psnr);
+            double peak = this.maxSampleSignal ?? maxAbsSignal;
+            if (peak <= 0.0)
+                DecibelPSNR = double.NaN;
+            else
+            {
+                var linearpsnr = (peak * peak) / Pnoise;
+                DecibelPSNR = 10.0 * Math.Log10(linearpsnr);
+            }
         }
+        this.DecibelPSNR.AddSample(DecibelPSNR);
     }
 }
+
 
 /// <summary>
 /// Computes SSIM for single-channel (Y) images.

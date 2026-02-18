@@ -25,6 +25,8 @@ public class Cifar10 : BackpropExample
         "Truck"
     ];
 
+    public override string? GetDescription() => $"Classification of {ImgWidth}x{ImgHeight} images into 10 classes using the Cifar-10 training dataset.";
+
     public override INetworkModule GetArchitecture()
     {
         var factory = new VGGFactory();
@@ -66,22 +68,22 @@ public class Cifar10 : BackpropExample
 
         foreach (var file in training_files)
         {
-            ParseCifar10BatchFile(Path.Combine(RawDataPath, file), trn, augment: true);
+            ParseCifar10BatchFile(Path.Combine(RawDataPath, file), trn);
         }
 
         foreach (var file in validation_files)
         {
-            ParseCifar10BatchFile(Path.Combine(RawDataPath, file), vld, augment: false);
+            ParseCifar10BatchFile(Path.Combine(RawDataPath, file), vld);
         }
 
-        training = trn;
+        training = new Augmented2DClassificationDataSource(trn, variations: 5, flipX: true, flipY: false, maxShift: 3, noise: null);
         validation = vld;
     }
                                     // R       G        B
     private static float[] means = [0.4914f, 0.4822f, 0.4465f];
     private static float[] stds  = [0.2023f, 0.1994f, 0.2010f];
 
-    private void ParseCifar10BatchFile(string path, ListTrainingDataSource<float> values, bool augment = false)
+    private void ParseCifar10BatchFile(string path, ListTrainingDataSource<float> values)
     {
         using var file = File.Open(path, FileMode.Open);
         using var reader = new BinaryReader(file);
@@ -116,12 +118,6 @@ public class Cifar10 : BackpropExample
             var output = oneHot[classIndex];
 
             values.Add((input, output));
-
-            // Augmentations...
-            if (augment) {
-                var flippedInput = input.Mirror(^1); // X-axis mirror
-                values.Add((input, output));
-            }
         }
     }
 
@@ -155,11 +151,11 @@ public class Cifar10 : BackpropExample
 
     public override void ConfigureTrainer(ModuleTrainer trainer)
     {
-        trainer.MaxEpochs = 11;
+        trainer.MaxEpochs = 250;
         trainer.LearningRateScheduler = new RampUpWarmup(
             maxWarmupRate: 1e-3f,
             warmupEpochs: 5,
-            scheduler: new CosineAnnealing(1e-3f, 250)
+            scheduler: new CosineAnnealing(1e-3f, trainer.MaxEpochs)
         );
         trainer.BatchSize = 128;
         trainer.Initializer = new HeInitialization();

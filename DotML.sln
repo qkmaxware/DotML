@@ -51,6 +51,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.NetXML", "DotML.Seria
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.Examples", "DotML.Examples\DotML.Examples.csproj", "{A896D16D-CD79-4D5F-A5CD-8ED152B3DAFB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotML.Federated", "DotML.Federated\DotML.Federated.csproj", "{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -301,6 +303,18 @@ Global
 		{A896D16D-CD79-4D5F-A5CD-8ED152B3DAFB}.Release|x64.Build.0 = Release|Any CPU
 		{A896D16D-CD79-4D5F-A5CD-8ED152B3DAFB}.Release|x86.ActiveCfg = Release|Any CPU
 		{A896D16D-CD79-4D5F-A5CD-8ED152B3DAFB}.Release|x86.Build.0 = Release|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Debug|x64.Build.0 = Debug|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Debug|x86.Build.0 = Debug|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Release|x64.ActiveCfg = Release|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Release|x64.Build.0 = Release|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Release|x86.ActiveCfg = Release|Any CPU
+		{3F92D4FD-3AFB-4B5C-BDA1-CCC892563438}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

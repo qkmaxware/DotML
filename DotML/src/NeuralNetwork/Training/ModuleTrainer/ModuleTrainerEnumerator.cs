@@ -121,14 +121,48 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
     /// </summary>
     public struct EpochProgress
     {
+        /// <summary>
+        /// Current epoch
+        /// </summary>
         public int Epoch;
-        public int TrainingIndex;
-        public int TrainingSampleCount;
-
-        public int ValidationIndex;
+        /// <summary>
+        /// Index into the training iterations
+        /// </summary>
+        public int TrainingIndex;           // Goes from 0 to TrainingSampleCount - 1 (it's an index after all)
+        /// <summary>
+        /// Total number of training samples
+        /// </summary>
+        public int TrainingSampleCount;     
+        /// <summary>
+        /// Index into the validation iterations (after training iterations are complete)
+        /// </summary>
+        public int ValidationIndex;         // Goes from 0 to ValidationSampleCount - 1 (it's an index after all)
+        /// <summary>
+        /// Total number of validation samples
+        /// </summary>
         public int ValidationSampleCount;
-
-        public float Completed => (TrainingIndex + ValidationIndex) / (TrainingSampleCount + ValidationSampleCount - 2);
+        /// <summary>
+        /// Current step in the entire process
+        /// </summary>
+        public int ProcessIndex => IsTraining
+            ? TrainingIndex
+            : TrainingSampleCount + ValidationIndex;
+        /// <summary>
+        /// Total number of steps in the entire process
+        /// </summary>
+        public int ProcessSteps => TrainingSampleCount + ValidationSampleCount;
+        /// <summary>
+        /// Flag to indicate if the process is currently in the training phase
+        /// </summary>
+        public bool IsTraining => ValidationIndex == 0 && TrainingIndex < TrainingSampleCount;
+        /// <summary>
+        /// Flag to indicate if the process is currently in the validation phase
+        /// </summary>
+        public bool IsValidating => ValidationIndex > 0 && ValidationIndex < ValidationSampleCount;
+        /// <summary>
+        /// Percent of the epoch that has been completed
+        /// </summary>
+        public float CompletedPercent => (float)(ProcessIndex + 1) / ProcessSteps;
     }
 
     public Report Current { get; private set; }
@@ -201,6 +235,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         this.Epoch = 0;
         this.Network.Initialize(this.Initializer);
         this.Optimizer.ClearCaches();
+        this.Current.Reset();
 
         this._patienceCounter = Patience;
         this.target_reached = false;
