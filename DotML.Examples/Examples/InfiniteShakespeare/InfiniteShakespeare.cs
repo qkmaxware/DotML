@@ -212,6 +212,7 @@ public class InfiniteShakespeare : BackpropExample
             sts.Add(embedder.GetTokenId(tok).ToString(), vec);
         }
         sts.WriteToFile(Path.Combine(ProcessedDataPath, "embeddings.safetensors"));
+        #pragma warning disable CS0162 // The below code is for visualization when I change the embedding size, normally this will throw a warning since embedding size > 3 for practical uses
         if (embeddingSize <= 3)
         {
             using (var pc_writer = new StreamWriter(Path.Combine(ProcessedDataPath, "blender-pointcloud.py")))
@@ -258,6 +259,7 @@ def add_point(x, y, z,
                 }
             }
         }
+        #pragma warning restore CS0162
     }
 
     public override void LoadTrainingData(out ITrainingDataSource<float> training, out ITrainingDataSource<float> validation)

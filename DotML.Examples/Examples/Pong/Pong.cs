@@ -92,6 +92,11 @@ public class Pong : Example
         return Safetensors.ReadFromFile(Path.Combine(ExamplePath, DefaultWeightsFilename));
     }
 
+    public override bool HasBeenTrained()
+    {
+        return File.Exists(Path.Combine(ExamplePath, DefaultWeightsFilename));
+    }
+
     private static readonly TimeSpan dt = TimeSpan.FromSeconds(1.0f / 30.0f);
 
     public override void Run(IEnumerable<string> inputs, string? outputPath)

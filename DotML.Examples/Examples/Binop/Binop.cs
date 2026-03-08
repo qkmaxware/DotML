@@ -70,6 +70,10 @@ public class Binop : BackpropExample
         tensors.WriteToFile(Path.Combine(ExamplePath, Operation.ToString() + "." + DefaultWeightsFilename));
     }
 
+    public override bool HasBeenTrained() => Enum.GetNames<OperationType>().Any((op) => File.Exists(
+        Path.Combine(ExamplePath, op + "." + DefaultWeightsFilename)
+    ));
+
     public override Tensor<float> ParseUserInput(string input)
     {
         // User input is expected to be a JSON array of Floats or Bools
