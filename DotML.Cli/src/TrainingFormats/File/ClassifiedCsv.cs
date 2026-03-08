@@ -41,8 +41,8 @@ public class ClassifiedCsv : FileTrainingDataFormat {
         }
 
         return new ListTrainingDataSource<float>(
-            new TensorShape(),
-            new TensorShape(max_count),
+            new Shape(),
+            new Shape(max_count),
             items.Select(item =>
                 (
                     Tensor<float>.Vec(item.Item1.AsArray()),

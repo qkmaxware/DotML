@@ -33,7 +33,7 @@ public class SequentialBlock : INetworkModule, IBlockVisitable
         layers = new List<INetworkModule>(modules);
     }
 
-    public static SequentialBlockBuilder Begin(TensorShape ishape) => new SequentialBlockBuilder(ishape);
+    public static SequentialBlockBuilder Begin(Shape ishape) => new SequentialBlockBuilder(ishape);
 
     public void Add(INetworkModule module) => layers.Add(module);
     public void Remove(INetworkModule module) => layers.Remove(module);
@@ -97,7 +97,7 @@ public class SequentialBlock : INetworkModule, IBlockVisitable
         }
     }
 
-    public TensorShape ForwardShapeUntil(TensorShape input, int layer)
+    public Shape ForwardShapeUntil(Shape input, int layer)
     {
         var i = input;
         for (var index = 0; index < Math.Min(layer + 1, layers.Count); index++)
@@ -108,7 +108,7 @@ public class SequentialBlock : INetworkModule, IBlockVisitable
         return i;
     }
 
-    public TensorShape ForwardShape(TensorShape input)
+    public Shape ForwardShape(Shape input)
     {
         var i = input;
         foreach (var layer in layers)
@@ -168,17 +168,25 @@ public class SequentialBlock : INetworkModule, IBlockVisitable
         }
     }
 
+    public IEnumerable<INetworkModule> AsEnumerable()
+    {
+        for (var i = 0; i < layers.Count; i++)
+        {
+            yield return layers[i];
+        } 
+    }
+
     public TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
     
 }
 
 public class SequentialBlockBuilder
 {
-    public TensorShape InputShape { get; init; }
-    private TensorShape outputshape;
+    public Shape InputShape { get; init; }
+    private Shape outputshape;
     private SequentialBlock block = new SequentialBlock();
 
-    public SequentialBlockBuilder(TensorShape ishape)
+    public SequentialBlockBuilder(Shape ishape)
     {
         this.InputShape = ishape;
         this.outputshape = ishape;
@@ -192,7 +200,7 @@ public class SequentialBlockBuilder
         return this;
     }
 
-    public SequentialBlockBuilder Then(Func<TensorShape, INetworkModule> layerFactory)
+    public SequentialBlockBuilder Then(Func<Shape, INetworkModule> layerFactory)
     {
         var layer = layerFactory(outputshape);
         block.Add(layer);
@@ -210,7 +218,7 @@ public class SequentialBlockBuilder
         return this;
     }
 
-    public SequentialBlockBuilder ThenIf(bool condition, Func<TensorShape, INetworkModule> layerFactory)
+    public SequentialBlockBuilder ThenIf(bool condition, Func<Shape, INetworkModule> layerFactory)
     {
         if (condition)
         {

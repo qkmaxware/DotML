@@ -26,7 +26,7 @@ public class Identity : NetworkLayer
         return channels;
     }
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         // The output is always the same shape as the input because this layer DOES NOTHING!
         return input;

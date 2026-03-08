@@ -47,7 +47,7 @@ public class ESPCNFactory
         var scaling = Math.Max(1, settings.UpscalingFactor);
         var activation = settings.Activation ?? HyperbolicTangent.Instance;
 
-        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+        var ishape = new Shape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
 
         return new ArchitectureBlock(
             name: "ESPCN",

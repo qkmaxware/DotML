@@ -6,7 +6,7 @@ public class TestTensor
     [TestMethod]
     public void TestCreation()
     {
-        Tensor<double> matrix = Tensor<double>.Zeros(new TensorShape(5, 2));
+        Tensor<double> matrix = Tensor<double>.Zeros(new Shape(5, 2));
         Assert.AreEqual(5, matrix.Shape.Length(0));
         Assert.AreEqual(2, matrix.Shape.Length(1));
 
@@ -21,13 +21,13 @@ public class TestTensor
         Assert.AreEqual(4, m2[1, 0]);
         Assert.AreEqual(6, m2[1, 2]);
 
-        var zero = Tensor<double>.Zeros(new TensorShape(3, 3));
+        var zero = Tensor<double>.Zeros(new Shape(3, 3));
         Assert.AreEqual(3, zero.Shape.Length(0));
         Assert.AreEqual(3, zero.Shape.Length(1));
         foreach (var element in zero.AsSpan())
             Assert.AreEqual(0, element);
 
-        var ones = Tensor<double>.Ones(new TensorShape(4, 4));
+        var ones = Tensor<double>.Ones(new Shape(4, 4));
         Assert.AreEqual(4, ones.Shape.Length(0));
         Assert.AreEqual(4, ones.Shape.Length(1));
         foreach (var element in ones.AsSpan())
@@ -178,8 +178,8 @@ public class TestTensor
             { 1, 2 },
             { 3, 4 }
         });
-        var row = A.Reshape(new TensorShape(1, 4));
-        var col = A.Reshape(new TensorShape(4, 1));
+        var row = A.Reshape(new Shape(1, 4));
+        var col = A.Reshape(new Shape(4, 1));
 
         //Assert.AreEqual(1, row.Length);
         Assert.AreEqual(1, row.Shape.Length(0));
@@ -251,7 +251,7 @@ public class TestTensor
             9,10,11,12,     // N=1, C=0
             13,14,15,16     // N=1, C=1
         };
-        Tensor<float> tensor = Tensor<float>.FromFlattenedArray(new TensorShape(2, 2, 2, 2), data);
+        Tensor<float> tensor = Tensor<float>.FromFlattenedArray(new Shape(2, 2, 2, 2), data);
 
         var totalA = tensor.Sum();                  // Should be [136]
         var totalB = tensor.Sum([1, 2, 3], keepdim: false);     // Should be [36, 100] (same as Sum() I believe)
@@ -388,7 +388,7 @@ public class TestTensor
         result = A.MatMulEachVector(^1, B);
         Assert.AreEqual(true, result.Equals(expected));
 
-        B = B.ReshapeShared(new TensorShape(2, 1)); // Convert to column vector
+        B = B.ReshapeShared(new Shape(2, 1)); // Convert to column vector
         result = A.MatMulEachVector(^2, B);
         Assert.AreEqual(true, result.Equals(expected));
     }
@@ -560,7 +560,7 @@ public class TestTensor
     public void TestSerialization()
     {
         var random = Random.Shared;
-        Tensor<float> something = Tensor<float>.Generate(new TensorShape(3, 2, 4, 4), () => (float)random.NextDouble());
+        Tensor<float> something = Tensor<float>.Generate(new Shape(3, 2, 4, 4), () => (float)random.NextDouble());
 
         using (var writer = new StreamWriter("Tensor.Test.TestSerialization.json"))
         {
@@ -597,7 +597,7 @@ public class TestTensor
     [TestMethod]
     public void TestSubtensorSpan()
     {
-        var tensor = Tensor<float>.Defaults(new TensorShape(2, 4, 3));
+        var tensor = Tensor<float>.Defaults(new Shape(2, 4, 3));
         for (var i = 0; i < 4; i++)
         {
             for (var j = 0; j < 3; j++)

@@ -16,7 +16,7 @@ namespace DotML;
 public static class TensorSoftmax
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int NormalizeAxis(Index axis, TensorShape Shape)
+    private static int NormalizeAxis(Index axis, Shape Shape)
     {
         var rank = Shape.Rank;
         var axisi = axis.GetOffset(rank);

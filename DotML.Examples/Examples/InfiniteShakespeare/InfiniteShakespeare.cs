@@ -44,6 +44,8 @@ public class InfiniteShakespeare : BackpropExample
     const int tokenWindowSize = 16;     // size of window to determine next char
     const int embeddingSize = 64;        // ideally 64-128
 
+    public override ExampleKind Kind => ExampleKind.Generative;
+
     public override INetworkModule GetArchitecture()
     {
         ArchitectureFactory factory = new();
@@ -262,8 +264,8 @@ def add_point(x, y, z,
     {
         Safetensors embeddings = Safetensors.ReadFromFile(Path.Combine(ProcessedDataPath, "embeddings.safetensors"));
 
-        var ishape = new TensorShape(1, tokenWindowSize, embeddingSize);
-        var oshape = new TensorShape(embeddings.Count); // One-hot output size
+        var ishape = new Shape(1, tokenWindowSize, embeddingSize);
+        var oshape = new Shape(embeddings.Count); // One-hot output size
 
         var trainingData = new ListTrainingDataSource<float>(ishape, oshape);
         var validationData = new ListTrainingDataSource<float>(ishape, oshape);

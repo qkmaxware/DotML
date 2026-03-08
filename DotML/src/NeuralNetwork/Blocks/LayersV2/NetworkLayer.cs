@@ -47,7 +47,7 @@ public abstract class NetworkLayer : INetworkModule, IBlockVisitable
     /// </summary>
     /// <param name="input">input tensor shape</param>
     /// <returns>output tensor shape</returns>
-    public abstract TensorShape ForwardShape(TensorShape input);
+    public abstract Shape ForwardShape(Shape input);
 
     /// <summary>
     /// Feed-forward a given tensor to this layer

@@ -118,7 +118,7 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
 
     public INetworkModule Make(BuildSettings settings)
     {
-        var ishape = new TensorShape(Math.Max(1, settings.InputChannels), Math.Max(0, settings.ImageHeight), Math.Max(0, settings.ImageWidth));
+        var ishape = new Shape(Math.Max(1, settings.InputChannels), Math.Max(0, settings.ImageHeight), Math.Max(0, settings.ImageWidth));
 
         // Build the full UNet recursively
         var unet = new SequentialBlock([

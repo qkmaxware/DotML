@@ -21,7 +21,7 @@ public class PixelShuffler : NetworkLayer
 
     public override void Initialize(IInitializer initializer) { }
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         var shape = input;
 
@@ -39,7 +39,7 @@ public class PixelShuffler : NetworkLayer
         int outHeight = inHeight * r;
         int outWidth = inWidth * r;
 
-        return new TensorShape(batches, outChannels, outHeight, outWidth);
+        return new Shape(batches, outChannels, outHeight, outWidth);
     }
 
     public override Tensor<float> Forward(Tensor<float> input)
@@ -62,7 +62,7 @@ public class PixelShuffler : NetworkLayer
         int outHeight = inHeight * r;
         int outWidth = inWidth * r;
 
-        var output = Tensor<float>.Zeros(new TensorShape(batches, outChannels, outHeight, outWidth));
+        var output = Tensor<float>.Zeros(new Shape(batches, outChannels, outHeight, outWidth));
 
         Parallel.For(0, batches, (batch) =>
         {
@@ -105,7 +105,7 @@ public class PixelShuffler : NetworkLayer
 
         var inHeight = outHeight / r;
         var inWidth = outWidth / r;
-        var inShape = new TensorShape(batches, inChannels, inHeight, inWidth);
+        var inShape = new Shape(batches, inChannels, inHeight, inWidth);
         var dX = Tensor<float>.Zeros(inShape);
 
         Parallel.For(0, batches, (batch) =>

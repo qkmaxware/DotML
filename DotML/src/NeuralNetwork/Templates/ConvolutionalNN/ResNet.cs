@@ -254,7 +254,7 @@ public class ResNetFactory
 
         return new ArchitectureBlock(
             name: "ResNet",
-            inputShape: new TensorShape(settings.InputChannels, settings.InputHeight, settings.InputWidth),
+            inputShape: new Shape(settings.InputChannels, settings.InputHeight, settings.InputWidth),
             rootModule: new SequentialBlock(builder)
         );
     }

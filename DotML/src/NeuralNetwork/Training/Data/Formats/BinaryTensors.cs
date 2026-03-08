@@ -42,14 +42,14 @@ where T : INumber<T>
         var output_lengths = new int[output_rank];
         for (var i = 0; i < output_rank; i++)
             output_lengths[i] = reader.ReadInt32();
-        var output_shape = new TensorShape(output_lengths);
+        var output_shape = new Shape(output_lengths);
 
         var input_count = reader.ReadInt32();
         int input_rank = reader.ReadInt32();
         var input_lengths = new int[input_rank];
         for (var i = 0; i < output_rank; i++)
             input_lengths[i] = reader.ReadInt32();
-        var input_shape = new TensorShape(input_lengths);
+        var input_shape = new Shape(input_lengths);
 
         ListTrainingDataSource<T> src = new ListTrainingDataSource<T>(input_shape, output_shape);
 

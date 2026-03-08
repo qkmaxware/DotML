@@ -9,8 +9,8 @@ public class TestSamplers
     public void TestSequentialBatch1()
     {
         // Init test tensors (predictable)
-        var ishape = new TensorShape(4, 3);
-        var oshape = new TensorShape(4, 3);
+        var ishape = new Shape(4, 3);
+        var oshape = new Shape(4, 3);
         ListTrainingDataSource<int> values = new ListTrainingDataSource<int>(ishape, oshape);
         for (var i = 0; i < 10; i++)
         {
@@ -42,8 +42,8 @@ public class TestSamplers
     public void TestSequentialBatch2()
     {
         // Init test tensors (predictable)
-        var ishape = new TensorShape(4, 3);
-        var oshape = new TensorShape(4, 3);
+        var ishape = new Shape(4, 3);
+        var oshape = new Shape(4, 3);
         ListTrainingDataSource<int> values = new ListTrainingDataSource<int>(ishape, oshape);
         for (var i = 0; i < 10; i++)
         {
@@ -79,8 +79,8 @@ public class TestSamplers
     public void TestRandomNoDupBatch1()
     {
         // Init test tensors (predictable)
-        var ishape = new TensorShape(4, 3);
-        var oshape = new TensorShape(4, 3);
+        var ishape = new Shape(4, 3);
+        var oshape = new Shape(4, 3);
         ListTrainingDataSource<int> values = new ListTrainingDataSource<int>(ishape, oshape);
         HashSet<int> unfound = new HashSet<int>();
         for (var i = 0; i < 10; i++)
@@ -116,8 +116,8 @@ public class TestSamplers
     public void TestRandomNoDupBatch2()
     {
         // Init test tensors (predictable)
-        var ishape = new TensorShape(4, 3);
-        var oshape = new TensorShape(4, 3);
+        var ishape = new Shape(4, 3);
+        var oshape = new Shape(4, 3);
         ListTrainingDataSource<int> values = new ListTrainingDataSource<int>(ishape, oshape);
         HashSet<int> unfound = new HashSet<int>();
         for (var i = 0; i < 10; i++)

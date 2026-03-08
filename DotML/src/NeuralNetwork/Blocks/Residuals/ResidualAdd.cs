@@ -11,7 +11,7 @@ public class ResidualAdd: ResidualBlock
 {
     public ResidualAdd(INetworkModule gx, INetworkModule? residual = null) : base(gx, residual) { }
 
-    public override TensorShape ForwardShape(TensorShape input) => MainPath.ForwardShape(input);
+    public override Shape ForwardShape(Shape input) => MainPath.ForwardShape(input);
 
     protected override Tensor<float> Combine(Tensor<float> output, Tensor<float> residual)
     {
@@ -20,7 +20,7 @@ public class ResidualAdd: ResidualBlock
         return result;
     }
 
-    protected override (Tensor<float> dM, Tensor<float> dR) SplitGradient(Tensor<float> dY, TensorShape mainOutputShape, TensorShape residualOutputShape) => (dY, dY);
+    protected override (Tensor<float> dM, Tensor<float> dR) SplitGradient(Tensor<float> dY, Shape mainOutputShape, Shape residualOutputShape) => (dY, dY);
 
     protected override ResidualBlockGradients CombineGradients(Gradients main, Gradients residual)
     {

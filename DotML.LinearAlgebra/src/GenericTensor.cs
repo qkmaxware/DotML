@@ -20,7 +20,7 @@ public class GenericTensor<T> : IMutableTensorLike<T> {
     public GenericTensor(params int[] shape) {
         this.shape = shape;
         this.values = new T[shape.Aggregate(1, (a, b) => a * b)];
-        this.Shape = new TensorShape(this.shape);
+        this.Shape = new Shape(this.shape);
     }
 
     /// <summary>
@@ -34,7 +34,7 @@ public class GenericTensor<T> : IMutableTensorLike<T> {
         if (values.Length != size)
             throw new ArgumentException($"Tensor size {size} does not match values size {values.Length}");
         this.values = values;
-        this.Shape = new TensorShape(this.shape);
+        this.Shape = new Shape(this.shape);
     }
 
     /// <summary>

@@ -24,7 +24,7 @@ public class BenchmarkMatrixVsTensor
     private Matrix<float>[] matrix;
     private Matrix<float> matrix_kernel = new Matrix<float>(5, 5); // 5x5 kernel
     private Tensor<float> tensor;
-    private Tensor<float> tensor_kernel = Tensor<float>.Ones(new TensorShape(5, 5));
+    private Tensor<float> tensor_kernel = Tensor<float>.Ones(new Shape(5, 5));
 
     [GlobalSetup]
     public void Setup()
@@ -32,7 +32,7 @@ public class BenchmarkMatrixVsTensor
         matrix = new Matrix<float>[Channels];
         for (var i = 0; i < Channels; i++)
             matrix[i] = new Matrix<float>(DimLength, DimLength);
-        tensor = Tensor<float>.Ones(new TensorShape(Channels, DimLength, DimLength));
+        tensor = Tensor<float>.Ones(new Shape(Channels, DimLength, DimLength));
     }
     [GlobalCleanup]
     public void Cleanup()

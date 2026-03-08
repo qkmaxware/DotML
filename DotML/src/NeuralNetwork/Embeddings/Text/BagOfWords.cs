@@ -8,7 +8,7 @@ public class BagOfWords : IEmbedding<string, int>
     private readonly HashSet<string> Vocab;
 
     public int VocabLength => Vocab.Count;
-    public readonly TensorShape TensorShape;
+    public readonly Shape TensorShape;
 
     /// <summary>
     /// Create a new bag of words embedding on a specific vocabulary of words
@@ -17,7 +17,7 @@ public class BagOfWords : IEmbedding<string, int>
     public BagOfWords(params IEnumerable<string> vocab)
     {
         this.Vocab = [.. vocab];
-        this.TensorShape = new TensorShape(VocabLength);
+        this.TensorShape = new Shape(VocabLength);
     }
 
     private static int countOccurances(string str, string word)

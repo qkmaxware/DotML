@@ -16,7 +16,7 @@ public class Image : ImageEmbedding {
         const int R = 0;
         const int G = 1;
         const int B = 2;
-        var features = Tensor<float>.Defaults(new TensorShape(samples, rows, cols));
+        var features = Tensor<float>.Defaults(new Shape(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {
@@ -48,7 +48,7 @@ public class RgbImage : ImageEmbedding {
         const int R = 0;
         const int G = 1;
         const int B = 2;
-        var features = Tensor<float>.Defaults(new TensorShape(samples, rows, cols));
+        var features = Tensor<float>.Defaults(new Shape(samples, rows, cols));
 
         for (var row = 0; row < rows; row++) {
             for (var col = 0; col < cols; col++) {

@@ -19,8 +19,8 @@ public class JsonVectorPairs : FileTrainingDataFormat {
         var root = document.RootElement;
 
         List<(Tensor<float>, Tensor<float>)> ioPairs = new List<(Tensor<float>, Tensor<float>)>();
-        TensorShape iShape = new TensorShape();
-        TensorShape oShape = new TensorShape();
+        Shape iShape = new Shape();
+        Shape oShape = new Shape();
 
         if (root.ValueKind == JsonValueKind.Array)
         {

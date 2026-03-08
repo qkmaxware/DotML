@@ -13,11 +13,11 @@ where TType:INumber<TType>
     /// <summary>
     /// The shape of the input tensors
     /// </summary>
-    public TensorShape InputShape { get; }
+    public Shape InputShape { get; }
     /// <summary>
     /// The shape of the output tensors
     /// </summary>
-    public TensorShape OutputShape { get; }
+    public Shape OutputShape { get; }
     /// <summary>
     /// Try to fetch a batch of samples from the training data up to the given batch size.
     /// </summary>
@@ -32,8 +32,8 @@ where TType:INumber<TType>
     private ITrainingDataSource<TType> src;
 
     public int Count => src.Count;
-    public TensorShape InputShape => src.InputShape;
-    public TensorShape OutputShape => src.OutputShape;
+    public Shape InputShape => src.InputShape;
+    public Shape OutputShape => src.OutputShape;
 
     public SequentialSampler(ITrainingDataSource<TType> src)
     {
@@ -63,7 +63,7 @@ where TType:INumber<TType>
             shape[0] = batchLength;
             ishape.AsDimensionSpan().CopyTo(shape.AsSpan().Slice(1));
 
-            var input = Tensor<TType>.Defaults(new TensorShape(shape));
+            var input = Tensor<TType>.Defaults(new Shape(shape));
             var ispan = input.AsSpan();
 
             // Create output shape. Prepend batch dimension
@@ -71,7 +71,7 @@ where TType:INumber<TType>
             shape[0] = batchLength;
             oshape.AsDimensionSpan().CopyTo(shape.AsSpan().Slice(1));
             
-            var output = Tensor<TType>.Defaults(new TensorShape(shape));
+            var output = Tensor<TType>.Defaults(new Shape(shape));
             var ospan = output.AsSpan();
 
             // Populate batched tensors
@@ -107,8 +107,8 @@ where TType:INumber<TType>
 
     private int? sampleSize;
     public int Count => sampleSize.HasValue ? sampleSize.Value : src.Count;
-    public TensorShape InputShape => src.InputShape;
-    public TensorShape OutputShape => src.OutputShape;
+    public Shape InputShape => src.InputShape;
+    public Shape OutputShape => src.OutputShape;
 
     public RandomSampler(ITrainingDataSource<TType> src, bool allowDuplicates = true, int? sampleSize = null)
     {
@@ -156,7 +156,7 @@ where TType:INumber<TType>
             shape[0] = batchLength;
             ishape.AsDimensionSpan().CopyTo(shape.AsSpan(1));
 
-            var input = Tensor<TType>.Defaults(new TensorShape(shape));
+            var input = Tensor<TType>.Defaults(new Shape(shape));
             var ispan = input.AsSpan();
 
             // Create output shape. Prepend batch dimension
@@ -164,7 +164,7 @@ where TType:INumber<TType>
             shape[0] = batchLength;
             oshape.AsDimensionSpan().CopyTo(shape.AsSpan(1));
             
-            var output = Tensor<TType>.Defaults(new TensorShape(shape));
+            var output = Tensor<TType>.Defaults(new Shape(shape));
             var ospan = output.AsSpan();
 
             // Populate batched tensors

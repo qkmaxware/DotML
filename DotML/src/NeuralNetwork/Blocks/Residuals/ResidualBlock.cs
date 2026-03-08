@@ -8,15 +8,15 @@ namespace DotML.Network;
 
 public class ResidualBlockContext : IModuleContext
 {
-    public TensorShape InputShape => Input.Shape;
-    public TensorShape OutputShape => Output.Shape;
+    public Shape InputShape => Input.Shape;
+    public Shape OutputShape => Output.Shape;
 
-    public TensorShape MainPathShape { get; init; }
-    public TensorShape ResidualPathShape { get; init; }
+    public Shape MainPathShape { get; init; }
+    public Shape ResidualPathShape { get; init; }
     public Tensor<float> Input { get; init; }
     public Tensor<float> Output { get; init; }
 
-    public ResidualBlockContext(Tensor<float> input, Tensor<float> output, TensorShape mainPath, TensorShape residualPath)
+    public ResidualBlockContext(Tensor<float> input, Tensor<float> output, Shape mainPath, Shape residualPath)
     {
         this.Input = input;
         this.Output = output;
@@ -47,7 +47,7 @@ public abstract class ResidualBlock : INetworkModule, IBlockVisitable
         this.ResidualPath = residual;
     }
 
-    public abstract TensorShape ForwardShape(TensorShape input);
+    public abstract Shape ForwardShape(Shape input);
 
     public Tensor<float> Forward(Tensor<float> X, EvaluationContext? ctx = null)
     {
@@ -97,7 +97,7 @@ public abstract class ResidualBlock : INetworkModule, IBlockVisitable
     /// <param name="mainOutputShape">shape of the output of the main path</param>
     /// <param name="residualOutputShape">shape of the output of the residual path</param>
     /// <returns>gradient pair for the main and residual paths</returns>
-    protected abstract (Tensor<float> dM, Tensor<float> dR) SplitGradient(Tensor<float> dY, TensorShape mainOutputShape, TensorShape residualOutputShape);
+    protected abstract (Tensor<float> dM, Tensor<float> dR) SplitGradient(Tensor<float> dY, Shape mainOutputShape, Shape residualOutputShape);
 
     /// <summary>
     /// Combine gradients of the main path and residual path into a single input gradient which can be passed backwards to prior layers

@@ -11,10 +11,10 @@ namespace DotML;
 public class Safetensors {
     // Generic tensor storage
     private class UnknownObjectTensor : ITensorLike<object?> {
-        public TensorShape shape;
+        public Shape shape;
         public object data;
 
-        public UnknownObjectTensor(TensorShape shape, object data) {
+        public UnknownObjectTensor(Shape shape, object data) {
             this.shape = shape;
             this.data = data;
         }
@@ -340,7 +340,7 @@ public class Safetensors {
 
         // Create a generic tensor to store with the provided shape and data
         UnknownObjectTensor to_store = new UnknownObjectTensor(
-            new TensorShape(shape),
+            new Shape(shape),
             values
         );
 
@@ -354,7 +354,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Matrix<Half> matrix) { 
-        this.tensors.Add(name, new UnknownObjectTensor (shape: new TensorShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new Shape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
     }
     
     /// <summary>
@@ -363,7 +363,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Vec<Half> vector) { 
-        this.tensors.Add(name, new UnknownObjectTensor (shape: new TensorShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new Shape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
     }
 
     /// <summary>
@@ -372,7 +372,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Matrix<float> matrix) { 
-        this.tensors.Add(name, new UnknownObjectTensor (shape: new TensorShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray()  ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new Shape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray()  ));
     }
 
     /// <summary>
@@ -381,7 +381,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Vec<float> vector) {
-        this.tensors.Add(name, new UnknownObjectTensor (shape: new TensorShape(new int[]{ vector.Dimensionality }), data: vector.AsArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new Shape(new int[]{ vector.Dimensionality }), data: vector.AsArray() ));
     }
 
     /// <summary>
@@ -390,7 +390,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Matrix<double> matrix) {
-        this.tensors.Add(name, new UnknownObjectTensor (shape: new TensorShape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new Shape(new int[]{ matrix.Rows, matrix.Columns }), data: matrix.AsRowMajorArray() ));
     }
 
     /// <summary>
@@ -399,7 +399,7 @@ public class Safetensors {
     /// <param name="name">tensor name</param>
     /// <param name="matrix">tensor</param>
     public void Add(string name, Vec<double> vector) { 
-        this.tensors.Add(name, new UnknownObjectTensor (shape: new TensorShape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
+        this.tensors.Add(name, new UnknownObjectTensor (shape: new Shape(new int[]{ vector.Dimensionality, 1 }), data: vector.AsArray() ));
     }
 
     public static readonly string QuantizationMethodKey = "quantization.method";
@@ -534,7 +534,7 @@ public class Safetensors {
                 // Read header
                 var key         = entry.Key;
                 var tensorInfo  = entry.Value;
-                var shape       = new TensorShape(tensorInfo.shape ?? []);
+                var shape       = new Shape(tensorInfo.shape ?? []);
 
                 var dimensions  = shape.Rank;
                 var entries     = shape.LogicalElementCount();

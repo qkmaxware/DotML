@@ -82,7 +82,7 @@ public class MultilayerPerceptronFactory : INetworkModuleFactory<MultilayerPerce
 
         return new ArchitectureBlock(
             name: "MultilayerPerceptron",
-            inputShape: new TensorShape(1, input_size, 1),
+            inputShape: new Shape(1, input_size, 1),
             block
         );
     }

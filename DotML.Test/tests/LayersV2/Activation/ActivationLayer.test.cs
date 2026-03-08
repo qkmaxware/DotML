@@ -23,7 +23,7 @@ public class ActivationLayerTest_V2 {
     [TestMethod]
     public void TestReLU() {
         var layer = new Network.Activation(ReLU.Instance);
-        var X = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var X = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             0.158983513712883,
             -0.25363606214523315,
             -0.6320131421089172,
@@ -50,7 +50,7 @@ public class ActivationLayerTest_V2 {
             -0.9647641777992249,
             0.3880631923675537
         ]).ElementWise(x => (float)x);
-        var Y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var Y_truth = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             0.158983513712883,
             0.0,
             0.0,
@@ -81,7 +81,7 @@ public class ActivationLayerTest_V2 {
 
         Assert.AreEqual(true, Y_projected.Equals(Y_truth, 0.001f));
 
-        var dY_truth = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var dY_truth = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             1.155787467956543,
             -1.1713414192199707,
             -1.4431155920028687,
@@ -109,7 +109,7 @@ public class ActivationLayerTest_V2 {
             -0.8325057029724121
         ]).ElementWise(x => (float)x);
 
-        var dX_truth = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var dX_truth = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             1.155787467956543,
             0.0,
             0.0,
@@ -144,7 +144,7 @@ public class ActivationLayerTest_V2 {
     [TestMethod]
     public void TestSigmoid() {
         var layer = new Network.Activation(ReLU.Instance);
-        var X = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var X = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             -0.2038573920726776,
             0.3062525689601898,
             -0.12167812138795853,
@@ -171,7 +171,7 @@ public class ActivationLayerTest_V2 {
             1.107969045639038,
             1.2903298139572144
         ]).ElementWise(x => (float)x);
-        var Y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var Y_truth = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             0.0,
             0.3062525689601898,
             0.0,
@@ -202,7 +202,7 @@ public class ActivationLayerTest_V2 {
 
         Assert.AreEqual(true, Y_projected.Equals(Y_truth, 0.001f));
 
-        var dY_truth = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var dY_truth = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             -1.1209465265274048,
             0.23699913918972015,
             1.406275749206543,
@@ -230,7 +230,7 @@ public class ActivationLayerTest_V2 {
             1.2901266813278198
         ]).ElementWise(x => (float)x);
 
-        var dX_truth = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var dX_truth = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             0.0,
             0.23699913918972015,
             0.0,

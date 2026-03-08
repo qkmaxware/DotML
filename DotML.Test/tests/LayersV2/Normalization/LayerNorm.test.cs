@@ -80,7 +80,7 @@ public class LayerNormTest {
                     1.0
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         Assert.AreEqual(true, layer.Weights.Equals(GammaTruth));
         var BetaTruth = Tensor<double>.FromJaggedArray(
             [
@@ -120,7 +120,7 @@ public class LayerNormTest {
                     0.0
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         Assert.AreEqual(true, layer.Biases.Equals(BetaTruth));
 
         // Step 2: Feed-forward
@@ -162,7 +162,7 @@ public class LayerNormTest {
                     -2.1640102863311768
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         var YPredicted = layer.Forward(X);
         var YTruth = Tensor<double>.FromJaggedArray(
             [
@@ -202,7 +202,7 @@ public class LayerNormTest {
                     -2.205338954925537
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         Assert.AreEqual(true, YPredicted.Equals(YTruth,0.0001f));
 
         // Step 3: Backpropagation
@@ -244,7 +244,7 @@ public class LayerNormTest {
                     1.309578537940979
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         var grad = layer.Backward(X, YTruth, dY);
         var dX = Tensor<double>.FromJaggedArray(
             [
@@ -284,7 +284,7 @@ public class LayerNormTest {
                     1.2969906330108643
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         Assert.AreEqual(true, dX.Equals(grad.dX, 0.0001f));
 
         // Step 4: Check gradients
@@ -329,7 +329,7 @@ public class LayerNormTest {
                     -2.8880646228790283
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         Assert.AreEqual(true, gradients.dW.Equals(GammaGradTruth, 0.0001f));
 
         var BetaGradTruth = Tensor<double>.FromJaggedArray(
@@ -370,7 +370,7 @@ public class LayerNormTest {
                     1.309578537940979
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         Assert.AreEqual(true, gradients.dB.Equals(BetaGradTruth, 0.0001f));
     }
 
@@ -458,7 +458,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        ).ReshapeShared(new TensorShape(2, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(2, 5, 5)).ToFloat();
         Assert.AreEqual(true, layer.Weights.Equals(GammaTruth));
         var BetaTruth = Tensor<double>.FromJaggedArray(
             [
@@ -539,7 +539,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        ).ReshapeShared(new TensorShape(2, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(2, 5, 5)).ToFloat();
         Assert.AreEqual(true, layer.Biases.Equals(BetaTruth));
 
         // Step 2: Feed-forward
@@ -953,7 +953,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        ).ReshapeShared(new TensorShape(2, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(2, 5, 5)).ToFloat();
         Assert.AreEqual(true, gradients.dW.Equals(GammaGradTruth, 0.001f));
 
         var BetaGradTruth = Tensor<double>.FromJaggedArray(
@@ -1035,7 +1035,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        ).ReshapeShared(new TensorShape(2, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(2, 5, 5)).ToFloat();
         Assert.AreEqual(true, gradients.dB.Equals(BetaGradTruth, 0.001f));
     }
 
@@ -1085,7 +1085,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         layer.Weights = GammaTruth;
         Assert.AreEqual(true, layer.Weights.Equals(GammaTruth));
         var BetaTruth = Tensor<double>.FromJaggedArray(
@@ -1130,7 +1130,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         layer.Biases = BetaTruth;
         Assert.AreEqual(true, layer.Biases.Equals(BetaTruth));
 
@@ -1360,7 +1360,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         Assert.AreEqual(true, gradients.dW.Equals(GammaGradTruth, 0.001f));
 
         var BetaGradTruth = Tensor<double>.FromJaggedArray(
@@ -1405,7 +1405,7 @@ public class LayerNormTest {
                     ]
                 ]
             ]
-        ).ReshapeShared(new TensorShape(1, 5, 5)).ToFloat();
+        ).ReshapeShared(new Shape(1, 5, 5)).ToFloat();
         Assert.AreEqual(true, gradients.dB.Equals(BetaGradTruth, 0.001f));
     }
 

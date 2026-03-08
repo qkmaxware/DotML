@@ -55,7 +55,7 @@ public class AlexNetFactory
         double scalingFactor = Math.Max(1, (settings.ImgWidth * settings.ImgHeight) / (double)(IMG_WIDTH * IMG_HEIGHT));
         var neurons = Math.Max(4096, (int)(4096 * scalingFactor));
 
-        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+        var ishape = new Shape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
 
         return new ArchitectureBlock(
             name: "AlexNet",

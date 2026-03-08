@@ -36,7 +36,7 @@ public class AddStatement : Statement {
         }
     }
 
-    internal static INetworkModule? makeLayer(string layer_name, TensorShape ishape, ArgumentMap args)
+    internal static INetworkModule? makeLayer(string layer_name, Shape ishape, ArgumentMap args)
     {
         return layer_name switch
         {
@@ -54,7 +54,7 @@ public class AddStatement : Statement {
         };
     }
 
-    private static INetworkModule? makeLayer<T>(TensorShape ishape, ArgumentMap args)
+    private static INetworkModule? makeLayer<T>(Shape ishape, ArgumentMap args)
     where T : INetworkModule
     {
         var cons = typeof(T).GetConstructors();

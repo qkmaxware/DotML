@@ -113,11 +113,11 @@ where T:INumber<T>
             var input = Tensor<T>.Vec(data);
             var output = outputs[output_index];
             if (src is null)
-                src = new ListTrainingDataSource<T>(new TensorShape(input.ElementCount), new TensorShape(output.ElementCount));
+                src = new ListTrainingDataSource<T>(new Shape(input.ElementCount), new Shape(output.ElementCount));
             src.Add((input, output));
         }
 
-        return src ?? new ListTrainingDataSource<T>(new TensorShape(), new TensorShape());
+        return src ?? new ListTrainingDataSource<T>(new Shape(), new Shape());
     }
 
     public void SaveFile(string path, ITrainingDataSource<T> src) {

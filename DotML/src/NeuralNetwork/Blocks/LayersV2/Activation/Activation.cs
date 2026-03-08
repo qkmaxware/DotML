@@ -23,7 +23,7 @@ public class Activation : NetworkLayer
 
     public override int TrainableParameterCount() => 0;
 
-    public override TensorShape ForwardShape(TensorShape input) => input;
+    public override Shape ForwardShape(Shape input) => input;
 
     public override Tensor<float> Forward(Tensor<float> channels)
     {

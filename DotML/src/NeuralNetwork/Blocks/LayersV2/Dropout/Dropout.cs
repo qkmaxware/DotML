@@ -35,7 +35,7 @@ public class Dropout : NetworkLayer
         return input.HadamardWith(mask);
     }
 
-    public override TensorShape ForwardShape(TensorShape input) => input;
+    public override Shape ForwardShape(Shape input) => input;
 
     public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)
     {

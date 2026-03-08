@@ -63,11 +63,11 @@ public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
 
     public BatchNorm2D(int channels)
     {
-        _runningMean = Tensor<float>.Ones(new TensorShape(channels));
-        _runningVariance = Tensor<float>.Zeros(new TensorShape(channels));
+        _runningMean = Tensor<float>.Ones(new Shape(channels));
+        _runningVariance = Tensor<float>.Zeros(new Shape(channels));
 
-        _weights = Tensor<float>.Ones(new TensorShape(channels));
-        _biases = Tensor<float>.Zeros(new TensorShape(channels));
+        _weights = Tensor<float>.Ones(new Shape(channels));
+        _biases = Tensor<float>.Zeros(new Shape(channels));
     }
 
     public override int TrainableParameterCount()
@@ -83,7 +83,7 @@ public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
         Biases.FillConstant(0);
     }
 
-    public override TensorShape ForwardShape(TensorShape input) => input;
+    public override Shape ForwardShape(Shape input) => input;
 
     public override Tensor<float> Forward(Tensor<float> x) => Forward(x, null); // Inference mode
 

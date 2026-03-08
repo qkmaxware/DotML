@@ -10,18 +10,45 @@ namespace DotML.Examples;
 
 public enum ExampleKind
 {
-    Classification, // Predict a category
-    Regression, // Predict a continuous value
-    Clustering, // Group data point
-    AnomalyDetection, // Detect outliers
-    Generative, // Generate new data samples
+    /// <summary>
+    /// Classify inputs into one of several categories
+    /// </summary>
+    Classification,
+    /// <summary>
+    /// Predict the output of a continuous function
+    /// </summary>
+    Regression, 
+    /// <summary>
+    /// Group or cluster data points
+    /// </summary>
+    Clustering,
+    /// <summary>
+    /// Detect outliers in a dataset
+    /// </summary>
+    AnomalyDetection,
+    /// <summary>
+    /// Generate new data based on an input
+    /// </summary>
+    Generative,
 }
 
 public enum TrainingMethod
 {
+    /// <summary>
+    /// Trained via gradient descent and backpropagation
+    /// </summary>
     Backpropagation,
+    /// <summary>
+    /// Trained using genetic training
+    /// </summary>
     Evolutionary,
+    /// <summary>
+    /// Trained via reinforcement
+    /// </summary>
     Reinforcement,
+    /// <summary>
+    /// Trained by adversarial competition
+    /// </summary>
     Adversarial
 }
 
@@ -38,7 +65,7 @@ public interface IExample
     public void Run(IEnumerable<string> inputs, string? outputPath);
     public void ProcessRawData();
     public void Train(bool useExistingWeights, bool useLogging, int? saveInterval);
-    public void Validate();
+    public void Validate(bool useLogging);
     public void Clean();
 }
 
@@ -87,7 +114,7 @@ public abstract class Example : IExample
     public abstract void Run(IEnumerable<string> inputs, string? outputPath);
 
     public abstract void Train(bool useExistingWeights, bool useLogging, int? saveInterval);
-    public abstract void Validate();
+    public abstract void Validate(bool useLogging);
 
     private DateTime startTime = DateTime.Now;
 
@@ -152,7 +179,6 @@ public abstract class BackpropExample : Example
             if (network is IBlockVisitable visitable)
                 applier.Serialize(visitable);
             this.SaveWeights(applier.ToSafetensors());
-            Console.WriteLine("Saved Weights");
         }
         catch (Exception)
         {
@@ -324,7 +350,13 @@ public abstract class BackpropExample : Example
             // Save weights if we want
             if (saveInterval.HasValue && saveInterval.Value > 0 && report.Epoch != 0 && report.Epoch % saveInterval.Value == 0)
             {
-                SaveWeights(network);
+                if (HasTrainingProgressed(session.Current)) {
+                    SaveWeights(network);
+                    Console.WriteLine("Saved weights");
+                } else
+                {
+                    Console.WriteLine("Skipped saving weights, not better than previous");
+                }
             }
 
             OnTrainingIteration(network, training, validation, session.Current);
@@ -337,16 +369,35 @@ public abstract class BackpropExample : Example
         {
             foreach (var report in this.GenerateTrainingReports(network, training, validation, session.Current))
             {
-                using var reportWriter = CreateLogger(exampleName + "." + report.Name + report.Extension);
+                using var reportWriter = CreateLogger(exampleName + ".train." + report.Name + report.Extension);
                 report.Emit(reportWriter);
             }
         }
 
         // Save weights
-        SaveWeights(network);
+        if (HasTrainingProgressed(session.Current)) {
+            SaveWeights(network);
+            Console.WriteLine("Saved weights");
+        } else
+        {
+            Console.WriteLine("Skipped saving weights, not better than previous");
+        }
     }
 
-    public override void Validate()
+    private float? progress = null;
+    protected virtual bool HasTrainingProgressed(ModuleTrainingEnumerator.Report trainingReport)
+    {
+        // Save if loss is smaller than the new loss (or first save)
+        // Want smaller loss
+        if (!progress.HasValue || progress.Value > trainingReport.Loss.Average)
+        {
+            progress = trainingReport.Loss.Average;
+            return true;
+        }
+        return false;
+    }
+
+    public override void Validate(bool useLogging)
     {
          var exampleName = this.GetType().Name;
 
@@ -420,6 +471,16 @@ public abstract class BackpropExample : Example
             row[defaultFields.Length + i] = value;
         }
         WriteRow(row);
+
+        // Create final validation reports
+        if (useLogging)
+        {
+            foreach (var genReport in this.GenerateTrainingReports(network, validation, validation /* could use training here... */, report))
+            {
+                using var reportWriter = CreateLogger(exampleName + ".test." + genReport.Name + genReport.Extension);
+                genReport.Emit(reportWriter);
+            }
+        }
     }
 
     public override void Clean()

@@ -43,7 +43,7 @@ public class AvgPool2DTest {
     public void TestStride1Padding0Kernel3() {
         var layer = new AvgPool2D(size: 3, stride: 1, padding: 0);
 
-        var X = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var X = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             -0.06675183027982712,
             0.7418843507766724,
             -0.07433906942605972,
@@ -75,7 +75,7 @@ public class AvgPool2DTest {
             0.6940374970436096
         ]).ToFloat();
 
-        var Y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(3, 3), [
+        var Y_truth = Tensor<double>.FromFlattenedArray(new Shape(3, 3), [
             0.2394171804189682,
             0.12405179440975189,
             0.1359763890504837,
@@ -90,7 +90,7 @@ public class AvgPool2DTest {
         Assert.AreEqual(true, Y_projected.Equals(Y_truth, 0.0001f));
         
 
-        var dY = Tensor<double>.FromFlattenedArray(new TensorShape(3, 3), [
+        var dY = Tensor<double>.FromFlattenedArray(new Shape(3, 3), [
             -2.179100513458252,
             -0.08496836572885513,
             -1.8678022623062134,
@@ -101,7 +101,7 @@ public class AvgPool2DTest {
             -1.0145455598831177,
             -0.3372708261013031
         ]).ToFloat();
-        var dX_truth = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var dX_truth = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
             -0.24212227761745453,
             -0.2515632212162018,
             -0.4590967893600464,
@@ -323,7 +323,7 @@ public class AvgPool2DTest {
     {
         var layer = new AvgPool2D(size: 3, stride: 2, padding: 0);
 
-        var X = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var X = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
                     1.3925418853759766,
                     -0.06613739579916,
                     -0.5422175526618958,
@@ -351,7 +351,7 @@ public class AvgPool2DTest {
                     -0.3620969355106354
         ]).ToFloat();
 
-        var Y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(2, 2), [
+        var Y_truth = Tensor<double>.FromFlattenedArray(new Shape(2, 2), [
                     0.1871238350868225,
                     0.21412721276283264,
                     0.5215012431144714,
@@ -360,13 +360,13 @@ public class AvgPool2DTest {
         var Y_projected = layer.Forward(X);
         Assert.AreEqual(true, Y_projected.Equals(Y_truth, 0.0001f));
 
-        var dY = Tensor<double>.FromFlattenedArray(new TensorShape(2, 2), [
+        var dY = Tensor<double>.FromFlattenedArray(new Shape(2, 2), [
                     0.23149579763412476,
                     -0.8691568374633789,
                     -0.5454152226448059,
                     1.0452895164489746
         ]).ToFloat();
-        var dX_truth = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var dX_truth = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
                     0.025721754878759384,
                     0.025721754878759384,
                     -0.07085122168064117,

@@ -12,11 +12,14 @@ public class Validate : Command
     [Option("raws", HelpText = "Set flag to indicate that validation data is in a raw format and needs preprocessing before validation")]
     public bool ProcessRaws { get; set; }
 
+    [Option("log", HelpText = "Set flag to record validation logs")]
+    public bool IsLogging { get; set; }
+
     public override void Exec(IExample example)
     {
         if (ProcessRaws)
             example.ProcessRawData();
         
-        example.Validate();
+        example.Validate(IsLogging);
     }
 }

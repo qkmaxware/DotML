@@ -20,7 +20,7 @@ public class CompareBatchNorm
     #region Output Shape
     #endregion
 
-    private TensorShape ishape;
+    private Shape ishape;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -28,7 +28,7 @@ public class CompareBatchNorm
     public void Setup()
     {
         var generator = new Random();
-        ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
+        ishape = new Shape(BATCHES, CHANNELS, ROWS, COLUMNS);
         var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
         updated = new BatchNorm2D(CHANNELS);

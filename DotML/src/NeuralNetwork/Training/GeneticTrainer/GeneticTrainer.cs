@@ -150,7 +150,7 @@ public class GeneticTrainer
     {
         var looper = EnumerateTraining();
         looper.MoveEnd();
-        return looper.Current.First();
+        return looper.Current.MostFit!;
     }
 
 }
@@ -159,7 +159,7 @@ public class GeneticTrainer
 /// Genetic algorithm for a population set
 /// </summary>
 public class GeneticTrainerEnumerator
-: IEnumerator<IEnumerable<IGenome>>
+: IEnumerator<GeneticTrainerEnumerator.PopulationReport>
 {
     private struct GenomeFitness
     {
@@ -178,17 +178,16 @@ public class GeneticTrainerEnumerator
     private List<GenomeFitness> population;
     private List<GenomeFitness> nextPopulation;
 
+    public class PopulationReport {
+        public int Generation {get; set;}
+        public IGenome? MostFit {get; set;}
+        public Metric<float> Fitness {get; set;} = new Metric<float>();
+    }
+
     /// <summary>
     /// Current population
     /// </summary>
-    public IEnumerable<IGenome> Current
-    {
-        get
-        {
-            foreach (var g in population)
-                yield return g.Genome;
-        }
-    }
+    public PopulationReport Current {get; private set;} = new PopulationReport();
 
     object IEnumerator.Current => Current;
 
@@ -368,6 +367,13 @@ public class GeneticTrainerEnumerator
             bestFound = true;
             return true; 
         }
+        var report = this.Current;
+        report.MostFit = mostFit.Genome;
+        report.Fitness.Reset();
+        foreach (var pop in this.population)
+            report.Fitness.AddSample(pop.Fitness);
+        report.Generation ++;
+        this.Current = report;
 
         // Select elites
         for (var i = 0; i < numElite; i+=1)
@@ -440,6 +446,14 @@ public class GeneticTrainerEnumerator
     public void Reset() {
         this.Generation = 0;
         this.bestFound = false;
+
+        this.Current = new PopulationReport
+        {
+            Generation = 0,
+
+            MostFit = null,
+            Fitness = new Metric<float>()
+        };
 
         this.nextPopulation.Clear();
         this.population.Clear();

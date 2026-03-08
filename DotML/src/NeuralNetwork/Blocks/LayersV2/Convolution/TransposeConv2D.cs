@@ -37,8 +37,8 @@ public class TransposeConv2D : NetworkLayer, IWeightsAndBiasNetworkModule
 
     public TransposeConv2D(int outChannels, int inChannelsPerGroup, int groups, Size2D kernel, Stride2D stride, Dilation2D dilation, Padding2D inputPadding, Padding2D outputPadding)
     {
-        this.Weights = Tensor<float>.Ones(new TensorShape(inChannelsPerGroup, outChannels, kernel.Height, kernel.Width));
-        this.Biases = Tensor<float>.Zeros(new TensorShape(outChannels));
+        this.Weights = Tensor<float>.Ones(new Shape(inChannelsPerGroup, outChannels, kernel.Height, kernel.Width));
+        this.Biases = Tensor<float>.Zeros(new Shape(outChannels));
 
         this.Groups = groups;
         this.Stride = stride;
@@ -61,7 +61,7 @@ public class TransposeConv2D : NetworkLayer, IWeightsAndBiasNetworkModule
         Biases.FillGenerated(() => initializer.RandomBias(fan_in, fan_out, parameters));
     }
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         // See Tensor<T>.TransposeConvolve2D
         // Normalize all tensors to 4D (expand or reduce as required)
@@ -91,7 +91,7 @@ public class TransposeConv2D : NetworkLayer, IWeightsAndBiasNetworkModule
         var outHeight = (inHeight - 1) * Stride.Y - InputPadding.Top - InputPadding.Bottom + Dilation.Y * (kernelHeight - 1) + 1 + OutputPadding.Top + OutputPadding.Bottom;
         var outWidth = (inWidth - 1) * Stride.X - InputPadding.Left - InputPadding.Right + Dilation.X * (kernelWidth - 1) + 1 + OutputPadding.Left + OutputPadding.Right;
 
-        var outputShape = new TensorShape(batch, outChannels, outHeight, outWidth);
+        var outputShape = new Shape(batch, outChannels, outHeight, outWidth);
         return outputShape;
     }
 
@@ -144,7 +144,7 @@ public class TransposeConv2D : NetworkLayer, IWeightsAndBiasNetworkModule
         );
     }
 
-    private Tensor<float> BackpropagateWrtWeights(TensorShape xShape, Tensor<float> x, Tensor<float> dy)
+    private Tensor<float> BackpropagateWrtWeights(Shape xShape, Tensor<float> x, Tensor<float> dy)
     {
         var batch = xShape.Length(0);
         var inChannels = xShape.Length(1);
@@ -237,7 +237,7 @@ public class TransposeConv2D : NetworkLayer, IWeightsAndBiasNetworkModule
         return dW;
     }
 
-    private Tensor<float> BackpropagateWrtInput(TensorShape xShape, Tensor<float> dY)
+    private Tensor<float> BackpropagateWrtInput(Shape xShape, Tensor<float> dY)
     {
         var (batch_size, in_channels, out_rows, out_columns) = xShape; // In and out rows/columns flipped here since the "input" is dY and the output is "dX" for the convolution
         var (inChannelsPerGroup, out_channels, kernelHeight, kernelWidth) = Weights.Shape;

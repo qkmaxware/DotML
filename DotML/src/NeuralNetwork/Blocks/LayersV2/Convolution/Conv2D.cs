@@ -37,8 +37,8 @@ public class Conv2D : NetworkLayer, IWeightsAndBiasNetworkModule
 
     public Conv2D(int outChannels, int inChannelsPerGroup, int groups, Size2D kernel, Stride2D stride, Dilation2D dilation, Padding2D padding)
     {
-        this.Weights = Tensor<float>.Ones(new TensorShape(outChannels, inChannelsPerGroup, kernel.Height, kernel.Width));
-        this.Biases = Tensor<float>.Zeros(new TensorShape(outChannels));
+        this.Weights = Tensor<float>.Ones(new Shape(outChannels, inChannelsPerGroup, kernel.Height, kernel.Width));
+        this.Biases = Tensor<float>.Zeros(new Shape(outChannels));
 
         this.Groups = groups;
         this.Stride = stride;
@@ -65,7 +65,7 @@ public class Conv2D : NetworkLayer, IWeightsAndBiasNetworkModule
         Biases.FillGenerated(() => initializer.RandomBias(fan_in, fan_out, parameters));
     }
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         // See Tensor.Convolve2D
         input = input.NormalizeRank(4);                     // [batch, channels, rows, columns]
@@ -94,7 +94,7 @@ public class Conv2D : NetworkLayer, IWeightsAndBiasNetworkModule
         if (outHeight <= 0 || outWidth <= 0)
             throw new ArgumentException("Invalid output dimensions. Check padding, stride, and dilation.");
 
-        return new TensorShape(batch, outChannels, outHeight, outWidth);
+        return new Shape(batch, outChannels, outHeight, outWidth);
     }
 
     public override Tensor<float> Forward(Tensor<float> channels)

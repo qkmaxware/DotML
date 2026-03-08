@@ -51,7 +51,7 @@ public class FSRCNNFactory
         var kernel_height = (scaling * settings.ImgHeight) - (settings.ImgHeight - 1) * scaling;
         var kernel_width = (scaling * settings.ImgWidth) - (settings.ImgWidth - 1) * scaling;
 
-        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+        var ishape = new Shape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
 
         return new ArchitectureBlock(
             name: "FSRCNN",

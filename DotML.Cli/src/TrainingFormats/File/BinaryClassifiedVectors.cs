@@ -52,7 +52,7 @@ public class BinaryClassifiedVectors : FileTrainingDataFormat {
     {
         var set = read_classified_binary_vectors(file, ZeroValue, OneValue, x => x.ReadByte());
         
-        var src = new ListTrainingDataSource<float>(new TensorShape(set.First().Input.Dimensionality), new TensorShape(set.First().Output.Dimensionality));
+        var src = new ListTrainingDataSource<float>(new Shape(set.First().Input.Dimensionality), new Shape(set.First().Output.Dimensionality));
         src.AddRange(
             set.Select(pair => (Tensor<float>.Vec(pair.Input.AsArray()), Tensor<float>.Vec(pair.Output.AsArray())))
         );

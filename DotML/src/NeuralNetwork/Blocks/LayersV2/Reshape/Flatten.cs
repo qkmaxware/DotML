@@ -9,7 +9,7 @@ public class Flatten : Reshape
 {
     // [N, C, H, W] --> [N, 1, F, 1]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TensorShape FlattenCHW2H(TensorShape x)
+    public static Shape FlattenCHW2H(Shape x)
     {
         var xShape = x.EnsureRank(3);             // Rank < 3, pad with 1's
         var dims = xShape.AsDimensionSpan().ToArray();  // Copy batch dimensions
@@ -17,7 +17,7 @@ public class Flatten : Reshape
         dims[^2] = xShape.Length(^3) * xShape.Length(^2) * xShape.Length(^1);
         dims[^1] = 1;
 
-        return new TensorShape(dims);
+        return new Shape(dims);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Tensor<float> FlattenCHW2H(Tensor<float> x)
@@ -27,7 +27,7 @@ public class Flatten : Reshape
 
     // [N, C, H, W] --> [N, F, 1, 1]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TensorShape FlattenCHW2C(TensorShape x)
+    public static Shape FlattenCHW2C(Shape x)
     {
         var xShape = x.EnsureRank(3);             // Rank < 3, pad with 1's
         var dims = xShape.AsDimensionSpan().ToArray();  // Copy batch dimensions
@@ -35,7 +35,7 @@ public class Flatten : Reshape
         dims[^2] = 1;
         dims[^1] = 1;
 
-        return new TensorShape(dims);
+        return new Shape(dims);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Tensor<float> FlattenCHW2C(Tensor<float> x)
@@ -45,7 +45,7 @@ public class Flatten : Reshape
 
     // [N, C, H, W] --> [N, 1, 1, F]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TensorShape FlattenCHW2W(TensorShape x)
+    public static Shape FlattenCHW2W(Shape x)
     {
         var xShape = x.EnsureRank(3);             // Rank < 3, pad with 1's
         var dims = xShape.AsDimensionSpan().ToArray();  // Copy batch dimensions
@@ -53,7 +53,7 @@ public class Flatten : Reshape
         dims[^2] = 1;
         dims[^1] = xShape.Length(^3) * xShape.Length(^2) * xShape.Length(^1);
 
-        return new TensorShape(dims);
+        return new Shape(dims);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Tensor<float> FlattenCHW2W(Tensor<float> x)
@@ -62,7 +62,7 @@ public class Flatten : Reshape
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TensorShape FlattenNonBatch(TensorShape x)
+    public static Shape FlattenNonBatch(Shape x)
     {
         if (x.Rank < 2)
             return x; // If only 1 dimension just return as is
@@ -72,7 +72,7 @@ public class Flatten : Reshape
         ys[0] = x[0];
         ys[1] = x.Length(1..);
 
-        return new TensorShape(ys);
+        return new Shape(ys);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Tensor<float> FlattenNonBatch(Tensor<float> x)
@@ -94,7 +94,7 @@ public class Flatten : Reshape
 
     public Flatten() : this(FlatteningMode.CollapseNonBatch) { }
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         return Mode switch
         {

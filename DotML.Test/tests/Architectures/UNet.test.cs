@@ -30,9 +30,9 @@ public class UNetTest
         {
             Assert.Fail("Network does not have defined input/output shape.");
         }
-        var ishape = new TensorShape(build.InputChannels, build.ImageHeight, build.ImageWidth);
+        var ishape = new Shape(build.InputChannels, build.ImageHeight, build.ImageWidth);
         Assert.AreEqual(ishape, network.RequiredInputShape.Value);
-        var oshape = new TensorShape(build.OutputChannels, build.ImageHeight, build.ImageWidth); 
+        var oshape = new Shape(build.OutputChannels, build.ImageHeight, build.ImageWidth); 
         Assert.AreEqual(oshape, network.OutputShape.Value.Slice(1..)); // Remove batch dim
 
         // Test that we can actually run the network

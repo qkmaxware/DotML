@@ -152,14 +152,14 @@ public class DenseLinearTest
 
             w: Tensor<double>.FromJaggedArray(w).ToFloat(),
             dw: Tensor<double>.FromJaggedArray(dw).ToFloat(),
-            b: Tensor<double>.FromJaggedArray(b).ReshapeShared(new TensorShape(b.Length, 1)).ToFloat(),
-            db: Tensor<double>.FromJaggedArray(db).ReshapeShared(new TensorShape(db.Length, 1)).ToFloat(),
+            b: Tensor<double>.FromJaggedArray(b).ReshapeShared(new Shape(b.Length, 1)).ToFloat(),
+            db: Tensor<double>.FromJaggedArray(db).ReshapeShared(new Shape(db.Length, 1)).ToFloat(),
 
             x: Tensor<double>.FromJaggedArray(x).ToFloat(),
             dx: Tensor<double>.FromJaggedArray(dx).ToFloat(),
 
-            y: Tensor<double>.FromJaggedArray(y).ReshapeShared(new TensorShape(1, 3)).ToFloat(),
-            dy: Tensor<double>.FromJaggedArray(dy).ReshapeShared(new TensorShape(1, 3)).ToFloat()
+            y: Tensor<double>.FromJaggedArray(y).ReshapeShared(new Shape(1, 3)).ToFloat(),
+            dy: Tensor<double>.FromJaggedArray(dy).ReshapeShared(new Shape(1, 3)).ToFloat()
         );
     }
     
@@ -435,14 +435,14 @@ public class DenseLinearTest
 
             w: Tensor<double>.FromJaggedArray(w).ToFloat(),
             dw: Tensor<double>.FromJaggedArray(dw).ToFloat(),
-            b: Tensor<double>.FromJaggedArray(b).ReshapeShared(new TensorShape(b.Length, 1)).ToFloat(),
-            db: Tensor<double>.FromJaggedArray(db).ReshapeShared(new TensorShape(db.Length, 1)).ToFloat(),
+            b: Tensor<double>.FromJaggedArray(b).ReshapeShared(new Shape(b.Length, 1)).ToFloat(),
+            db: Tensor<double>.FromJaggedArray(db).ReshapeShared(new Shape(db.Length, 1)).ToFloat(),
 
             x: Tensor<double>.FromJaggedArray(x).ToFloat(),
             dx: Tensor<double>.FromJaggedArray(dx).ToFloat(),
 
-            y: Tensor<double>.FromJaggedArray(y).ReshapeShared(new TensorShape(3, 3)).ToFloat(),
-            dy: Tensor<double>.FromJaggedArray(dy).ReshapeShared(new TensorShape(3, 3)).ToFloat()
+            y: Tensor<double>.FromJaggedArray(y).ReshapeShared(new Shape(3, 3)).ToFloat(),
+            dy: Tensor<double>.FromJaggedArray(dy).ReshapeShared(new Shape(3, 3)).ToFloat()
         );
     }
 }

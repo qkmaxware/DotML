@@ -169,7 +169,7 @@ public class Conv2DTest
             dilation: (1, 1),
             padding: (1, 1, 1, 1) // same
         );
-        var kernel = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var kernel = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             -0.33186790347099304,
             -0.11537425220012665,
             -0.20978042483329773,
@@ -184,7 +184,7 @@ public class Conv2DTest
         layer.Weights = kernel;
         layer.Biases = Tensor<float>.Vec(new float[1] { 0.25102999806404114f });
 
-        var x = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var x = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             1.6284466981887817,
             1.4562504291534424,
             0.5519229173660278,
@@ -213,7 +213,7 @@ public class Conv2DTest
         ]).ToFloat();
         var context = new EvaluationContext();
         var y_projected = layer.Forward(x, context);
-        var y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var y_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             0.2632116973400116,
             -0.7895180583000183,
             -0.14855682849884033,
@@ -242,7 +242,7 @@ public class Conv2DTest
         ]).ToFloat();
         Assert.AreEqual(true, y_projected.Equals(y_truth, 0.0001f));
 
-        var dy = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var dy = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             -0.8490618467330933,
             1.3524293899536133,
             0.8703511953353882,
@@ -275,7 +275,7 @@ public class Conv2DTest
         var gradients = (WeightAndBiasGradients)back;
         var db_truth = Tensor<double>.Vec([-3.547349214553833]).ToFloat();
         Assert.AreEqual(true, db_truth.Equals(gradients.dB, 0.001f));
-        var dw_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var dw_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             -10.99089527130127,
             -14.076019287109375,
             -7.06515645980835,
@@ -287,7 +287,7 @@ public class Conv2DTest
             -3.469475746154785
         ]).ToFloat();
         Assert.AreEqual(true, dw_truth.Equals(gradients.dW, 0.001f));
-        var dx_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var dx_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             1.0478237867355347,
             0.6097053289413452,
             0.308363676071167,
@@ -329,7 +329,7 @@ public class Conv2DTest
             dilation: (1, 1),
             padding: (1, 1, 1, 1)
         );
-        var kernel = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var kernel = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             0.16329312324523926,
             0.09592697024345398,
             0.3095523416996002,
@@ -344,7 +344,7 @@ public class Conv2DTest
         layer.Weights = kernel;
         layer.Biases = Tensor<float>.Vec(new float[1] { -0.27856478095054626f });
 
-        var x = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var x = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             0.648898184299469,
             -0.3165184557437897,
             0.5921686291694641,
@@ -373,7 +373,7 @@ public class Conv2DTest
         ]).ToFloat();
         var context = new EvaluationContext();
         var y_projected = layer.Forward(x, context);
-        var y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var y_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             -0.5986804962158203,
             -0.5529718399047852,
             -0.38524511456489563,
@@ -386,7 +386,7 @@ public class Conv2DTest
         ]).ToFloat();
         Assert.AreEqual(true, y_projected.Equals(y_truth, 0.0001f));
 
-        var dy = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var dy = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             1.2390981912612915,
             -0.27579402923583984,
             -1.463151216506958,
@@ -402,7 +402,7 @@ public class Conv2DTest
         var gradients = (WeightAndBiasGradients)back;
         var db_truth = Tensor<double>.Vec([0.8905434608459473]).ToFloat();
         Assert.AreEqual(true, db_truth.Equals(gradients.dB, 0.001f));
-        var dw_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var dw_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             2.19227933883667,
             -1.2425031661987305,
             -1.0914113521575928,
@@ -414,7 +414,7 @@ public class Conv2DTest
             3.2680611610412598
         ]).ToFloat();
         Assert.AreEqual(true, dw_truth.Equals(gradients.dW, 0.001f));
-        var dx_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var dx_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             -0.005934034939855337,
             0.12630951404571533,
             0.0013207761803641915,
@@ -457,7 +457,7 @@ public class Conv2DTest
             padding: (0, 0, 0, 0) // "Valid" padding
         );
 
-        var kernel = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var kernel = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             0.1519714593887329,
             -0.017021745443344116,
             -0.17113947868347168,
@@ -472,7 +472,7 @@ public class Conv2DTest
         layer.Weights = kernel;
         layer.Biases = Tensor<float>.Vec([-0.058894991874694824f]);
 
-        var x = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var x = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             1.1838496923446655,
             0.4641179144382477,
             -1.9392775297164917,
@@ -502,7 +502,7 @@ public class Conv2DTest
 
         var context = new EvaluationContext();
         var y_projected = layer.Forward(x, context);
-        var y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var y_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             -0.4346175491809845,
             0.3202958106994629,
             -1.0561137199401855,
@@ -515,7 +515,7 @@ public class Conv2DTest
         ]).ToFloat();
         Assert.AreEqual(true, y_projected.Equals(y_truth, 0.0001f));
 
-        var dy = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var dy = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             0.8627731204032898,
             -1.1305592060089111,
             -0.4596337676048279,
@@ -534,7 +534,7 @@ public class Conv2DTest
         var db_truth = Tensor<double>.Vec([-0.3563750982284546]).ToFloat();
         Assert.AreEqual(true, db_truth.Equals(gradients.dB, 0.001f));
 
-        var dw_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var dw_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             0.577020525932312,
             6.409263610839844,
             -0.10182112455368042,
@@ -547,7 +547,7 @@ public class Conv2DTest
         ]).ToFloat();
         Assert.AreEqual(true, dw_truth.Equals(gradients.dW, 0.001f));
 
-        var dx_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var dx_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             0.13111689686775208,
             -0.18649862706661224,
             -0.19826167821884155,
@@ -590,7 +590,7 @@ public class Conv2DTest
             padding: (0, 0, 0, 0) // Valid padding
         );
 
-        var kernel = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var kernel = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             -0.22670862078666687,
             0.29332056641578674,
             -0.19603630900382996,
@@ -605,7 +605,7 @@ public class Conv2DTest
         layer.Weights = kernel;
         layer.Biases = Tensor<float>.Vec([-0.21968214213848114f]);
 
-        var x = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var x = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             -1.187608242034912,
             -0.013705188408493996,
             0.773604691028595,
@@ -635,7 +635,7 @@ public class Conv2DTest
 
         var context = new EvaluationContext();
         var y_projected = layer.Forward(x, context);
-        var y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 2, 2), [
+        var y_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 2, 2), [
             0.46738120913505554,
             -0.4275803565979004,
             -0.277267724275589,
@@ -643,7 +643,7 @@ public class Conv2DTest
         ]).ToFloat();
         Assert.AreEqual(true, y_projected.Equals(y_truth, 0.0001f));
 
-        var dy = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 2, 2), [
+        var dy = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 2, 2), [
             0.13445043563842773,
             1.81400728225708,
             -1.0690683126449585,
@@ -657,7 +657,7 @@ public class Conv2DTest
         var db_truth = Tensor<double>.Vec([0.6527965664863586]).ToFloat();
         Assert.AreEqual(true, db_truth.Equals(gradients.dB, 0.001f));
 
-        var dw_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 3, 3), [
+        var dw_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 3, 3), [
             0.2995468080043793,
             -1.5322096347808838,
             2.675182342529297,
@@ -670,7 +670,7 @@ public class Conv2DTest
         ]).ToFloat();
         Assert.AreEqual(true, dw_truth.Equals(gradients.dW, 0.001f));
 
-        var dx_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var dx_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             -0.030481072142720222,
             0.039437077939510345,
             -0.4376082718372345,
@@ -713,7 +713,7 @@ public class Conv2DTest
             padding: (1, 1, 1, 1) // SAME padding
         );
 
-        var weights = Tensor<double>.FromFlattenedArray(new TensorShape(1, 3, 3, 3), [
+        var weights = Tensor<double>.FromFlattenedArray(new Shape(1, 3, 3, 3), [
             // Filter for channel 0
             -0.03724499046802521,
             -0.12150624394416809,
@@ -752,7 +752,7 @@ public class Conv2DTest
         layer.Weights = weights;
         layer.Biases = Tensor<float>.Vec([0.14321748912334442f]);
 
-        var x = Tensor<double>.FromFlattenedArray(new TensorShape(1, 3, 5, 5), [
+        var x = Tensor<double>.FromFlattenedArray(new Shape(1, 3, 5, 5), [
             // Channel 0
             0.04129666090011597, -1.3909366130828857, 0.21071363985538483, -0.07865647226572037, 1.3091665506362915,
             -0.8029050827026367, -1.1879446506500244, 1.5709104537963867, 2.150278091430664, 0.2091362476348877,
@@ -778,7 +778,7 @@ public class Conv2DTest
         var context = new EvaluationContext();
         var y_projected = layer.Forward(x, context);
 
-        var y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var y_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             //[
                 0.39704465866088867, 0.7455122470855713, 0.1378490924835205, 0.146591916680336, 0.6975279450416565,
                 0.7090077996253967, 0.0737203061580658, -0.055984120815992355, -1.3476455211639404, -1.0077036619186401,
@@ -789,7 +789,7 @@ public class Conv2DTest
         ]).ToFloat();
         Assert.AreEqual(true, y_projected.Equals(y_truth, 0.0001f));
 
-        var dy = Tensor<double>.FromFlattenedArray(new TensorShape(1, 1, 5, 5), [
+        var dy = Tensor<double>.FromFlattenedArray(new Shape(1, 1, 5, 5), [
             //[
                 0.29369616508483887, -0.7291655540466309, -1.1719928979873657, 0.2644590437412262, 0.02122787944972515,
                 -1.6344319581985474, -0.7068682312965393, 0.13566316664218903, 1.7301790714263916, 0.5853704214096069,
@@ -805,7 +805,7 @@ public class Conv2DTest
         var db_truth = Tensor<float>.Vec([-0.8774690628051758f]);
         Assert.AreEqual(true, gradients.dB.Equals(db_truth, 0.001f));
 
-        var dw_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 3, 3, 3), [
+        var dw_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 3, 3, 3), [
             // Channel 0
             8.808441162109375, 6.179363250732422, -0.9415181875228882,
             8.45761489868164, 2.7690742015838623, 1.7702165842056274,
@@ -823,7 +823,7 @@ public class Conv2DTest
         ]).ToFloat();
         Assert.AreEqual(true, gradients.dW.Equals(dw_truth, 0.001f));
 
-        var dx_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 3, 5, 5), [
+        var dx_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 3, 5, 5), [
             // Channel 0
             //[
                 0.2961565852165222, 0.651442289352417, 0.25197362899780273, -0.18831628561019897, -0.42519110441207886,

@@ -111,7 +111,7 @@ public class SvgRenderer
         writer.WriteLine($"<g id='input' transform='translate(0,{Padding})'>");
         var shape = module is ArchitectureBlock arch && arch.RequiredInputShape.HasValue
             ? arch.RequiredInputShape.Value.NormalizeRank(3)
-            : TensorShape.Scalar;
+            : Shape.Scalar;
         writer.WriteLine(GetSvgTemplate("InputTensor.svg.part", shape.LengthOrDefault(0), shape.LengthOrDefault(1), shape.LengthOrDefault(2)));
         writer.WriteLine("</g>");
         for (var trackIndex = 0; trackIndex < layout.Height; trackIndex++)

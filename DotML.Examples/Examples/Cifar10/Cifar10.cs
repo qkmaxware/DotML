@@ -43,7 +43,7 @@ public class Cifar10 : BackpropExample
         settings.UseBatchNorm = false;
 
         var network = factory.Make(settings);
-        network.ForwardShape(new TensorShape(ImgChannels, ImgHeight, ImgWidth)); // Assert that we can actually use this network
+        network.ForwardShape(new Shape(ImgChannels, ImgHeight, ImgWidth)); // Assert that we can actually use this network
         return network;
     }
 
@@ -60,8 +60,8 @@ public class Cifar10 : BackpropExample
             "test_batch.bin"
         ];
 
-        var ishape = new TensorShape(ImgChannels, ImgHeight, ImgWidth);
-        var oshape = new TensorShape(Classes.Length);
+        var ishape = new Shape(ImgChannels, ImgHeight, ImgWidth);
+        var oshape = new Shape(Classes.Length);
 
         ListTrainingDataSource<float> trn = new ListTrainingDataSource<float>(ishape, oshape);
         ListTrainingDataSource<float> vld = new ListTrainingDataSource<float>(ishape, oshape);
@@ -91,7 +91,7 @@ public class Cifar10 : BackpropExample
         var oneHot = new Tensor<float>[Classes.Length];
         for (var i = 0; i < Classes.Length; i++)
         {
-            var ten = Tensor<float>.Zeros(new TensorShape(Classes.Length));
+            var ten = Tensor<float>.Zeros(new Shape(Classes.Length));
             ten[i] = 1.0f;
             oneHot[i] = ten;
         }
@@ -99,7 +99,7 @@ public class Cifar10 : BackpropExample
         for (var i = 0; i < 10_000; i++)
         {
             var classIndex = reader.ReadByte();
-            var input = Tensor<float>.Defaults(new TensorShape(ImgChannels, ImgHeight, ImgWidth));
+            var input = Tensor<float>.Defaults(new Shape(ImgChannels, ImgHeight, ImgWidth));
             var inputSpan = input.AsSpan();
             for (int c = 0; c < ImgChannels; c++)
             {

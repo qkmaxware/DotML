@@ -122,7 +122,7 @@ public class VGGFactory
 
     public INetworkModule Make(BuildSettings settings)
     {
-        var ishape = new TensorShape(settings.ImageChannels, settings.ImageHeight, settings.ImageWidth); // CHW
+        var ishape = new Shape(settings.ImageChannels, settings.ImageHeight, settings.ImageWidth); // CHW
         var activation = settings.ActivationFunction ?? ActivationFunctions.ReLU;
         var dropout = Math.Clamp(settings.DropoutPercent, 0.0f, 1.0f);
         var useDropout = dropout > 0.0f;

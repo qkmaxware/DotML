@@ -19,11 +19,11 @@ where TType : INumber<TType>
     /// <summary>
     /// Shape of the input training tensors
     /// </summary>
-    public TensorShape InputShape { get; }
+    public Shape InputShape { get; }
     /// <summary>
     /// Shape of the output training tensors
     /// </summary>
-    public TensorShape OutputShape { get; }
+    public Shape OutputShape { get; }
 
     /// <summary>
     /// Get a particular IO pair in the data source
@@ -71,16 +71,16 @@ public class ListTrainingDataSource<TType>
 : List<(Tensor<TType> Input, Tensor<TType> Output)>, ITrainingDataSource<TType>
 where TType : INumber<TType>
 {
-    public TensorShape InputShape { get; init; }
-    public TensorShape OutputShape { get; init; }
+    public Shape InputShape { get; init; }
+    public Shape OutputShape { get; init; }
 
-    public ListTrainingDataSource(TensorShape ishape, TensorShape oshape)
+    public ListTrainingDataSource(Shape ishape, Shape oshape)
     {
         this.InputShape = ishape;
         this.OutputShape = oshape;
     }
 
-    public ListTrainingDataSource(TensorShape ishape, TensorShape oshape, IEnumerable<(Tensor<TType> Input, Tensor<TType> Output)> data)
+    public ListTrainingDataSource(Shape ishape, Shape oshape, IEnumerable<(Tensor<TType> Input, Tensor<TType> Output)> data)
     : this(ishape, oshape)
     {
         this.AddRange(data);
@@ -151,9 +151,9 @@ where TType : INumber<TType>
 
     public int Count => srcs.Sum(src => src.Count);
 
-    public TensorShape InputShape => srcs.FirstOrDefault()?.InputShape ?? TensorShape.Scalar;
+    public Shape InputShape => srcs.FirstOrDefault()?.InputShape ?? Shape.Scalar;
 
-    public TensorShape OutputShape => srcs.FirstOrDefault()?.OutputShape ?? TensorShape.Scalar;
+    public Shape OutputShape => srcs.FirstOrDefault()?.OutputShape ?? Shape.Scalar;
 
     public IEnumerator<(Tensor<TType> Input, Tensor<TType> Output)> GetEnumerator()
     {
@@ -190,9 +190,9 @@ where TType : INumber<TType>
 
     public int Count => length;
 
-    public TensorShape InputShape => data.InputShape;
+    public Shape InputShape => data.InputShape;
 
-    public TensorShape OutputShape => data.OutputShape;
+    public Shape OutputShape => data.OutputShape;
 
     public IEnumerator<(Tensor<TType> Input, Tensor<TType> Output)> GetEnumerator()
     {
@@ -242,8 +242,8 @@ where TType : INumber<TType>
 
     public int Count => underlying.Count + underlying.Count * variations;
 
-    public TensorShape InputShape => underlying.InputShape;
-    public TensorShape OutputShape => underlying.OutputShape;
+    public Shape InputShape => underlying.InputShape;
+    public Shape OutputShape => underlying.OutputShape;
 
     public IEnumerator<(Tensor<TType> Input, Tensor<TType> Output)> GetEnumerator()
     {

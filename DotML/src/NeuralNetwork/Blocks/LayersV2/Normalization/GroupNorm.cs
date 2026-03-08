@@ -34,11 +34,11 @@ public class GroupNorm : NormalizationLayer, IWeightsAndBiasNetworkModule
         }
     }
 
-    public TensorShape NormalizedShape { get; init; }
+    public Shape NormalizedShape { get; init; }
 
     public int Groups { get; private set; }
 
-    public GroupNorm(int num_groups, TensorShape normalizedShape)
+    public GroupNorm(int num_groups, Shape normalizedShape)
     {
         this.NormalizedShape = normalizedShape;
         this.Groups = num_groups;
@@ -65,7 +65,7 @@ public class GroupNorm : NormalizationLayer, IWeightsAndBiasNetworkModule
         Biases.FillConstant(0);
     }
 
-    public override TensorShape ForwardShape(TensorShape input) => input;
+    public override Shape ForwardShape(Shape input) => input;
 
     public override Tensor<float> Forward(Tensor<float> x)
     {

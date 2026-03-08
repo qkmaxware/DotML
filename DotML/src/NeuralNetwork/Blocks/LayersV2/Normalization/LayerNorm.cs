@@ -36,11 +36,11 @@ public class LayerNorm : NormalizationLayer, IWeightsAndBiasNetworkModule
         }
     }
 
-    public TensorShape NormalizedShape { get; init; }
+    public Shape NormalizedShape { get; init; }
 
-    public LayerNorm(params int[] normalizedShape) : this(new TensorShape(normalizedShape)) {}
+    public LayerNorm(params int[] normalizedShape) : this(new Shape(normalizedShape)) {}
 
-    public LayerNorm(TensorShape normalizedShape)
+    public LayerNorm(Shape normalizedShape)
     {
         this.NormalizedShape = normalizedShape;
         _weights = Tensor<float>.Ones(normalizedShape);
@@ -58,7 +58,7 @@ public class LayerNorm : NormalizationLayer, IWeightsAndBiasNetworkModule
         Biases.FillConstant(0);
     }
 
-    public override TensorShape ForwardShape(TensorShape input) => input;
+    public override Shape ForwardShape(Shape input) => input;
 
     const float epsilon = 1e-8f;
 
@@ -230,7 +230,7 @@ public class LayerNorm : NormalizationLayer, IWeightsAndBiasNetworkModule
 /// </summary>
 public class SampleNorm : LayerNorm
 {
-    public SampleNorm(int channels, int height, int width) : base(new TensorShape(channels, height, width)) { }
+    public SampleNorm(int channels, int height, int width) : base(new Shape(channels, height, width)) { }
 }
 
 /// <summary>
@@ -238,5 +238,5 @@ public class SampleNorm : LayerNorm
 /// </summary>
 public class InstanceNorm : LayerNorm
 {
-    public InstanceNorm(int height, int width) : base(new TensorShape(height, width)) { }
+    public InstanceNorm(int height, int width) : base(new Shape(height, width)) { }
 }

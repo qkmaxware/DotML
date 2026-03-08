@@ -25,7 +25,7 @@ public abstract class GlobalPooling2D : GlobalPooling
     // Final value aggregation (when combined with accumulate it should cover most use cases)
     protected abstract float Aggregate(float current, int count);
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         var ishape = input.EnsureRank(4); // NCHW
         return ishape.Slice(0..1); // NC
@@ -38,7 +38,7 @@ public abstract class GlobalPooling2D : GlobalPooling
         var channels = reshaped.Shape[1];
         var sliceLength = reshaped.Shape.Stride(1); // Stride of each channel
 
-        Tensor<float> result = Tensor<float>.Defaults(new TensorShape(batches, channels));
+        Tensor<float> result = Tensor<float>.Defaults(new Shape(batches, channels));
         for (int batch = 0, globalChannel = 0; batch < batches; batch++)
         {
             for (var channel = 0; channel < channels; channel++, globalChannel++)

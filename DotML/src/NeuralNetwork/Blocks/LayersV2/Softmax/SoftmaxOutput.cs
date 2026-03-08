@@ -21,7 +21,7 @@ public class SoftmaxOutput : NetworkLayer
 
     public override void Initialize(IInitializer initializer) { }
 
-    public override TensorShape ForwardShape(TensorShape input) => input;
+    public override Shape ForwardShape(Shape input) => input;
 
     public override Tensor<float> Forward(Tensor<float> channels) => channels.Softmax(this.ClassAxis); // Softmax during inference
     public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)

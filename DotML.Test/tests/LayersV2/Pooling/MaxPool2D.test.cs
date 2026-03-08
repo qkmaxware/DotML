@@ -46,7 +46,7 @@ public class MaxPool2DLayerTest
     public void TestStride1Padding0Kernel3() {
         var layer = new MaxPool2D(size: 3, stride: 1, padding: 0);
 
-        var X = Tensor<double>.FromFlattenedArray(new TensorShape(1, 5, 5), [
+        var X = Tensor<double>.FromFlattenedArray(new Shape(1, 5, 5), [
             0.45132818818092346,
             -1.5761557817459106,
             -0.6721860766410828,
@@ -74,7 +74,7 @@ public class MaxPool2DLayerTest
             1.5673837661743164
         ]).ToFloat();
 
-        var Y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 3, 3), [
+        var Y_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 3, 3), [
             1.160701870918274,
             1.9709233045578003,
             1.9709233045578003,
@@ -89,7 +89,7 @@ public class MaxPool2DLayerTest
         var Y_projected = layer.Forward(X);
         Assert.AreEqual(true, Y_projected.Equals(Y_truth, 0.0001f));
 
-        var dY = Tensor<double>.FromFlattenedArray(new TensorShape(1, 3, 3), [
+        var dY = Tensor<double>.FromFlattenedArray(new Shape(1, 3, 3), [
             -0.31870266795158386,
             -0.391875684261322,
             0.10528147220611572,
@@ -100,7 +100,7 @@ public class MaxPool2DLayerTest
             -0.5080739259719849,
             1.6750047206878662
         ]).ElementWise((x) => (float)x);
-        var dX_truth = Tensor<double>.FromFlattenedArray(new TensorShape(1, 5, 5), [
+        var dX_truth = Tensor<double>.FromFlattenedArray(new Shape(1, 5, 5), [
             0.0,
             0.0,
             0.0,
@@ -320,7 +320,7 @@ public class MaxPool2DLayerTest
     public void TestStride2Padding0Kernel3() {
         var layer = new MaxPool2D(size: 3, stride: 2, padding: 0);
 
-        var X = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var X = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
                     -0.9107525944709778,
                     -0.1645437330007553,
                     1.2178658246994019,
@@ -348,7 +348,7 @@ public class MaxPool2DLayerTest
                     0.9875826239585876
         ]).ToFloat();
 
-        var Y_truth = Tensor<double>.FromFlattenedArray(new TensorShape(2, 2), [
+        var Y_truth = Tensor<double>.FromFlattenedArray(new Shape(2, 2), [
                     1.2178658246994019,
                     1.2178658246994019,
                     0.5189661979675293,
@@ -358,13 +358,13 @@ public class MaxPool2DLayerTest
         var Y_projected = layer.Forward(X);
         Assert.AreEqual(true, Y_projected.Equals(Y_truth, 0.0001f));
 
-        var dY = Tensor<double>.FromFlattenedArray(new TensorShape(2, 2), [
+        var dY = Tensor<double>.FromFlattenedArray(new Shape(2, 2), [
                     0.19057179987430573,
                     -0.1136438176035881,
                     -0.4186047911643982,
                     -1.3989176750183105
         ]).ToFloat();
-        var dX_truth = Tensor<double>.FromFlattenedArray(new TensorShape(5, 5), [
+        var dX_truth = Tensor<double>.FromFlattenedArray(new Shape(5, 5), [
                     0.0,
                     0.0,
                     0.07692798227071762,

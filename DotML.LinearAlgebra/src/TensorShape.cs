@@ -14,9 +14,9 @@ namespace DotML;
 /// </summary>
 public readonly struct RowMajorIndexSpanEnumerator
 {
-    private readonly TensorShape shape;
+    private readonly Shape shape;
 
-    public RowMajorIndexSpanEnumerator(TensorShape shape)
+    public RowMajorIndexSpanEnumerator(Shape shape)
     {
         this.shape = shape;
     }
@@ -135,26 +135,26 @@ public readonly struct RowMajorIndexSpanEnumerator
 }
 
 /// <summary>
-/// Shape of a tensor
+/// Generic shape of a tensor
 /// </summary>
-public readonly struct TensorShape
-: IShape, IParsable<TensorShape>
+public readonly struct Shape
+: IShape, IParsable<Shape>
 {
     #region Predefined Shapes
-    public static readonly TensorShape Scalar = new TensorShape();
+    public static readonly Shape Scalar = new Shape(Array.Empty<int>(), Array.Empty<int>());
     #endregion
 
     private readonly int[] dims;
     private readonly int[] strides;
 
-    public TensorShape(params int[] dims)
+    public Shape(params int[] dims)
     {
         this.dims = dims;
         this.strides = ComputeStrides(dims);
     }
 
     // For internal methods only, not for general use
-    internal TensorShape(int[] dims, int[] strides)
+    internal Shape(int[] dims, int[] strides)
     {
         this.dims = dims;
         this.strides = strides;
@@ -165,9 +165,9 @@ public readonly struct TensorShape
     /// </summary>
     /// <returns>stride array</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TensorShape CloneDimensions()
+    public Shape CloneDimensions()
     {
-        return new TensorShape(this.dims);
+        return new Shape(this.dims);
     }
 
     /// <summary>
@@ -408,12 +408,12 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="rhs">shape to concatenate onto the end</param>
     /// <returns>new shape</returns>
-    public TensorShape Append(TensorShape rhs)
+    public Shape Append(Shape rhs)
     {
         var shape = new int[this.Rank + rhs.Rank];
         this.dims.CopyTo(shape, 0);
         rhs.dims.CopyTo(shape, this.Rank);
-        return new TensorShape(shape);
+        return new Shape(shape);
     }
 
     /// <summary>
@@ -421,12 +421,12 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="rhs">shape to concatenate onto the end</param>
     /// <returns>new shape</returns>
-    public TensorShape Append(params ReadOnlySpan<int> rhs)
+    public Shape Append(params ReadOnlySpan<int> rhs)
     {
         var shape = new int[this.Rank + rhs.Length];
         this.dims.CopyTo(shape, 0);
         rhs.CopyTo(shape.AsSpan(this.Rank));
-        return new TensorShape(shape);
+        return new Shape(shape);
     }
 
 
@@ -435,12 +435,12 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="rhs">shape to concatenate onto the start</param>
     /// <returns>new shape</returns>
-    public TensorShape Prepend(TensorShape lhs)
+    public Shape Prepend(Shape lhs)
     {
         var shape = new int[this.Rank + lhs.Rank];
         lhs.dims.CopyTo(shape, 0);
         this.dims.CopyTo(shape, lhs.Rank);
-        return new TensorShape(shape);
+        return new Shape(shape);
     }
 
     /// <summary>
@@ -448,9 +448,9 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="range">range to slice over</param>
     /// <returns>new shape</returns>
-    public TensorShape Slice(Range range)
+    public Shape Slice(Range range)
     {
-        return new TensorShape(this.dims[range]);
+        return new Shape(this.dims[range]);
     }
 
     /// <summary>
@@ -459,13 +459,13 @@ public readonly struct TensorShape
     /// <param name="range">range to slice over</param>
     /// <param name="dims">dimensions to appen</param>
     /// <returns>new shape</returns>
-    public TensorShape SliceAndAppend(Range range, params ReadOnlySpan<int> dims)
+    public Shape SliceAndAppend(Range range, params ReadOnlySpan<int> dims)
     {
         var (off, len) = range.GetOffsetAndLength(this.dims.Length);
         var shape = new int[len + dims.Length];
         this.dims.AsSpan(off, len).CopyTo(shape);
         dims.CopyTo(shape.AsSpan(len));
-        return new TensorShape(shape);
+        return new Shape(shape);
     }
 
     /// <summary>
@@ -473,7 +473,7 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="rank">rank of the shape</param>
     /// <returns>new shape with additional dimensions of length 1 if the shape's rank < length</returns>
-    public TensorShape EnsureRank(int rank)
+    public Shape EnsureRank(int rank)
     {
         if (dims.Length >= rank)
             return this;
@@ -483,7 +483,7 @@ public readonly struct TensorShape
         this.dims.CopyTo(new_dims, old_dims_offset);
         for (var i = 0; i < old_dims_offset; i++)
             new_dims[i] = 1;
-        return new TensorShape(new_dims);
+        return new Shape(new_dims);
     }
 
     /// <summary>
@@ -491,7 +491,7 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="rank">normalized rank</param>
     /// <returns>tensor shape with the provided rank</returns>
-    public TensorShape NormalizeRank(int rank)
+    public Shape NormalizeRank(int rank)
     {
         if (rank < 1)
             throw new ArgumentException("Target rank must be >= 1");
@@ -514,7 +514,7 @@ public readonly struct TensorShape
         {
             new_dims[i] = dims[collapseTo + (i - 1)];
         }
-        return new TensorShape(new_dims);
+        return new Shape(new_dims);
     }
 
     /// <summary>
@@ -522,7 +522,7 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="other">shape of the last dimensions</param>
     /// <returns>true if the last dimensions match the shape, false otherwise</returns>
-    public bool AreTrailingDimensions(TensorShape other)
+    public bool AreTrailingDimensions(Shape other)
     {
         var self = this.dims; var self_length = self.Length; var self_offset = self_length - 1;
         var smaller = other.dims; var smaller_length = smaller.Length; var smaller_offset = smaller_length - 1;
@@ -546,7 +546,7 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="range">range to collapse</param>
     /// <returns>tensor shape with the given dimensions collapsed and the rest preserved</returns>
-    public TensorShape CollapseDimensions(Range range)
+    public Shape CollapseDimensions(Range range)
     {
         var old_length = this.dims.Length;
         var (start, length) = range.GetOffsetAndLength(old_length);
@@ -564,7 +564,7 @@ public readonly struct TensorShape
         new_dims[start] = product;
         Array.Copy(this.dims, start + length, new_dims, start + 1, old_length - (start + length));
 
-        return new TensorShape(new_dims);
+        return new Shape(new_dims);
     }
 
     /// <summary>
@@ -572,7 +572,7 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="range">range to collapse</param>
     /// <returns>tensor shape with the given dimensions collapsed and the rest preserved</returns>
-    public TensorShape CollapseDimensionsToColumn(Range range)
+    public Shape CollapseDimensionsToColumn(Range range)
     {
         var old_length = this.dims.Length;
         var (start, length) = range.GetOffsetAndLength(old_length);
@@ -591,7 +591,7 @@ public readonly struct TensorShape
         new_dims[start + 1] = 1;
         Array.Copy(this.dims, start + length, new_dims, start + 2, old_length - (start + length));
 
-        return new TensorShape(new_dims);
+        return new Shape(new_dims);
     }
 
     /// <summary>
@@ -599,7 +599,7 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="range">range to collapse</param>
     /// <returns>tensor shape with the given dimensions collapsed and the rest preserved</returns>
-    public TensorShape CollapseDimensionsToRow(Range range)
+    public Shape CollapseDimensionsToRow(Range range)
     {
         var old_length = this.dims.Length;
         var (start, length) = range.GetOffsetAndLength(old_length);
@@ -618,7 +618,7 @@ public readonly struct TensorShape
         new_dims[start + 1] = product;
         Array.Copy(this.dims, start + length, new_dims, start + 2, old_length - (start + length));
 
-        return new TensorShape(new_dims);
+        return new Shape(new_dims);
     }
 
     /// <summary>
@@ -626,7 +626,7 @@ public readonly struct TensorShape
     /// </summary>
     /// <param name="target">shape to match</param>
     /// <returns>broadcasted shape</returns>
-    public TensorShape BroadcastTo(TensorShape target)
+    public Shape BroadcastTo(Shape target)
     {
         return BroadcastTo(target, 0, target.Rank); // Broadcast all dims by default
     }
@@ -638,7 +638,7 @@ public readonly struct TensorShape
     /// <param name="start">region to start broadcasting from</param>
     /// <param name="length">length of the region to broadcast</param>
     /// <returns>broadcasted shape</returns>
-    public TensorShape BroadcastTo(TensorShape target, int start, int length)
+    public Shape BroadcastTo(Shape target, int start, int length)
     {
         var sourceDims = this.AsDimensionSpan();
         var sourceStrides = this.strides;
@@ -689,10 +689,10 @@ public readonly struct TensorShape
             }
         }
 
-        return new TensorShape(resultDims, newStrides);
+        return new Shape(resultDims, newStrides);
     }
 
-    public static TensorShape operator +(TensorShape a, TensorShape b) => a.Append(b);
+    public static Shape operator +(Shape a, Shape b) => a.Append(b);
 
     /// <summary>
     /// Convert this shape to a standard array of dimension lengths by copying the dimensions into a new array
@@ -830,7 +830,7 @@ public readonly struct TensorShape
 
     public override bool Equals([NotNullWhen(true)] object? obj)
     {
-        if (obj is TensorShape shape)
+        if (obj is Shape shape)
         {
             if (this.dims.Length != shape.dims.Length)
                 return false;
@@ -872,7 +872,7 @@ public readonly struct TensorShape
         return sb.ToString();
     }
 
-    public static TensorShape Parse(string s, IFormatProvider? provider)
+    public static Shape Parse(string s, IFormatProvider? provider)
     {
         var parts = s.Split(',');
         var dims = new int[parts.Length];
@@ -880,10 +880,10 @@ public readonly struct TensorShape
         {
             dims[i] = int.Parse(parts[i], provider);
         }
-        return new TensorShape(dims);
+        return new Shape(dims);
     }
 
-    public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out TensorShape result)
+    public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Shape result)
     {
         var parts = s?.Split(',');
         if (parts is null)
@@ -900,7 +900,23 @@ public readonly struct TensorShape
                 return false;
             }
         }
-        result = new TensorShape(dims);
+        result = new Shape(dims);
         return true;
+    }
+
+    public static bool operator == (Shape left, Shape right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator != (Shape left, Shape right)
+    {
+        return !left.Equals(right);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator Shape(int[] dimensions)
+    {
+        return new Shape(dimensions);
     }
 }

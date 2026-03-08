@@ -9,14 +9,14 @@ namespace DotML.Network;
 /// </summary>
 public class Nchw2Btd : Reshape
 {
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         input = input.NormalizeRank(4);
         int B = input.Length(0);
         int C = input.Length(1);
         int H = input.Length(2);
         int W = input.Length(3);
-        return new TensorShape(B, H * W, C);
+        return new Shape(B, H * W, C);
     }
 
     public override Tensor<float> Forward(Tensor<float> x) => Forward(x, null);
@@ -31,7 +31,7 @@ public class Nchw2Btd : Reshape
         int W = shape.Length(3);
 
         // Output: [B, H*W, C]
-        var output = Tensor<float>.Zeros(new TensorShape(B, H * W, C));
+        var output = Tensor<float>.Zeros(new Shape(B, H * W, C));
 
         for (int b = 0; b < B; b++)
         {
@@ -105,7 +105,7 @@ public class Btd2Nchw : Reshape
 
     public override void Initialize(IInitializer initializer) { }
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         input = input.NormalizeRank(3); // [B, T, C]
         int B = input.Length(0);
@@ -114,7 +114,7 @@ public class Btd2Nchw : Reshape
 
         if (T != (Rows * Columns))
             throw new Exception($"Shape mismatch, the size of the T ({T}) must be the product of the rows ({Rows}) and columns ({Columns})");
-        return new TensorShape(B, C, Rows, Columns);
+        return new Shape(B, C, Rows, Columns);
     }
 
     public override Tensor<float> Forward(Tensor<float> x) => Forward(x, null);
@@ -130,7 +130,7 @@ public class Btd2Nchw : Reshape
         // Retrieve H, W from context if available (or infer)
         if (T != (Rows * Columns))
             throw new Exception($"Shape mismatch, the size of the T ({T}) must be the product of the rows ({Rows}) and columns ({Columns})");
-        TensorShape targetShape = new TensorShape(B, C, Rows, Columns);
+        Shape targetShape = new Shape(B, C, Rows, Columns);
 
         var output = Tensor<float>.Zeros(targetShape); // [B, C, H, W]
 

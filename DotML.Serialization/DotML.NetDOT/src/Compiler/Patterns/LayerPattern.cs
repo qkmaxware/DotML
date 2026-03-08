@@ -112,7 +112,7 @@ where T:INetworkModule
         }
 
         // If the target is a TensorShape handle that specially 
-        if (targetType == typeof(TensorShape))
+        if (targetType == typeof(Shape))
         {
             var parts = value.Split(',');
             var ints = new int[parts.Length];
@@ -127,7 +127,7 @@ where T:INetworkModule
                     ints[i] = 1;
                 }
             }
-            return new TensorShape(ints);
+            return new Shape(ints);
         }
 
         // If the target is a tuple handle that specifically

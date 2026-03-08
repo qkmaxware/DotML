@@ -343,7 +343,7 @@ public class LearnedDenseVectors<TToken> : IEmbedding<IEnumerable<TToken>, float
         var toks = value.ToList();
 
         var concatLength = this.PositionEncoder?.PositionEncodingLength ?? 0;
-        var shape = new TensorShape(toks.Count, EmbeddingVectorLength + concatLength);
+        var shape = new Shape(toks.Count, EmbeddingVectorLength + concatLength);
         var embedding = Tensor<float>.Zeros(shape);
         int row = 0;
         foreach (var tok in toks)

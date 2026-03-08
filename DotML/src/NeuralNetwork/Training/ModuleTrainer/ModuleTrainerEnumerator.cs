@@ -103,13 +103,13 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
         /// <param name="loss">loss value</param>
         /// <param name="logits">logits from prediction</param>
         /// <param name="truth">output of ground truth or one-hot label</param>
-        public void AddSample(float loss, ReadOnlySpan<float> logits, ReadOnlySpan<float> truth)
+        public void AddSample(float loss, ReadOnlySpan<float> input, ReadOnlySpan<float> logits, ReadOnlySpan<float> truth)
         {
             // Update loss stats
             Loss.AddSample(loss);
 
             foreach (var provider in providers.Values)
-                provider.AddSample(loss, logits, truth);
+                provider.AddSample(loss, input, logits, truth);
 
             // Increase sample count
             SampleCount++;
@@ -342,6 +342,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
             for (var batchIndex = 0; batchIndex < batches; batchIndex++)
             {
+                var inputSpan = batch.SubtensorSpan(batchIndex);
                 var predictedSpan = result.SubtensorSpan(batchIndex);
                 var truthSpan = truth.SubtensorSpan(batchIndex);
                 var loss = lossFunction.Invoke(
@@ -350,7 +351,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
                 );
 
                 // Record statistics to the report
-                report.AddSample(loss, predictedSpan, truthSpan);
+                report.AddSample(loss, inputSpan, predictedSpan, truthSpan);
             }
 
         }
@@ -382,6 +383,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
 
             for (var batchIndex = 0; batchIndex < batches; batchIndex++)
             {
+                var inputSpan = batch.SubtensorSpan(batchIndex);
                 var predictedSpan = result.SubtensorSpan(batchIndex);
                 var truthSpan = truth.SubtensorSpan(batchIndex);
                 var loss = Loss.Invoke(
@@ -390,7 +392,7 @@ public class ModuleTrainingEnumerator: IEnumerator<ModuleTrainingEnumerator.Repo
                 );
 
                 // Record statistics to the report
-                Current.AddSample(loss, predictedSpan, truthSpan);
+                Current.AddSample(loss, inputSpan, predictedSpan, truthSpan);
             }
 
             // Report batch completed progress

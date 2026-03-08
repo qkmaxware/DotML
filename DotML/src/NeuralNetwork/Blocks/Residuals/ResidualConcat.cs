@@ -41,7 +41,7 @@ public class ResidualConcat: ResidualBlock
 
     public ResidualConcat(INetworkModule gx, INetworkModule? residual = null) : this(^1, gx, residual) { }
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         var mainShape = MainPath.ForwardShape(input);
         var resShape = ResidualPath?.ForwardShape(input) ?? input;
@@ -77,7 +77,7 @@ public class ResidualConcat: ResidualBlock
             else
                 outDims[i] = a_shape.Length(i) + b_shape.Length(i);
         }
-        return new TensorShape(outDims);
+        return new Shape(outDims);
     }
 
     protected override Tensor<float> Combine(Tensor<float> output, Tensor<float> residual)
@@ -87,7 +87,7 @@ public class ResidualConcat: ResidualBlock
         return result;
     }
 
-    protected override (Tensor<float> dM, Tensor<float> dR) SplitGradient(Tensor<float> dY, TensorShape mainOutputShape, TensorShape residualOutputShape)
+    protected override (Tensor<float> dM, Tensor<float> dR) SplitGradient(Tensor<float> dY, Shape mainOutputShape, Shape residualOutputShape)
     {
         var len_main = mainOutputShape.Length(Dimension);
         var len_residual = residualOutputShape.Length(Dimension);

@@ -39,7 +39,7 @@ public class SimpleNetFactory
     public INetworkModule Make(BuildSettings settings)
     {   
         // NCHW order
-        var ishape = new TensorShape(settings.ImageChannels, settings.ImageHeight, settings.ImageWidth);
+        var ishape = new Shape(settings.ImageChannels, settings.ImageHeight, settings.ImageWidth);
 
         var activation = settings.ActivationFunction ?? ReLU.Instance;
 

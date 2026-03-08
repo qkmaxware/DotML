@@ -24,8 +24,8 @@ public class DenseLinear : NetworkLayer, IWeightsAndBiasNetworkModule
         this.InputSize = input_size;
         this.Neurons = neurons;
 
-        Weights = Tensor<float>.Zeros(new TensorShape(neurons, input_size));
-        Biases = Tensor<float>.Zeros(new TensorShape(neurons, 1));
+        Weights = Tensor<float>.Zeros(new Shape(neurons, input_size));
+        Biases = Tensor<float>.Zeros(new Shape(neurons, 1));
     }
 
     public override int TrainableParameterCount()
@@ -38,10 +38,10 @@ public class DenseLinear : NetworkLayer, IWeightsAndBiasNetworkModule
         var parameters = this.TrainableParameterCount();
 
         Weights.FillGenerated(() => initializer.RandomWeight(InputSize, OutputSize, parameters));
-        Biases.FillGenerated(() => initializer.RandomWeight(InputSize, OutputSize, parameters));
+        Biases.FillGenerated(() => initializer.RandomBias(InputSize, OutputSize, parameters));
     }
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         // See Forward
         var x2 = Flatten.FlattenNonBatch(input);
@@ -52,7 +52,7 @@ public class DenseLinear : NetworkLayer, IWeightsAndBiasNetworkModule
         for (var i = 0; i < x2.Rank - 1; i++)
             dims[i] = x2.Length(i);
 
-        return new TensorShape(dims);
+        return new Shape(dims);
     }
 
     public override Tensor<float> Forward(Tensor<float> x)
@@ -85,7 +85,7 @@ public class DenseLinear : NetworkLayer, IWeightsAndBiasNetworkModule
         var dW = dyFlat.TransposedMatMul(xFlatT); // [O, N] * [N, F] = [O, F]
 
         // Compute dB = sum_over_batch(dy) => [O, 1]
-        var dB = dy.ReshapeShared(new TensorShape(dy.Shape.Length(0), OutputSize, 1))
+        var dB = dy.ReshapeShared(new Shape(dy.Shape.Length(0), OutputSize, 1))
             .Sum(axis: 0, keepdim: false);                        // [O, 1]
 
         // Compute dx = dy * W^T => [N, F]

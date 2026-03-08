@@ -230,7 +230,7 @@ public class NetworkXmlSerializer
     {
         int g = int.Parse(el.GetAttribute("groups"));
         int[] s = el.GetAttribute("normalized-shape").Split(';', StringSplitOptions.TrimEntries).Select(x => int.Parse(x)).ToArray();
-        return new GroupNorm(g, new TensorShape(s));
+        return new GroupNorm(g, new Shape(s));
     }
 
     public XmlElement Visit(LayerNorm norm, XmlDocument doc)
@@ -242,7 +242,7 @@ public class NetworkXmlSerializer
     public INetworkModule DecodeLayerNorm(XmlElement el)
     {
         int[] s = el.GetAttribute("normalized-shape").Split(';', StringSplitOptions.TrimEntries).Select(x => int.Parse(x)).ToArray();
-        return new LayerNorm(new TensorShape(s));
+        return new LayerNorm(new Shape(s));
     }
 
     public XmlElement Visit(PixelShuffler shuffle, XmlDocument doc)

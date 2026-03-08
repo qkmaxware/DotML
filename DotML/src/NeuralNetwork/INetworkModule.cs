@@ -19,7 +19,7 @@ public interface INetworkModule
     /// </summary>
     /// <param name="input">input tensor shape</param>
     /// <returns>output tensor shape</returns>
-    public TensorShape ForwardShape(TensorShape input);
+    public Shape ForwardShape(Shape input);
 
     /// <summary>
     /// Feed-forward a given tensor to this layer

@@ -24,14 +24,14 @@ public class SoftmaxOutputTest {
     [TestMethod]
     public void TestSoftmax() {
         var layer = new SoftmaxOutput(^2);
-        var X = Tensor<float>.FromFlattenedArray(new TensorShape(5, 1), [
+        var X = Tensor<float>.FromFlattenedArray(new Shape(5, 1), [
             0.6108487248420715f,
             0.9583313465118408f,
             0.11642353981733322f,
             -2.0144927501678467f,
             0.5680017471313477f
         ]);
-        var Y_truth = Tensor<float>.FromFlattenedArray(new TensorShape(5, 1), [
+        var Y_truth = Tensor<float>.FromFlattenedArray(new Shape(5, 1), [
             0.24655473232269287f,
             0.34899815917015076f,
             0.15037901699543f,

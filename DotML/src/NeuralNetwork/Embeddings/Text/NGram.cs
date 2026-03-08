@@ -12,7 +12,7 @@ public class CharacterNGram : IEmbedding<string, int>
     public int N {get; init;}
 
     public int VocabLength => Vocab.Count;
-    public readonly TensorShape TensorShape;
+    public readonly Shape TensorShape;
 
     /// <summary>
     /// Create a new N-Gram embedding with the given window size and vocab
@@ -42,7 +42,7 @@ public class CharacterNGram : IEmbedding<string, int>
         var shape = new int[N];
         for (int i = 0; i < N; i++)
             shape[i] = VocabLength;
-        this.TensorShape = new TensorShape(shape); // This is N-D, should it be a 1D flattened tensor?
+        this.TensorShape = new Shape(shape); // This is N-D, should it be a 1D flattened tensor?
     }
 
     /// <summary>
@@ -110,7 +110,7 @@ public class WordNGram : IEmbedding<string, int>
     public int N {get; init;}
 
     public int VocabLength => Vocab.Count;
-    public readonly TensorShape TensorShape;
+    public readonly Shape TensorShape;
 
     /// <summary>
     /// Create a new N-Gram embedding with the given window size and vocab
@@ -129,7 +129,7 @@ public class WordNGram : IEmbedding<string, int>
         var shape = new int[N];
         for (int i = 0; i < N; i++)
             shape[i] = VocabLength;
-        this.TensorShape = new TensorShape(shape); // This is N-D, should it be a 1D flattened tensor?
+        this.TensorShape = new Shape(shape); // This is N-D, should it be a 1D flattened tensor?
     }
 
     /// <summary>
@@ -203,7 +203,7 @@ public class TokenNGram<TToken> : IEmbedding<IEnumerable<TToken>, int> where TTo
     public int N {get; init;}
 
     public int VocabLength => Vocab.Count;
-    public readonly TensorShape TensorShape;
+    public readonly Shape TensorShape;
 
     /// <summary>
     /// Create a new N-Gram embedding with the given window size and vocab
@@ -222,7 +222,7 @@ public class TokenNGram<TToken> : IEmbedding<IEnumerable<TToken>, int> where TTo
         var shape = new int[N];
         for (int i = 0; i < N; i++)
             shape[i] = VocabLength;
-        this.TensorShape = new TensorShape(shape); // This is N-D, should it be a 1D flattened tensor?
+        this.TensorShape = new Shape(shape); // This is N-D, should it be a 1D flattened tensor?
     }
 
     /// <summary>

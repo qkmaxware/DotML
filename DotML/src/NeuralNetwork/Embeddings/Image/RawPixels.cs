@@ -33,7 +33,7 @@ public class GreyscalePixels:  ImageEmbedding<Colour> {
     }
 
     public override Tensor<float> ToTensor(IImage<Colour> image) {
-        Tensor<float> encoding = Tensor<float>.Defaults(new TensorShape(1, image.Height, image.Width));
+        Tensor<float> encoding = Tensor<float>.Defaults(new Shape(1, image.Height, image.Width));
 
         for (var r = 0; r < image.Height; r++) {
             for (var c = 0; c < image.Width; c++) {
@@ -89,7 +89,7 @@ public class RgbPixels:  ImageEmbedding<Colour> {
     protected float GetBlue(Colour colour) => NormalizePixelValues ? colour.B / 255.0f : colour.B;
 
     public override Tensor<float> ToTensor(IImage<Colour> image) {
-        Tensor<float> encoding = Tensor<float>.Defaults(new TensorShape(3, image.Height, image.Width));
+        Tensor<float> encoding = Tensor<float>.Defaults(new Shape(3, image.Height, image.Width));
 
         for (var r = 0; r < image.Height; r++) {
             for (var c = 0; c < image.Width; c++) {
@@ -159,7 +159,7 @@ public class YCrCbPixels:  ImageEmbedding<Colour> {
     }
 
     public override Tensor<float> ToTensor(IImage<Colour> image) {
-        Tensor<float> encoding = Tensor<float>.Defaults(new TensorShape(3, image.Height, image.Width));
+        Tensor<float> encoding = Tensor<float>.Defaults(new Shape(3, image.Height, image.Width));
 
         for (var r = 0; r < image.Height; r++) {
             for (var c = 0; c < image.Width; c++) {

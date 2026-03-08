@@ -20,17 +20,17 @@ public class ArchitectureBlock : INetworkModule, IBlockVisitable
     /// <summary>
     /// Architecture input shape if network only works with inputs of the given shape
     /// </summary>
-    public TensorShape? RequiredInputShape { get; init; }
+    public Shape? RequiredInputShape { get; init; }
     /// <summary>
     /// Architecture output shape if networks only work with inputs of a given shape
     /// </summary>
-    public TensorShape? OutputShape { get; init; }
+    public Shape? OutputShape { get; init; }
     /// <summary>
     /// The underlying network module that constitutes the network architecture
     /// </summary>
     public INetworkModule RootModule { get; init; }
 
-    public ArchitectureBlock(string name, TensorShape? inputShape, INetworkModule rootModule, string? description = null, Uri? referenceUri = null)
+    public ArchitectureBlock(string name, Shape? inputShape, INetworkModule rootModule, string? description = null, Uri? referenceUri = null)
     {
         Name = name;
         RequiredInputShape = inputShape;
@@ -51,7 +51,7 @@ public class ArchitectureBlock : INetworkModule, IBlockVisitable
         return RootModule.Forward(channels, ctx);
     }
 
-    public TensorShape ForwardShape(TensorShape input)
+    public Shape ForwardShape(Shape input)
     {
         return RootModule.ForwardShape(input);
     }

@@ -67,8 +67,8 @@ public static class TensorExport
     where TNum : INumber<TNum>
     {
         if (!root.TryGetProperty("shape", out var shapeElement) || shapeElement.ValueKind != JsonValueKind.Array)
-            throw new NullReferenceException(nameof(TensorShape));
-        var shape = new TensorShape(shapeElement.EnumerateArray().Select(e => e.GetInt32()).ToArray());
+            throw new NullReferenceException(nameof(Shape));
+        var shape = new Shape(shapeElement.EnumerateArray().Select(e => e.GetInt32()).ToArray());
 
         if (!root.TryGetProperty("data", out var dataElement) || dataElement.ValueKind != JsonValueKind.Array)
             throw new FormatException("Missing or invalid 'data' field");
@@ -80,7 +80,7 @@ public static class TensorExport
 
         return Tensor<TNum>.FromFlattenedArray(shape, flat.ToArray());
     }
-    private static void FlattenJagged<TNum>(JsonElement? jagged, TensorShape shape, int dim_index, List<TNum> output)
+    private static void FlattenJagged<TNum>(JsonElement? jagged, Shape shape, int dim_index, List<TNum> output)
     where TNum:INumber<TNum>
     {
         if (!jagged.HasValue)
@@ -307,7 +307,7 @@ public static class TensorExport
     }
 
 
-    private static void SaveNumpyHeader(BinaryWriter writer, TensorShape Shape, string dtype)
+    private static void SaveNumpyHeader(BinaryWriter writer, Shape Shape, string dtype)
     {
         writer.Write((byte)(93));
         writer.Write(new byte[] { (byte)'N', (byte)'U', (byte)'M', (byte)'P', (byte)'Y' });

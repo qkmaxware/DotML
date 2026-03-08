@@ -164,8 +164,8 @@ public class Binop : BackpropExample
         var trueRange = Distributions.Uniform<float>(True - 0.25f, True);       // True is anything [0.25, 1]
         var falseRange = Distributions.Uniform<float>(False, False + 0.25f);    // False is anything [-1, -0.25]
 
-        var ishape = new TensorShape(2);
-        var oshape = new TensorShape(1);
+        var ishape = new Shape(2);
+        var oshape = new Shape(1);
         ListTrainingDataSource<float> trn = new ListTrainingDataSource<float>(ishape, oshape);
         ListTrainingDataSource<float> val = new ListTrainingDataSource<float>(ishape, oshape);
 

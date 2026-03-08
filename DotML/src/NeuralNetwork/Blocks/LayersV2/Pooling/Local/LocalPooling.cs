@@ -70,7 +70,7 @@ public abstract class LocalPooling2D : LocalPooling
     // Final value aggregation (when combined with accumulate it should cover most use cases)
     protected abstract float Aggregate(float current, int count);
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         var inputWidth = input.Length(^1);
         var inputHeight = input.Length(^2);
@@ -83,7 +83,7 @@ public abstract class LocalPooling2D : LocalPooling
         var outDimensions = input.AsDimensionSpan().ToArray();
         outDimensions[^2] = outputHeight;
         outDimensions[^1] = outputWidth;
-        return new TensorShape(outDimensions);
+        return new Shape(outDimensions);
     }
 
     public override Tensor<float> Forward(Tensor<float> inputs)
@@ -111,7 +111,7 @@ public abstract class LocalPooling2D : LocalPooling
         var outDimensions = inputs.Shape.AsDimensionSpan().ToArray();
         outDimensions[^2] = outputHeight;
         outDimensions[^1] = outputWidth;
-        var outShape = new TensorShape(outDimensions);
+        var outShape = new Shape(outDimensions);
         var output = Tensor<float>.Defaults(outShape);
 
         Span<float> inputSpan = inputs.AsSpan();

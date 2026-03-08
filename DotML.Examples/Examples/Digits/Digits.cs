@@ -113,8 +113,8 @@ public class Digits : BackpropExample
     {
         var rng = Random.Shared;
 
-        var ishape = new TensorShape(1, 32, 32);
-        var oshape = new TensorShape(Classes.Length);
+        var ishape = new Shape(1, 32, 32);
+        var oshape = new Shape(Classes.Length);
         ListTrainingDataSource<float> trn = new ListTrainingDataSource<float>(ishape, oshape);
         ListTrainingDataSource<float> val = new ListTrainingDataSource<float>(ishape, oshape);
 

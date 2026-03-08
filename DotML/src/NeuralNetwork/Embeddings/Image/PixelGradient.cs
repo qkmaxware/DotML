@@ -13,7 +13,7 @@ public abstract class PixelGradient:  ImageEmbedding<Colour> {
     protected abstract float GetTensorValue(int row, int column, IImage<Colour> image);
 
     public override Tensor<float> ToTensor(IImage<Colour> image) {
-        Tensor<float> encoding = Tensor<float>.Defaults(new TensorShape(1, image.Height, image.Width));
+        Tensor<float> encoding = Tensor<float>.Defaults(new Shape(1, image.Height, image.Width));
 
         for (var r = 0; r < image.Height; r++) {
             for (var c = 0; c < image.Width; c++) {

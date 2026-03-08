@@ -108,7 +108,7 @@ public static class SKBitmapExtensions
 
     public static Tensor<float> ToTensor<T>(this T[,] image, Func<T, float> extract)
     {
-        var tensor = Tensor<float>.Defaults(new TensorShape(1, image.GetLength(0), image.GetLength(1)));
+        var tensor = Tensor<float>.Defaults(new Shape(1, image.GetLength(0), image.GetLength(1)));
 
         for (var r = 0; r < tensor.Shape[NCHW.Rows]; r++)
         {
@@ -133,7 +133,7 @@ public static class SKBitmapExtensions
 
         var width = crop.Width;
         var height = crop.Height;
-        var tensor = Tensor<float>.Defaults(new TensorShape(1, height, width)); // NCHW
+        var tensor = Tensor<float>.Defaults(new Shape(1, height, width)); // NCHW
 
         for (var r = 0; r < height; r++)
         {
@@ -193,7 +193,7 @@ public static class SKBitmapExtensions
 
         var width = crop.Width;
         var height = crop.Height;
-        var tensor = Tensor<float>.Defaults(new TensorShape(3, height, width)); // NCHW
+        var tensor = Tensor<float>.Defaults(new Shape(3, height, width)); // NCHW
 
         const int R = 0;
         const int G = 1;

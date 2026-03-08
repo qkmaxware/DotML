@@ -97,7 +97,7 @@ public class LeNetFactory
     {
         var activation = settings.Activation ?? ReLU.Instance;
 
-        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+        var ishape = new Shape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
 
         return new ArchitectureBlock(
             name: "LeNetV1",
@@ -154,7 +154,7 @@ public class LeNetFactory
         int fullyConnectedNeurons1  = Math.Max(120, (int)(120 * scalingFactor));
         int fullyConnectedNeurons2  = Math.Max(84, (int)(84 * scalingFactor));
 
-        var ishape = new TensorShape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
+        var ishape = new Shape(settings.ImgChannels, settings.ImgHeight, settings.ImgWidth);
 
         return new ArchitectureBlock(
             name: "LeNetV5",
@@ -214,7 +214,7 @@ public class LeNetFactory
     {
         var activation = settings.Activation ?? ReLU.Instance;
 
-        var ishape = new TensorShape(
+        var ishape = new Shape(
             settings.ImgChannels,
             settings.ImgHeight,
             settings.ImgWidth

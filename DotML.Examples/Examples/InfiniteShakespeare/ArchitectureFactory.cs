@@ -105,7 +105,7 @@ public class ArchitectureFactory
 
         return new ArchitectureBlock(
             name: "CNN Next-Word Prediction",
-            inputShape: new DotML.TensorShape(1, 1, WindowSize, EmbeddingSize), // batch is placeholder
+            inputShape: new DotML.Shape(1, 1, WindowSize, EmbeddingSize), // batch is placeholder
             rootModule: new SequentialBlock([
                 temporalBlock,
                 learningBlock,

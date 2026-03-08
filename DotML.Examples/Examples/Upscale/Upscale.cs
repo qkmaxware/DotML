@@ -225,9 +225,9 @@ public override void ProcessRawData()
     {
         var rng = Random.Shared;
 
-        var ishape = new TensorShape(1, LowResTileHeight, LowResTileWidth);
+        var ishape = new Shape(1, LowResTileHeight, LowResTileWidth);
         var iElements = ishape.LogicalElementCount();
-        var oshape = new TensorShape(1, HighResTileHeight, HighResTileWidth);
+        var oshape = new Shape(1, HighResTileHeight, HighResTileWidth);
         var oElements = oshape.LogicalElementCount();
         ListTrainingDataSource<float> trn = new ListTrainingDataSource<float>(ishape, oshape);
         ListTrainingDataSource<float> val = new ListTrainingDataSource<float>(ishape, oshape);

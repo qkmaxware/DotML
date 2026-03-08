@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace DotML.Network.Training;
 
 /// <summary>
@@ -14,9 +16,10 @@ public interface IMetricsProvider
     /// Add a sample to the cached metrics
     /// </summary>
     /// <param name="loss">loss</param>
+    /// <param name="input">model input</param>
     /// <param name="predicted">predicted values</param>
     /// <param name="truth">ground truth values</param>
-    public void AddSample(float loss, ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth);
+    public void AddSample(float loss, ReadOnlySpan<float> input, ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth);
 }
 
 /// <summary>
@@ -149,7 +152,7 @@ public class AccuracyMetricsProvider : IMetricsProvider
                 confusionMatrix[i, j] = 0;
     }
 
-    public void AddSample(float loss, ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth)
+    public void AddSample(float loss, ReadOnlySpan<float> input, ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth)
     {
         this.sampleCount++;
 
@@ -168,7 +171,7 @@ public class AccuracyMetricsProvider : IMetricsProvider
         confusionMatrix[trueClass, predictedClass]++;
     }
 
-    private static int ArgMax(ReadOnlySpan<float> vector)
+    internal static int ArgMax(ReadOnlySpan<float> vector)
     {
         int maxIndex = 0;
         float maxVal = vector[0];
@@ -182,6 +185,41 @@ public class AccuracyMetricsProvider : IMetricsProvider
         }
         return maxIndex;
     }
+}
+
+public class ConfusionListProvider : IMetricsProvider
+{
+    private Dictionary<int, List<string>> confusion = new Dictionary<int, List<string>>();
+
+    public void AddSample(float loss, ReadOnlySpan<float> input, ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth)
+    {
+        int predictedClass = AccuracyMetricsProvider.ArgMax(predicted);
+        int trueClass = AccuracyMetricsProvider.ArgMax(truth);
+        if (predictedClass == trueClass)
+            return;
+
+        if (!confusion.TryGetValue(predictedClass, out var lst))
+        {
+            lst = new List<string>();
+            confusion[predictedClass] = lst;
+        }
+
+        StringBuilder sb = new StringBuilder(input.Length * 2);
+        for (var i = 0; i < input.Length; i++)
+        {
+            if (i == 0)
+                sb.Append(',');
+            sb.Append(input[i]);
+        }
+        lst.Add(sb.ToString());
+    }
+
+    public void Reset()
+    {
+        confusion.Clear();
+    }
+
+    
 }
 
 /// <summary>
@@ -207,7 +245,7 @@ public class SignalToNoiseProvider : IMetricsProvider
         DecibelPSNR.Reset();
     }
 
-    public void AddSample(float loss, ReadOnlySpan<float> experimental, ReadOnlySpan<float> truth)
+    public void AddSample(float loss, ReadOnlySpan<float> input, ReadOnlySpan<float> experimental, ReadOnlySpan<float> truth)
     {
         var N = Math.Min(experimental.Length, truth.Length);
         if (N == 0)
@@ -255,7 +293,6 @@ public class SignalToNoiseProvider : IMetricsProvider
     }
 }
 
-
 /// <summary>
 /// Computes SSIM for single-channel (Y) images.
 /// Compatible with flattened 1HW row-major spans.
@@ -295,7 +332,7 @@ public class StructuralSimilarityIndexProvider : IMetricsProvider
     /// <param name="loss">loss (can be ignored here)</param>
     /// <param name="predicted">predicted Y channel span</param>
     /// <param name="truth">ground truth Y channel span</param>
-    public void AddSample(float loss, ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth)
+    public void AddSample(float loss, ReadOnlySpan<float> input, ReadOnlySpan<float> predicted, ReadOnlySpan<float> truth)
     {
         // Ensure spans are the same length
         var len = Math.Min(predicted.Length, truth.Length);

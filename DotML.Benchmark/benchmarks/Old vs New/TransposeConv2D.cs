@@ -22,7 +22,7 @@ public class CompareTransposeConv2D
     public int OUT_CHANNELS;
     #endregion
 
-    private TensorShape ishape;
+    private Shape ishape;
     private Tensor<float> inputTensor;
     private Tensor<float> outputTensor;
 
@@ -30,7 +30,7 @@ public class CompareTransposeConv2D
     public void Setup()
     {
         var generator = new Random();
-        ishape = new TensorShape(BATCHES, CHANNELS, ROWS, COLUMNS);
+        ishape = new Shape(BATCHES, CHANNELS, ROWS, COLUMNS);
         var shape4 = new Shape4D(BATCHES, CHANNELS, ROWS, COLUMNS);
 
         var updated_layer = new TransposeConv2D(

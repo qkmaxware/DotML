@@ -97,7 +97,7 @@ public struct Shape4D : IShape {
 
     public override string ToString() => $"{Batches}x{Channels}x{Rows}x{Columns}";
 
-    public static implicit operator TensorShape(Shape4D shape) => new TensorShape([shape.Batches, shape.Channels, shape.Rows, shape.Columns]);
+    public static implicit operator Shape(Shape4D shape) => new Shape([shape.Batches, shape.Channels, shape.Rows, shape.Columns]);
 
     public int Length(int index) => index switch
     {
@@ -175,7 +175,7 @@ public struct Shape3D : IShape {
 
     public override string ToString() => $"{Channels}x{Rows}x{Columns}";
 
-    public static implicit operator TensorShape(Shape3D shape) => new TensorShape([shape.Channels, shape.Rows, shape.Columns]);
+    public static implicit operator Shape(Shape3D shape) => new Shape([shape.Channels, shape.Rows, shape.Columns]);
 
     public int Length(int index) => index switch
     {
@@ -236,7 +236,7 @@ public struct Shape2D : IShape {
 
     public override string ToString() => $"{Rows}x{Columns}";
 
-    public static implicit operator TensorShape(Shape2D shape) => new TensorShape([shape.Rows, shape.Columns]);
+    public static implicit operator Shape(Shape2D shape) => new Shape([shape.Rows, shape.Columns]);
 
     public int Length(int index) => index switch
     {

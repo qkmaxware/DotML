@@ -30,12 +30,12 @@ public class Center2D : NetworkLayer
 
     public override TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg) => visitor.Visit(this, arg);
 
-    public override TensorShape ForwardShape(TensorShape input)
+    public override Shape ForwardShape(Shape input)
     {
         var dims = input.EnsureRank(2).AsDimensionSpan().ToArray();
         dims[^2] = TargetRows;
         dims[^1] = TargetColumns;
-        return new TensorShape(dims);
+        return new Shape(dims);
     }
 
     public override Tensor<float> Forward(Tensor<float> channels)

@@ -19,9 +19,9 @@ where TNum : INumber<TNum>
 {
     private readonly TNum[] elements;
     private readonly int offset;
-    public readonly TensorShape Shape;
+    public readonly Shape Shape;
 
-    public TensorView(TensorShape shape, TNum[] data, int offset)
+    public TensorView(Shape shape, TNum[] data, int offset)
     {
         this.elements = data;
         this.offset = offset;
@@ -128,7 +128,7 @@ where TNum : INumber<TNum>
     /// <summary>
     /// Shape of the tensor
     /// </summary>
-    public TensorShape Shape
+    public Shape Shape
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get;
@@ -141,7 +141,7 @@ where TNum : INumber<TNum>
     /// Create a new tensor with the given shape and all its elements set to the default value of TNum
     /// </summary>
     /// <param name="shape">tensor shape</param>
-    private Tensor(TensorShape shape)
+    private Tensor(Shape shape)
     {
         this.Shape = shape;
         this.elements = new TNum[shape.LogicalElementCount()];
@@ -152,7 +152,7 @@ where TNum : INumber<TNum>
     /// </summary>
     /// <param name="shape">tensor shape</param>
     /// <param name="elements">tensor elements</param>
-    private Tensor(TensorShape shape, TNum[] elements)
+    private Tensor(Shape shape, TNum[] elements)
     {
         this.Shape = shape;
         this.elements = elements;
@@ -164,7 +164,7 @@ where TNum : INumber<TNum>
     /// <returns>tensor</returns>
     public static Tensor<TNum> Empty()
     {
-        return new Tensor<TNum>(new TensorShape());
+        return new Tensor<TNum>(Shape.Scalar);
     }
 
     /// <summary>
@@ -172,7 +172,7 @@ where TNum : INumber<TNum>
     /// </summary>
     /// <param name="shape">tensor shape</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> Defaults(TensorShape shape)
+    public static Tensor<TNum> Defaults(Shape shape)
     {
         shape = shape.CloneDimensions();
         TNum[] elems = new TNum[shape.LogicalElementCount()];
@@ -184,7 +184,7 @@ where TNum : INumber<TNum>
     /// </summary>
     /// <param name="shape">tensor shape</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> Zeros(TensorShape shape)
+    public static Tensor<TNum> Zeros(Shape shape)
     {
         shape = shape.CloneDimensions();
         TNum[] elems = new TNum[shape.LogicalElementCount()];
@@ -208,7 +208,7 @@ where TNum : INumber<TNum>
     /// </summary>
     /// <param name="shape">tensor shape</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> Ones(TensorShape shape)
+    public static Tensor<TNum> Ones(Shape shape)
     {
         shape = shape.CloneDimensions();
         TNum[] elems = new TNum[shape.LogicalElementCount()];
@@ -232,7 +232,7 @@ where TNum : INumber<TNum>
     /// <param name="shape">tensor shape</param>
     /// <param name="value">element value</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> ConstantValued(TensorShape shape, TNum value)
+    public static Tensor<TNum> ConstantValued(Shape shape, TNum value)
     {
         shape = shape.CloneDimensions();
         TNum[] elems = new TNum[shape.LogicalElementCount()];
@@ -246,7 +246,7 @@ where TNum : INumber<TNum>
     /// <param name="shape">tensor shape</param>
     /// <param name="dropoutRate">dropout rate as a normalized percentage</param>
     /// <returns>binary mask tensor</returns>
-    public static Tensor<TNum> Mask(TensorShape shape, double dropoutRate)
+    public static Tensor<TNum> Mask(Shape shape, double dropoutRate)
     {
         var tensor = Tensor<TNum>.Defaults(shape);
         var rng = System.Random.Shared;
@@ -262,7 +262,7 @@ where TNum : INumber<TNum>
     /// <param name="shape">tensor shape</param>
     /// <param name="values">element values</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> FromFlattenedArray(TensorShape shape, ReadOnlySpan<TNum> values)
+    public static Tensor<TNum> FromFlattenedArray(Shape shape, ReadOnlySpan<TNum> values)
     {
         shape = shape.CloneDimensions();
         TNum[] elems = new TNum[shape.LogicalElementCount()];
@@ -276,7 +276,7 @@ where TNum : INumber<TNum>
     /// <param name="shape">tensor shape</param>
     /// <param name="values">element values</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> FromFlattenedArray(TensorShape shape, TNum[] values)
+    public static Tensor<TNum> FromFlattenedArray(Shape shape, TNum[] values)
     {
         if (shape.StorageElementCount() != values.Length)
             throw new ArgumentException($"Array length {values.Length} does not match the number of elements required by the shape {shape} ({shape.StorageElementCount()} elements)");
@@ -305,7 +305,7 @@ where TNum : INumber<TNum>
 
         // Both Tensor & rectangular array elements are stored in row-major order so we can just copy the values
         var vspan = MemoryMarshal.CreateSpan(ref Unsafe.As<byte, TNum>(ref MemoryMarshal.GetArrayDataReference(values)), values.Length);
-        var tensor = Tensor<TNum>.Defaults(new TensorShape(shape));
+        var tensor = Tensor<TNum>.Defaults(new Shape(shape));
         vspan.CopyTo(tensor.elements);
         return tensor;
     }
@@ -342,7 +342,7 @@ where TNum : INumber<TNum>
         GetJaggedShape(values, shape, 0);
 
         // Flatten and copy elements
-        var tensor_shape = new TensorShape(shape.ToArray());
+        var tensor_shape = new Shape(shape.ToArray());
         var tensor_elements = tensor_shape.LogicalElementCount();
         List<TNum> flat = new List<TNum>(tensor_elements); FlattenJagged(values, tensor_shape, 0, flat);
         if (flat.Count != tensor_elements)
@@ -394,7 +394,7 @@ where TNum : INumber<TNum>
             GetJaggedShape(child, shape, dim_index + 1);
         }
     }
-    private static void FlattenJagged(object? jagged, TensorShape shape, int dim_index, List<TNum> output)
+    private static void FlattenJagged(object? jagged, Shape shape, int dim_index, List<TNum> output)
     {
         if (jagged is Array arr)
         {
@@ -429,7 +429,7 @@ where TNum : INumber<TNum>
     /// </summary>
     /// <param name="shape">tensor shape</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> Generate(TensorShape shape, Func<TNum> generator)
+    public static Tensor<TNum> Generate(Shape shape, Func<TNum> generator)
     {
         shape = shape.CloneDimensions();
         TNum[] elems = new TNum[shape.LogicalElementCount()];
@@ -447,14 +447,14 @@ where TNum : INumber<TNum>
     /// <param name="distribution">probability distribution</param>
     /// <returns>tensor</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Tensor<TNum> Random(TensorShape shape, IProbabilityDistribution<TNum> distribution) => Generate(shape, distribution.Sample);
+    public static Tensor<TNum> Random(Shape shape, IProbabilityDistribution<TNum> distribution) => Generate(shape, distribution.Sample);
 
     /// <summary>
     /// Create a tensor of the given shape with elemements set to 0 except for the diagonal (same indices) set to 1
     /// </summary>
     /// <param name="shape">tensor shape</param>
     /// <returns>tensor</returns>
-    public static Tensor<TNum> Identity(TensorShape shape)
+    public static Tensor<TNum> Identity(Shape shape)
     {
         shape = shape.CloneDimensions();
         TNum[] elems = new TNum[shape.LogicalElementCount()];
@@ -479,7 +479,7 @@ where TNum : INumber<TNum>
     /// <returns>tensor</returns>
     public static Tensor<TNum> Row(Span<TNum> values)
     {
-        return Tensor<TNum>.FromFlattenedArray(new TensorShape(1, values.Length), values);
+        return Tensor<TNum>.FromFlattenedArray(new Shape(1, values.Length), values);
     }
 
     /// <summary>
@@ -489,7 +489,7 @@ where TNum : INumber<TNum>
     /// <returns>tensor</returns>
     public static Tensor<TNum> Column(Span<TNum> values)
     {
-        return Tensor<TNum>.FromFlattenedArray(new TensorShape(values.Length, 1), values);
+        return Tensor<TNum>.FromFlattenedArray(new Shape(values.Length, 1), values);
     }
 
     /// <summary>
@@ -499,7 +499,7 @@ where TNum : INumber<TNum>
     /// <returns>tensor</returns>
     public static Tensor<TNum> Vec(Span<TNum> values)
     {
-        return Tensor<TNum>.FromFlattenedArray(new TensorShape(values.Length), values);
+        return Tensor<TNum>.FromFlattenedArray(new Shape(values.Length), values);
     }
 
     /// <summary>
@@ -694,7 +694,7 @@ where TNum : INumber<TNum>
     /// <param name="shape">new shape</param>
     /// <returns>reshaped tensor</returns>
     /// <exception cref="Exception">thrown if the number of elements in the new shape do not match the current number of elements</exception>
-    public Tensor<TNum> Reshape(TensorShape shape)
+    public Tensor<TNum> Reshape(Shape shape)
     {
         var element_count = shape.StorageElementCount();
         if (element_count != this.elements.Length)
@@ -708,7 +708,7 @@ where TNum : INumber<TNum>
     /// <param name="shape">new shape</param>
     /// <returns>reshaped tensor</returns>
     /// <exception cref="Exception">thrown if the number of elements in the new shape do not match the current number of elements</exception>
-    public void ReshapeInplace(TensorShape shape)
+    public void ReshapeInplace(Shape shape)
     {
         var element_count = shape.StorageElementCount();
         if (element_count != this.elements.Length)
@@ -722,7 +722,7 @@ where TNum : INumber<TNum>
     /// <param name="shape">new shape</param>
     /// <returns>reshaped tensor</returns>
     /// <exception cref="Exception">thrown if the number of elements in the new shape do not match the current number of elements</exception>
-    public Tensor<TNum> ReshapeShared(TensorShape shape)
+    public Tensor<TNum> ReshapeShared(Shape shape)
     {
         var element_count = shape.StorageElementCount();
         if (element_count != this.elements.Length)
@@ -1889,7 +1889,7 @@ where TNum : INumber<TNum>
         int cols = b_cols;
         int innerDim = a_cols;
 
-        var result = Tensor<TNum>.Zeros(new TensorShape(rows, cols));
+        var result = Tensor<TNum>.Zeros(new Shape(rows, cols));
         var r_span = result.AsSpan();
 
         MatMul(a_span, a_rows, a_cols, b_span, b_rows, b_cols, r_span);
@@ -1916,7 +1916,7 @@ where TNum : INumber<TNum>
             throw new ArithmeticException($"Incompatible shapes for Aᵗ * B: A[{m},{k}]ᵗ * B[{b_m},{n}]");
 
         // Result: [K, N]
-        var result = Tensor<TNum>.Zeros(new TensorShape(k, n));
+        var result = Tensor<TNum>.Zeros(new Shape(k, n));
         var aSpan = a.AsSpan();        // [M x K], row-major
         var bSpan = other.AsSpan();    // [M x N], row-major
         var resSpan = result.AsSpan(); // [K x N], row-major
@@ -1980,7 +1980,7 @@ where TNum : INumber<TNum>
         int rows = this.Shape.Length(^2);
         int innerDim = vector.Length;
 
-        var mul = Tensor<TNum>.Zeros(new TensorShape(rows));
+        var mul = Tensor<TNum>.Zeros(new Shape(rows));
         var result = mul.AsSpan();
 
         if (!bias.TryCopyTo(result))
@@ -2099,7 +2099,7 @@ where TNum : INumber<TNum>
             shape[i] = other.Shape.Length(i);
         }
 
-        var result = Tensor<TNum>.Zeros(new TensorShape(shape));
+        var result = Tensor<TNum>.Zeros(new Shape(shape));
         var r_span = result.AsSpan();
         var r_batch_size = rows * cols;
 
@@ -2182,7 +2182,7 @@ where TNum : INumber<TNum>
         }
     }
 
-    private static TensorShape ComputeMatMulBroadcastShape(TensorShape a, TensorShape b)
+    private static Shape ComputeMatMulBroadcastShape(Shape a, Shape b)
     {
         // Assume a: [..., M, K], b: [..., K, N]
         // First, check if ranks are at least 2
@@ -2227,7 +2227,7 @@ where TNum : INumber<TNum>
         resultBatchDims[^2] = M;
         resultBatchDims[^1] = N;
 
-        return new TensorShape(resultBatchDims);
+        return new Shape(resultBatchDims);
     }
     /// <summary>
     /// Perform batched matrix multiplication. Batch dimensions must be broadcastable
@@ -2278,7 +2278,7 @@ where TNum : INumber<TNum>
             r_count *= dim_length;
         }
         if (r_count == 0)
-            return new Tensor<TNum>(new TensorShape(r_shape), Array.Empty<TNum>());
+            return new Tensor<TNum>(new Shape(r_shape), Array.Empty<TNum>());
 
         ReadOnlySpan<int> a_strides = a.Shape.AsStrideSpan();
         ReadOnlySpan<int> b_strides = b.Shape.AsStrideSpan();
@@ -2394,7 +2394,7 @@ where TNum : INumber<TNum>
         }
 
         // Done
-        return new Tensor<TNum>(new TensorShape(r_shape), r_values);
+        return new Tensor<TNum>(new Shape(r_shape), r_values);
     }
 
     /// <summary>
@@ -2452,7 +2452,7 @@ where TNum : INumber<TNum>
         if (outHeight <= 0 || outWidth <= 0)
             throw new ArgumentException("Invalid output dimensions. Check padding, stride, and dilation.");
 
-        var outputShape = new TensorShape(batch, outChannels, outHeight, outWidth);
+        var outputShape = new Shape(batch, outChannels, outHeight, outWidth);
         var outputTensor = Tensor<TNum>.Defaults(outputShape);
         TNum[] outputData = outputTensor.elements;
 
@@ -2615,7 +2615,7 @@ where TNum : INumber<TNum>
         var outHeight = (inHeight - 1) * strideY - inPadTop - inPadBottom + dilationY * (kernelHeight - 1) + 1 + outPadTop + outPadBottom;
         var outWidth = (inWidth - 1) * strideX - inPadLeft - inPadRight + dilationX * (kernelWidth - 1) + 1 + outPadLeft + outPadRight;
 
-        var outputShape = new TensorShape(batch, outChannels, outHeight, outWidth);
+        var outputShape = new Shape(batch, outChannels, outHeight, outWidth);
         var outputBatchStride = outputShape.Stride(0);
         var outputChannelStride = outputShape.Stride(1);
         var outputTensor = Tensor<TNum>.Defaults(outputShape);
@@ -3011,7 +3011,7 @@ where TNum : INumber<TNum>
                 throw new ArgumentException($"Padding for axis {i} results in invalid dimension length, final dimension length must be a positive integer");
         }
 
-        var result = Tensor<TNum>.ConstantValued(new TensorShape(paddedShape), padValue);
+        var result = Tensor<TNum>.ConstantValued(new Shape(paddedShape), padValue);
 
         Span<int> destIndices = stackalloc int[rank];
 
@@ -3094,7 +3094,7 @@ where TNum : INumber<TNum>
         }
 
         TNum[] resultData = new TNum[sliceElementCount];
-        TensorShape resultShape = new TensorShape(normalizedRanges.Select((x, i) => x.End.Value - x.Start.Value).ToArray());
+        Shape resultShape = new Shape(normalizedRanges.Select((x, i) => x.End.Value - x.Start.Value).ToArray());
         Tensor<TNum> result = new Tensor<TNum>(resultShape, resultData);
 
         Span<int> sourceIndex = stackalloc int[rank];
@@ -3253,7 +3253,7 @@ where TNum : INumber<TNum>
             }
         }
 
-        TensorShape resultShape = new TensorShape(normalizedRanges.Select((x, i) => x.End.Value - x.Start.Value).ToArray());
+        Shape resultShape = new Shape(normalizedRanges.Select((x, i) => x.End.Value - x.Start.Value).ToArray());
         return new TensorView<TNum>(resultShape, this.elements, offset);
     }
 
@@ -3302,7 +3302,7 @@ where TNum : INumber<TNum>
             }
         }
 
-        var resultShape = new TensorShape(reducedShape);
+        var resultShape = new Shape(reducedShape);
         var result = Tensor<TAccumulate>.ConstantValued(resultShape, seed);
         Span<TAccumulate> resultElements = result.elements;
 
@@ -3387,7 +3387,7 @@ where TNum : INumber<TNum>
             }
         }
 
-        var resultShape = new TensorShape(reducedShape);
+        var resultShape = new Shape(reducedShape);
         var result = Tensor<TAccumulate>.ConstantValued(resultShape, seed);
         Span<TAccumulate> resultElements = result.elements;
 
@@ -3493,7 +3493,7 @@ where TNum : INumber<TNum>
             }
         }
 
-        var output = Tensor<TNum>.Zeros(new TensorShape(newShape));
+        var output = Tensor<TNum>.Zeros(new Shape(newShape));
         var input = this.AsSpan();
         var outputSpan = output.AsSpan();
 
@@ -3560,7 +3560,7 @@ where TNum : INumber<TNum>
             }
         }
 
-        var outShape = new TensorShape(outShapeArr);
+        var outShape = new Shape(outShapeArr);
         var result = Tensor<TNum>.Zeros(outShape);
 
         // Get strides
@@ -3806,7 +3806,7 @@ where TNum : INumber<TNum>
         var strs = strides.ToArray();
         (dims[a], dims[b]) = (dims[b], dims[a]);    // Swap dim sizes
         (strs[a], strs[b]) = (strs[b], strs[a]);    // Swap strides
-        var newShape = new TensorShape(dims, strs); // Copy strides too
+        var newShape = new Shape(dims, strs); // Copy strides too
 
         // Precompute strides
         int srcStrideA = strides[a], destStrideA = strs[a];
@@ -3877,7 +3877,7 @@ where TNum : INumber<TNum>
             }
         }
 
-        return new Tensor<TNum>(new TensorShape(self_shape), results);
+        return new Tensor<TNum>(new Shape(self_shape), results);
     }
 
     /// <summary>
@@ -3907,7 +3907,7 @@ where TNum : INumber<TNum>
         }
 
         // Do copying and reorganizing
-        var result = Tensor<TNum>.Defaults(new TensorShape(new_shape));
+        var result = Tensor<TNum>.Defaults(new Shape(new_shape));
         Span<int> transposed_indices = stackalloc int[rank];
 
         var ienumerator = Shape.CreateIndexEnumerator();
@@ -4083,7 +4083,7 @@ where TNum : INumber<TNum>
             else
                 outDims[i] = a_shape.Length(i) + b_shape.Length(i);
         }
-        var outShape = new TensorShape(outDims);
+        var outShape = new Shape(outDims);
 
         // Concatenate
         var outTensor = Tensor<TNum>.Defaults(outShape);
@@ -4383,7 +4383,7 @@ where TNum : INumber<TNum>
         var shape = this.Shape;
         var dims = shape.AsDimensionEnumerable();
         var newDims = dims.Where(d => d != 1).ToArray();
-        return this.ReshapeShared(new TensorShape(newDims));
+        return this.ReshapeShared(new Shape(newDims));
     }
 
     /// <summary>
@@ -4406,7 +4406,7 @@ where TNum : INumber<TNum>
         if (positiveIndex < dims.Length - 1)
             dims.Slice(positiveIndex + 1).CopyTo(newDims.AsSpan(positiveIndex));
 
-        return this.ReshapeShared(new TensorShape(newDims));
+        return this.ReshapeShared(new Shape(newDims));
     }
 
     /// <summary>
@@ -4434,7 +4434,7 @@ where TNum : INumber<TNum>
         if (positiveIndex < dims.Length)
             dims.Slice(positiveIndex).CopyTo(newDims.AsSpan(positiveIndex + 1));
 
-        return this.ReshapeShared(new TensorShape(newDims));
+        return this.ReshapeShared(new Shape(newDims));
     }
 
     /// <summary>
@@ -4480,7 +4480,7 @@ where TNum : INumber<TNum>
             }
         }
 
-        return this.ReshapeShared(new TensorShape(newDims));
+        return this.ReshapeShared(new Shape(newDims));
     }
 
     /// <summary>
@@ -4498,7 +4498,7 @@ where TNum : INumber<TNum>
             throw new ArgumentOutOfRangeException(nameof(range), $"Range is invalid for a tensor of rank {shape.Rank}");
 
         var newDims = dims.Where((dim, index) => index < start || index >= start + length || dim != 1).ToArray();
-        return this.ReshapeShared(new TensorShape(newDims));
+        return this.ReshapeShared(new Shape(newDims));
     }
 
     /// <summary>
@@ -4551,7 +4551,7 @@ where TNum : INumber<TNum>
             }
         }
 
-        return this.ReshapeShared(new TensorShape(newDims));
+        return this.ReshapeShared(new Shape(newDims));
     }
 
     /// <summary>
