@@ -8,9 +8,9 @@ namespace DotML.Cli.Embeddings;
 /// An embedding that must be provided by a file and not accessible via standard input
 /// </summary>
 public abstract class FileOnlyEmbedding : IEmbedder {
-    public abstract BatchedFeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, IEnumerable<FileInfo> files);
+    public abstract Tensor<float> CreateEmbedding(INetworkModule @for, FileInfo file);
 
-    public BatchedFeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, string raw) {
+    public Tensor<float> CreateEmbedding(INetworkModule @for, string raw) {
         throw new NotSupportedException($"{GetType()} embedding doesn't support data from stdin.");
     }
 }
@@ -20,12 +20,7 @@ public abstract class FileOnlyEmbedding : IEmbedder {
 /// </summary>
 public abstract class ImageEmbedding : FileOnlyEmbedding {
 
-    public override BatchedFeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, IEnumerable<FileInfo> files) {
-        var batches = files.Select(file => CreateEmbedding(@for, file)).ToArray();
-        return new BatchedFeatureSet<float>(batches);
-    }
-
-    public FeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, FileInfo file) {
+    public override Tensor<float> CreateEmbedding(INetworkModule @for, FileInfo file) {
         using var original = SKBitmap.FromImage(SKImage.FromEncodedData(file.FullName));
         using var processed = PreprocessImage(@for, original);
         var features = CreateEmbedding(@for, processed);
@@ -33,10 +28,12 @@ public abstract class ImageEmbedding : FileOnlyEmbedding {
         return postprocessed;
     }
 
-    public virtual SKBitmap PreprocessImage(FeedforwardNetwork @for, SKBitmap original) {
+    public virtual SKBitmap PreprocessImage(INetworkModule @for, SKBitmap original) {
         // Crop image to match aspect ratio
         var aspect = (double)original.Width / (double)original.Height;
-        var ishape = @for.InputShape;
+        var ishape = @for is ArchitectureBlock arch && arch.RequiredInputShape.HasValue 
+            ? new Shape3D(arch.RequiredInputShape.Value.LengthOrDefault(^3), arch.RequiredInputShape.Value.LengthOrDefault(^2), arch.RequiredInputShape.Value.LengthOrDefault(^1)) 
+            : new Shape3D(3, original.Height, original.Width);
 
         var desired_aspect = ishape.Columns / ishape.Rows;
         var cropWidth = original.Width;
@@ -70,9 +67,9 @@ public abstract class ImageEmbedding : FileOnlyEmbedding {
         return resized;
     }
 
-    public abstract FeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, SKBitmap bitmap);
+    public abstract Tensor<float> CreateEmbedding(INetworkModule @for, SKBitmap bitmap);
 
-    public virtual FeatureSet<float> Postprocess(FeatureSet<float> features) {
+    public virtual Tensor<float> Postprocess(Tensor<float> features) {
         return features;
     }
 

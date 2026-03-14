@@ -1,3 +1,7 @@
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+using Qkmaxware.Terminal.Layout;
+
 namespace DotML.Cli.Decodings;
 
 /// <summary>
@@ -11,10 +15,13 @@ public class Vector : IDecoder {
             this.vectors = vectors;
         }
 
-        public void ConsoleOutput() {
-            foreach (var vector in vectors) {
-                Console.WriteLine(vector.ToString());
+        public IElement ConsoleOutput() {
+            var box = new VBox();
+            foreach (var vector in vectors)
+            {
+                box.Add(new Paragraph(vector.ToString()));
             }
+            return box;
         }
 
         public IEnumerable<FileInfo> FileOutput(FileInfo file) {
@@ -29,15 +36,19 @@ public class Vector : IDecoder {
         public void Dispose() { }
     }
 
-    public IDecodedResult Decode(BatchedFeatureSet<float> output) {
+    public IDecodedResult Decode(Tensor<float> output) {
+        var batches = 1;
+        for (var i = 0; i < output.Shape.Rank - 1; i++)
+            batches *= output.Shape.Length(i);
+
+        var size = output.Shape.Length(^1);
+
+        List<Vec<float>> floats = new List<Vec<float>>();
+        for (var i = 0; i < batches; i++)
+            floats.Add(new Vec<float>(output.AsSpan(i * size, size).ToArray()));
+
         return new Result(
-            output.Select(
-                b => Vec<float>.Wrap(
-                    b.SelectMany(
-                        f => f.FlattenRows()
-                    ).ToArray()
-                )
-            ).ToArray()
+            floats.ToArray()
         );
     }
 }

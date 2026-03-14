@@ -25,9 +25,9 @@ public interface INotifierFactory {
 }
 
 public interface INotifier {
-    public void NotifyTrainingStarted(FeedforwardNetwork network);
-    public void NotifyTrainingStep(FeedforwardNetwork network, int epoch, int epochs, IValidationReport status);
-    public void NotifyNewBest(FeedforwardNetwork network, int epoch, int epochs, IValidationReport status);
-    public void NotifyTrainingDone(FeedforwardNetwork network, int epochs, IValidationReport final_status);
-    public void NotifyTrainingCancelled(FeedforwardNetwork network, int epochs);
+    public void NotifyTrainingStarted(INetworkModule network);
+    public void NotifyTrainingStep(INetworkModule network, int epoch, int epochs, IValidationReport status);
+    public void NotifyNewBest(INetworkModule network, int epoch, int epochs, IValidationReport status);
+    public void NotifyTrainingDone(INetworkModule network, int epochs, IValidationReport final_status);
+    public void NotifyTrainingCancelled(INetworkModule network, int epochs);
 }

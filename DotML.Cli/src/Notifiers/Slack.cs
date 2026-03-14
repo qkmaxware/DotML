@@ -22,40 +22,40 @@ public class Slack : INotifier {
         this.webhook_url = webhook;
     }
 
-    public void NotifyTrainingStarted(FeedforwardNetwork network) {
-        SendMessage($"Training beginning for network {network.Name}.");
+    public void NotifyTrainingStarted(INetworkModule network) {
+        SendMessage($"Training beginning for network {network.Name()}.");
     }
-    public void NotifyTrainingStep(FeedforwardNetwork network, int epoch, int epochs, IValidationReport status) {
+    public void NotifyTrainingStep(INetworkModule network, int epoch, int epochs, IValidationReport status) {
         SendMessage(
-@$"Training update for network {network.Name}. 
+@$"Training update for network {network.Name()}. 
 
 > **Epoch {epoch}/{epochs}**
-> Tests: {status.TestsPassedCount}/{status.TestCount}
-> Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AverageLoss})"
+> Tests: {status.TestsPassedCount}/{status.SampleCount}
+> Loss: {status.Loss.Min}-{status.Loss.Max} (avg: {status.Loss.Average})"
 );
     }
-    public void NotifyNewBest(FeedforwardNetwork network, int epoch, int epochs, IValidationReport status) {
+    public void NotifyNewBest(INetworkModule network, int epoch, int epochs, IValidationReport status) {
         SendMessage(
-@$"New best weights found for network {network.Name}. 
+@$"New best weights found for network {network.Name()}. 
 
 > **Epoch {epoch}/{epochs}**
-> Tests: {status.TestsPassedCount}/{status.TestCount}
-> Loss: {status.MinLoss}-{status.MaxLoss} (avg: {status.AverageLoss})"
+> Tests: {status.TestsPassedCount}/{status.SampleCount}
+> Loss: {status.Loss.Min}-{status.Loss.Max} (avg: {status.Loss.Average})"
 );
     }
-    public void NotifyTrainingDone(FeedforwardNetwork network, int epochs, IValidationReport final_status) {
+    public void NotifyTrainingDone(INetworkModule network, int epochs, IValidationReport final_status) {
         SendMessage(
-@$"Training completed for network {network.Name}. 
+@$"Training completed for network {network.Name()}. 
 
 > **Epoch epochs**
-> Tests: {final_status.TestsPassedCount}/{final_status.TestCount}
-> Loss: {final_status.MinLoss}-{final_status.MaxLoss} (avg: {final_status.AverageLoss})"
+> Tests: {final_status.TestsPassedCount}/{final_status.SampleCount}
+> Loss: {final_status.Loss.Min}-{final_status.Loss.Max} (avg: {final_status.Loss.Average})"
 );
     }
 
-    public void NotifyTrainingCancelled(FeedforwardNetwork network, int epochs) {
+    public void NotifyTrainingCancelled(INetworkModule network, int epochs) {
         SendMessage(
-@$"Training cancelled by user for network {network.Name} on epoch {epochs}."
+@$"Training cancelled by user for network {network.Name()} on epoch {epochs}."
 );
     }
 

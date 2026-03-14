@@ -47,16 +47,25 @@ public static class VecExtensions {
     /// </summary>
     /// <returns>normalized vector</returns>
     public static Vec<T> SoftmaxNormalized<T>(this Vec<T> vec) where T:INumber<T>, IExponentialFunctions<T>  {
+        if (vec.Dimensionality == 0) return Vec<T>.Wrap(Array.Empty<T>());
+
+        // Numerically stable softmax: subtract the max value before exponentiation
+        var max = vec.MaxValue;
+
         var sum = T.Zero;
         T[] values = new T[vec.Dimensionality];
         for (var i = 0; i < vec.Dimensionality; i++) {
-            var exp_i = T.Exp(vec[i]);
+            var exp_i = T.Exp(vec[i] - max);
             values[i] = exp_i;
             sum += exp_i;
         }
+
+        if (sum == T.Zero) return Vec<T>.Wrap(values);
+
         for (var i = 0; i < vec.Dimensionality; i++) {
             values[i] = values[i] / sum;
         }
+
         return Vec<T>.Wrap(values);
     } 
 

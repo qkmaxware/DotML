@@ -1,3 +1,7 @@
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+using Qkmaxware.Terminal.Layout;
+
 namespace DotML.Cli.Decodings;
 
 /// <summary>
@@ -11,10 +15,15 @@ public class Probability : IDecoder, IWithLabels {
             this.dists = vectors.Select(x => new ProbabilityDistribution(x, labels)).ToArray();
         }
 
-        public void ConsoleOutput() {
-            foreach (var dist in this.dists) {
-                Console.WriteLine(dist.ToString().ReplaceLineEndings());
+        public IElement ConsoleOutput() {
+            var box = new VBox();
+
+            foreach (var dist in this.dists)
+            {
+                box.Add(new FixedLikelihood(dist.GetProbabilities().ToArray(), dist.GetLabels()?.ToArray()));
             }
+
+            return box;
         }
 
         public IEnumerable<FileInfo> FileOutput(FileInfo file) {
@@ -31,12 +40,20 @@ public class Probability : IDecoder, IWithLabels {
     
     public string[]? Labels {get; set;}
 
-    public IDecodedResult Decode(BatchedFeatureSet<float> output) {
+    public IDecodedResult Decode(Tensor<float> output) {
+        var batches = 1;
+        for (var i = 0; i < output.Shape.Rank - 1; i++)
+            batches *= output.Shape.Length(i);
+
+        var size = output.Shape.Length(^1);
+
+        List<Vec<float>> floats = new List<Vec<float>>();
+        for (var i = 0; i < batches; i++)
+            floats.Add(new Vec<float>(output.AsSpan(i * size, size).ToArray()));
+
         return new Result(
             this.Labels,
-            output.Select(
-                b => Vec<float>.Wrap(b.SelectMany(f => f.FlattenRows()).ToArray())
-            ).ToArray()
+            floats.ToArray()
         );
     }
 }

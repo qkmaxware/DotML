@@ -60,7 +60,7 @@ public static class ActivationFunctions {
     /// <summary>
     /// f(x) = x
     /// </summary>
-    public static ActivationFunction Identity => Network.Identity.Instance;
+    public static ActivationFunction Identity => Network.IdentityFunction.Instance;
 
     /// <summary>
     /// f(x) =  1 if x > 0 else 0
@@ -141,10 +141,15 @@ public static class ActivationFunctions {
     /// f(x) = ln(x + e^x)
     /// </summary>
     public static ActivationFunction Softplus => Network.Softplus.Instance;
-    
+
     /// <summary>
     /// f(x) = x * tanh(e^x)
     /// </summary>
     public static ActivationFunction TeLU => Network.TeLU.Instance;
+    
+    /// <summary>
+    /// f(x) = 0.5 * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3)))
+    /// </summary>
+    public static ActivationFunction GELU => Network.GELU.Instance;
 
 }

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="data/**/*" />
+    <EmbeddedResource Include="tests/**/*.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,7 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DotML\DotML.csproj" />
-    <ProjectReference Include="..\DotML.Netbuild\DotML.Netbuild.csproj" />
+    <ProjectReference Include="..\DotML.Serialization\DotML.Netbuild\DotML.Netbuild.csproj" />
   </ItemGroup>
 
 </Project>

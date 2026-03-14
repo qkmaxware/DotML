@@ -69,13 +69,13 @@ public static class Kernels {
         return filter;
     }
 
-    static Random rand = new Random();
     /// <summary>
     /// Create a kernel of the given size with random weights
     /// </summary>
     /// <param name="size">Size of the kernel</param>
     /// <returns>matrix</returns>
     public static Matrix<float> RandomKernel(int size) {
+        var rand = Random.Shared;
         size = Math.Max(1, size);
         var filter = new Matrix<float>(size, size);
         for (int i = 0; i < size; i++) {
@@ -136,7 +136,7 @@ public static class Kernels {
     }
 
     /// <summary>
-    /// Sobel kernel for edge detection, particularly for finding horizontal edges
+    /// Sobel kernel for edge detection, particularly for finding vertical edges
     /// </summary>
     /// <returns>matrix</returns>
     public static Matrix<float> SobelYKernel() {
@@ -144,6 +144,30 @@ public static class Kernels {
             { -1, -2, -1 },
             { 0, 0, 0 },
             { 1, 2, 1 }
+        });
+    }
+
+    /// <summary>
+    /// Scharr kernel for edge detection, particularly for finding horizontal edges
+    /// </summary>
+    /// <returns>matrix</returns>
+    public static Matrix<float> ScharrXKernel() {
+        return new Matrix<float>(new float[,]{
+            { -3, 0, 3 },
+            { -10, 0, 10 },
+            { -3, 0, 3 }
+        });
+    }
+
+    /// <summary>
+    /// Scharr kernel for edge detection, particularly for finding vertical edges
+    /// </summary>
+    /// <returns>matrix</returns>
+    public static Matrix<float> ScharrYKernel() {
+        return new Matrix<float>(new float[,]{
+            { 3, 10, 3 },
+            { 0, 0, 0 },
+            { -3, -10, -3 }
         });
     }
 

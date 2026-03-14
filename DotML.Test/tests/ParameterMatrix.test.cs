@@ -27,46 +27,6 @@ public class ParameterMatrixTest {
         Assert.AreEqual(5 * 3 * 2, matrix.ToArray().Length);
     }
 
-    // Not an actual test method, just want to make sure the syntax I want compiles
-    // Good example of how to "discover" the best parameters for a problem set using brute force
-    public void TestCompilationOfGenerator() {
-        
-        const int InputSize = 72;
-        const int OutputSize = 26;
-        TrainingSet<float> training = new TrainingSet<float>();
-        TrainingSet<float> validation = new TrainingSet<float>();
-        var generator = new TrainedParameterizedNetworkGenerator<FeedforwardNetwork, float>(
-            new ParameterMatrix (
-                ("hidden_size",     Enumerable.Range(OutputSize, InputSize).Cast<object>().ToArray()),
-                ("epoch",           [500, 1000]),
-                ("learning_rate",   [0.001, 0.01, 0.1]),
-                ("momentum",        [0, 0.8, 0.9])
-            ),
-            training,
-            validation,
-            (param) => MultilayerPerceptron.Make(ActivationFunctions.Sigmoid, InputSize, param.Get<int>("hidden_size"), OutputSize),
-            (param) => new EnumerableBatchTrainer<FeedforwardNetwork> {
-                // Hard-coded parameters
-                EarlyStop = true,
-                // Parameters fetched from the matrix
-                Epochs = param.Get<int>("epoch"),
-                LearningRate = param.Get<int>("learning_rate"),
-            }
-        );
-
-        // Train the networks and return them all
-        var networks = generator.GenerateAndTrain().ToArray();
-        
-        // Evaluate these networks to get the best one...
-        // Hmm this doesn't let us get the parameter set of the best one
-        // I mean maybe if I can get the index of the best one then I can use the parameter matrix to get it's params
-        var loss = networks.Select(net => NetworkEvaluationFunctions.MaxMeanSquaredError(net, validation)).ToList();
-        var bestFitness = loss.Min();                                       // Get the network with the least loss
-        var bestIndex = loss.IndexOf(bestFitness);                          // Get the index of the network 
-        var best_params = generator.ParameterMatrix.ElementAt(bestIndex);   // Get the param set for the best network
-        Console.WriteLine(JsonSerializer.Serialize(best_params));       
-    }
-
     [TestMethod]
     public void TestSequence() {
         var matrix = new ParameterMatrix(

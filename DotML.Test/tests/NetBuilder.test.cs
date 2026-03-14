@@ -15,18 +15,17 @@ var network_221 =
 INPUT 1 2 1
 NAME '221-Network'
 
-ADD dense neurons=2
-ADD dense neurons=1";
+ADD DenseLinear input_size=2 neurons=2
+ADD DenseLinear input_size=2 neurons=1";
 
         var lang = new NetbuildSerializer();
-        var network = lang.Deserialize(network_221);
+        var network = (SequentialBlock)lang.DeserializeModule(network_221);
 
-        Assert.AreEqual(new Shape3D(1, 2, 1), network.InputShape);
-        Assert.AreEqual("221-Network", network.Name);
+        Assert.AreEqual("221-Network", network.Alias);
         Assert.AreEqual(2, network.LayerCount);
-        Assert.IsInstanceOfType<DenseLinearLayer>(network.GetLayer(0));
-        Assert.AreEqual(2, ((DenseLinearLayer)network.GetLayer(0)).NeuronCount);
-        Assert.IsInstanceOfType<DenseLinearLayer>(network.GetLayer(1));
-        Assert.AreEqual(1, ((DenseLinearLayer)network.GetLayer(1)).NeuronCount);
+        Assert.IsInstanceOfType<DenseLinear>(network.GetLayer(0));
+        Assert.AreEqual(2, ((DenseLinear)network.GetLayer(0)).Neurons);
+        Assert.IsInstanceOfType<DenseLinear>(network.GetLayer(1));
+        Assert.AreEqual(1, ((DenseLinear)network.GetLayer(1)).Neurons);
     }
 }

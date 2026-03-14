@@ -24,31 +24,4 @@ public class RandomInitialization
         var number = (max * sample) + (min * (1d - sample));
         return (float)number;
     }
-
-    public void InitializeBiases(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
-        network.ForeachLayer(layer => {
-            layer.ForeachNeuron(neuron => {
-                var weights = neuron.Weights;
-            
-                var weightc = weights.Length;
-                for (var i = 0; i < weightc; i++) {
-                    var sample = rng.NextDouble();
-                    var number = (max * sample) + (min * (1d - sample));
-                    weights[i] = (float)number;
-                }
-            });
-        });
-    }
-
-    public void InitializeWeights(ILayeredNeuralNetwork<ILayerWithNeurons> network) {
-        network.ForeachLayer(layer => {
-            layer.ForeachNeuron(neuron => {
-                var weights = neuron.Weights;
-                
-                var sample = rng.NextDouble();
-                var number = (max * sample) + (min * (1d - sample));
-                neuron.Bias = (float)number;
-            });
-        });
-    }
 }

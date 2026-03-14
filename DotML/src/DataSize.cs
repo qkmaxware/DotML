@@ -60,61 +60,57 @@ public struct DataSize {
         this.uom = uom;
     }
 
-    public static DataSize FromValue(long totalBytes) {
+    /// <summary>
+    /// Create a new DataSize from a total number of bytes
+    /// </summary>
+    /// <param name="totalBytes">number of bytes</param>
+    /// <returns>DataSize</returns>
+    public static DataSize Bytes(long totalBytes)
+    {
         // Choose the appropriate unit based on the total bytes.
-        if (totalBytes >= DataUnit.Gigabyte.Factor()) {
+        if (totalBytes >= DataUnit.Gigabyte.Factor())
+        {
             // If the size is at least 1GB, use Gigabytes.
-            return new DataSize(totalBytes / DataUnit.Gigabyte.Factor(), DataUnit.Gigabyte);
-        } else if (totalBytes >= DataUnit.Megabyte.Factor()) {
+            return new DataSize(totalBytes / (float)DataUnit.Gigabyte.Factor(), DataUnit.Gigabyte);
+        }
+        else if (totalBytes >= DataUnit.Megabyte.Factor())
+        {
             // If the size is at least 1MB, use Megabytes.
-            return new DataSize(totalBytes / DataUnit.Megabyte.Factor(), DataUnit.Megabyte);
-        } else if (totalBytes >= DataUnit.Kilobyte.Factor()) {
+            return new DataSize(totalBytes / (float)DataUnit.Megabyte.Factor(), DataUnit.Megabyte);
+        }
+        else if (totalBytes >= DataUnit.Kilobyte.Factor())
+        {
             // If the size is at least 1KB, use Kilobytes.
-            return new DataSize(totalBytes / DataUnit.Kilobyte.Factor(), DataUnit.Kilobyte);
-        } else {
+            return new DataSize(totalBytes / (float)DataUnit.Kilobyte.Factor(), DataUnit.Kilobyte);
+        }
+        else
+        {
             // If it's less than 1KB, use Bytes.
             return new DataSize(totalBytes, DataUnit.Bytes);
         }
     }
 
-    public static DataSize FromValues32(int value_count) {
+    /// <summary>
+    /// Create a new DataSize from a count of 32bit values
+    /// </summary>
+    /// <param name="value_count">number of 32bit values</param>
+    /// <returns>DataSize</returns>
+    public static DataSize FromCount32(int value_count)
+    {
         // This assumes that each value is 4bytes = 32bits
         long totalBytes = value_count * 4L;
-
-        // Choose the appropriate unit based on the total bytes.
-        if (totalBytes >= DataUnit.Gigabyte.Factor()) {
-            // If the size is at least 1GB, use Gigabytes.
-            return new DataSize(totalBytes / DataUnit.Gigabyte.Factor(), DataUnit.Gigabyte);
-        } else if (totalBytes >= DataUnit.Megabyte.Factor()) {
-            // If the size is at least 1MB, use Megabytes.
-            return new DataSize(totalBytes / DataUnit.Megabyte.Factor(), DataUnit.Megabyte);
-        } else if (totalBytes >= DataUnit.Kilobyte.Factor()) {
-            // If the size is at least 1KB, use Kilobytes.
-            return new DataSize(totalBytes / DataUnit.Kilobyte.Factor(), DataUnit.Kilobyte);
-        } else {
-            // If it's less than 1KB, use Bytes.
-            return new DataSize(totalBytes, DataUnit.Bytes);
-        }
+        return Bytes(totalBytes);
     }
 
-    public static DataSize FromValues64(int value_count) {
+    /// <summary>
+    /// Create a new DataSize from a count of 64bit values
+    /// </summary>
+    /// <param name="value_count">number of 64bit values</param>
+    /// <returns>DataSize</returns>
+    public static DataSize FromCount64(int value_count) {
         // This assumes that each value is 8bytes = 64bits
         long totalBytes = value_count * 8L;
-
-        // Choose the appropriate unit based on the total bytes.
-        if (totalBytes >= DataUnit.Gigabyte.Factor()) {
-            // If the size is at least 1GB, use Gigabytes.
-            return new DataSize(totalBytes / DataUnit.Gigabyte.Factor(), DataUnit.Gigabyte);
-        } else if (totalBytes >= DataUnit.Megabyte.Factor()) {
-            // If the size is at least 1MB, use Megabytes.
-            return new DataSize(totalBytes / DataUnit.Megabyte.Factor(), DataUnit.Megabyte);
-        } else if (totalBytes >= DataUnit.Kilobyte.Factor()) {
-            // If the size is at least 1KB, use Kilobytes.
-            return new DataSize(totalBytes / DataUnit.Kilobyte.Factor(), DataUnit.Kilobyte);
-        } else {
-            // If it's less than 1KB, use Bytes.
-            return new DataSize(totalBytes, DataUnit.Bytes);
-        }
+        return Bytes(totalBytes);
     }
 
     /// <summary>

@@ -3,10 +3,10 @@ import torch.nn as nn
 import json
 
 # Step 1: Make layer
-layer = nn.Conv2d(in_channels=3, out_channels=1, kernel_size=3, stride=1, padding=1) 
+layer = nn.Conv2d(in_channels=4, out_channels=6, kernel_size=3, stride=2, padding=0) 
 
 # Step 2: Create random input tensor
-input = torch.randn(1, 3, 5, 5, requires_grad=True) # 1 batch, 3 channel, 5x5 feature
+input = torch.randn(2, 4, 8, 8, requires_grad=True) # 1 batch, 3 channel, 5x5 feature
 
 # Step 3: Forward pass
 output = layer(input)
@@ -39,7 +39,7 @@ output = {
 }
 
 # Step 7: Save
-filename = 'conv2d.tensors.json'
+filename = f'conv2d.{list(input.shape)}.tensors.json'
 with open(filename, 'w') as file:
     json.dump(output, file, indent=4)
 print(f"Tensors and gradients saved to '{filename}'.")

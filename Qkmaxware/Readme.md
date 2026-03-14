@@ -1,0 +1,1 @@
+Sub-projects that are used in in this repo, but aren't directly related to the goal of Machine Learning and so are stored separately (with its own namespace) for potential future reuse. 

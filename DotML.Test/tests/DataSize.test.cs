@@ -22,7 +22,7 @@ public class DataSizeTest {
     public void TestCreationFromItemCount() {
         var count = 1500;
 
-        var size = DataSize.FromValues32(count);
+        var size = DataSize.FromCount32(count);
 
         Assert.AreEqual("6Kb", size.ToString());
     }   

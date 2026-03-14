@@ -1,5 +1,8 @@
 using DotML.Cli.Logging;
 using DotML.Network.Training;
+using Qkmaxware.Terminal;
+using Qkmaxware.Terminal.Elements;
+using Qkmaxware.Terminal.Layout;
 
 namespace DotML.Cli.Decodings;
 
@@ -10,43 +13,34 @@ public class Xml : IFileOnlyDecoder, IDecoder {
 
     public bool FileRequired() => false; // We have console output but it isn't preferred
 
-    public IDecodedResult Decode(BatchedFeatureSet<float> output_values) {
+    public IDecodedResult Decode(Tensor<float> output_values) {
         return new Result(output_values);
     }
 
     public class Result : IDecodedResult {
-        private BatchedFeatureSet<float> values;
-        public Result(BatchedFeatureSet<float> values) {
+        private Tensor<float> values;
+        public Result(Tensor<float> values) {
             this.values = values;
         }
 
-        public void ConsoleOutput() {
-            int i = 1;
-            foreach (var tensor in values) {
-                var shape = tensor.Shape;
-                Console.WriteLine($"Batch {i++}: A {shape.Channels}x{shape.Rows}x{shape.Columns} tensor.");
-            }
+        public IElement ConsoleOutput() {
+            var box = new VBox();
+            var shape = values.Shape;
+            box.Add(new Label($" A {shape} tensor."));
+        
+            return box;
         }
 
         public IEnumerable<FileInfo> FileOutput(FileInfo file) {
-            if (file.Extension != Excel2003.Extension) {
-                file = new FileInfo(file.FullName + Excel2003.Extension);
+            if (file.Extension != ".xml") {
+                file = new FileInfo(file.FullName +  ".xml");
             }
             var path = file.FullName;
 
-            if (this.values.Batches == 1) {
-                using var writer = new StreamWriter(path);
-                Excel2003.Write(writer, this.values[0]);
-                yield return file;
-            } else {
-                var batch_id = 0;
-                foreach (var features in this.values) {
-                    var name = Path.ChangeExtension(path, $".{batch_id}{Excel2003.Extension}");
-                    using var writer = new StreamWriter(path);
-                    Excel2003.Write(writer, features);
-                    yield return new FileInfo(name);
-                }
-            }
+            using var writer = new StreamWriter(path);
+            this.values.SaveSpreadsheetML(writer);
+
+            yield return file;
         }
 
         public void Dispose() { }

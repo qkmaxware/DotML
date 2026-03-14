@@ -1,6 +1,10 @@
 bin/
 obj/
 TestResults/
-DotML.Examples/
-DotML.Example.Old/
 DotML.Sandbox.Old/
+
+*.zip
+*.ignore
+
+# WIP projects that aren't ready to move up into the repo yet
+Qkmaxware/Game2D

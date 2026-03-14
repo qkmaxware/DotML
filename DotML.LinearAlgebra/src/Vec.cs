@@ -116,12 +116,39 @@ where T:INumber<T>
     /// <summary>
     /// Maximum element value
     /// </summary>a
-    public readonly T MaxValue => this.values.Max() ?? T.Zero;
+    public readonly T MaxValue {
+        get
+        {
+            if (Dimensionality == 0)
+                return T.Zero;
+
+            var max = this.values[0];
+            var span = this.values.AsSpan(1);
+            foreach (var i in span)
+                if (i > max)
+                    max = i;
+            return max;
+        }
+    }
     
     /// <summary>
     /// Minimum element value
     /// </summary>
-    public readonly T MinValue => this.values.Min() ?? T.Zero;
+    public readonly T MinValue
+    {
+        get
+        {
+            if (Dimensionality == 0)
+                return T.Zero;
+
+            var min = this.values[0];
+            var span = this.values.AsSpan(1);
+            foreach (var i in span)
+                if (i < min)
+                    min = i;
+            return min;
+        }
+    }
 
     /// <summary>
     /// Number of dimensions in this vector. IE a 2D vector has 2 values. 

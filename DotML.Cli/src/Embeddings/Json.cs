@@ -1,4 +1,5 @@
 
+using System.Text;
 using System.Text.Json;
 using DotML.Network;
 
@@ -8,19 +9,14 @@ namespace DotML.Cli.Embeddings;
 /// Treat the input as a JSON vector (double array)
 /// </summary>
 public class Json : IEmbedder {
-
-    public BatchedFeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, IEnumerable<FileInfo> files) {
-        var batches = files.Select(file => CreateEmbedding(@for, file)).ToArray();
-        return new BatchedFeatureSet<float>(batches);
-    }
     
-    public FeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, FileInfo file) {
-        var vec = Matrix<float>.Column(JsonSerializer.Deserialize<float[]>(file.OpenRead()) ?? new float[0]);
-        return new FeatureSet<float>(vec);
+    public Tensor<float> CreateEmbedding(INetworkModule @for, FileInfo file) {
+        using var stream = file.OpenRead();
+        return TensorExport.FromJson<float>(stream);
     }
 
-    public BatchedFeatureSet<float> CreateEmbedding(FeedforwardNetwork @for, string raw) {
-        var vec = Matrix<float>.Column(JsonSerializer.Deserialize<float[]>(raw) ?? new float[0]);
-        return new BatchedFeatureSet<float>(new FeatureSet<float>(vec));
+    public Tensor<float> CreateEmbedding(INetworkModule @for, string raw) {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(raw ?? ""));
+        return TensorExport.FromJson<float>(stream);
     }
 }

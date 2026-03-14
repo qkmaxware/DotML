@@ -4,10 +4,10 @@ namespace DotML.Network;
 /// <para>Identity activation function</para>
 /// <para>Identity(x) = x</para>
 /// </summary>
-public class Identity : ActivationFunction {
-    public static readonly ActivationFunction Instance = new Identity();
+public class IdentityFunction : ActivationFunction {
+    public static readonly ActivationFunction Instance = new IdentityFunction();
 
-    public Identity() {}
+    public IdentityFunction() {}
 
     /// <summary>
     /// Invoke the activation function with the given input

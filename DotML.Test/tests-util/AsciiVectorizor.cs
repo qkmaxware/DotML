@@ -1,9 +1,11 @@
+using DotML.Network.Embedding;
+
 namespace DotML.Test;
 
 /// <summary>
 /// Convert ASCII art to a vector where whitespace is considered as empty and any other character is considered non-empty
 /// </summary>
-public class AsciiImgVectorizor : IFeatureExtractor<string, float> {
+public class AsciiImgVectorizor : IEmbedding<string, float> {
 
     public int? MaxWidth {get; set;}
 
@@ -16,7 +18,7 @@ public class AsciiImgVectorizor : IFeatureExtractor<string, float> {
     public float EmptyValue = -1.0f;
     public float NonEmptyValue = 1.0f;
 
-    public Vec<float> ToVector(string value) {
+    public Tensor<float> ToTensor(string value) {
         var rows = value.Split("\n");
         var row_size = rows.Length;
         var col_size = MaxWidth.HasValue ? MaxWidth.Value : rows.Select(row => row.Length).Max();
@@ -34,6 +36,6 @@ public class AsciiImgVectorizor : IFeatureExtractor<string, float> {
             }
         }
 
-        return Vec<float>.Wrap(vec);
+        return Tensor<float>.Vec(vec);
     }
 }

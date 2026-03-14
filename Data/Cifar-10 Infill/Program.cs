@@ -11,7 +11,7 @@ public class Program {
 
     public static void Main() {
         var files = new DirectoryInfo(Path.Combine(Environment.CurrentDirectory, "..", "Cifar-10", "raw")).GetFiles("*.bin");
-        var builder = new TrainingSetBuilder<byte>();
+        var builder = new BinaryVectorBuilder<byte>();
         builder.ScalingFactor = 1.0 / 255.0;
         foreach (var file in files) {
             Console.Write($"Converting '{file.Name}'...");

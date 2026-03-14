@@ -19,7 +19,7 @@ public class HeInitialization
     }
 
     public float RandomWeight(int input_count, int output_count, int parameterCount) {
-        float stddev = MathF.Sqrt(2.0f / (input_count + output_count));
+        float stddev = MathF.Sqrt(2.0f / (input_count));
         return NextGaussian() * stddev;
     }
 }
