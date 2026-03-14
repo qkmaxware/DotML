@@ -90,9 +90,9 @@ public class Upscale : BackpropExample
         var luminance = bitmap.ToYCrCb();
         var tensor = luminance.ToTensor((yCrCb) => yCrCb.Y / 255.0f); // 0-1
 
-        using var grey = tensor.ToGreyscaleBitmaps();
-        using var greyStream = File.Open(Path.GetFileNameWithoutExtension(input) + ".greyscale.png", FileMode.Create);
-        grey[0].Encode(greyStream, SKEncodedImageFormat.Png, 100);
+        //using var grey = tensor.ToGreyscaleBitmaps();
+        //using var greyStream = File.Open(Path.GetFileNameWithoutExtension(input) + ".greyscale.png", FileMode.Create);
+        //grey[0].Encode(greyStream, SKEncodedImageFormat.Png, 100);
         return tensor;
     }
 
@@ -297,12 +297,12 @@ public override void ProcessRawData()
         var pngName = basename + "." + UpscaleFactor + "x.png";
 
         // Save tensor (debug)
-        Metric<float> f = new Metric<float>();
-        foreach (var e in output.EnumerateElements())
-            f.AddSample(e);
-        Console.WriteLine($"min: {f.Min}, max: {f.Max}, avg: {f.Average}, std: {f.StandardDeviation}, var: {f.Variance}");
-        using var tensorWriter = new StreamWriter(tensorName);
-        output.SaveJson(tensorWriter);
+        //Metric<float> f = new Metric<float>();
+        //foreach (var e in output.EnumerateElements())
+            //f.AddSample(e);
+        //Console.WriteLine($"min: {f.Min}, max: {f.Max}, avg: {f.Average}, std: {f.StandardDeviation}, var: {f.Variance}");
+        //using var tensorWriter = new StreamWriter(tensorName);
+        //output.SaveJson(tensorWriter);
 
         // Convert back to an image
         using var bitmaps = output.ToGreyscaleBitmaps();

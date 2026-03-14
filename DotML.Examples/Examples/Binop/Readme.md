@@ -8,7 +8,7 @@ This network can be used with any of the 3 big boolean binary operators such as 
 --config '{\"op\": \"Or\"}'
 --config '{\"op\": \"Xor\"}'
 ```
-If no config is provided as a command line argument, it defaults to XOR.
+If no config is provided as a command line argument, it defaults to XOR. The following binary operators are allowed: And, Or, Xor, Contradiction, Tautology, IdentityX, IdentityY, NotX, NotY, Nand, Nor, Xnor, Implication, ConverseImplication, MaterialNonImplication, and ConverseNonImplication.
 
 ## Training
 No training data is required, all training data is generated dynamically when using the `train` command. The train command generates tensors where True is any value between 0.25 and 1 and False is any value between -1 and -0.25. A total of 100 training pairs are generated, 25 per each truth table entry. 
