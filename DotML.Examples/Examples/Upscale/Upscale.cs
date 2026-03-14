@@ -77,6 +77,10 @@ public class Upscale : BackpropExample
         tensors.WriteToFile(Path.Combine(ExamplePath, UpscaleFactor + "x." + DefaultWeightsFilename));
     }
 
+        public override bool HasBeenTrained() => Enumerable.Range(2, 8).Any((op) => File.Exists(
+        Path.Combine(ExamplePath, op + "x." + DefaultWeightsFilename)
+    ));
+
     public override Tensor<float> ParseUserInput(string input)
     {
         // Load image (1080 x 1618)
@@ -281,7 +285,7 @@ public override void ProcessRawData()
         trainer.LocalClipping = null;
         trainer.Regularization = new NoRegularization(); //new L2Regularization(1e-4f);
         trainer.Patience = 3; // Patience here relates only to the stop condition below
-        trainer.StopCondition = static (report) => report.Epoch > 20 && report.Metrics<SignalToNoiseProvider>().DecibelSNR.Min > 30;
+        trainer.StopCondition = static (report) => report.Epoch > 20 && report.Metrics<SignalToNoiseProvider>().DecibelSNR.Average > 30;
         trainer.Metrics.Add(new SignalToNoiseProvider(1.0f));
         trainer.Metrics.Add(new StructuralSimilarityIndexProvider(1.0f));
     }

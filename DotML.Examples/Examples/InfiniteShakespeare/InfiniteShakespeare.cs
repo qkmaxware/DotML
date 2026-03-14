@@ -307,7 +307,7 @@ def add_point(x, y, z,
     public override void ConfigureTrainer(ModuleTrainer trainer)
     {
         trainer.MaxEpochs = 500;
-        trainer.LearningRateScheduler = trainer.LearningRateScheduler = new RampUpWarmup(
+        trainer.LearningRateScheduler = new RampUpWarmup(
             maxWarmupRate: 1e-3f,
             warmupEpochs: 5,
             scheduler: new CosineAnnealing(1e-3f, trainer.MaxEpochs - 5)

@@ -215,7 +215,13 @@ public class Safetensors {
             TElement[] results = obj.AsArray();
             for (var i = 0; i < results.Length; i++) {
                 //results[i] = (TElement)converter.ConvertFrom(((Array)tensor.data).GetValue(i));
-                results[i] = (TElement)Convert.ChangeType(((Array)tensor.data).GetValue(i), typeof(TElement));
+                object? value = ((Array)tensor.data).GetValue(i);
+                object? converted = Convert.ChangeType(value, typeof(TElement));
+
+                if (converted is not TElement convertedElement)
+                    throw new InvalidCastException($"Cannot convert {value?.GetType()} to {typeof(TElement)}");
+
+                results[i] = convertedElement;
             }
             //LoadTensorInto<GenericTensor<TElement>, TElement>(key, obj);
             return obj;
@@ -245,7 +251,13 @@ public class Safetensors {
             //var converter = TypeDescriptor.GetConverter(typeof(TElement));
             for (var i = 0; i < results.Length; i++) {
                 //results[i] = (TElement)converter.ConvertFrom(((Array)tensor.data).GetValue(i));
-                results[i] = (TElement)Convert.ChangeType(((Array)tensor.data).GetValue(i), typeof(TElement));
+                object? value = ((Array)tensor.data).GetValue(i);
+                object? converted = Convert.ChangeType(value, typeof(TElement));
+
+                if (converted is not TElement convertedElement)
+                    throw new InvalidCastException($"Cannot convert {value?.GetType()} to {typeof(TElement)}");
+
+                results[i] = convertedElement;
             }
             //LoadTensorInto<GenericTensor<TElement>, TElement>(key, obj);
             return obj;

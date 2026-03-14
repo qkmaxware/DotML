@@ -34,9 +34,9 @@ public class UNetFactory : INetworkModuleFactory<UNetFactory.BuildSettings>
         {
             return new SequentialBlock([
                 new Conv2D(outChannels, inChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
-            new Activation(fn),
-            new Conv2D(outChannels, outChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
-            new Activation(fn)
+                new Activation(fn),
+                new Conv2D(outChannels, outChannels, 1, (3, 3), (1, 1), (1, 1), (1, 1, 1, 1)),
+                new Activation(fn)
             ]);
         }
     }

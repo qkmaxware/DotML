@@ -172,6 +172,29 @@ public class TestTensor
     }
 
     [TestMethod]
+    public void TestElementWise2()
+    {
+        {
+            Tensor<float> A = Tensor<float>.Zeros(new Shape(3, 128, 128));
+
+            var spanA = A.AsSpan();
+            for (var i = 0; i < spanA.Length; i++)
+            {
+                spanA[i] = i;
+            }
+
+            var B = A.ElementWise(x => x + 5);
+            var spanB = B.AsSpan();
+
+            for (var i = 0; i < spanB.Length; i++)
+            {
+                Assert.AreEqual(i + 5, spanB[i]);
+            }
+        }
+    }
+
+
+    [TestMethod]
     public void TestReshape()
     {
         Tensor<double> A = Tensor<double>.FromRectangularArray(new double[,] {

@@ -8,13 +8,15 @@ public class Program
     {
         return Parser
             .Default
-            .ParseArguments<About, List, Run, Train, Validate, Clean>(Environment.GetCommandLineArgs().Skip(1))
+            .ParseArguments<About, List, Run, Train, TrainAll, Validate, ValidateAll, Clean>(Environment.GetCommandLineArgs().Skip(1))
             .MapResult(
                 (About about) => about.TryExec(),
                 (List lst) => lst.TryExec(),
                 (Run run) => run.TryExec(),
                 (Train train) => train.TryExec(),
+                (TrainAll trainAll) => trainAll.TryExec(),
                 (Validate valid) => valid.TryExec(),
+                (ValidateAll validAll) => validAll.TryExec(),
                 (Clean clean) => clean.TryExec(),
                 _ => 1
             );

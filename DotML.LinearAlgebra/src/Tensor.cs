@@ -748,8 +748,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, spanlength);
             int length = end - start;
 
             Span<TResult> output = tensor.AsSpan(start, length);
@@ -777,8 +777,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, spanlength);
             int length = end - start;
 
             Span<TNum> output = tensor.AsSpan(start, length);
@@ -820,8 +820,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, len);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, len);
             int length = end - start;
 
             // Vector part
@@ -876,8 +876,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, len);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, len);
             int length = end - start;
 
             // Vector part
@@ -929,8 +929,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, len);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, len);
             int length = end - start;
 
             for (var i = 0; i < length; i++)
@@ -975,8 +975,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, len);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, len);
             int length = end - start;
 
             // Vector part
@@ -1029,8 +1029,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, len);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, len);
             int length = end - start;
 
             for (var i = 0; i < length; i++)
@@ -1343,8 +1343,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, spanlength);
             int length = end - start;
 
             // Vectorized elements
@@ -1456,8 +1456,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, spanlength);
             int length = end - start;
 
             // Vectorized elements
@@ -1570,8 +1570,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, spanlength);
             int length = end - start;
 
             // Vectorized elements
@@ -1614,8 +1614,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, len);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, len);
             int length = end - start;
 
             // Vectorized elements
@@ -1658,8 +1658,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, len);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, len);
             int length = end - start;
 
             // Vectorized elements
@@ -1789,8 +1789,8 @@ where TNum : INumber<TNum>
         Parallel.For(0, chunkCount, (chunkIdx) =>
         {
             // Start, end, length within region spanned by oOffset + spanlength etc.
-            int start = chunkIdx * MinParallelChunkSize;
-            int end = Math.Min(start + MinParallelChunkSize, spanlength);
+            int start = chunkIdx * chunksize;
+            int end = Math.Min(start + chunksize, spanlength);
             int length = end - start;
 
             // Vectorized elements

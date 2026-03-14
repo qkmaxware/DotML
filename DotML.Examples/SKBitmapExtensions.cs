@@ -68,6 +68,38 @@ public static class SKBitmapExtensions
         return result;
     }
 
+    /// <summary>
+    /// Randomly get width x height subsamples of a larger image
+    /// </summary>
+    /// <param name="original">original image to sample from</param>
+    /// <param name="samples">number of samples to take</param>
+    /// <param name="width">width of the subsample</param>
+    /// <param name="height">height of the subsample</param>
+    /// <returns>set of samples</returns>
+    public static SKBitmapSet RandomSubsample(this SKBitmap original, int samples, int width, int height)
+    {
+        samples = Math.Max(0, samples);
+        height = Math.Clamp(height, 0, original.Height);
+        width = Math.Clamp(width, 0, original.Width);
+
+        SKBitmapSet set = new SKBitmapSet(Math.Max(1, samples));
+        var rng = System.Random.Shared;
+
+        for (var i = 0; i < samples; i++)
+        {
+            var top = rng.Next(Math.Max(0, original.Height - height));
+            var left = rng.Next(Math.Max(0, original.Width - width));
+            var rect = new SKRectI(left, top, left + width, top + height);
+
+            var sampling = new SKBitmap(width, height);
+            using var canvas = new SKCanvas(sampling);
+            canvas.DrawBitmap(original, rect, new SKRect(0, 0, width, height));
+            set.Add(sampling);
+        }
+
+        return set;
+    }
+
     public static YCrCb[,] ToYCrCb(this SKBitmap original)
     {
         YCrCb[,] values = new YCrCb[original.Height, original.Width];
@@ -215,27 +247,38 @@ public static class SKBitmapExtensions
 
     public static SKBitmapSet ToColourBitmaps(this Tensor<float> tensor)
     {
-        tensor = tensor.ReshapeShared(tensor.Shape.NormalizeRank(4)); // NCHW
+        tensor = tensor.ReshapeShared(tensor.Shape.NormalizeRank(4)); // NCHW (guaranteed to be in this format)
         
         var N = tensor.Shape[0];
-        var C = tensor.Shape[1];
+        var C = tensor.Shape[1];    // Should always be 3 in RGB order
         var H = tensor.Shape[2];
         var W = tensor.Shape[3];
 
+        const int R = 0;
+        const int G = 1;
+        const int B = 2;
+
         var set = new SKBitmapSet(N);
+        if(C < 3)
+            throw new FormatException("3 channels are required for colour images");
 
         for (var n = 0; n < N; n++)
         {
-            var bitmap = new SKBitmap(width: W, height: H);
+            var bitmap = new SKBitmap(width: W, height: H, isOpaque: true);
 
             for (var y = 0; y < H; y++)
             {
                 for (var x = 0; x < W; x++)
                 {
-                    var red = (byte)Math.Clamp((C >= 1 ? tensor[n, 0, y, x] : 0) * 255.0f, 0, 255);
-                    var grn = (byte)Math.Clamp((C >= 2 ? tensor[n, 1, y, x] : 0) * 255.0f, 0, 255);
-                    var blu = (byte)Math.Clamp((C >= 3 ? tensor[n, 2, y, x] : 0) * 255.0f, 0, 255);
-                    bitmap.SetPixel(x, y, new SKColor(red: red, grn, blu));
+                    var r = tensor[n, R, y, x] * 255.0f;
+                    var g = tensor[n, G, y, x] * 255.0f;
+                    var b = tensor[n, B, y, x] * 255.0f;
+
+                    var red = (byte)Math.Clamp(r, 0, 255);
+                    var grn = (byte)Math.Clamp(g, 0, 255);
+                    var blu = (byte)Math.Clamp(b, 0, 255);
+
+                    bitmap.SetPixel(x: x, y: y, new SKColor(red: red, green: grn, blue: blu));
                 }
             }
 

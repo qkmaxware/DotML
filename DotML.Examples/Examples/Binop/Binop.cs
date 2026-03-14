@@ -35,6 +35,17 @@ public class Binop : BackpropExample
         this.Operation = args!.op;
     }
 
+    public override void TrainAllVariations(bool useExistingWeights, bool useLogging, int? saveInterval)
+    {
+        // Iterate over ALL operation types
+        foreach (var type in Enum.GetValues<OperationType>())
+        {
+            this.Operation = type;
+            ResetTrainingProgress();
+            Train(useExistingWeights, useLogging, saveInterval);
+        }
+    }
+
     public override string? GetDescription() => "Binary operation evaluator using a neural network.";
 
     public override INetworkModule GetArchitecture()

@@ -65,6 +65,7 @@ public interface IExample
     public void Run(IEnumerable<string> inputs, string? outputPath);
     public void ProcessRawData();
     public void Train(bool useExistingWeights, bool useLogging, int? saveInterval);
+    public void TrainAllVariations(bool useExistingWeights, bool useLogging, int? saveInterval);
     public void Validate(bool useLogging);
     public void Clean();
 }
@@ -114,6 +115,7 @@ public abstract class Example : IExample
     public abstract void Run(IEnumerable<string> inputs, string? outputPath);
 
     public abstract void Train(bool useExistingWeights, bool useLogging, int? saveInterval);
+    public virtual void TrainAllVariations(bool useExistingWeights, bool useLogging, int? saveInterval) => Train(useExistingWeights, useLogging, saveInterval);
     public abstract void Validate(bool useLogging);
 
     private DateTime startTime = DateTime.Now;
@@ -396,6 +398,7 @@ public abstract class BackpropExample : Example
         }
         return false;
     }
+    protected void ResetTrainingProgress() => progress = null;
 
     public override void Validate(bool useLogging)
     {
