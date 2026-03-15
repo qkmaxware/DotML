@@ -9,10 +9,11 @@ namespace DotML.Examples.Colourize;
 
 public class Colourize : BackpropExample
 {
-    private const int ImgWidth = 128;
-    private const int ImgHeight = 128;
+    private const int MinImgWidth = 128;
+    private const int MinImgHeight = 128;
+    private const float Coverage  = 0.2f;
 
-    public override string? GetDescription() => $"Convert black and white images of {ImgWidth}x{ImgHeight} into colour.";
+    public override string? GetDescription() => $"Convert black and white images of at least {MinImgWidth}x{MinImgHeight} into colour.";
 
     public override void ConfigureTrainer(ModuleTrainer trainer)
     {
@@ -30,7 +31,7 @@ public class Colourize : BackpropExample
         trainer.GlobalClipping = new GlobalMagnitudeClipping<float>(10);
         trainer.LocalClipping = null;
         trainer.Regularization = new NoRegularization();
-        trainer.StopCondition = static (report) => report.Loss.Max < 0.001f;
+        trainer.StopCondition = static (report) => report.Epoch > 10 && report.Loss.Max < 0.001f;
 
         trainer.Metrics.Add(new SignalToNoiseProvider(maxSampleSignal: 1.0f));
         trainer.Metrics.Add(new StructuralSimilarityIndexProvider(maxValue: 1.0f));
@@ -42,14 +43,18 @@ public class Colourize : BackpropExample
         using var bitmap = SKBitmap.Decode(inputStr);
 
         // Crop to desired aspect ratio (center-crop, like CSS "cover") then scale
-        using var scaled = bitmap.ScaleToCover(ImgWidth, ImgHeight);
-        using (var stream = File.Open(Path.Combine(ProcessedDataPath, "input.scaled.png"), FileMode.Create)) {
-            scaled.Encode(stream, SKEncodedImageFormat.Png, 100);
+        var scaled = bitmap;
+        if (bitmap.Height < MinImgHeight || bitmap.Width < MinImgWidth)
+        {
+            // Not idea but an easy fix
+            scaled = bitmap.ScaleToCover(MinImgWidth, MinImgHeight);
         }
 
         // Convert to greyscale if required
         var tensor = scaled.ToGreyscaleTensor();
         tensor.ElementWiseInplace(px => px / 255.0f);
+
+        scaled.Dispose();
 
         return tensor;
     }
@@ -77,15 +82,15 @@ public class Colourize : BackpropExample
         
         var settings = new UNetFactory.BuildSettings();
         settings.Activation = ActivationFunctions.LeakyReLU;
-        settings.Depth = 4;
-        settings.ImageWidth = ImgWidth;
-        settings.ImageHeight = ImgHeight;
+        settings.Depth = 4;             // Input must be divisible by 16 (min 64x64)
+        settings.ImageWidth = MinImgWidth;
+        settings.ImageHeight = MinImgHeight;
         settings.InputChannels = 1;     // Greyscale
         settings.OutputChannels = 3;    // RGB
         settings.UseNormalization = false;
 
         var network = factory.Make(settings);
-        var outshape = network.ForwardShape(new Shape(1, ImgHeight, ImgWidth));
+        var outshape = network.ForwardShape(new Shape(1, MinImgHeight, MinImgWidth));
         return network;
     }
 
@@ -104,10 +109,10 @@ public class Colourize : BackpropExample
 
         // Configure augmentations
         var augmentor = new SKAugmentor();
-        augmentor.ForcedOutputDimensions    = (Width: ImgWidth, Height: ImgHeight);
+        augmentor.ForcedOutputDimensions    = (Width: MinImgWidth, Height: MinImgHeight);
         augmentor.RotationDegrees           = Distributions.Uniform<float>(0, 0);
         augmentor.ScalingFactors            = Distributions.Uniform<float>(1, 1);
-        augmentor.SelectionPercent          = Distributions.Uniform<float>(0.6, 0.9);
+        augmentor.SelectionPercent          = Distributions.Uniform<float>(1, 1);       // No need, slicing makes these the right size
         augmentor.Brightness                = Distributions.Uniform<float>(0.9f, 1.1f);
         augmentor.Contrast                  = Distributions.Uniform<float>(0.9f, 1.1f);
         augmentor.AllowHorizontalFlip       = true;
@@ -119,15 +124,30 @@ public class Colourize : BackpropExample
 
         // Loop over files
         var fileIndex = 0;
+        const int tileArea = MinImgWidth * MinImgHeight;
         foreach (var file in files)
         {
             // Load image
             using var bitmap = SKBitmap.Decode(file.FullName);
             var baseName = Path.GetFileNameWithoutExtension(file.Name);
 
+            if (bitmap.Width < MinImgWidth || bitmap.Height < MinImgHeight)
+                continue;
+
+            var totalArea = (long)bitmap.Width * (long)bitmap.Height;
+
+            // number of tiles needed to reach coverage (round up)
+            long desiredCovered = (long)Math.Ceiling(Coverage * totalArea);
+            int numTiles = (int)Math.Max(1, Math.Ceiling((double)desiredCovered / tileArea));
+
+            using var slices = bitmap.RandomSubsample(samples: 10, width: MinImgWidth, height: MinImgHeight);
+
+            var sliceId = 0;
+            foreach (var slice in slices) {
+
             // Perform training augmentations
             {
-                using var augments = augmentor.Augment(bitmap, augmentations: 20);
+                using var augments = augmentor.Augment(slice, augmentations: 20);
 
                 var augmentIndex = 0;
                 foreach (SKBitmap augment in augments)
@@ -147,8 +167,8 @@ public class Colourize : BackpropExample
                             throw new FormatException("Invalid pixel in colour tensor");
                         tWriter.Write((byte)val);       // 0 - 255
                     }
-                    for (var y = 0; y < ImgHeight; y++) {
-                        for (var x = 0; x < ImgWidth; x++) {
+                    for (var y = 0; y < MinImgHeight; y++) {
+                        for (var x = 0; x < MinImgWidth; x++) {
                             var pixel = augment.GetPixel(x, y);
                             var (r, g, b) = (colourTensor[0, y, x], colourTensor[1, y, x], colourTensor[2, y, x]);
                             if (pixel.Red != r || pixel.Green != g || pixel.Blue != b) {
@@ -158,20 +178,20 @@ public class Colourize : BackpropExample
                     }
 
                     // Save some images (allows us to verify that the augmenting is working as desired)
-                    if (augmentIndex < 3 && fileIndex < 10)
+                    if (sliceId < 2 && augmentIndex < 3 && fileIndex < 10)
                     {
                         using var inImg = greyTensor.ElementWise(px => px/255.0f).ToGreyscaleBitmaps();
-                        using var inStream = File.Open(Path.Combine(ProcessedDataPath, baseName + "." + augmentIndex + ".in" + ".png"), FileMode.Create);
+                        using var inStream = File.Open(Path.Combine(ProcessedDataPath, baseName + ".slice" + sliceId + "." + augmentIndex + ".in" + ".png"), FileMode.Create);
                         inImg[0].Encode(inStream, SKEncodedImageFormat.Png, 100);
                         inStream.Flush();
 
                         var elementWiseColour = colourTensor.ElementWise(px => px/255.0f);
                         using var outImg = colourTensor.ElementWise(px => px/255.0f).ToColourBitmaps();
-                        using var outStream = File.Open(Path.Combine(ProcessedDataPath, baseName + "." + augmentIndex + ".out" + ".png"), FileMode.Create);
+                        using var outStream = File.Open(Path.Combine(ProcessedDataPath, baseName + ".slice" + sliceId + "." + augmentIndex + ".out" + ".png"), FileMode.Create);
                         outImg[0].Encode(outStream, SKEncodedImageFormat.Png, 100);
                         outStream.Flush();
 
-                        using var rawStream = File.Open(Path.Combine(ProcessedDataPath, baseName + "." + augmentIndex + ".raw" + ".png"), FileMode.Create);
+                        using var rawStream = File.Open(Path.Combine(ProcessedDataPath, baseName + ".slice" + sliceId + "." + augmentIndex + ".raw" + ".png"), FileMode.Create);
                         augment.Encode(rawStream, SKEncodedImageFormat.Png, 100);
                         rawStream.Flush();
                     }
@@ -182,7 +202,7 @@ public class Colourize : BackpropExample
 
             // Perform validation augmentations
             {
-                using var augments = augmentor.Augment(bitmap, augmentations: 5);
+                using var augments = augmentor.Augment(slice, augmentations: 5);
 
                 foreach (var augment in augments)
                 {
@@ -194,6 +214,9 @@ public class Colourize : BackpropExample
                     foreach (var val in colourTensor.AsSpan())
                         vWriter.Write((byte)val);       // 0 - 255
                 }
+            }
+
+            sliceId++;
             }
 
             fileIndex++;
@@ -210,8 +233,8 @@ public class Colourize : BackpropExample
     }
     private ListTrainingDataSource<float> ParseTrainingFile(string filename)
     {
-        var ishape = new Shape(1, ImgHeight, ImgWidth);
-        var oshape = new Shape(3, ImgHeight, ImgWidth);
+        var ishape = new Shape(1, MinImgHeight, MinImgWidth);
+        var oshape = new Shape(3, MinImgHeight, MinImgWidth);
         ListTrainingDataSource<float> trn = new ListTrainingDataSource<float>(ishape, oshape);
 
         using (var iReader = new BinaryReader(File.Open(Path.Combine(ProcessedDataPath, filename), FileMode.Open))) {

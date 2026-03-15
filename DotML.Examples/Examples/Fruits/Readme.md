@@ -1,4 +1,4 @@
-# Cifar10
+# Fruits
 An example that showcases image classification for 10 different types of fruits. This example takes colour images of 128x128 pixels and determined which of the following 10 classes is represented by the image. 
 
 1. "Apple",
