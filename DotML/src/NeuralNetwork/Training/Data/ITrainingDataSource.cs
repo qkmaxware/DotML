@@ -87,6 +87,10 @@ where TType : INumber<TType>
     }
 }
 
+/// <summary>
+/// Combine multiple training data sources into a single data source
+/// </summary>
+/// <typeparam name="TType">tensor element type</typeparam>
 public class CombinationTrainingDataSource<TType>
 : ITrainingDataSource<TType>
 where TType : INumber<TType>
@@ -171,6 +175,10 @@ where TType : INumber<TType>
 
 }
 
+/// <summary>
+/// Use only a subset of the tensors from a training source
+/// </summary>
+/// <typeparam name="TType">tensor element type</typeparam>
 public class SubsetTrainingDataSource<TType>
 : ITrainingDataSource<TType>
 where TType : INumber<TType>

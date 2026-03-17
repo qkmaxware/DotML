@@ -223,6 +223,10 @@ public class Colourize : BackpropExample
         }
     }
 
+    public override ITrainingDataSampler<float> GetTrainingSampler(ITrainingDataSource<float> training) => training.CreateRandomSampler(count: 20, allowDuplicates: true);
+
+    public override ITrainingDataSampler<float> GetValidationSampler(ITrainingDataSource<float> validation) => validation.CreateRandomSampler(count: 20, allowDuplicates: true);
+
     public override void LoadTrainingData(out ITrainingDataSource<float> training, out ITrainingDataSource<float> validation)
     {
         ListTrainingDataSource<float> trn = ParseTrainingFile("training.bin");

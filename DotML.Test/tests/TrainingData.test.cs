@@ -1,7 +1,7 @@
 using DotML.Network;
 using DotML.Network.Training;
 
-namespace DotML.Test;
+namespace DotML.Test.Training;
 
 [TestClass]
 public class TrainingDataTest {
@@ -43,7 +43,8 @@ public class TrainingDataTest {
         var data = Make(100);
         var original = data.ToArray();
 
-        var items = data.SampleRandomly(50).AsEnumerable().ToArray();
+        var sampler = data.SampleRandomly(50);
+        var items = sampler.AsEnumerable().ToArray();
 
         Assert.AreEqual(100, data.Size);
         Assert.AreEqual(50, items.Length);

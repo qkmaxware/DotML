@@ -47,7 +47,7 @@ where TType:INumber<TType>
     public IEnumerable<(Tensor<TType> Input, Tensor<TType> Ouput)> Sample(int batchSize = 1) {
         batchSize = Math.Max(batchSize, 1);
         int startIndex = 0;
-        var count = src.Count;
+        var count = this.Count;
         var ishape = src.InputShape;
         var oshape = src.OutputShape;
 
@@ -138,7 +138,7 @@ where TType:INumber<TType>
     public IEnumerable<(Tensor<TType> Input, Tensor<TType> Ouput)> Sample(int batchSize = 1) {
         batchSize = Math.Max(batchSize, 1);
         int startIndex = 0;
-        var count = src.Count;
+        var count = this.Count;
         var ishape = src.InputShape;
         var oshape = src.OutputShape;
 
