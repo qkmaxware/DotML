@@ -37,7 +37,7 @@ public class Dropout : NetworkLayer
 
     public override Shape ForwardShape(Shape input) => input;
 
-    public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)
+    public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx, ISteppedProgress? progress)
     {
         // Mask only used during training
         if (IsTraining(ctx))
@@ -51,7 +51,9 @@ public class Dropout : NetworkLayer
         }
 
         // During inference, no dropout
-        return Forward(channels);
+        var result = Forward(channels);
+        progress?.Advance(steps: 1);
+        return result;
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy) => new Gradient(dy);

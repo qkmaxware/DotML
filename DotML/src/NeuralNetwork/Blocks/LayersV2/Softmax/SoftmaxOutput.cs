@@ -24,12 +24,14 @@ public class SoftmaxOutput : NetworkLayer
     public override Shape ForwardShape(Shape input) => input;
 
     public override Tensor<float> Forward(Tensor<float> channels) => channels.Softmax(this.ClassAxis); // Softmax during inference
-    public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)
+    public override Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx, ISteppedProgress? progress)
     {
         if (IsTraining(ctx))
             return channels; // Do nothing during training. ASSUME SOFTMAX IS DONE BY CROSS_ENTROPY LOSS
 
-        return channels.Softmax(this.ClassAxis); // Softmax during inference
+        var result = channels.Softmax(this.ClassAxis); // Softmax during inference
+        progress?.Advance(steps: 1);
+        return result;
     }
 
     public override Gradients Backward(Tensor<float> x, Tensor<float> y, Tensor<float> dy)

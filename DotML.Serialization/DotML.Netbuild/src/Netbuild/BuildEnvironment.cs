@@ -15,6 +15,6 @@ public class BuildEnvironment
         {
             return null;
         }
-        return NetworkBlock is not null && index >= 0 && index < NetworkBlock.SubmoduleCount ? NetworkBlock.GetLayer(index) : null;
+        return NetworkBlock is not null && index >= 0 && index < NetworkBlock.LayerCount ? NetworkBlock.GetLayer(index) : null;
     }
 }

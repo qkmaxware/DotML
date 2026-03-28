@@ -43,6 +43,11 @@ public abstract class NetworkLayer : INetworkModule, IBlockVisitable
     public virtual int TrainableParameterCount() => 0;
 
     /// <summary>
+    /// Number of submodules contained within this module
+    /// </summary>
+    public int SubmoduleCount => 0; // Constant 0, simple layers do not have submodules
+
+    /// <summary>
     /// Feed-forward a given tensor shape and return the expected output shape
     /// </summary>
     /// <param name="input">input tensor shape</param>
@@ -56,13 +61,14 @@ public abstract class NetworkLayer : INetworkModule, IBlockVisitable
     /// <returns>layer output</returns>
     public abstract Tensor<float> Forward(Tensor<float> channels);
 
-    public virtual Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx)
+    public virtual Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx, ISteppedProgress? progress = null)
     {
         var res = this.Forward(channels);
         if (ctx is not null)
         {
             ctx.Save(this, new IOContext(channels, res));
         }
+        progress?.Advance(steps: 1);
         return res;
     }
 

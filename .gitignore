@@ -2,6 +2,7 @@ bin/
 obj/
 TestResults/
 DotML.Sandbox.Old/
+ignore/
 
 *.zip
 *.ignore

@@ -30,6 +30,11 @@ public class ArchitectureBlock : INetworkModule, IBlockVisitable
     /// </summary>
     public INetworkModule RootModule { get; init; }
 
+    /// <summary>
+    /// Number of submodules contained within this module
+    /// </summary>
+    public int SubmoduleCount => RootModule.SubmoduleCount;
+
     public ArchitectureBlock(string name, Shape? inputShape, INetworkModule rootModule, string? description = null, Uri? referenceUri = null)
     {
         Name = name;
@@ -46,9 +51,9 @@ public class ArchitectureBlock : INetworkModule, IBlockVisitable
         return RootModule.Backward(dy, ctx, clipping);
     }
 
-    public Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx = null)
+    public Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx = null, ISteppedProgress? progress = null)
     {
-        return RootModule.Forward(channels, ctx);
+        return RootModule.Forward(channels, ctx, progress);
     }
 
     public Shape ForwardShape(Shape input)

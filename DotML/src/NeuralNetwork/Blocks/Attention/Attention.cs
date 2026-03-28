@@ -15,6 +15,11 @@ public abstract class Attention : INetworkModule
     public int ModelEmbeddingLength => d_model;
     public int OutputEmbeddingLength => d_k;
 
+    /// <summary>
+    /// Number of submodules contained within this module
+    /// </summary>
+    public int SubmoduleCount => 0; // Eh maybe make this more accurate... idk imma treat attention as a single layer for a while rather than a block
+
     public Attention(int d_model, int d_k, int heads = 1)
     {
         this.heads      = Math.Max(1, heads);
@@ -64,7 +69,7 @@ public abstract class Attention : INetworkModule
         return new Shape(normalized[0], normalized[1], heads * d_k);
     }
 
-    public Tensor<float> Forward(Tensor<float> input, EvaluationContext? ctx = null)
+    public Tensor<float> Forward(Tensor<float> input, EvaluationContext? ctx = null, ISteppedProgress? progress = null)
     {
         // Compress leading dimensions or expand with dimensions of len 1 to reshape as rank 3 tensor
         var X = input.ReshapeShared(input.Shape.NormalizeRank(3));  // [B, T, d_model]
@@ -97,6 +102,7 @@ public abstract class Attention : INetworkModule
             ctx.Save(this, new AttentionContext(input: X, output: Output, outputHeads: OutputHeads, query: Q, key: K, value: V, scores: Scores, attention: Attention));
         }
 
+        progress?.Advance(steps: 1);
         return Output;
     }
 

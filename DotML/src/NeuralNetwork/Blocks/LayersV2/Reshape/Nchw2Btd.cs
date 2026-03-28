@@ -21,7 +21,7 @@ public class Nchw2Btd : Reshape
 
     public override Tensor<float> Forward(Tensor<float> x) => Forward(x, null);
 
-    public override Tensor<float> Forward(Tensor<float> x, EvaluationContext? ctx = null)
+    public override Tensor<float> Forward(Tensor<float> x, EvaluationContext? ctx = null, ISteppedProgress? progress = null)
     {
         // Expecting [B, C, H, W]
         var shape = x.Shape.NormalizeRank(4);
@@ -51,6 +51,7 @@ public class Nchw2Btd : Reshape
         if (ctx is not null)
             ctx.Save(this, new IOContext(x, output));
 
+        progress?.Advance(steps: 1);
         return output;
     }
 
@@ -119,7 +120,7 @@ public class Btd2Nchw : Reshape
 
     public override Tensor<float> Forward(Tensor<float> x) => Forward(x, null);
 
-    public override Tensor<float> Forward(Tensor<float> x, EvaluationContext? ctx)
+    public override Tensor<float> Forward(Tensor<float> x, EvaluationContext? ctx, ISteppedProgress? progress = null)
     {
         // x: [B, T, C]
         var shape = x.Shape.NormalizeRank(3);
@@ -152,6 +153,7 @@ public class Btd2Nchw : Reshape
         if (ctx is not null)
             ctx.Save(this, new IOContext(x, output));
 
+        progress?.Advance(steps: 1);
         return output;
     }
 

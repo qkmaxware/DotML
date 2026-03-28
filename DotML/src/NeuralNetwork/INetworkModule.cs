@@ -15,6 +15,11 @@ public interface INetworkModule
     public void Initialize(IInitializer initializer);
 
     /// <summary>
+    /// Number of submodules contained within this module
+    /// </summary>
+    public int SubmoduleCount {get;}
+
+    /// <summary>
     /// Feed-forward a given tensor shape and return the expected output shape
     /// </summary>
     /// <param name="input">input tensor shape</param>
@@ -26,8 +31,9 @@ public interface INetworkModule
     /// </summary>
     /// <param name="channels">layer input</param>
     /// <param name="ctx">optional evaluation context for caching intermediary tensors</param>
+    /// <param name="progress">optional progress tracker</param>
     /// <returns>layer output</returns>
-    public Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx = null);
+    public Tensor<float> Forward(Tensor<float> channels, EvaluationContext? ctx = null, ISteppedProgress? progress = null);
 
     /// <summary>
     /// Backwards evaluation of this layer

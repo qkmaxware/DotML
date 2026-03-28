@@ -47,13 +47,18 @@ public abstract class ResidualBlock : INetworkModule, IBlockVisitable
         this.ResidualPath = residual;
     }
 
+    /// <summary>
+    /// Number of submodules contained within this module
+    /// </summary>
+    public int SubmoduleCount => MainPath.SubmoduleCount + 1 + (ResidualPath is not null ? ResidualPath.SubmoduleCount + 1 : 0);
+
     public abstract Shape ForwardShape(Shape input);
 
-    public Tensor<float> Forward(Tensor<float> X, EvaluationContext? ctx = null)
+    public Tensor<float> Forward(Tensor<float> X, EvaluationContext? ctx = null, ISteppedProgress? progress = null)
     {
         // Compute the outputs of both paths, if ResidualPath is null, treat it as the identity function (aka apply no transformation)
-        var residual = ResidualPath?.Forward(X, ctx) ?? X;
-        var Y = MainPath.Forward(X, ctx);
+        var residual = ResidualPath?.Forward(X, ctx, progress) ?? X;
+        var Y = MainPath.Forward(X, ctx, progress);
 
         // Combine the results using whatever strategy 
         var result = Combine(Y, residual);
@@ -64,6 +69,7 @@ public abstract class ResidualBlock : INetworkModule, IBlockVisitable
             ctx.Save(this, new ResidualBlockContext(X, result, Y.Shape, residual.Shape));
         }
 
+        progress?.Advance(steps: 1);
         return result;
     }
 

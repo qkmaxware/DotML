@@ -26,7 +26,7 @@ public class SelfAttention : Attention
     protected override Tensor<float> ComputeKey(Tensor<float> input, EvaluationContext? ctx)
     {
         // Project input -> [B, T, d_k] and replicate per-head -> [B, H, T, d_k]
-        var base_k = k_proj.Forward(input, ctx); // [B, T, d_k]
+        var base_k = k_proj.Forward(input, ctx, null); // [B, T, d_k]
 
         int B = base_k.Shape.Length(0);
         int T = base_k.Shape.Length(1);
@@ -82,7 +82,7 @@ public class SelfAttention : Attention
     protected override Tensor<float> ComputeQuery(Tensor<float> input, EvaluationContext? ctx)
     {
         // Project input -> [B, T, d_k] and replicate per-head -> [B, H, T, d_k]
-        var base_q = q_proj.Forward(input, ctx); // [B, T, d_k]
+        var base_q = q_proj.Forward(input, ctx, null); // [B, T, d_k]
 
         int B = base_q.Shape.Length(0);
         int T = base_q.Shape.Length(1);
@@ -137,7 +137,7 @@ public class SelfAttention : Attention
     protected override Tensor<float> ComputeValue(Tensor<float> input, EvaluationContext? ctx)
     {
         // Project input -> [B, T, d_k] and replicate per-head -> [B, H, T, d_k]
-        var base_v = v_proj.Forward(input, ctx); // [B, T, d_k]
+        var base_v = v_proj.Forward(input, ctx, null); // [B, T, d_k]
 
         int B = base_v.Shape.Length(0);
         int T = base_v.Shape.Length(1);

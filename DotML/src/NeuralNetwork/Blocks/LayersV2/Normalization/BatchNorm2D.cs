@@ -85,9 +85,9 @@ public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
 
     public override Shape ForwardShape(Shape input) => input;
 
-    public override Tensor<float> Forward(Tensor<float> x) => Forward(x, null); // Inference mode
+    public override Tensor<float> Forward(Tensor<float> x) => Forward(x, null, null); // Inference mode
 
-    public override Tensor<float> Forward(Tensor<float> x, EvaluationContext? ctx)
+    public override Tensor<float> Forward(Tensor<float> x, EvaluationContext? ctx, ISteppedProgress? progress = null)
     {
         var originalShape = x.Shape;
         var shape = x.Shape.NormalizeRank(4); // Force to be [N, C, H, W]
@@ -194,6 +194,8 @@ public class BatchNorm2D : NormalizationLayer, IWeightsAndBiasNetworkModule
         {
             ctx.Save(this, new IOContext(x, res));
         }
+
+        progress?.Advance(steps: 1);
         return res;
     }
 

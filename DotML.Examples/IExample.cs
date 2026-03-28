@@ -197,6 +197,7 @@ public abstract class BackpropExample : Example
     {
         // Load network
         var network = this.GetArchitecture();
+        var steps = network.SubmoduleCount + 1;
 
         // Load weights (required)
         RestoreWeights(network, throws: true);
@@ -208,13 +209,21 @@ public abstract class BackpropExample : Example
         using TextWriter pipe = !string.IsNullOrEmpty(OutputPath) 
             ? new StreamWriter(Path.ChangeExtension(OutputPath, EnforceExtension(Path.GetExtension(OutputPath))))
             : System.Console.Out;
+
+        int inputId = 0;
         foreach (var str in InputStrings)
         {
             pipe.Write("> "); pipe.WriteLine(str);
             var input = this.ParseUserInput(str);
-            var output = network.Forward(input);
+
+            SteppedProgress progress = new SteppedProgress(steps, (report) =>
+            {
+                Console.Title = $"DotML Run - input[{inputId}] - {report * 100 : F2}%";
+            });
+            var output = network.Forward(input, null, progress);
             pipe.WriteLine(this.FormatOutput(str, input, output));
             pipe.WriteLine(); // Extra line between inputs
+            inputId++;
         }
     }
 
@@ -252,10 +261,12 @@ public abstract class BackpropExample : Example
         this.ConfigureTrainer(trainer); // Example specific configs
 
         // Do training loop
+        var training_sampler = this.GetTrainingSampler(training);
+        var validation_sampler = this.GetValidationSampler(validation);
         ModuleTrainingEnumerator session = (ModuleTrainingEnumerator)trainer.EnumerateTraining(
             network: network,
-            dataset: this.GetTrainingSampler(training),
-            validation: this.GetValidationSampler(validation)
+            dataset: training_sampler,
+            validation: validation_sampler
         );
         if (useExistingWeights)
         {
@@ -268,8 +279,18 @@ public abstract class BackpropExample : Example
         var networkName = network is ArchitectureBlock nameArch ? nameArch.Name : network.GetType().Name;
         Console.WriteLine($"  Example: {this.Name}");
         Console.WriteLine($"  Network: {networkName}");
-        Console.WriteLine($"  Training size: {training.InputShape} x {training.Count}");
-        Console.WriteLine($"  Validation size: {validation.InputShape} x {validation.Count}");
+        Console.Write($"  Training size: {training.InputShape} x {training.Count}");
+        if (training_sampler.Count != training.Count)
+        {
+            Console.Write($" ({training_sampler.Count} per epoch)");
+        }
+        Console.WriteLine();
+        Console.Write($"  Validation size: {validation.InputShape} x {validation.Count}");
+        if (validation_sampler.Count != validation.Count)
+        {
+            Console.Write($" ({validation_sampler.Count} per epoch)");
+        }
+        Console.WriteLine();
         Console.WriteLine();
 
         Console.WriteLine("Training...");

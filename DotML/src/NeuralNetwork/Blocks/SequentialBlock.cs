@@ -14,7 +14,6 @@ namespace DotML.Network;
 public class SequentialBlock : INetworkModule, IBlockVisitable
 {
     public string? Alias { get; set; }
-    public int SubmoduleCount => layers.Count;
 
     private List<INetworkModule> layers;
 
@@ -60,6 +59,11 @@ public class SequentialBlock : INetworkModule, IBlockVisitable
     }
 
     public INetworkModule this[int index] => layers[index];
+
+    /// <summary>
+    /// Number of submodules contained within this module
+    /// </summary>
+    public int SubmoduleCount => layers.Sum(l => l.SubmoduleCount) + LayerCount;
 
     /// <summary>
     /// Number of layers
@@ -125,14 +129,16 @@ public class SequentialBlock : INetworkModule, IBlockVisitable
     /// <param name="input">input tensor of shape [N,C,H,W]</param>
     /// <param name="ctx">optional evaluation context to store intermediary tensors</param>
     /// <returns>output tensor of shape [N,C,H,W]</returns>
-    public Tensor<float> Forward(Tensor<float> input, EvaluationContext? ctx = null)
+    public Tensor<float> Forward(Tensor<float> input, EvaluationContext? ctx = null, ISteppedProgress? progress = null)
     {
         Tensor<float> i = input;
         foreach (var layer in layers)
         {
-            var o = layer.Forward(i, ctx);
+            var o = layer.Forward(i, ctx, progress);
             i = o;
         }
+
+        progress?.Advance(steps: 1);
         return i;
     }
 
