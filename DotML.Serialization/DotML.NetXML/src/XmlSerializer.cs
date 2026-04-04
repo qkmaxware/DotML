@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Xml;
 using DotML.Network;
+using DotML.Network.Embedding.Text;
 
 namespace DotML.Serialization.Xml;
 
@@ -48,6 +49,8 @@ public class NetworkXmlSerializer
             nameof(GlobalMinPool2D) => DecodeGlobalMinPool2D(element),
             nameof(Flatten) => DecodeFlatten(element),
             nameof(Center2D) => DecodeCenter2D(element),
+            nameof(SelfAttention) => DecodeSelfAttention(element),
+            nameof(LearnedEmbedding) => DecodeLearnedEmbedding(element),
 
             nameof(ResidualBlock) => DecodeResidualBlock(element),
             nameof(SequentialBlock) => DecodeSequentialBlock(element),
@@ -382,6 +385,38 @@ public class NetworkXmlSerializer
         var r = int.Parse(el.GetAttribute("rows"));
         var c = int.Parse(el.GetAttribute("columns"));
         return new Center2D(r, c);
+    }
+
+    public XmlElement Visit(SelfAttention attention, XmlDocument doc)
+    {
+        var el = doc.CreateElement(nameof(SelfAttention));
+        el.SetAttribute("heads", attention.Heads.ToString());
+        el.SetAttribute("d-model", attention.ModelEmbeddingLength.ToString());
+        el.SetAttribute("d-k", attention.OutputEmbeddingLength.ToString());
+        return el;
+    }
+    public INetworkModule DecodeSelfAttention(XmlElement el)
+    {
+        var heads = int.Parse(el.GetAttribute("heads"));
+        var d_model = int.Parse(el.GetAttribute("d-model"));
+        var d_k = int.Parse(el.GetAttribute("d-k"));
+        return new SelfAttention(d_model, d_k, heads);
+    }
+
+    public XmlElement Visit(LearnedEmbedding embedding, XmlDocument doc)
+    {
+        var el = doc.CreateElement(nameof(LearnedEmbedding));
+        el.SetAttribute("vocab-size", embedding.VocabSize.ToString());
+        el.SetAttribute("embedding-dim", embedding.EmbeddingDim.ToString());
+        el.SetAttribute("seq-length", embedding.MaxSequenceLength.ToString());
+        return el;
+    }
+    public INetworkModule DecodeLearnedEmbedding(XmlElement el)
+    {
+        var vocab_size = int.Parse(el.GetAttribute("vocab-size"));
+        var embedding_dim = int.Parse(el.GetAttribute("embedding-dim"));
+        var seq_length = int.Parse(el.GetAttribute("seq-length"));
+        return new LearnedEmbedding(vocab_size, seq_length, embedding_dim);
     }
 
     public XmlElement Visit(ResidualBlock block, XmlDocument doc)

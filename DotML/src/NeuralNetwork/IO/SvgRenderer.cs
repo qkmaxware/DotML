@@ -1,4 +1,6 @@
 
+using DotML.Network.Embedding.Text;
+
 namespace DotML.Network.IO;
 
 /// <summary>
@@ -400,6 +402,18 @@ public class SvgRenderer
             return new LayoutPosition { TrackIndex = arg.TrackIndex, PositionIndex = arg.PositionIndex + 1 };
         }
 
+        public LayoutPosition Visit(SelfAttention attention, LayoutPosition arg)
+        {
+            Layout.SetModule(arg.TrackIndex, arg.PositionIndex, attention);
+            return new LayoutPosition { TrackIndex = arg.TrackIndex, PositionIndex = arg.PositionIndex + 1 };
+        }
+
+        public LayoutPosition Visit(LearnedEmbedding embedding, LayoutPosition arg)
+        {
+            Layout.SetModule(arg.TrackIndex, arg.PositionIndex, embedding);
+            return new LayoutPosition { TrackIndex = arg.TrackIndex, PositionIndex = arg.PositionIndex + 1 };
+        }
+
         public LayoutPosition Visit(ResidualBlock block, LayoutPosition arg)
         {
             // Do splitter
@@ -558,6 +572,16 @@ public class SvgRenderer
         }
 
         public string Visit(Center2D center, None arg)
+        {
+            return GetSvgTemplate(null);
+        }
+
+        public string Visit(SelfAttention attention, None arg)
+        {
+            return GetSvgTemplate(null);
+        }
+
+        public string Visit(LearnedEmbedding embedding, None arg)
         {
             return GetSvgTemplate(null);
         }

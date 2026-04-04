@@ -198,6 +198,9 @@ public class LearnedEmbedding : INetworkModule, IBlockVisitable
     public Tensor<float> TokenEmbedding {get; set;}
     public Tensor<float> PositionalEmbedding {get; set;}
 
+    public int TrainableParameterCount() => TokenEmbedding.ElementCount + PositionalEmbedding.ElementCount;
+    public int UnTrainableParameterCount() => 0;
+
     public int VocabSize {get; init;}
     public int MaxSequenceLength {get; init;}
     public int EmbeddingDim {get; init;}

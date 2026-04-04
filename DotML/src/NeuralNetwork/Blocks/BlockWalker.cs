@@ -1,3 +1,5 @@
+using DotML.Network.Embedding.Text;
+
 namespace DotML.Network;
 
 public abstract class BlockWalker : IBlockVisitor
@@ -127,6 +129,18 @@ public abstract class BlockWalker : IBlockVisitor
     public None Visit(Center2D center, None arg)
     {
         VisitModule(center);
+        return None.Value;
+    }
+
+    public None Visit(SelfAttention attention, None arg)
+    {
+        VisitModule(attention);
+        return None.Value;
+    }
+
+    public None Visit(LearnedEmbedding embedding, None arg)
+    {
+        VisitModule(embedding);
         return None.Value;
     }
 

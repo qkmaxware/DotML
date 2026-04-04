@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using DotML.Network.Embedding.Text;
 
 namespace DotML.Network.IO;
 
@@ -119,7 +120,26 @@ public class SafetensorSerializer : IBlockVisitor
 
     public None Visit(SoftmaxOutput softmax, None arg) { /* No tensors */ return None.Value; }
 
+    public None Visit(SelfAttention attention, None arg)
+    {
+        Push(nameof(SelfAttention.QueryProjection)+ ".Weights", attention.QueryProjection.Weights);
+        Push(nameof(SelfAttention.KeyProjection)+ ".Weights", attention.KeyProjection.Weights);
+        Push(nameof(SelfAttention.ValueProjection)+ ".Weights", attention.ValueProjection.Weights);
+        Push(nameof(SelfAttention.OutputProjection)+ ".Weights", attention.OutputProjection.Weights);
 
+        Push(nameof(SelfAttention.QueryProjection) + ".Biases", attention.QueryProjection.Biases);
+        Push(nameof(SelfAttention.KeyProjection) + ".Biases", attention.KeyProjection.Biases);
+        Push(nameof(SelfAttention.ValueProjection) + ".Biases", attention.ValueProjection.Biases);
+        Push(nameof(SelfAttention.OutputProjection) + ".Biases", attention.OutputProjection.Biases);
+        return None.Value;
+    }
+
+    public None Visit(LearnedEmbedding embedding, None arg)
+    {
+        Push(nameof(LearnedEmbedding.TokenEmbedding), embedding.TokenEmbedding);
+        Push(nameof(LearnedEmbedding.PositionalEmbedding), embedding.PositionalEmbedding);
+        return None.Value;
+    }
 
     public None Visit(ResidualBlock block, None arg)
     {
@@ -268,6 +288,27 @@ public class SafetensorDeserializer : IBlockVisitor<Safetensors, None>
 
     public None Visit(Flatten flatten, Safetensors arg) { /* No tensors */ return None.Value; }
     public None Visit(SoftmaxOutput softmax, Safetensors arg) { /* No tensors */ return None.Value; }
+
+    public None Visit(SelfAttention attention, Safetensors arg)
+    {
+        attention.QueryProjection.Weights = Load<float>(arg, nameof(SelfAttention.QueryProjection) + ".Weights");
+        attention.KeyProjection.Weights = Load<float>(arg, nameof(SelfAttention.KeyProjection) + ".Weights");
+        attention.ValueProjection.Weights = Load<float>(arg, nameof(SelfAttention.ValueProjection) + ".Weights");
+        attention.OutputProjection.Weights = Load<float>(arg, nameof(SelfAttention.OutputProjection) + ".Weights");
+
+        attention.QueryProjection.Biases = Load<float>(arg, nameof(SelfAttention.QueryProjection) + ".Biases");
+        attention.KeyProjection.Biases = Load<float>(arg, nameof(SelfAttention.KeyProjection) + ".Biases");
+        attention.ValueProjection.Biases = Load<float>(arg, nameof(SelfAttention.ValueProjection) + ".Biases");
+        attention.OutputProjection.Biases = Load<float>(arg, nameof(SelfAttention.OutputProjection) + ".Biases");
+        return None.Value;
+    }
+
+    public None Visit(LearnedEmbedding embedding, Safetensors arg)
+    {
+        embedding.TokenEmbedding = Load<float>(arg, nameof(LearnedEmbedding.TokenEmbedding));
+        embedding.PositionalEmbedding = Load<float>(arg, nameof(LearnedEmbedding.PositionalEmbedding));
+        return None.Value;
+    }
 
     public None Visit(ResidualBlock block, Safetensors arg)
     {

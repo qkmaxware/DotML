@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using DotML.NetDot.Dot;
 using DotML.Network;
+using DotML.Network.Embedding.Text;
 
 namespace DotML.NetDot;
 
@@ -23,6 +24,8 @@ public class ModuleCompiler
         new LayerPattern<AvgPool2D>(),
         new LayerPattern<Dropout>(),
         new LayerPattern<SoftmaxOutput>(),
+        new LayerPattern<SelfAttention>(),
+        new LayerPattern<LearnedEmbedding>(),
 
         // Block matchers
         new SequentialBlockPattern(),

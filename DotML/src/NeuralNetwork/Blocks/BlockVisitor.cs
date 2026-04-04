@@ -1,3 +1,5 @@
+using DotML.Network.Embedding.Text;
+
 namespace System
 {
     /// <summary>
@@ -94,6 +96,14 @@ namespace DotML.Network
         public TResult Visit(Flatten flatten, TArg arg);
 
         public TResult Visit(Center2D center, TArg arg);
+        #endregion
+
+        #region Compound Standalone Layers
+        public TResult Visit(SelfAttention attention, TArg arg);
+        #endregion
+
+        #region Embeddings
+        public TResult Visit(LearnedEmbedding embedding, TArg arg);
         #endregion
 
         #region Structural Blocks

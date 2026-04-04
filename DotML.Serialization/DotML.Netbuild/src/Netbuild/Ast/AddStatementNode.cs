@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Reflection;
+using DotML.Network.Embedding.Text;
 
 namespace DotML.Network.IO.Netbuild;
 
@@ -50,6 +51,8 @@ public class AddStatement : Statement {
             nameof(AvgPool2D) => makeLayer<AvgPool2D>(ishape, args),
             nameof(Dropout) => makeLayer<Dropout>(ishape, args),
             nameof(SoftmaxOutput) => makeLayer<SoftmaxOutput>(ishape, args),
+            nameof(SelfAttention) => makeLayer<SelfAttention>(ishape, args),
+            nameof(LearnedEmbedding) => makeLayer<LearnedEmbedding>(ishape, args),
             _ => throw new FormatException("Layer type '{layer_name}' is not supported")
         };
     }

@@ -1,5 +1,6 @@
 
 using System.Text;
+using DotML.Network.Embedding.Text;
 
 namespace DotML.Network.IO;
 
@@ -110,6 +111,16 @@ internal class NetbuildLayerDescriber : IBlockVisitor<string>
     public string Visit(Center2D center, None arg)
     {
         return $"{nameof(Center2D)} rows={center.TargetRows} columns={center.TargetColumns}";
+    }
+
+    public string Visit(SelfAttention attention, None arg)
+    {
+        return $"{nameof(SelfAttention)} heads={attention.Heads} d_model={attention.ModelEmbeddingLength} d_k={attention.OutputEmbeddingLength}";
+    }
+
+    public string Visit(LearnedEmbedding embedding, None arg)
+    {
+        return $"{nameof(LearnedEmbedding)} vocabSize={embedding.VocabSize} embeddingDim={embedding.EmbeddingDim} maxSeqLen={embedding.MaxSequenceLength}";
     }
 
     public string Visit(ResidualBlock block, None arg)

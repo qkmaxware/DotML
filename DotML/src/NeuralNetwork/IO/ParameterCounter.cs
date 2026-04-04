@@ -1,4 +1,6 @@
 
+using DotML.Network.Embedding.Text;
+
 namespace DotML.Network.IO;
 
 /// <summary>
@@ -147,6 +149,20 @@ public class ParameterCounter : IBlockVisitor
     {
         Trainable += softmax.TrainableParameterCount();
         UnTrainable += softmax.UnTrainableParameterCount();
+        return None.Value;
+    }
+
+    public None Visit(SelfAttention attention, None arg)
+    {
+        Trainable += attention.TrainableParameterCount();
+        UnTrainable += attention.UnTrainableParameterCount();
+        return None.Value;
+    }
+
+    public None Visit(LearnedEmbedding embedding, None arg)
+    {
+        Trainable += embedding.TrainableParameterCount();
+        UnTrainable += embedding.UnTrainableParameterCount();
         return None.Value;
     }
 

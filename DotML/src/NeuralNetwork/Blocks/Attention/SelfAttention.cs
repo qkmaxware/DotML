@@ -3,12 +3,15 @@ using DotML.Network.Training;
 
 namespace DotML.Network;
 
-public class SelfAttention : Attention
+public class SelfAttention : Attention, IBlockVisitable
 {
     private DenseLinear q_proj;
     private DenseLinear k_proj;
     private DenseLinear v_proj;
     private DenseLinear output_proj;
+
+    public int TrainableParameterCount() => k_proj.TrainableParameterCount() + v_proj.TrainableParameterCount() + output_proj.TrainableParameterCount();
+    public int UnTrainableParameterCount() => k_proj.UnTrainableParameterCount() + v_proj.UnTrainableParameterCount() + output_proj.UnTrainableParameterCount();
 
     public DenseLinear QueryProjection
     {
@@ -291,5 +294,10 @@ public class SelfAttention : Attention
     public override void UpdateProjection(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null)
     {
         output_proj.Update(learningRate, gradients, optimizer, regularization);
+    }
+
+    public TResult Accept<TArg, TResult>(IBlockVisitor<TArg, TResult> visitor, TArg arg)
+    {
+        return visitor.Visit(this, arg);
     }
 }
