@@ -32,7 +32,7 @@ public abstract class Attention : INetworkModule
     /// Compute the query (Q) tensor from the provided input.
     /// Expected shape: [B, H, T, d_k] (batch, heads, time, head-dim)
     /// </summary>
-    /// <param name="input">input (B,T,d_model)</param>
+    /// <param name="input">input [B,T,d_model]</param>
     /// <returns>query tensor [B,H,T,d_k]</returns>
     protected abstract Tensor<float> ComputeQuery(Tensor<float> input, EvaluationContext? ctx);
     protected abstract Gradients ComputeQueryGradient(Tensor<float> dY, EvaluationContext ctx, ILocalClippingStrategy<float>? clipping = null);
@@ -92,23 +92,45 @@ public abstract class Attention : INetworkModule
 
         // Attention applied to V -> [B, H, T, d_k]
         Tensor<float> OutputHeads = Attention.BatchedMatMul(V);     // [B, H, T, d_k]
+        Console.WriteLine($"Output head shape: {OutputHeads.Shape}");
 
         // Concatenate heads -> [B, T, H, d_k] -> reshape to [B, T, H*d_k]
-        var OutputTransposed = OutputHeads.Transpose(1, 2);         // [B, T, H, d_k]
-        Tensor<float> Output = OutputTransposed.ReshapeShared(new Shape(OutputTransposed.Shape.Length(0), OutputTransposed.Shape.Length(1), heads * d_k));
+        var OutputHeadsTransposed = OutputHeads.Transpose(1, 2);         // [B, T, H, d_k]
+        Tensor<float> OutputHeadsReshaped = OutputHeadsTransposed.ReshapeShared(new Shape(OutputHeadsTransposed.Shape.Length(0), OutputHeadsTransposed.Shape.Length(1), heads * d_k));
+
+        Tensor<float> output = ProjectionOutput(OutputHeadsReshaped, ctx);
 
         if (ctx is not null)
         {
-            ctx.Save(this, new AttentionContext(input: X, output: Output, outputHeads: OutputHeads, query: Q, key: K, value: V, scores: Scores, attention: Attention));
+            ctx.Save(this, new AttentionContext(input: X, output: output, outputHeads: OutputHeads, query: Q, key: K, value: V, scores: Scores, attention: Attention));
         }
 
         progress?.Advance(steps: 1);
-        return Output;
+        return output;
+    }
+
+    public virtual Tensor<float> ProjectionOutput(Tensor<float> outputHeads, EvaluationContext? ctx)
+    {
+        // By default, attention module does not include an output projection layer, so just return the concatenated heads
+        return outputHeads;
+    }
+
+    public virtual Gradients ProjectionOutputGradient(Tensor<float> dY, EvaluationContext ctx, ILocalClippingStrategy<float>? clipping = null)
+    {
+        // By default, attention module does not include an output projection layer, so just return the gradient as is to be backpropagated into the attention heads
+        return new Gradient(dY);
+    }
+
+    public virtual void UpdateProjection(float learningRate, Gradients gradients, IOptimizer optimizer, RegularizationFunction? regularization = null)
+    {
+        // By default, attention module does not include an output projection layer, so nothing to update
     }
 
     public Gradients Backward(Tensor<float> dY, EvaluationContext ctx, ILocalClippingStrategy<float>? clipping = null)
     {
         var context = ctx.Get<AttentionContext>(this);
+        var proj_grad = ProjectionOutputGradient(dY, ctx, clipping); // backprop through output projection if it exists, otherwise just pass dY through
+        dY = proj_grad.dX;
         // dY is gradient wrt concatenated output: [B, T, H*d_k]
         // reshape to per-head gradients: [B, T, H, d_k] -> transpose to [B, H, T, d_k]
         var dYReshaped = dY.ReshapeShared(new Shape(dY.Shape.Length(0), dY.Shape.Length(1), heads, d_k)); // [B, T, H, d_k]
@@ -167,7 +189,7 @@ public abstract class Attention : INetworkModule
         var dKV = grad_k.dX.AddWith(grad_v.dX);
         var dX = grad_q.dX.AddWith(dKV);
 
-        var grads = new AttentionGradients(dX, dKV, grad_q, grad_k, grad_v);
+        var grads = new AttentionGradients(dX, dKV, grad_q, grad_k, grad_v, proj_grad);
         if (clipping is not null)
             grads.Clip(clipping);
         return grads;
@@ -181,6 +203,8 @@ public abstract class Attention : INetworkModule
         UpdateQuery(learningRate, grad.dQ, optimizer, regularization);
         UpdateKey(learningRate, grad.dK, optimizer, regularization);
         UpdateValue(learningRate, grad.dV, optimizer, regularization);
+
+        UpdateProjection(learningRate, grad.dProj, optimizer, regularization);
     }
 }
 
@@ -216,16 +240,18 @@ public class AttentionContext : IModuleContext
 public class AttentionGradients : Gradients
 {
     public Tensor<float> dKV { get; init; }
+    public Gradients dProj { get; init; }
     public Gradients dQ { get; init; }
     public Gradients dK { get; init; } 
     public Gradients dV { get; init; }
 
-    public AttentionGradients(Tensor<float> dX, Tensor<float> dKV, Gradients dQ, Gradients dK, Gradients dV) : base(dX)
+    public AttentionGradients(Tensor<float> dX, Tensor<float> dKV, Gradients dQ, Gradients dK, Gradients dV, Gradients dProj) : base(dX)
     {
         this.dKV = dKV;
         this.dQ = dQ;
         this.dK = dK;
         this.dV = dV;
+        this.dProj = dProj;
     }
 
     public override void Clip(ILocalClippingStrategy<float> clipping)

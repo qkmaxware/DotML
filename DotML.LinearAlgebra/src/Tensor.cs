@@ -2025,7 +2025,7 @@ where TNum : INumber<TNum>
         var vecLength = batchedVectors.Shape.Length(axis) * batchedVectors.Shape.Stride(axis);
         var batches = axis == 0 ? 1 : batchedVectors.Shape.Length(0..axis);
         if (this.Shape.Rank != 2 || this.Shape.Length(^1) != vecLength)
-            throw new InvalidOperationException($"Matrix must be 2D and its column count ({this.Shape.Length(^1)}) must match vector length ({vecLength})");
+            throw new InvalidOperationException($"Matrix {this.Shape} must be 2D and its column count ({this.Shape.Length(^1)}) must match vector length ({vecLength})");
 
         int rows = this.Shape.Length(^2);
         int innerDim = vecLength;
@@ -3794,48 +3794,96 @@ where TNum : INumber<TNum>
         if (rank < 2)
             throw new InvalidOperationException("Cannot transpose a tensor with rank less than 2");
 
+        int axisI = NormalizeAxis(dim0);
+        int axisJ = NormalizeAxis(dim1);
+        if (axisI == axisJ)
+            return this;
+
+        var orig_shape = this.Shape;
+        ReadOnlySpan<int> orig_strides = orig_shape.AsStrideSpan();
+        ReadOnlySpan<int> orig_dims = orig_shape.AsDimensionSpan();
+
+        var new_dims = orig_dims.ToArray();
+        (new_dims[axisI], new_dims[axisJ]) = (new_dims[axisJ], new_dims[axisI]);
+        var new_shape = new Shape(new_dims);
+        var new_strides = new_shape.AsStrideSpan();
+
+        Span<int> idxs = stackalloc int[rank];
+        int total = this.elements.Length;
+        TNum[] new_elements = new TNum[total];
+
+        for (int flat = 0; flat < total; flat++)
+        {
+            // swap axis in index
+            int tmp = idxs[axisI];
+            idxs[axisI] = idxs[axisJ];
+            idxs[axisJ] = tmp;
+
+            // Compute output flat index
+            int outFlat = 0;
+            for (int k = 0; k < rank; k++)
+            {
+                outFlat += idxs[k] * new_strides[k];
+            }
+
+            // Copy element
+            new_elements[outFlat] = this.elements[flat];
+
+            // Restore indices
+            tmp = idxs[axisI];
+            idxs[axisI] = idxs[axisJ];
+            idxs[axisJ] = tmp;
+
+            // Increment odometer
+            for (int k = rank - 1; k >= 0; k--)
+            {
+                idxs[k]++;
+                if (idxs[k] < orig_dims[k])
+                    break;
+
+                idxs[k] = 0;
+            }
+        }
+
+        return new Tensor<TNum>(new_shape, new_elements);
+        /*var rank = this.Shape.Rank;
+        if (rank < 2)
+            throw new InvalidOperationException("Cannot transpose a tensor with rank less than 2");
+
         int a = NormalizeAxis(dim0);
         int b = NormalizeAxis(dim1);
         if (a == b)
             return this;
 
         var oldShape = this.Shape;
-        ReadOnlySpan<int> strides = oldShape.AsStrideSpan(); // row-major
+        ReadOnlySpan<int> strides = oldShape.AsStrideSpan();
         ReadOnlySpan<int> dimsSizes = oldShape.AsDimensionSpan();
         var dims = dimsSizes.ToArray();
         var strs = strides.ToArray();
-        (dims[a], dims[b]) = (dims[b], dims[a]);    // Swap dim sizes
-        (strs[a], strs[b]) = (strs[b], strs[a]);    // Swap strides
-        var newShape = new Shape(dims, strs); // Copy strides too
+        (dims[a], dims[b]) = (dims[b], dims[a]);
+        (strs[a], strs[b]) = (strs[b], strs[a]);
+        var newShape = new Shape(dims, strs);
 
-        // Precompute strides
-        int srcStrideA = strides[a], destStrideA = strs[a];
-        int srcStrideB = strides[b], destStrideB = strs[b];
-        int dimSizeA = dimsSizes[a];
-        int dimSizeB = dimsSizes[b];
+        // Create result tensor with proper dimensionality
+        var result = Tensor<TNum>.Defaults(newShape);
+        Span<int> transposed_indices = stackalloc int[rank];
 
-        // Compute the batch size: elements per matrix
-        int matrixSize = dimSizeA * dimSizeB;
-        int matrixCount = this.elements.Length / matrixSize;
+        // Use proper index enumeration for all dimensions
+        var ienumerator = oldShape.CreateIndexEnumerator();
+        Span<int> indices = stackalloc int[rank];
+        int flatIndex = 0;
+        Span<TNum> elements = this.elements;
 
-        var result = new TNum[this.elements.Length];
-
-        for (int m = 0; m < matrixCount; m++)
+        ienumerator.Initialize(indices, ref flatIndex);
+        while (ienumerator.MoveNext(indices, ref flatIndex))
         {
-            int baseOffset = m * matrixSize;
-
-            for (int i = 0; i < dimSizeA; i++)
-            {
-                for (int j = 0; j < dimSizeB; j++)
-                {
-                    int srcIndex = baseOffset + i * srcStrideA + j * srcStrideB;
-                    int dstIndex = baseOffset + j * destStrideA + i * destStrideB;
-                    result[dstIndex] = this.elements[srcIndex];
-                }
-            }
+            // Copy indices and swap positions a and b
+            indices.CopyTo(transposed_indices);
+            (transposed_indices[a], transposed_indices[b]) = (transposed_indices[b], transposed_indices[a]);
+            result[transposed_indices] = elements[flatIndex];
         }
 
-        return new Tensor<TNum>(newShape, result);
+        return result;*/
     }
 
     /// <summary>

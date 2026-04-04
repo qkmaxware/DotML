@@ -234,11 +234,11 @@ public abstract class BackpropExample : Example
         var exampleName = this.GetType().Name;
 
         // Load tensors (ensure that we have enough data)
-        if (!Directory.Exists(ProcessedDataPath) == false)
+        if (!Directory.Exists(ProcessedDataPath))
         {
             Directory.CreateDirectory(ProcessedDataPath);
         }
-        if (!Directory.Exists(RawDataPath) == false)
+        if (!Directory.Exists(RawDataPath))
         {
             Directory.CreateDirectory(RawDataPath);
         }

@@ -15,17 +15,37 @@ public class DenseLinear : NetworkLayer, IWeightsAndBiasNetworkModule
 
     public int Neurons { get; init; }
 
-    public Tensor<float> Weights { get; set; }
+    private Tensor<float> _weights;
+    public Tensor<float> Weights
+    {
+        get => _weights;
+        set {
+            // Setting safety check
+            if (value.Shape != new Shape(Neurons, InputSize))
+                throw new ArgumentException($"Weights must have shape ({Neurons}, {InputSize})");
+            _weights = value;
+        }
+    }
 
-    public Tensor<float> Biases { get; set; }
+    private Tensor<float> _biases;
+    public Tensor<float> Biases
+    {
+        get => _biases;
+        set {
+            // Setting safety check
+            if (value.Shape != new Shape(Neurons, 1) && value.Shape != new Shape(Neurons))
+                throw new ArgumentException($"Biases must have shape ({Neurons}, 1), {value.Shape} given");
+            _biases = value.ReshapeShared(new Shape(Neurons, 1)); // Ensure biases are always stored as column vector
+        }
+    }
 
     public DenseLinear(int input_size, int neurons)
     {
         this.InputSize = input_size;
         this.Neurons = neurons;
 
-        Weights = Tensor<float>.Zeros(new Shape(neurons, input_size));
-        Biases = Tensor<float>.Zeros(new Shape(neurons, 1));
+        _weights = Tensor<float>.Zeros(new Shape(neurons, input_size));
+        _biases = Tensor<float>.Zeros(new Shape(neurons, 1));
     }
 
     public override int TrainableParameterCount()
@@ -59,7 +79,6 @@ public class DenseLinear : NetworkLayer, IWeightsAndBiasNetworkModule
     {
         // Flatten the input to column/height dimension :[N, C, H, W] -> [N, F]
         x = Flatten.FlattenNonBatch(x);
-
         // Matrix multiplication, do broadcasting for batch dimensions as needed: [O, F] x [..., F]
         // Use the row dimension (^1) as the vector dimension
         var mul = Weights.MatMulEachVector(dimension: ^1, x, Biases.AsArray());
